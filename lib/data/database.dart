@@ -1,0 +1,132 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' show sqfliteFfiInit, databaseFactoryFfi;
+
+/// Відкриття локальної SQLite-бази. Усі дані спочатку завжди пишуться
+/// сюди (offline-first); поле `synced` показує, чи запис уже відправлений
+/// на сервер.
+class AppDatabase {
+  static const fileName = 'apiary.db';
+
+  /// На комп'ютері (Windows/Linux/macOS) SQLite працює через FFI.
+  static DatabaseFactory get platformFactory {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      return databaseFactoryFfi;
+    }
+    return databaseFactory;
+  }
+
+  static Future<Database> openDefault() async {
+    final dir = await getApplicationSupportDirectory();
+    await dir.create(recursive: true);
+    return open(platformFactory, p.join(dir.path, fileName));
+  }
+
+  /// [path] може бути [inMemoryDatabasePath] (тести).
+  static Future<Database> open(DatabaseFactory factory, String path) async {
+    final db = await factory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+        },
+        // Схему створюємо/доповнюємо при КОЖНОМУ відкритті (як і стара
+        // версія) — так само відкривається і стара база з Python-версії.
+        onOpen: ensureSchema,
+      ),
+    );
+    return db;
+  }
+
+  static Future<void> ensureSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS elements (
+        id TEXT PRIMARY KEY,
+        x INTEGER NOT NULL,
+        y INTEGER NOT NULL,
+        type TEXT NOT NULL DEFAULT 'hive',
+        label TEXT,
+        rotation INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await _ensureColumn(db, 'elements', 'group_id', 'TEXT');
+    await _ensureColumn(db, 'elements', 'variant', 'TEXT');
+    await _ensureColumn(db, 'elements', 'icon', 'TEXT');
+    await _ensureColumn(db, 'elements', 'color', 'TEXT');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        cells TEXT NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await _ensureColumn(db, 'templates', 'width', 'INTEGER');
+    await _ensureColumn(db, 'templates', 'height', 'INTEGER');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS parameters (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        unit TEXT,
+        data_type TEXT NOT NULL DEFAULT 'text',
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await _ensureColumn(db, 'parameters', 'is_base', 'INTEGER NOT NULL DEFAULT 0');
+    await _ensureColumn(db, 'parameters', 'base_type', 'TEXT');
+    // НОВЕ: стабільний ключ "Базової характеристики". Раніше вони
+    // шукались за назвою, тож перейменування створювало дубль.
+    await _ensureColumn(db, 'parameters', 'base_key', 'TEXT');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS element_parameters (
+        id TEXT PRIMARY KEY,
+        group_id TEXT,
+        element_id TEXT,
+        parameter_id TEXT NOT NULL,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await _ensureColumn(db, 'element_parameters', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+    // НОВЕ: м'яке видалення прив'язок, щоб і їх можна було синхронізувати.
+    await _ensureColumn(db, 'element_parameters', 'deleted', 'INTEGER NOT NULL DEFAULT 0');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS parameter_records (
+        id TEXT PRIMARY KEY,
+        group_id TEXT,
+        element_id TEXT,
+        parameter_id TEXT NOT NULL,
+        value TEXT,
+        created_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_ep_owner ON element_parameters(group_id, element_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pr_owner ON parameter_records(parameter_id, group_id, element_id)');
+  }
+
+  static Future<void> _ensureColumn(
+      Database db, String table, String column, String type) async {
+    final cols = await db.rawQuery('PRAGMA table_info($table)');
+    if (!cols.any((c) => c['name'] == column)) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $type');
+    }
+  }
+}

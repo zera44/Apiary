@@ -1,0 +1,495 @@
+import 'package:flutter/material.dart';
+
+import 'icons.dart';
+import 'theme.dart';
+
+/// Кругла кнопка з іконкою, намальованою лініями.
+class CircleIconButton extends StatelessWidget {
+  final String icon;
+  final Color bg;
+  final Color iconColor;
+  final double size;
+  final VoidCallback? onPressed;
+  final Color? disabledBg;
+  final String? tooltip;
+
+  const CircleIconButton({
+    super.key,
+    required this.icon,
+    required this.bg,
+    this.iconColor = Colors.white,
+    this.size = 46,
+    this.onPressed,
+    this.disabledBg,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final color = enabled ? bg : (disabledBg ?? bg.withValues(alpha: 0.45));
+    Widget btn = Material(
+      color: color,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: SizedBox.square(
+          dimension: size,
+          child: CustomPaint(
+            painter: _IconPainter(icon, enabled ? iconColor : iconColor.withValues(alpha: 0.5)),
+          ),
+        ),
+      ),
+    );
+    if (tooltip != null) btn = Tooltip(message: tooltip!, child: btn);
+    return btn;
+  }
+}
+
+class _IconPainter extends CustomPainter {
+  final String icon;
+  final Color color;
+  _IconPainter(this.icon, this.color);
+  @override
+  void paint(Canvas canvas, Size size) =>
+      paintAppIcon(canvas, icon, size.center(Offset.zero), size.width, size.height, color);
+  @override
+  bool shouldRepaint(_IconPainter o) => o.icon != icon || o.color != color;
+}
+
+/// Заокруглена кнопка-пігулка з текстом.
+class PillButton extends StatelessWidget {
+  final String text;
+  final Color bg;
+  final Color fg;
+  final VoidCallback? onPressed;
+  final double height;
+  final double radius;
+  final double fontSize;
+  final double? width;
+
+  const PillButton({
+    super.key,
+    required this.text,
+    required this.bg,
+    this.fg = Colors.white,
+    this.onPressed,
+    this.height = 42,
+    this.radius = 14,
+    this.fontSize = 14,
+    this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      width: width,
+      child: Material(
+        color: onPressed == null ? bg.withValues(alpha: 0.45) : bg,
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Напівпрозора капсула з текстом (статус / попередження вгорі).
+class CapsuleLabel extends StatelessWidget {
+  final String text;
+  final Color? bg;
+  final Color? fg;
+  const CapsuleLabel(this.text, {super.key, this.bg, this.fg});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: text.isEmpty ? 0 : 1,
+      duration: const Duration(milliseconds: 150),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: bg ?? AppColors.capsule,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(text, style: TextStyle(color: fg ?? AppColors.text, fontSize: 12)),
+      ),
+    );
+  }
+}
+
+/// Товста заокруглена рамка навколо екрана (декоративна).
+class ScreenFrame extends StatelessWidget {
+  const ScreenFrame({super.key});
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: CustomPaint(painter: _FramePainter(), size: Size.infinite),
+      );
+}
+
+class _FramePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const w = 6.0;
+    final r = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w / 2, w / 2, size.width - w, size.height - w),
+      const Radius.circular(24),
+    );
+    canvas.drawRRect(
+      r,
+      Paint()
+        ..color = Colors.black
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w,
+    );
+    // кути поза заокругленням
+    final outer = Path()..addRect(Offset.zero & size);
+    final inner = Path()..addRRect(r);
+    canvas.drawPath(
+      Path.combine(PathOperation.difference, outer, inner),
+      Paint()..color = Colors.black,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_FramePainter old) => false;
+}
+
+/// Верхня панель екранів-списків: кнопка "назад", заголовок, дія праворуч.
+class TopBar extends StatelessWidget {
+  final String title;
+  final VoidCallback? onBack;
+  final Widget? trailing;
+  const TopBar({super.key, required this.title, this.onBack, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(children: [
+          if (onBack != null)
+            CircleIconButton(
+              icon: 'back_arrow',
+              bg: AppColors.roundBtn,
+              iconColor: AppColors.text,
+              size: 34,
+              onPressed: onBack,
+            )
+          else
+            const SizedBox(width: 34),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+          trailing ?? const SizedBox(width: 34),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Картка списку (шаблон / параметр / запис історії).
+class ListCard extends StatelessWidget {
+  final Widget child;
+  final double height;
+  const ListCard({super.key, required this.child, this.height = 66});
+  @override
+  Widget build(BuildContext context) => Container(
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: child,
+      );
+}
+
+/// Власна квадратна позначка вибору (в стилі застосунку).
+class CheckToggle extends StatelessWidget {
+  final bool checked;
+  final ValueChanged<bool>? onChanged;
+  const CheckToggle({super.key, required this.checked, this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onChanged != null;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: enabled ? () => onChanged!(!checked) : null,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Opacity(
+          opacity: enabled ? 1 : 0.6,
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: checked ? AppColors.accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: checked ? null : Border.all(color: const Color(0xFF807061), width: 1.8),
+            ),
+            child: checked ? const AppIcon('check', color: Colors.white, size: 26) : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Кругла кнопка-зразок кольору (для типу даних "Колір").
+class ColorTagSwatch extends StatelessWidget {
+  final Color? fill; // null — "без кольору"
+  final bool selected;
+  final VoidCallback? onTap;
+  final String? tooltip;
+  const ColorTagSwatch({super.key, this.fill, this.selected = false, this.onTap, this.tooltip});
+
+  @override
+  Widget build(BuildContext context) {
+    final swatch = GestureDetector(
+      onTap: onTap,
+      child: SizedBox.square(
+        dimension: 38,
+        child: CustomPaint(painter: _SwatchPainter(fill, selected)),
+      ),
+    );
+    return tooltip == null ? swatch : Tooltip(message: tooltip!, child: swatch);
+  }
+}
+
+class _SwatchPainter extends CustomPainter {
+  final Color? fill;
+  final bool selected;
+  _SwatchPainter(this.fill, this.selected);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.shortestSide / 2;
+    final muted = Paint()
+      ..color = AppColors.textMuted
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    if (fill != null) {
+      canvas.drawCircle(c, r * 0.78, Paint()..color = fill!);
+      canvas.drawCircle(c, r * 0.78, muted);
+    } else {
+      canvas.drawCircle(c, r * 0.78, muted..strokeWidth = 2);
+      canvas.drawLine(c + Offset(-r * 0.5, r * 0.5), c + Offset(r * 0.5, -r * 0.5), muted);
+    }
+    if (selected) {
+      canvas.drawCircle(
+        c,
+        r * 0.96,
+        Paint()
+          ..color = AppColors.accent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SwatchPainter o) => o.fill != fill || o.selected != selected;
+}
+
+// ---------------------------------------------------------------------------
+// Діалоги
+// ---------------------------------------------------------------------------
+
+Widget _dialogButtons(List<Widget> buttons) => Row(
+      children: [
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: buttons[i]),
+        ]
+      ],
+    );
+
+/// Підтвердження дії. Повертає true, якщо підтверджено.
+Future<bool> showConfirm(
+  BuildContext context, {
+  required String text,
+  String title = 'Підтвердження',
+  String confirmText = 'Видалити',
+  bool danger = true,
+}) async {
+  final res = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(text, style: TextStyle(color: AppColors.text)),
+      actions: [
+        _dialogButtons([
+          PillButton(
+              text: 'Скасувати',
+              bg: AppColors.neutralBtn,
+              fg: AppColors.text,
+              onPressed: () => Navigator.pop(ctx, false)),
+          PillButton(
+              text: confirmText,
+              bg: danger ? AppColors.danger : AppColors.accent,
+              onPressed: () => Navigator.pop(ctx, true)),
+        ]),
+      ],
+    ),
+  );
+  return res ?? false;
+}
+
+/// Повідомлення з кнопкою "Гаразд".
+Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: title.isEmpty ? null : Text(title),
+      content: Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
+      actions: [
+        _dialogButtons([
+          PillButton(text: 'Гаразд', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
+        ]),
+      ],
+    ),
+  );
+}
+
+/// Запит тексту (перейменування). Повертає новий текст або null.
+Future<String?> showTextPrompt(BuildContext context,
+    {required String title, required String initial}) {
+  final ctrl = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) {
+      void save() {
+        final v = ctrl.text.trim();
+        Navigator.pop(ctx, v.isEmpty ? initial : v);
+      }
+
+      return AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: TextStyle(color: AppColors.text),
+          onSubmitted: (_) => save(),
+        ),
+        actions: [
+          _dialogButtons([
+            PillButton(
+                text: 'Скасувати',
+                bg: AppColors.neutralBtn,
+                fg: AppColors.text,
+                onPressed: () => Navigator.pop(ctx)),
+            PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save),
+          ]),
+        ],
+      );
+    },
+  );
+}
+
+/// Діалог-сітка для вибору іконки. [withReset] — кнопка "Типова".
+/// Повертає ('', null) для скидання, (key, key) для вибору, null — скасовано.
+Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false}) {
+  return showDialog<(String?,)>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Обрати іконку'),
+      content: SizedBox(
+        width: 300,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (withReset) ...[
+            PillButton(
+              text: 'Типова',
+              bg: AppColors.roundBtn,
+              fg: AppColors.text,
+              height: 36,
+              width: double.infinity,
+              fontSize: 12,
+              onPressed: () => Navigator.pop(ctx, (null,)),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            for (final (key, label) in objectIconChoices)
+              CircleIconButton(
+                icon: key,
+                bg: AppColors.roundBtn,
+                iconColor: AppColors.text,
+                size: 52,
+                tooltip: label,
+                onPressed: () => Navigator.pop(ctx, (key,)),
+              ),
+          ]),
+        ]),
+      ),
+    ),
+  );
+}
+
+/// Діалог вибору кольору об'єкта. Результат як у [pickIcon].
+Future<(String?,)?> pickObjectColor(BuildContext context, {bool withReset = false}) {
+  return showDialog<(String?,)>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Обрати колір'),
+      content: SizedBox(
+        width: 300,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (withReset) ...[
+            PillButton(
+              text: 'Типовий',
+              bg: AppColors.roundBtn,
+              fg: AppColors.text,
+              height: 36,
+              width: double.infinity,
+              fontSize: 12,
+              onPressed: () => Navigator.pop(ctx, (null,)),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Wrap(spacing: 10, runSpacing: 10, children: [
+            for (final (hex, name) in objectColorChoices)
+              Tooltip(
+                message: name,
+                child: Material(
+                  color: _hex(hex),
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(ctx, (hex,)),
+                    child: const SizedBox.square(dimension: 46),
+                  ),
+                ),
+              ),
+          ]),
+        ]),
+      ),
+    ),
+  );
+}
+
+Color _hex(String hex) => Color(int.parse('FF${hex.substring(1)}', radix: 16));

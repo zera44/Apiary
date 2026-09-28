@@ -1,0 +1,34 @@
+name: apiary
+description: "Моя пасіка — план пасіки: вулики, перешкоди, шаблони, параметри та їхня історія. Працює офлайн."
+publish_to: 'none'
+version: 0.2.0+2
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # SQLite: sqflite — на Android/iOS; sqflite_common_ffi + sqlite3_flutter_libs —
+  # на комп'ютері (Windows/Linux/macOS) і в тестах.
+  sqflite: ^2.3.3
+  sqflite_common_ffi: ^2.3.3
+  sqlite3_flutter_libs: ^0.5.24
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  uuid: ^4.4.0
+  # експорт історії в Excel
+  excel: ^4.0.6
+  # діалог "Зберегти як…" (на Android — системний, без дозволів на сховище)
+  file_picker: ^8.1.2
+  # відправка змін на сервер (коли його буде налаштовано)
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
