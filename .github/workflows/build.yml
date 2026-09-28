@@ -94,3 +94,34 @@ jobs:
         with:
           name: apiary-windows
           path: build/windows/x64/runner/Release/
+
+  # Після кожного push у main — оновлює реліз "latest" з готовими файлами,
+  # щоб їх можна було скачати за прямим посиланням (і з телефона).
+  release:
+    name: Опублікувати реліз
+    needs: [android, windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+      - name: Підготувати файли
+        run: |
+          mv dist/apiary-apk/app-release.apk apiary.apk
+          (cd dist/apiary-windows && zip -qr ../../apiary-windows.zip .)
+          ls -la apiary.apk apiary-windows.zip
+      - name: Оновити реліз latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest apiary.apk apiary-windows.zip \
+            --target "${{ github.sha }}" \
+            --title "Моя пасіка — остання збірка" \
+            --notes "Автоматична збірка з коміту ${GITHUB_SHA::7}.
+          - apiary.apk — встановити на Android-телефон
+          - apiary-windows.zip — розпакувати й запустити apiary.exe"
