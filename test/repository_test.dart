@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/services/excel_export.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -123,7 +126,11 @@ void main() {
   });
 
   test('ВИПРАВЛЕНО: стара база без apiary_id переноситься в дефолтну пасіку', () async {
-    final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
+    // окремий файл, а не inMemoryDatabasePath: той самий шлях, що вже
+    // відкритий у зовнішньому setUp, повернув би те саме з'єднання
+    final tmpPath = p.join(Directory.systemTemp.path,
+        'apiary_legacy_test_${DateTime.now().microsecondsSinceEpoch}.db');
+    final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, tmpPath);
     final legacyRepo = Repository(db);
     await legacyRepo.init(); // ще немає жодного елемента — нічого мігрувати
     expect(await legacyRepo.listApiaries(), isEmpty);
@@ -138,6 +145,7 @@ void main() {
     expect(els.length, 1);
     expect(els.first.id, 'legacy-1');
     await db.close();
+    await File(tmpPath).delete();
   });
 
   test('розміщення шаблону: група, автонумерація назви, координати', () async {
