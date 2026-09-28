@@ -88,6 +88,13 @@ void _hexagon(_Pen p, double w, double h) {
   p.line(_hexagonPoints(p.cx, p.cy, r), 1.6, close: true);
 }
 
+void _menu(_Pen p, double w, double h) {
+  final hw = w * 0.22, gap = h * 0.13;
+  for (final dy in [-gap, 0.0, gap]) {
+    p.line([p.cx - hw, p.cy + dy, p.cx + hw, p.cy + dy], 2.2);
+  }
+}
+
 void _mountain(_Pen p, double w, double h) {
   final cx = p.cx, cy = p.cy;
   final bw = w * 0.55, bh = h * 0.5;
@@ -368,6 +375,7 @@ void _history(_Pen p, double w, double h) {
 
 const Map<String, _Drawer> _drawers = {
   'hexagon': _hexagon,
+  'menu': _menu,
   'beehive': _beehive,
   'mountain': _mountain,
   'rotate': _rotate,

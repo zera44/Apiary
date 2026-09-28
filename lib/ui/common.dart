@@ -175,7 +175,10 @@ class TopBar extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
-  const TopBar({super.key, required this.title, this.onBack, this.trailing});
+
+  /// Якщо задано — зліва замість "назад" показується кнопка меню (три смужки).
+  final VoidCallback? onMenu;
+  const TopBar({super.key, required this.title, this.onBack, this.trailing, this.onMenu});
 
   @override
   Widget build(BuildContext context) {
@@ -191,6 +194,15 @@ class TopBar extends StatelessWidget {
               iconColor: AppColors.text,
               size: 34,
               onPressed: onBack,
+            )
+          else if (onMenu != null)
+            CircleIconButton(
+              icon: 'menu',
+              bg: AppColors.roundBtn,
+              iconColor: AppColors.text,
+              size: 34,
+              tooltip: 'Меню',
+              onPressed: onMenu,
             )
           else
             const SizedBox(width: 34),

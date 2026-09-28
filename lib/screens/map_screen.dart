@@ -6,6 +6,7 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/geometry.dart';
 import '../logic/merge_layout.dart';
+import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
 import '../ui/fill_values_dialog.dart';
@@ -671,6 +672,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final placing = selectMode && pendingTemplate != null;
 
     return Scaffold(
+      drawer: AppDrawer(repo: repo),
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           return Stack(children: [
@@ -692,9 +694,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               right: 0,
               height: 48,
               child: IgnorePointer(
+                ignoring: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(children: [
+                    Builder(
+                      builder: (ctx) => CircleIconButton(
+                        icon: 'menu',
+                        bg: AppColors.roundBtn,
+                        iconColor: AppColors.text,
+                        size: 34,
+                        tooltip: 'Меню',
+                        onPressed: () => Scaffold.of(ctx).openDrawer(),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Text(widget.apiary.name,
                         style: TextStyle(
                             color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),

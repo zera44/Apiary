@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../ui/common.dart';
 import '../logic/merge_layout.dart';
+import '../ui/app_drawer.dart';
+import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
@@ -66,10 +67,13 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   Widget build(BuildContext context) {
     final list = apiaries;
     return Scaffold(
+      drawer: AppDrawer(repo: widget.repo),
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            const TopBar(title: 'Мої пасіки'),
+            Builder(
+              builder: (ctx) => TopBar(title: 'Мої пасіки', onMenu: () => Scaffold.of(ctx).openDrawer()),
+            ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
