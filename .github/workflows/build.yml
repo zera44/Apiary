@@ -11,7 +11,7 @@ jobs:
     name: Перевірка й тести
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -21,16 +21,27 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
       # падає лише на помилках (попередження й підказки — не критичні)
-      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
-      - run: flutter test
+      - name: Аналіз коду
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
+      - name: Тести
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test 2>&1 | tee build.log
+      - name: Показати помилку
+        if: failure()
+        run: python3 tool/ci_error_report.py build.log
 
   android:
     name: APK для Android
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -42,7 +53,15 @@ jobs:
         run: |
           flutter create --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
-      - run: flutter build apk --release
+      - name: Зібрати APK
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee build.log
+      - name: Показати помилку збірки
+        if: failure()
+        shell: bash
+        run: python3 tool/ci_error_report.py build.log
       - uses: actions/upload-artifact@v4
         with:
           name: apiary-apk
@@ -53,7 +72,7 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -62,7 +81,15 @@ jobs:
         run: |
           flutter create --platforms=windows --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
-      - run: flutter build windows --release
+      - name: Зібрати для Windows
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build windows --release 2>&1 | tee build.log
+      - name: Показати помилку збірки
+        if: failure()
+        shell: bash
+        run: python tool/ci_error_report.py build.log
       - uses: actions/upload-artifact@v4
         with:
           name: apiary-windows
