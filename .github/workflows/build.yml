@@ -53,6 +53,10 @@ jobs:
         run: |
           flutter create --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
+      - name: Постійний ключ підпису (щоб оновлення встановлювались поверх старих)
+        run: |
+          mkdir -p ~/.android
+          cp tool/debug.keystore ~/.android/debug.keystore
       - name: Зібрати APK
         shell: bash
         run: |
