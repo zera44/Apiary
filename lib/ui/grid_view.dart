@@ -505,6 +505,52 @@ class _ScenePainter extends CustomPainter {
   bool shouldRepaint(_ScenePainter old) => true;
 }
 
+/// Статичний зменшений знімок карти: усі клітинки вписуються в доступний
+/// розмір (для плиток списку пасік). Без жестів і виділення.
+class SceneThumbnail extends StatelessWidget {
+  final List<SceneCell> cells;
+  const SceneThumbnail({super.key, required this.cells});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final w = box.maxWidth.isFinite ? box.maxWidth : 120.0;
+      final h = box.maxHeight.isFinite ? box.maxHeight : 120.0;
+      double cs = 14;
+      var camera = Offset(-w / 2, -h / 2);
+      if (cells.isNotEmpty) {
+        var minX = cells.first.x, maxX = minX, minY = cells.first.y, maxY = minY;
+        for (final c in cells) {
+          if (c.x < minX) minX = c.x;
+          if (c.x > maxX) maxX = c.x;
+          if (c.y < minY) minY = c.y;
+          if (c.y > maxY) maxY = c.y;
+        }
+        const pad = 8.0;
+        final cols = maxX - minX + 1, rows = maxY - minY + 1;
+        cs = math.min((w - 2 * pad) / cols, (h - 2 * pad) / rows);
+        cs = cs.clamp(4.0, 28.0);
+        // центр знімка: середина обсягу клітинок -> середина віджета
+        final cxWorld = (minX + cols / 2) * cs;
+        final cyWorld = -(minY + rows / 2) * cs;
+        camera = Offset(cxWorld - w / 2, cyWorld - h / 2);
+      }
+      return ClipRect(
+        child: CustomPaint(
+          size: Size(w, h),
+          painter: _ScenePainter(
+            camera: camera,
+            cs: cs,
+            cells: cells,
+            blocked: false,
+            maskSelected: false,
+          ),
+        ),
+      );
+    });
+  }
+}
+
 /// Відступ і розмір стрілок-натяків навколо обраного об'єкта.
 const double kHintGap = 12;
 const double kHintSize = 8;

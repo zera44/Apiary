@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
-import '../ui/icons.dart';
+import '../logic/merge_layout.dart';
+import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
 import 'new_apiary_screen.dart';
@@ -18,6 +19,7 @@ class ApiaryListScreen extends StatefulWidget {
 
 class _ApiaryListScreenState extends State<ApiaryListScreen> {
   List<Apiary>? apiaries;
+  final Map<String, List<MapElement>> _elements = {};
 
   @override
   void initState() {
@@ -27,7 +29,16 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   Future<void> _reload() async {
     final list = await widget.repo.listApiaries();
-    if (mounted) setState(() => apiaries = list);
+    final els = <String, List<MapElement>>{
+      for (final a in list) a.id: await widget.repo.listElements(a.id),
+    };
+    if (!mounted) return;
+    setState(() {
+      apiaries = list;
+      _elements
+        ..clear()
+        ..addAll(els);
+    });
   }
 
   Future<void> _open(Apiary a) async {
@@ -38,10 +49,9 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   }
 
   Future<void> _create() async {
-    final created = await Navigator.of(context).push<Apiary>(MaterialPageRoute(
+    await Navigator.of(context).push<void>(MaterialPageRoute(
       builder: (_) => NewApiaryScreen(repo: widget.repo),
     ));
-    if (created == null) return;
     await _reload();
   }
 
@@ -69,11 +79,16 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted)),
                         )
-                      : ListView.separated(
+                      : GridView.builder(
                           padding: const EdgeInsets.all(12),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 1,
+                          ),
                           itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (_, i) => _card(list[i]),
+                          itemBuilder: (_, i) => _tile(list[i]),
                         ),
             ),
             Padding(
@@ -94,53 +109,62 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     );
   }
 
-  Widget _card(Apiary a) {
-    return ListCard(
-      height: 66,
-      child: Row(children: [
-        Material(
-          color: AppColors.hive,
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _open(a),
-            child: const AppIcon('beehive', color: Colors.white, size: 46),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(a.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
-              Text(
-                a.hasLocation
-                    ? '${a.lat!.toStringAsFixed(4)}, ${a.lon!.toStringAsFixed(4)}'
-                    : 'Місце не обране',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+  Widget _tile(Apiary a) {
+    final cells = _cellsOf(_elements[a.id] ?? const []);
+    return Tooltip(
+      message: 'Відкрити',
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _open(a),
+          child: Stack(children: [
+            Positioned.fill(child: IgnorePointer(child: SceneThumbnail(cells: cells))),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: AppColors.card.withValues(alpha: 0.9),
+                padding: const EdgeInsets.fromLTRB(10, 6, 44, 6),
+                child: Text(a.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
               ),
-            ],
-          ),
+            ),
+            Positioned(
+              right: 4,
+              bottom: 2,
+              child: CircleIconButton(
+                  icon: 'pencil',
+                  bg: AppColors.rename,
+                  size: 32,
+                  tooltip: 'Перейменувати',
+                  onPressed: () => _rename(a)),
+            ),
+          ]),
         ),
-        CircleIconButton(
-            icon: 'pencil',
-            bg: AppColors.rename,
-            size: 38,
-            tooltip: 'Перейменувати',
-            onPressed: () => _rename(a)),
-        const SizedBox(width: 6),
-        CircleIconButton(
-            icon: 'eye',
-            bg: AppColors.darkBtn,
-            iconColor: AppColors.text,
-            size: 38,
-            tooltip: 'Відкрити',
-            onPressed: () => _open(a)),
-      ]),
+      ),
     );
+  }
+
+  /// Клітинки для знімка: та сама логіка злиття, що й на карті.
+  List<SceneCell> _cellsOf(List<MapElement> elements) {
+    final items = [
+      for (final e in elements)
+        MergeItem<String>(
+          e.id,
+          e.x,
+          e.y,
+          '${e.groupId ?? e.id}|${e.type}|${e.isHive ? '' : (e.variant ?? '')}|${e.icon ?? ''}|${e.color ?? ''}',
+        )
+    ];
+    final look = {
+      for (final e in elements)
+        e.id: (type: e.type, variant: e.variant, icon: e.icon, color: e.color)
+    };
+    return buildScene<String>(items: items, look: look, selected: const {});
   }
 }
