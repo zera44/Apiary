@@ -86,10 +86,10 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                       : GridView.builder(
                           padding: const EdgeInsets.all(12),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 220,
+                            maxCrossAxisExtent: 150,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
-                            childAspectRatio: 1,
+                            childAspectRatio: 0.85,
                           ),
                           itemCount: list.length,
                           itemBuilder: (_, i) => _tile(list[i]),
@@ -115,43 +115,48 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   Widget _tile(Apiary a) {
     final cells = _cellsOf(_elements[a.id] ?? const []);
-    return Tooltip(
-      message: 'Відкрити',
-      child: Material(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _open(a),
-          child: Stack(children: [
-            Positioned.fill(child: IgnorePointer(child: SceneThumbnail(cells: cells))),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.card.withValues(alpha: 0.9),
-                padding: const EdgeInsets.fromLTRB(10, 6, 44, 6),
-                child: Text(a.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
+    return Column(children: [
+      Text(a.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 5),
+      Expanded(
+        child: Tooltip(
+          message: 'Відкрити',
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.darkBtn, width: 3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _open(a),
+                  onLongPress: () => _rename(a),
+                  child: Stack(children: [
+                    Positioned.fill(child: IgnorePointer(child: SceneThumbnail(cells: cells))),
+                    Positioned(
+                      right: 3,
+                      bottom: 3,
+                      child: CircleIconButton(
+                          icon: 'pencil',
+                          bg: AppColors.rename,
+                          size: 28,
+                          tooltip: 'Перейменувати',
+                          onPressed: () => _rename(a)),
+                    ),
+                  ]),
+                ),
               ),
             ),
-            Positioned(
-              right: 4,
-              bottom: 2,
-              child: CircleIconButton(
-                  icon: 'pencil',
-                  bg: AppColors.rename,
-                  size: 32,
-                  tooltip: 'Перейменувати',
-                  onPressed: () => _rename(a)),
-            ),
-          ]),
+          ),
         ),
       ),
-    );
+    ]);
   }
 
   /// Клітинки для знімка: та сама логіка злиття, що й на карті.
