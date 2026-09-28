@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter build apk --release 2>&1 | tee build.log
+          flutter build apk --release --split-per-abi 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -69,7 +69,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: apiary-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
 
   windows:
     name: Програма для Windows
@@ -114,18 +114,22 @@ jobs:
           path: dist
       - name: Підготувати файли
         run: |
-          mv dist/apiary-apk/app-release.apk apiary.apk
+          mv dist/apiary-apk/app-arm64-v8a-release.apk apiary-arm64.apk
+          mv dist/apiary-apk/app-armeabi-v7a-release.apk apiary-arm32.apk
+          mv dist/apiary-apk/app-x86_64-release.apk apiary-x86_64.apk
           (cd dist/apiary-windows && zip -qr ../../apiary-windows.zip .)
-          ls -la apiary.apk apiary-windows.zip
+          ls -la apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip
       - name: Оновити реліз latest
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest apiary.apk apiary-windows.zip \
+          gh release create latest apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip \
             --target "${{ github.sha }}" \
             --title "Моя пасіка — остання збірка" \
             --notes "Автоматична збірка з коміту ${GITHUB_SHA::7}.
-          - apiary.apk — встановити на Android-телефон
+          - apiary-arm64.apk — для більшості сучасних Android-телефонів
+          - apiary-arm32.apk — для старих/бюджетних Android-телефонів
+          - apiary-x86_64.apk — для Android на процесорі x86 (рідко)
           - apiary-windows.zip — розпакувати й запустити apiary.exe"
