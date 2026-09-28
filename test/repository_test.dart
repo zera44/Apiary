@@ -36,12 +36,28 @@ void main() {
     expect(after, ids);
   });
 
-  test('старі базові записи без base_key підхоплюються за назвою', () async {
+  test('старі базові записи без base_key підхоплюються', () async {
     // імітуємо стару базу: ключі стерто
     await repo.db.rawUpdate('UPDATE parameters SET base_key = NULL');
     await repo.init();
     final all = (await repo.listParameters()).where((p) => p.isBase).toList();
     expect(all.length, 3);
+  });
+
+  test('ВИПРАВЛЕНО: перейменована в старій базі характеристика не дублюється', () async {
+    // стара база (без base_key), де користувач ще ДО оновлення застосунку
+    // перейменував базову характеристику — міграція за назвою це раніше
+    // не підхоплювала й створювала дублікат
+    await repo.db.rawUpdate('UPDATE parameters SET base_key = NULL');
+    final legacy =
+        await repo.db.rawQuery('SELECT id FROM parameters WHERE is_base = 1 ORDER BY rowid ASC');
+    await repo.updateParameter(legacy.first['id'] as String, {'name': 'Обхід (перейменовано)'});
+    await repo.init(); // "оновлення застосунку"
+    final all = (await repo.listParameters()).where((p) => p.isBase).toList();
+    expect(all.length, 3); // не 4
+    final ids = await repo.baseParameterIds('hive');
+    expect(ids.length, 3);
+    expect((await repo.getParameter(ids.first))!.name, 'Обхід (перейменовано)');
   });
 
   test('ВИПРАВЛЕНО: "крок назад" відновлює видалений об\'єкт навіть після очистки', () async {
@@ -64,6 +80,28 @@ void main() {
     await repo.db.rawUpdate('UPDATE elements SET synced = 1');
     await repo.purgeDeleted();
     expect(await repo.getElement(id), isNotNull);
+  });
+
+  test('ВИПРАВЛЕНО: "крок назад" повертає й прив\'язані параметри після очистки', () async {
+    final id = await repo.addElement(1, 1);
+    final snap = (await repo.getElement(id))!;
+    final e = EntityRef.element(id);
+    final p = await repo.addParameter('Вага');
+    await repo.setAttachedParameters([p], e);
+    final paramRows = await repo.attachedParameterRows(e); // знімок "до видалення"
+    expect(paramRows, isNotEmpty);
+
+    await repo.deleteElement(id);
+    await repo.db.rawUpdate('UPDATE elements SET synced = 1');
+    await repo.db.rawUpdate('UPDATE element_parameters SET synced = 1');
+    await repo.purgeDeleted(grace: Duration.zero);
+    expect(await repo.getElement(id), isNull);
+    expect(await repo.attachedParameterIds(e), isEmpty); // прив'язку теж прибрано
+
+    await repo.restoreElements([snap]);
+    await repo.restoreParameterBindings(paramRows);
+    expect(await repo.getElement(id), isNotNull);
+    expect(await repo.attachedParameterIds(EntityRef.element(id)), contains(p));
   });
 
   test('розміщення шаблону: група, автонумерація назви, координати', () async {
@@ -103,6 +141,19 @@ void main() {
     expect([for (final r in stored) r['parameter_id']], [p2, p1]);
     final shown = await repo.attachedParameterIds(e, elType: 'hive');
     expect(shown, [...base, p2, p1]);
+  });
+
+  test('ВИПРАВЛЕНО: видалений параметр не можна прив\'язати повторно', () async {
+    final id = await repo.addElement(0, 0);
+    final e = EntityRef.element(id);
+    final p = await repo.addParameter('Вага');
+    await repo.deleteParameter(p);
+    // стале посилання на вже видалений параметр (наприклад, зі старого
+    // знімка панелі вибору) не повинне створити нову живу прив'язку
+    await repo.setAttachedParameters([p], e);
+    final stored =
+        await repo.db.rawQuery('SELECT parameter_id FROM element_parameters WHERE deleted = 0');
+    expect(stored, isEmpty);
   });
 
   test('значення: історія, останні значення, дата оновлення', () async {

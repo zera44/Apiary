@@ -34,6 +34,10 @@ class _FillDialog extends StatefulWidget {
 class _FillDialogState extends State<_FillDialog> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, String> _picked = {}; // для дати й кольору
+  // ВИПРАВЛЕНО: фільтр вводу пропускав "напівготові" значення типу "-"
+  // чи "," — без цієї перевірки вони зберігались в історію як нібито
+  // числове значення.
+  String? _error;
 
   static final _intFilter = FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'));
   static final _floatFilter = FilteringTextInputFormatter.allow(RegExp(r'^-?\d*[.,]?\d*'));
@@ -62,8 +66,24 @@ class _FillDialogState extends State<_FillDialog> {
   void _save() {
     final out = <String, String>{};
     for (final p in widget.params) {
-      final v = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
-      if (v.isEmpty) continue;
+      final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
+      if (raw.isEmpty) continue;
+      var v = raw;
+      if (p.dataType == DataTypes.int_) {
+        final n = int.tryParse(v);
+        if (n == null) {
+          setState(() => _error = '«${p.nameWithUnit}»: введіть ціле число');
+          return;
+        }
+        v = n.toString();
+      } else if (p.dataType == DataTypes.float_) {
+        final n = double.tryParse(v.replaceAll(',', '.'));
+        if (n == null) {
+          setState(() => _error = '«${p.nameWithUnit}»: введіть число');
+          return;
+        }
+        v = n.toString();
+      }
       if (v != (widget.latest[p.id] ?? '')) out[p.id] = v;
     }
     Navigator.pop(context, out);
@@ -140,6 +160,12 @@ class _FillDialogState extends State<_FillDialog> {
               _field(p),
               const SizedBox(height: 14),
             ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(_error!,
+                    style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
+              ),
           ],
         )),
       ),

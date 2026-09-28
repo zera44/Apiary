@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -60,7 +61,17 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   String mode = 'hive';
   String obstacleVariant = 'mountain';
   final List<_Snapshot> _undo = [];
-  bool _dirty = false;
+  // ВИПРАВЛЕНО: раніше це був прапорець, що виставлявся при першій зміні
+  // й ніколи не знімався — навіть якщо "Скасувати" повертало шаблон
+  // точно до збереженого стану. Тепер "незбережено" обчислюється
+  // порівнянням з знімком, зробленим при завантаженні/збереженні.
+  String? _savedSnapshot;
+  bool get _dirty => _savedSnapshot != null && _snapshot() != _savedSnapshot;
+
+  String _snapshot() {
+    final (_, _, out) = _export();
+    return jsonEncode({'title': title, 'cells': out});
+  }
 
   _EditorDrag? _drag;
   bool _blocked = false;
@@ -108,6 +119,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         cells = loaded;
       }
     }
+    _savedSnapshot = _snapshot();
     if (!mounted) return;
     final (cx, cy) = _cellsCenter();
     grid.centerOnGrid(cx, cy);
@@ -129,7 +141,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   void _pushUndo() {
     _undo.add(_Snapshot(Map.of(cells), Set.of(selected)));
     if (_undo.length > 50) _undo.removeAt(0);
-    _dirty = true;
   }
 
   void _onUndo() {
@@ -424,7 +435,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     if (name == null) return;
     setState(() {
       title = name;
-      _dirty = true;
     });
     _afterChange();
   }
@@ -453,9 +463,13 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       ),
     ));
     if (result == null) return;
-    // базові характеристики фізично не зберігаються — вони й так завжди є
+    // базові характеристики фізично не зберігаються — вони й так завжди є;
+    // ВИПРАВЛЕНО: id уже видаленого параметра теж прибираємо тут, щоб
+    // шаблон не носив посилання на нього назавжди (навіть попри те, що
+    // saveAttachedParameters і так відкине його при розміщенні на карті).
     final base = await repo.allBaseParameterIds();
-    final ids = [for (final id in result) if (!base.contains(id)) id];
+    final dead = await repo.deletedParameterIds();
+    final ids = [for (final id in result) if (!base.contains(id) && !dead.contains(id)) id];
     if (!mounted) return;
     // клітинки екземпляра не змінювались, поки був відкритий інший екран
     final still = [for (final p in targets) if (cells.containsKey(p)) p];
@@ -492,6 +506,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     } else {
       await repo.addTemplate(name, w, h, out);
     }
+    _savedSnapshot = _snapshot();
     if (mounted) Navigator.pop(context, true);
   }
 

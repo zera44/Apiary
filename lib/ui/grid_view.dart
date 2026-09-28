@@ -317,7 +317,17 @@ class _InfiniteGridState extends State<InfiniteGrid> {
       _pinched = false;
       _panning = false;
     } else if (_pinched && _pointers.length == 1) {
-      // лишився один палець після щипка — продовжувати нічого не треба
+      // ВИПРАВЛЕНО: лишився один палець після щипка (масштабування).
+      // Раніше тут нічого не відбувалось, і панорамування "заморожувалось"
+      // до повного відриву обох пальців — тепер переходимо в режим
+      // панорамування цим пальцем, перебазувавши початкову точку на
+      // поточну позицію, щоб камера не "стрибнула".
+      _pinched = false;
+      _primary = _pointers.keys.first;
+      _start = _pointers.values.first;
+      _camStart = c.camera;
+      _panning = true;
+      _claimed = false;
     }
   }
 

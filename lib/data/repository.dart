@@ -48,36 +48,51 @@ class Repository {
 
   /// Ідемпотентно створює базові характеристики. Шукає їх за СТАБІЛЬНИМ
   /// ключем base_key (а не за назвою, як раніше), тож перейменування
-  /// більше не породжує дублів. Старі записи без ключа один раз
-  /// прив'язуються до ключа за назвою.
+  /// більше не породжує дублів.
+  ///
+  /// Старі записи без ключа (стара база) підхоплюються ЗА ПОРЯДКОМ
+  /// СТВОРЕННЯ (rowid), а не за назвою: рядки завжди створювались у тому
+  /// самому порядку, що й [kBaseParameters], тож зіставлення позицією
+  /// коректне навіть якщо характеристику вже перейменували. Кожен легасі-
+  /// рядок обробляється РІВНО ОДИН РАЗ (LIMIT-подібна поведінка через
+  /// покроковий обхід списку), тож і випадкові дублікати без base_key не
+  /// плодяться — зайві просто лишаються без base_key й більше не
+  /// зважуються базовими (див. [baseParameterIds]).
   Future<void> ensureBaseParameters() async {
     for (final entry in kBaseParameters.entries) {
       final baseType = entry.key;
+      final legacy = await db.rawQuery(
+        'SELECT id FROM parameters WHERE is_base = 1 AND base_type = ? '
+        'AND base_key IS NULL AND deleted = 0 ORDER BY rowid ASC',
+        [baseType],
+      );
+      var legacyIdx = 0;
       for (final (key, name, unit, dataType) in entry.value) {
-        // міграція: старий запис (без base_key) з тією самою назвою
-        await db.rawUpdate(
-          'UPDATE parameters SET base_key = ? WHERE is_base = 1 AND base_type = ? '
-          'AND base_key IS NULL AND name = ?',
-          [key, baseType, name],
-        );
         final exists = await db.rawQuery(
           'SELECT id FROM parameters WHERE is_base = 1 AND base_type = ? AND base_key = ? '
           'AND deleted = 0 LIMIT 1',
           [baseType, key],
         );
-        if (exists.isEmpty) {
-          await db.insert('parameters', {
-            'id': newId(),
-            'name': name,
-            'unit': unit,
-            'data_type': dataType,
-            'is_base': 1,
-            'base_type': baseType,
-            'base_key': key,
-            'updated_at': now(),
-            'synced': 0,
-          });
+        if (exists.isNotEmpty) continue;
+        if (legacyIdx < legacy.length) {
+          await db.rawUpdate(
+            'UPDATE parameters SET base_key = ? WHERE id = ?',
+            [key, legacy[legacyIdx]['id']],
+          );
+          legacyIdx++;
+          continue;
         }
+        await db.insert('parameters', {
+          'id': newId(),
+          'name': name,
+          'unit': unit,
+          'data_type': dataType,
+          'is_base': 1,
+          'base_type': baseType,
+          'base_key': key,
+          'updated_at': now(),
+          'synced': 0,
+        });
       }
     }
   }
@@ -88,7 +103,7 @@ class Repository {
     if (elType == null) return [];
     final rows = await db.rawQuery(
       'SELECT id, base_key, updated_at FROM parameters '
-      'WHERE is_base = 1 AND base_type = ? AND deleted = 0',
+      'WHERE is_base = 1 AND base_type = ? AND base_key IS NOT NULL AND deleted = 0',
       [elType],
     );
     final defs = kBaseParameters[elType] ?? const <(String, String, String?, String)>[];
@@ -150,6 +165,11 @@ class Repository {
   /// Розмістити заготовку на карті як один згрупований об'єкт.
   /// Координати клітинок — відносні, (0,0) — верхній лівий кут
   /// заготовки. Повертає group_id.
+  ///
+  /// ВИПРАВЛЕНО: вставка елементів і прив'язка параметрів шаблону тепер
+  /// в ОДНІЙ транзакції — якщо прив'язка параметрів не вдасться, елементи
+  /// теж не збережуться (раніше збій міг лишити елементи на карті без
+  /// жодного з параметрів шаблону).
   Future<String> addGroup(Map<String, dynamic> cells, int anchorX, int anchorY,
       {String? groupLabel}) async {
     final groupId = newId();
@@ -179,10 +199,10 @@ class Repository {
           'color': v.color,
         });
       }
+      if (allParams.isNotEmpty) {
+        await setAttachedParameters(allParams, EntityRef.group(groupId), exec: txn);
+      }
     });
-    if (allParams.isNotEmpty) {
-      await setAttachedParameters(allParams, EntityRef.group(groupId));
-    }
     return groupId;
   }
 
@@ -277,6 +297,29 @@ class Repository {
           ..['updated_at'] = t
           ..['synced'] = 0;
         await txn.insert('elements', m, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
+  /// Поточні (не видалені) прив'язки параметрів об'єкта/групи — повні
+  /// рядки, для знімка ПЕРЕД видаленням (див. [restoreParameterBindings]).
+  Future<List<Map<String, Object?>>> attachedParameterRows(EntityRef e) async {
+    final (w, args) = _ownerWhere(e);
+    return db.query('element_parameters', where: '$w AND deleted = 0', whereArgs: args);
+  }
+
+  /// ВИПРАВЛЕНО: "крок назад" після видалення об'єкта раніше відновлював
+  /// лише сам об'єкт (таблицю elements), а прив'язані до нього параметри
+  /// (не базові) губились, якщо фонова синхронізація встигла остаточно
+  /// прибрати їх з бази до натискання "Крок назад". Тепер прив'язки
+  /// відновлюються зі знімка, зробленого перед видаленням.
+  Future<void> restoreParameterBindings(List<Map<String, Object?>> rows) async {
+    if (rows.isEmpty) return;
+    final t = now();
+    await db.transaction((txn) async {
+      for (final r in rows) {
+        final m = {...r, 'updated_at': t, 'synced': 0, 'deleted': 0};
+        await txn.insert('element_parameters', m, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
@@ -424,22 +467,35 @@ class Repository {
   }
 
   /// Повністю ЗАМІНИТИ набір прив'язаних параметрів (порядок має
-  /// значення). Базові характеристики сюди ніколи не записуються.
-  Future<void> setAttachedParameters(List<String> parameterIds, EntityRef e) async {
-    final base = await allBaseParameterIds();
-    final ids = <String>[];
-    for (final id in parameterIds) {
-      if (!base.contains(id) && !ids.contains(id)) ids.add(id);
-    }
-    final t = now();
-    final (w, args) = _ownerWhere(e);
-    await db.transaction((txn) async {
-      await txn.rawUpdate(
+  /// значення). Базові характеристики сюди ніколи не записуються, і так
+  /// само ВИПРАВЛЕНО: id уже видалених (deleted=1) параметрів теж
+  /// відкидаються — інакше зі старого, ще не оновленого знімка (шаблон,
+  /// панель вибору) могла відродитись "зомбі"-прив'язка до параметра,
+  /// якого вже немає в каталозі.
+  ///
+  /// [exec] — необов'язковий виконавець (наприклад, [Transaction] з уже
+  /// відкритої транзакції), щоб викликати цей метод атомарно разом з
+  /// іншими записами (див. [addGroup]). Без нього метод відкриває свою
+  /// власну транзакцію, як і раніше.
+  Future<void> setAttachedParameters(List<String> parameterIds, EntityRef e,
+      {DatabaseExecutor? exec}) async {
+    Future<void> run(DatabaseExecutor x) async {
+      final baseRows = await x.rawQuery('SELECT id FROM parameters WHERE is_base = 1');
+      final base = {for (final r in baseRows) r['id'] as String};
+      final deadRows = await x.rawQuery('SELECT id FROM parameters WHERE deleted = 1');
+      final dead = {for (final r in deadRows) r['id'] as String};
+      final ids = <String>[];
+      for (final id in parameterIds) {
+        if (!base.contains(id) && !dead.contains(id) && !ids.contains(id)) ids.add(id);
+      }
+      final t = now();
+      final (w, args) = _ownerWhere(e);
+      await x.rawUpdate(
         'UPDATE element_parameters SET deleted = 1, synced = 0, updated_at = ? WHERE $w AND deleted = 0',
         [t, ...args],
       );
       for (var i = 0; i < ids.length; i++) {
-        await txn.insert('element_parameters', {
+        await x.insert('element_parameters', {
           'id': newId(),
           'group_id': e.groupId,
           'element_id': e.elementId,
@@ -450,7 +506,22 @@ class Repository {
           'deleted': 0,
         });
       }
-    });
+    }
+
+    if (exec != null) {
+      await run(exec);
+    } else {
+      await db.transaction((txn) async => run(txn));
+    }
+  }
+
+  /// Ids видалених параметрів каталогу — щоб прибрати посилання на них
+  /// зі знімків, які не проходять через [setAttachedParameters] напряму
+  /// (наприклад, список параметрів екземпляра шаблону, що ще не
+  /// розміщений на карті).
+  Future<Set<String>> deletedParameterIds() async {
+    final rows = await db.rawQuery('SELECT id FROM parameters WHERE deleted = 1');
+    return {for (final r in rows) r['id'] as String};
   }
 
   // ---------------------------------------------------------------------

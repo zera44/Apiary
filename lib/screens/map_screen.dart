@@ -32,9 +32,15 @@ class MapScreen extends StatefulWidget {
 
 class _Undo {
   final List<MapElement>? restore;
+  // ВИПРАВЛЕНО: знімок прив'язок параметрів на момент видалення — без
+  // нього "крок назад" після видалення міг повернути об'єкт без
+  // призначених йому (не базових) параметрів.
+  final List<Map<String, Object?>>? paramRows;
   final String? deleteGroupId;
-  const _Undo.restore(this.restore) : deleteGroupId = null;
-  const _Undo.deleteGroup(this.deleteGroupId) : restore = null;
+  const _Undo.restore(this.restore, {this.paramRows}) : deleteGroupId = null;
+  const _Undo.deleteGroup(this.deleteGroupId)
+      : restore = null,
+        paramRows = null;
 }
 
 class _Drag {
@@ -56,6 +62,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String? selectedId;
   String? selectedGroupId;
   final List<_Undo> undoStack = [];
+  // ВИПРАВЛЕНО: захищає від гонки при швидких повторних діях (два тапи
+  // "Повернути" чи два тапи розміщення шаблону підряд) — без цього друга
+  // дія стартувала на застарілому [elements], ще до того, як перша
+  // встигала оновити стан, і губила крок undo або дозволяла накладання
+  // об'єктів.
+  bool _busy = false;
 
   _Drag? _drag;
   bool _blocked = false;
@@ -186,26 +198,35 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Future<void> _onPressUp(Offset delta) async {
     if (_drag == null) return;
+    if (_busy) {
+      _drag = null;
+      return;
+    }
     final (target, _) = _dragTarget(delta);
     final releasedBlocked = _blocked;
     _drag = null;
-    final (dx, dy) = target;
-    if (dx != 0 || dy != 0) {
-      if (selectedGroupId != null) {
-        final members = selection;
-        _pushUndo(_Undo.restore(members));
-        await repo.moveGroup(selectedGroupId!, dx, dy);
-      } else if (selectedId != null) {
-        final el = selection.firstOrNull;
-        if (el != null) {
-          _pushUndo(_Undo.restore([el]));
-          await repo.moveElement(el.id, el.x + dx, el.y + dy);
+    setState(() => _busy = true);
+    try {
+      final (dx, dy) = target;
+      if (dx != 0 || dy != 0) {
+        if (selectedGroupId != null) {
+          final members = selection;
+          _pushUndo(_Undo.restore(members));
+          await repo.moveGroup(selectedGroupId!, dx, dy);
+        } else if (selectedId != null) {
+          final el = selection.firstOrNull;
+          if (el != null) {
+            _pushUndo(_Undo.restore([el]));
+            await repo.moveElement(el.id, el.x + dx, el.y + dy);
+          }
         }
       }
-    }
-    await _reload();
-    if (releasedBlocked) {
-      _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
+      await _reload();
+      if (releasedBlocked) {
+        _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -215,25 +236,30 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       return;
     }
     final tpl = pendingTemplate;
-    if (tpl == null) return;
-    final (gx, gy) = p.cell;
-    // заборонити розміщення поверх існуючого об'єкта
-    final occupied = {for (final e in elements) (e.x, e.y)};
-    for (final key in tpl.cells.keys) {
-      final parts = key.split(',');
-      if (parts.length != 2) continue;
-      final col = int.tryParse(parts[0]) ?? 0, row = int.tryParse(parts[1]) ?? 0;
-      if (occupied.contains((gx + col, gy - row))) {
-        _showWarning('Клітинка зайнята', duration: const Duration(seconds: 1));
-        return;
+    if (tpl == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final (gx, gy) = p.cell;
+      // заборонити розміщення поверх існуючого об'єкта
+      final occupied = {for (final e in elements) (e.x, e.y)};
+      for (final key in tpl.cells.keys) {
+        final parts = key.split(',');
+        if (parts.length != 2) continue;
+        final col = int.tryParse(parts[0]) ?? 0, row = int.tryParse(parts[1]) ?? 0;
+        if (occupied.contains((gx + col, gy - row))) {
+          _showWarning('Клітинка зайнята', duration: const Duration(seconds: 1));
+          return;
+        }
       }
+      final label = await repo.nextGroupLabel(tpl.name);
+      final gid = await repo.addGroup(tpl.cells, gx, gy, groupLabel: label);
+      _pushUndo(_Undo.deleteGroup(gid));
+      selectedId = null;
+      selectedGroupId = gid; // щойно поставлений — обраний
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    final label = await repo.nextGroupLabel(tpl.name);
-    final gid = await repo.addGroup(tpl.cells, gx, gy, groupLabel: label);
-    _pushUndo(_Undo.deleteGroup(gid));
-    selectedId = null;
-    selectedGroupId = gid; // щойно поставлений — обраний
-    await _reload();
   }
 
   // ---------------------------------------------------------------------
@@ -289,21 +315,28 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _onUndo() async {
-    if (undoStack.isEmpty) return;
-    final u = undoStack.removeLast();
-    if (u.restore != null) {
-      await repo.restoreElements(u.restore!);
-    } else if (u.deleteGroupId != null) {
-      await repo.deleteGroup(u.deleteGroupId!);
-      if (selectedGroupId == u.deleteGroupId) selectedGroupId = null;
+    if (undoStack.isEmpty || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final u = undoStack.removeLast();
+      if (u.restore != null) {
+        await repo.restoreElements(u.restore!);
+        if (u.paramRows != null && u.paramRows!.isNotEmpty) {
+          await repo.restoreParameterBindings(u.paramRows!);
+        }
+      } else if (u.deleteGroupId != null) {
+        await repo.deleteGroup(u.deleteGroupId!);
+        if (selectedGroupId == u.deleteGroupId) selectedGroupId = null;
+      }
+      await _reload();
+      // вибір міг зникнути (об'єкта більше немає)
+      if (selectedId != null && !elements.any((e) => e.id == selectedId)) selectedId = null;
+      if (selectedGroupId != null && !elements.any((e) => e.groupId == selectedGroupId)) {
+        selectedGroupId = null;
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    await _reload();
-    // вибір міг зникнути (об'єкта більше немає)
-    if (selectedId != null && !elements.any((e) => e.id == selectedId)) selectedId = null;
-    if (selectedGroupId != null && !elements.any((e) => e.groupId == selectedGroupId)) {
-      selectedGroupId = null;
-    }
-    setState(() {});
   }
 
   // ---------------------------------------------------------------------
@@ -371,32 +404,38 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _onRotate() async {
-    if (selectedGroupId != null) {
-      final els = selection;
-      if (els.isEmpty) return;
-      // спершу перевіряємо, чи повернута фігура не накладеться на інший об'єкт
-      final newPos = rotatedPositions({for (final e in els) e.id: (e.x, e.y)});
-      final ids = {for (final e in els) e.id};
-      final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
-      if (newPos.values.any(occupied.contains)) {
-        _showWarning('Немає місця для повороту', duration: const Duration(seconds: 1));
-        _flashBlocked();
-        return;
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (selectedGroupId != null) {
+        final els = selection;
+        if (els.isEmpty) return;
+        // спершу перевіряємо, чи повернута фігура не накладеться на інший об'єкт
+        final newPos = rotatedPositions({for (final e in els) e.id: (e.x, e.y)});
+        final ids = {for (final e in els) e.id};
+        final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
+        if (newPos.values.any(occupied.contains)) {
+          _showWarning('Немає місця для повороту', duration: const Duration(seconds: 1));
+          _flashBlocked();
+          return;
+        }
+        _pushUndo(_Undo.restore(els));
+        await repo.rotateGroup(selectedGroupId!);
+      } else if (selectedId != null) {
+        final el = selection.firstOrNull;
+        if (el == null) return;
+        _pushUndo(_Undo.restore([el]));
+        await repo.rotateElement(el.id);
       }
-      _pushUndo(_Undo.restore(els));
-      await repo.rotateGroup(selectedGroupId!);
-    } else if (selectedId != null) {
-      final el = selection.firstOrNull;
-      if (el == null) return;
-      _pushUndo(_Undo.restore([el]));
-      await repo.rotateElement(el.id);
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    await _reload();
   }
 
   Future<void> _onRename() async {
     final sel = selection;
-    if (sel.isEmpty) return;
+    if (sel.isEmpty || _busy) return;
     final gid = selectedGroupId;
     final current = gid != null
         ? (sel.map((e) => e.label).firstWhere((l) => l != null && l.isNotEmpty,
@@ -406,32 +445,46 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ? sel.first.label!
             : (sel.first.isHive ? 'Вулик' : 'Перешкода'));
     final name = await showTextPrompt(context, title: 'Перейменувати', initial: current);
-    if (name == null) return;
-    _pushUndo(_Undo.restore(sel));
-    if (gid != null) {
-      await repo.renameGroup(gid, name);
-    } else {
-      await repo.updateElement(sel.first.id, {'label': name});
+    if (name == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      _pushUndo(_Undo.restore(sel));
+      if (gid != null) {
+        await repo.renameGroup(gid, name);
+      } else {
+        await repo.updateElement(sel.first.id, {'label': name});
+      }
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    await _reload();
   }
 
   Future<void> _onDelete() async {
     final sel = selection;
-    if (sel.isEmpty) return;
+    if (sel.isEmpty || _busy) return;
     final isGroup = selectedGroupId != null;
     final ok = await showConfirm(context,
         text: isGroup ? "Точно видалити цю групу об'єктів?" : 'Точно видалити цей елемент?');
-    if (!ok) return;
-    _pushUndo(_Undo.restore(sel));
-    if (isGroup) {
-      await repo.deleteGroup(selectedGroupId!);
-    } else {
-      await repo.deleteElement(sel.first.id);
+    if (!ok || _busy) return;
+    setState(() => _busy = true);
+    try {
+      // ВИПРАВЛЕНО: знімок прив'язок параметрів ПЕРЕД видаленням, щоб
+      // "крок назад" міг відновити їх, навіть якщо фонова синхронізація
+      // встигне остаточно прибрати їх із бази до натискання undo.
+      final paramRows = await repo.attachedParameterRows(sel.first.entity);
+      _pushUndo(_Undo.restore(sel, paramRows: paramRows));
+      if (isGroup) {
+        await repo.deleteGroup(selectedGroupId!);
+      } else {
+        await repo.deleteElement(sel.first.id);
+      }
+      selectedId = null;
+      selectedGroupId = null;
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    selectedId = null;
-    selectedGroupId = null;
-    await _reload();
   }
 
   // ---------------------------------------------------------------------
@@ -760,7 +813,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ];
 
   Widget _actionBar() {
-    final enabled = hasSelection && pendingTemplate == null;
+    final enabled = hasSelection && pendingTemplate == null && !_busy;
     return Container(
       height: 70,
       color: AppColors.panel,
@@ -790,7 +843,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               icon: 'back_arrow',
               bg: AppColors.darkBtn,
               tooltip: 'Крок назад',
-              onPressed: undoStack.isEmpty ? null : _onUndo),
+              onPressed: (undoStack.isEmpty || _busy) ? null : _onUndo),
           const SizedBox(width: 16),
           CircleIconButton(
               icon: 'trash',
