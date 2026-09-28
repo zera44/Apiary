@@ -61,6 +61,20 @@ class AppDatabase {
     await _ensureColumn(db, 'elements', 'variant', 'TEXT');
     await _ensureColumn(db, 'elements', 'icon', 'TEXT');
     await _ensureColumn(db, 'elements', 'color', 'TEXT');
+    // НОВЕ: кожен елемент належить конкретній пасіці (декілька карт).
+    await _ensureColumn(db, 'elements', 'apiary_id', 'TEXT');
+
+    // НОВЕ: пасіки — кілька окремих карт в одному застосунку.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS apiaries (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        lat REAL,
+        lon REAL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS templates (
@@ -116,6 +130,7 @@ class AppDatabase {
       )''');
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_ep_owner ON element_parameters(group_id, element_id)');
     await db.execute(

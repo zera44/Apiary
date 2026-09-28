@@ -19,6 +19,7 @@ const Map<String, List<(String, String, String?, String)>> kBaseParameters = {
 
 /// Таблиці, що синхронізуються з сервером.
 const kSyncTables = [
+  'apiaries',
   'elements',
   'templates',
   'parameters',
@@ -40,6 +41,60 @@ class Repository {
   /// Одноразова ініціалізація після відкриття бази.
   Future<void> init() async {
     await ensureBaseParameters();
+    await ensureLegacyApiary();
+  }
+
+  // ---------------------------------------------------------------------
+  // Пасіки (кілька окремих карт)
+  // ---------------------------------------------------------------------
+
+  /// Стара база (з версії до підтримки кількох пасік) мала елементи без
+  /// apiary_id — тут вони один раз переносяться в автоматично створену
+  /// пасіку "Моя пасіка", щоб не зникли з очей.
+  Future<void> ensureLegacyApiary() async {
+    final orphans = await db
+        .rawQuery('SELECT COUNT(*) c FROM elements WHERE apiary_id IS NULL');
+    if (((orphans.first['c'] as num?) ?? 0) == 0) return;
+    final existing =
+        await db.rawQuery('SELECT id FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC LIMIT 1');
+    final apiaryId = existing.isNotEmpty
+        ? existing.first['id'] as String
+        : await addApiary('Моя пасіка');
+    await db.rawUpdate(
+        'UPDATE elements SET apiary_id = ? WHERE apiary_id IS NULL', [apiaryId]);
+  }
+
+  Future<String> addApiary(String name, {double? lat, double? lon}) async {
+    final id = newId();
+    await db.insert('apiaries', {
+      'id': id,
+      'name': name,
+      'lat': lat,
+      'lon': lon,
+      'updated_at': now(),
+      'synced': 0,
+      'deleted': 0,
+    });
+    return id;
+  }
+
+  Future<List<Apiary>> listApiaries() async {
+    final rows =
+        await db.rawQuery('SELECT * FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC');
+    return rows.map(Apiary.fromMap).toList();
+  }
+
+  Future<Apiary?> getApiary(String id) async {
+    final rows = await db.query('apiaries', where: 'id = ?', whereArgs: [id]);
+    return rows.isEmpty ? null : Apiary.fromMap(rows.first);
+  }
+
+  Future<void> updateApiary(String id, {String? name, double? lat, double? lon}) async {
+    final fields = <String, Object?>{'updated_at': now(), 'synced': 0};
+    if (name != null) fields['name'] = name;
+    if (lat != null) fields['lat'] = lat;
+    if (lon != null) fields['lon'] = lon;
+    await db.update('apiaries', fields, where: 'id = ?', whereArgs: [id]);
   }
 
   // ---------------------------------------------------------------------
@@ -130,11 +185,12 @@ class Repository {
   // Елементи карти
   // ---------------------------------------------------------------------
 
-  Future<String> addElement(int x, int y,
+  Future<String> addElement(String apiaryId, int x, int y,
       {String type = 'hive', String? label, String? groupId, String? variant}) async {
     final id = newId();
     await db.insert('elements', {
       'id': id,
+      'apiary_id': apiaryId,
       'x': x,
       'y': y,
       'type': type,
@@ -148,11 +204,13 @@ class Repository {
     return id;
   }
 
-  /// Назва нового екземпляра шаблону з порядковим номером: якщо вже є 2
-  /// групи "Лежак…", новий отримає "Лежак 3".
-  Future<String> nextGroupLabel(String name) async {
+  /// Назва нового екземпляра шаблону з порядковим номером (у межах ЦІЄЇ
+  /// пасіки): якщо вже є 2 групи "Лежак…", новий отримає "Лежак 3".
+  Future<String> nextGroupLabel(String apiaryId, String name) async {
     final rows = await db.rawQuery(
-      'SELECT label FROM elements WHERE deleted = 0 AND group_id IS NOT NULL GROUP BY group_id',
+      'SELECT label FROM elements WHERE deleted = 0 AND group_id IS NOT NULL '
+      'AND apiary_id = ? GROUP BY group_id',
+      [apiaryId],
     );
     final pattern = RegExp('^${RegExp.escape(name)}(?: \\d+)?\$');
     final count = rows.where((r) {
@@ -162,15 +220,15 @@ class Repository {
     return '$name ${count + 1}';
   }
 
-  /// Розмістити заготовку на карті як один згрупований об'єкт.
-  /// Координати клітинок — відносні, (0,0) — верхній лівий кут
-  /// заготовки. Повертає group_id.
+  /// Розмістити заготовку на карті (у пасіці [apiaryId]) як один
+  /// згрупований об'єкт. Координати клітинок — відносні, (0,0) — верхній
+  /// лівий кут заготовки. Повертає group_id.
   ///
   /// ВИПРАВЛЕНО: вставка елементів і прив'язка параметрів шаблону тепер
   /// в ОДНІЙ транзакції — якщо прив'язка параметрів не вдасться, елементи
   /// теж не збережуться (раніше збій міг лишити елементи на карті без
   /// жодного з параметрів шаблону).
-  Future<String> addGroup(Map<String, dynamic> cells, int anchorX, int anchorY,
+  Future<String> addGroup(String apiaryId, Map<String, dynamic> cells, int anchorX, int anchorY,
       {String? groupLabel}) async {
     final groupId = newId();
     final t = now();
@@ -186,6 +244,7 @@ class Repository {
         }
         await txn.insert('elements', {
           'id': newId(),
+          'apiary_id': apiaryId,
           'x': anchorX + col,
           'y': anchorY - row,
           'type': v.type,
@@ -206,9 +265,11 @@ class Repository {
     return groupId;
   }
 
-  Future<List<MapElement>> listElements({bool includeArchived = false}) async {
+  Future<List<MapElement>> listElements(String apiaryId, {bool includeArchived = false}) async {
     final rows = await db.rawQuery(
-      'SELECT * FROM elements WHERE deleted = 0${includeArchived ? '' : ' AND archived = 0'}',
+      'SELECT * FROM elements WHERE deleted = 0 AND apiary_id = ?'
+      '${includeArchived ? '' : ' AND archived = 0'}',
+      [apiaryId],
     );
     return rows.map(MapElement.fromMap).toList();
   }

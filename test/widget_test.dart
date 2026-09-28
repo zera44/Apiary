@@ -14,6 +14,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 /// Димові тести: кожен екран будується без винятків розкладки.
 void main() {
   late Repository repo;
+  late String apiaryId;
   late String groupId;
   late String templateId;
   late String paramId;
@@ -31,7 +32,9 @@ void main() {
     final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
     repo = Repository(db);
     await repo.init();
-    groupId = await repo.addGroup({'0,0': 'hive', '1,0': 'hive', '0,1': 'obstacle:trees'}, 0, 0,
+    apiaryId = await repo.addApiary('Тестова пасіка');
+    groupId = await repo.addGroup(
+        apiaryId, {'0,0': 'hive', '1,0': 'hive', '0,1': 'obstacle:trees'}, 0, 0,
         groupLabel: 'Лежак 1');
     templateId = await repo.addTemplate('Лежак', 2, 2, {'0,0': 'hive', '1,0': 'hive', '0,1': 'obstacle:trees'});
     paramId = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
@@ -42,10 +45,18 @@ void main() {
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
 
-  testWidgets('карта', (tester) async {
+  testWidgets('заставка -> список пасік -> карта', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    expect(find.text('Моя пасіка'), findsOneWidget);
+    expect(find.text('MyApiary'), findsOneWidget);
+
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Відкрити'));
+    await settle(tester);
+    expect(find.text('Тестова пасіка'), findsWidgets); // назва в шапці карти
     expect(tester.takeException(), isNull);
   });
 

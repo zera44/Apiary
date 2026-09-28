@@ -25,7 +25,8 @@ import 'templates_screen.dart';
 ///    "Характеристики".
 class MapScreen extends StatefulWidget {
   final Repository repo;
-  const MapScreen({super.key, required this.repo});
+  final Apiary apiary;
+  const MapScreen({super.key, required this.repo, required this.apiary});
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
@@ -114,7 +115,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _reload() async {
-    final els = await repo.listElements();
+    final els = await repo.listElements(widget.apiary.id);
     if (!mounted) return;
     setState(() {
       elements = els;
@@ -251,8 +252,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return;
         }
       }
-      final label = await repo.nextGroupLabel(tpl.name);
-      final gid = await repo.addGroup(tpl.cells, gx, gy, groupLabel: label);
+      final label = await repo.nextGroupLabel(widget.apiary.id, tpl.name);
+      final gid = await repo.addGroup(widget.apiary.id, tpl.cells, gx, gy, groupLabel: label);
       _pushUndo(_Undo.deleteGroup(gid));
       selectedId = null;
       selectedGroupId = gid; // щойно поставлений — обраний
@@ -694,7 +695,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18),
                   child: Row(children: [
-                    Text('Моя пасіка',
+                    Text(widget.apiary.name,
                         style: TextStyle(
                             color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
                     const Spacer(),

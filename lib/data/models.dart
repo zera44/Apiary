@@ -22,6 +22,7 @@ class MapElement {
   final String? variant;
   final String? icon;
   final String? color;
+  final String? apiaryId;
 
   const MapElement({
     required this.id,
@@ -38,6 +39,7 @@ class MapElement {
     this.variant,
     this.icon,
     this.color,
+    this.apiaryId,
   });
 
   bool get isHive => type == 'hive';
@@ -57,6 +59,7 @@ class MapElement {
         variant: m['variant'] as String?,
         icon: m['icon'] as String?,
         color: m['color'] as String?,
+        apiaryId: m['apiary_id'] as String?,
       );
 
   Map<String, Object?> toMap() => {
@@ -74,6 +77,7 @@ class MapElement {
         'variant': variant,
         'icon': icon,
         'color': color,
+        'apiary_id': apiaryId,
       };
 
   /// Посилання на "сутність", до якої чіпляються параметри: вся група,
@@ -186,6 +190,38 @@ class Parameter {
 
   String get nameWithUnit =>
       (unit != null && unit!.isNotEmpty) ? '$name ($unit)' : name;
+}
+
+/// Пасіка — окрема карта зі своїми вуликами/перешкодами. Застосунок
+/// підтримує кілька пасік; [lat]/[lon] — місце на карті (необов'язкове,
+/// обране при створенні за геолокацією або вручну).
+class Apiary {
+  final String id;
+  final String name;
+  final double? lat;
+  final double? lon;
+  final bool deleted;
+  final double updatedAt;
+
+  const Apiary({
+    required this.id,
+    required this.name,
+    this.lat,
+    this.lon,
+    this.deleted = false,
+    this.updatedAt = 0,
+  });
+
+  bool get hasLocation => lat != null && lon != null;
+
+  factory Apiary.fromMap(Map<String, Object?> m) => Apiary(
+        id: m['id'] as String,
+        name: (m['name'] as String?) ?? 'Пасіка',
+        lat: (m['lat'] as num?)?.toDouble(),
+        lon: (m['lon'] as num?)?.toDouble(),
+        deleted: ((m['deleted'] as num?) ?? 0) != 0,
+        updatedAt: ((m['updated_at'] as num?) ?? 0).toDouble(),
+      );
 }
 
 /// Один запис значення параметра (кнопка "Заповнити").

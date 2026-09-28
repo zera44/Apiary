@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   late Repository repo;
+  late String apiaryId;
 
   setUpAll(sqfliteFfiInit);
 
@@ -15,6 +16,7 @@ void main() {
     final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
     repo = Repository(db);
     await repo.init();
+    apiaryId = await repo.addApiary('Тестова пасіка');
   });
 
   tearDown(() async => repo.db.close());
@@ -61,7 +63,7 @@ void main() {
   });
 
   test('ВИПРАВЛЕНО: "крок назад" відновлює видалений об\'єкт навіть після очистки', () async {
-    final id = await repo.addElement(1, 1);
+    final id = await repo.addElement(apiaryId, 1, 1);
     final snap = (await repo.getElement(id))!;
     await repo.deleteElement(id);
     // синхронізація позначила й очистила (без пільгового періоду)
@@ -75,7 +77,7 @@ void main() {
   });
 
   test('пільговий період: свіжовидалене не прибирається одразу', () async {
-    final id = await repo.addElement(2, 2);
+    final id = await repo.addElement(apiaryId, 2, 2);
     await repo.deleteElement(id);
     await repo.db.rawUpdate('UPDATE elements SET synced = 1');
     await repo.purgeDeleted();
@@ -83,7 +85,7 @@ void main() {
   });
 
   test('ВИПРАВЛЕНО: "крок назад" повертає й прив\'язані параметри після очистки', () async {
-    final id = await repo.addElement(1, 1);
+    final id = await repo.addElement(apiaryId, 1, 1);
     final snap = (await repo.getElement(id))!;
     final e = EntityRef.element(id);
     final p = await repo.addParameter('Вага');
@@ -104,15 +106,49 @@ void main() {
     expect(await repo.attachedParameterIds(EntityRef.element(id)), contains(p));
   });
 
+  test('пасіки: елементи різних пасік не перетинаються', () async {
+    final otherId = await repo.addApiary('Друга пасіка');
+    await repo.addElement(apiaryId, 5, 5);
+    await repo.addElement(otherId, 5, 5); // ті самі координати — інша пасіка
+    final mine = await repo.listElements(apiaryId);
+    final other = await repo.listElements(otherId);
+    expect(mine.length, 1);
+    expect(other.length, 1);
+    expect(mine.first.apiaryId, apiaryId);
+    expect(other.first.apiaryId, otherId);
+    // автонумерація груп теж окрема для кожної пасіки
+    expect(await repo.nextGroupLabel(apiaryId, 'Лежак'), 'Лежак 1');
+    await repo.addGroup(otherId, {'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
+    expect(await repo.nextGroupLabel(apiaryId, 'Лежак'), 'Лежак 1'); // друга пасіка не впливає
+  });
+
+  test('ВИПРАВЛЕНО: стара база без apiary_id переноситься в дефолтну пасіку', () async {
+    final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
+    final legacyRepo = Repository(db);
+    await legacyRepo.init(); // ще немає жодного елемента — нічого мігрувати
+    expect(await legacyRepo.listApiaries(), isEmpty);
+    // імітуємо стару базу (до підтримки кількох пасік): елемент без apiary_id
+    await db.insert('elements',
+        {'id': 'legacy-1', 'x': 3, 'y': 4, 'updated_at': 1.0, 'synced': 0});
+    await legacyRepo.init();
+    final apiaries = await legacyRepo.listApiaries();
+    expect(apiaries.length, 1);
+    expect(apiaries.first.name, 'Моя пасіка');
+    final els = await legacyRepo.listElements(apiaries.first.id);
+    expect(els.length, 1);
+    expect(els.first.id, 'legacy-1');
+    await db.close();
+  });
+
   test('розміщення шаблону: група, автонумерація назви, координати', () async {
     final cells = {
       '0,0': 'hive',
       '1,0': {'type': 'obstacle', 'variant': 'trees', 'icon': null, 'color': '#F2B705', 'parameters': <String>[]},
     };
-    final l1 = await repo.nextGroupLabel('Лежак');
+    final l1 = await repo.nextGroupLabel(apiaryId, 'Лежак');
     expect(l1, 'Лежак 1');
-    final gid = await repo.addGroup(cells, 10, 20, groupLabel: l1);
-    expect(await repo.nextGroupLabel('Лежак'), 'Лежак 2');
+    final gid = await repo.addGroup(apiaryId, cells, 10, 20, groupLabel: l1);
+    expect(await repo.nextGroupLabel(apiaryId, 'Лежак'), 'Лежак 2');
     final els = await repo.getGroupElements(gid);
     expect(els.length, 2);
     final obstacle = els.firstWhere((e) => e.type == 'obstacle');
@@ -122,7 +158,7 @@ void main() {
   });
 
   test('поворот групи зберігає сусідство клітинок', () async {
-    final gid = await repo.addGroup({'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+    final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
     await repo.rotateGroup(gid);
     final els = await repo.getGroupElements(gid);
     expect(els[0].x, els[1].x);
@@ -130,7 +166,7 @@ void main() {
   });
 
   test('прив\'язка параметрів: порядок, базові не зберігаються окремо', () async {
-    final id = await repo.addElement(0, 0);
+    final id = await repo.addElement(apiaryId, 0, 0);
     final e = EntityRef.element(id);
     final p1 = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
     final p2 = await repo.addParameter('Порода');
@@ -144,7 +180,7 @@ void main() {
   });
 
   test('ВИПРАВЛЕНО: видалений параметр не можна прив\'язати повторно', () async {
-    final id = await repo.addElement(0, 0);
+    final id = await repo.addElement(apiaryId, 0, 0);
     final e = EntityRef.element(id);
     final p = await repo.addParameter('Вага');
     await repo.deleteParameter(p);
@@ -157,7 +193,7 @@ void main() {
   });
 
   test('значення: історія, останні значення, дата оновлення', () async {
-    final gid = await repo.addGroup({'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
+    final gid = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
     final e = EntityRef.group(gid);
     final p = await repo.addParameter('Вага');
     expect(await repo.lastUpdated(e), isNull);
@@ -172,7 +208,7 @@ void main() {
   });
 
   test('ВИПРАВЛЕНО: у черзі синхронізації всі таблиці', () async {
-    final id = await repo.addElement(0, 0);
+    final id = await repo.addElement(apiaryId, 0, 0);
     final p = await repo.addParameter('Вага');
     await repo.setAttachedParameters([p], EntityRef.element(id));
     await repo.addParameterRecord(p, '5', EntityRef.element(id));
@@ -183,7 +219,7 @@ void main() {
   });
 
   test('markSynced не губить зміну, зроблену під час відправки', () async {
-    final id = await repo.addElement(0, 0);
+    final id = await repo.addElement(apiaryId, 0, 0);
     final sent = (await repo.unsynced('elements')).single;
     await Future<void>.delayed(const Duration(milliseconds: 5));
     await repo.moveElement(id, 3, 3); // змінили, поки "відправлялось"

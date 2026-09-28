@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'data/database.dart';
 import 'data/repository.dart';
 import 'data/sync_service.dart';
-import 'screens/map_screen.dart';
+import 'screens/splash_screen.dart';
 import 'ui/theme.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
@@ -40,7 +40,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
       title: 'Моя пасіка',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: MapScreen(repo: widget.repo),
+      home: SplashScreen(repo: widget.repo),
     );
   }
 }
