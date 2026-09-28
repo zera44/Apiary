@@ -27,21 +27,25 @@ Future<String> exportHistoryToExcel({
   final fileName = historyFileName(parameter.name, scopeName, DateTime.now());
 
   try {
-    final path = await FilePicker.platform.saveFile(
-      dialogTitle: 'Зберегти історію',
+    final uri = await FilePicker.saveFile(
       fileName: fileName,
+      bytes: bytes,
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dialogTitle: 'Зберегти історію',
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
-      bytes: bytes,
     );
-    if (path == null) return 'Збереження скасовано.';
-    // на комп'ютері плагін лише повертає шлях — файл записуємо самі
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      final f = File(path.toLowerCase().endsWith('.xlsx') ? path : '$path.xlsx');
-      await f.writeAsBytes(bytes, flush: true);
+    if (uri == null) return 'Збереження скасовано.';
+    if (uri.scheme == 'file') {
+      // на комп'ютері — підстраховуємось: якщо файл не записано, пишемо самі
+      final f = File(uri.toFilePath());
+      if (!await f.exists() || await f.length() == 0) {
+        await f.writeAsBytes(bytes, flush: true);
+      }
       return 'Збережено:\n${f.path}';
     }
-    return 'Збережено:\n${p.basename(path)}';
+    final name = uri.pathSegments.isNotEmpty ? Uri.decodeComponent(uri.pathSegments.last) : fileName;
+    return 'Збережено:\n${p.basename(name)}';
   } catch (_) {
     // запасний варіант — власна тека застосунку
     try {
