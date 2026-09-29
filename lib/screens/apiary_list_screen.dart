@@ -25,7 +25,14 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   @override
   void initState() {
     super.initState();
+    widget.repo.mapChanges.addListener(_reload);
     _reload();
+  }
+
+  @override
+  void dispose() {
+    widget.repo.mapChanges.removeListener(_reload);
+    super.dispose();
   }
 
   Future<void> _reload() async {

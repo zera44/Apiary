@@ -15,20 +15,27 @@ void patch(String path, String from, String to) {
   stdout.writeln('✓ $path');
 }
 
-/// Дозвіл на інтернет (фонова синхронізація) — у release-маніфесті, що
-/// генерує flutter create, його немає. Вставляється перед <application>.
+/// Дозволи: інтернет (фонова синхронізація) і камера (сканер QR вуликів).
+/// У release-маніфесті, що генерує flutter create, їх немає. Вставляються
+/// перед <application> лише ті, яких бракує.
 void _patchAndroidPermissions(String path) {
   final f = File(path);
   if (!f.existsSync()) return;
   final s = f.readAsStringSync();
-  if (s.contains('android.permission.INTERNET')) return;
+  final missing = [
+    for (final perm in ['INTERNET', 'CAMERA'])
+      if (!s.contains('android.permission.$perm"')) perm
+  ];
+  if (missing.isEmpty) return;
   final idx = s.indexOf('<application');
   if (idx < 0) return;
   // вставити з тим самим відступом, що й у <application>, незалежно від
   // конкретної кількості пробілів у шаблоні flutter create
   final lineStart = s.lastIndexOf('\n', idx) + 1;
   final indent = s.substring(lineStart, idx);
-  final perms = '$indent<uses-permission android:name="android.permission.INTERNET"/>\n';
+  final perms = [
+    for (final perm in missing) '$indent<uses-permission android:name="android.permission.$perm"/>\n'
+  ].join();
   f.writeAsStringSync(s.substring(0, lineStart) + perms + s.substring(lineStart));
   stdout.writeln('✓ $path (дозволи)');
 }
@@ -54,11 +61,23 @@ void _patchAndroidCompressedLibs() {
   }
 }
 
+/// Сканер QR — ML Kit через Google Play Services (не вкладений у APK):
+/// +~0,6 МБ замість 3–10 МБ.
+void _patchGradleProperties() {
+  final f = File('android/gradle.properties');
+  if (!f.existsSync()) return;
+  final s = f.readAsStringSync();
+  if (s.contains('mobile_scanner.useUnbundled')) return;
+  f.writeAsStringSync('${s.trimRight()}\ndev.steenbakker.mobile_scanner.useUnbundled=true\n');
+  stdout.writeln('✓ android/gradle.properties (сканер QR без вкладеного ML Kit)');
+}
+
 void main() {
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
       'android:label="$appName"');
   _patchAndroidPermissions('android/app/src/main/AndroidManifest.xml');
   _patchAndroidCompressedLibs();
+  _patchGradleProperties();
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');
   patch('ios/Runner/Info.plist', '<string>Apiary</string>', '<string>$appName</string>');
   patch('macos/Runner/Configs/AppInfo.xcconfig', 'PRODUCT_NAME = apiary', 'PRODUCT_NAME = $appName');

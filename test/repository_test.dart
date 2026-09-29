@@ -222,6 +222,7 @@ void main() {
     await repo.setAttachedParameters([p], EntityRef.element(id));
     await repo.addParameterRecord(p, '5', EntityRef.element(id));
     await repo.addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
+    await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
@@ -327,5 +328,48 @@ void main() {
     expect(await repo.getApiary(apiaryId), isNull);
     expect(await repo.getApiary(other), isNotNull);
     expect((await repo.listElements(other)).length, 1);
+  });
+
+  group('QR-коди вуликів', () {
+    test('прив\'язка, пошук і відв\'язка', () async {
+      final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0,
+          groupLabel: 'Лежак 1');
+      final g = EntityRef.group(gid);
+      expect(await repo.findByQr('https://x/h/1'), isNull);
+      await repo.linkQr('  https://x/h/1\n', g); // пробіли по краях не заважають
+      expect(await repo.qrFor(g), 'https://x/h/1');
+      final f = (await repo.findByQr('https://x/h/1'))!;
+      expect(f.element.groupId, gid);
+      expect(f.apiary.id, apiaryId);
+      await repo.unlinkQr(g);
+      expect(await repo.qrFor(g), isNull);
+      expect(await repo.findByQr('https://x/h/1'), isNull);
+    });
+
+    test('один код — один вулик; один вулик — один код', () async {
+      final a = await repo.addElement(apiaryId, 0, 0);
+      final b = await repo.addElement(apiaryId, 1, 0);
+      await repo.linkQr('K1', EntityRef.element(a));
+      await repo.linkQr('K1', EntityRef.element(b)); // перенесли на b
+      expect((await repo.findByQr('K1'))!.element.id, b);
+      expect(await repo.qrFor(EntityRef.element(a)), isNull);
+      await repo.linkQr('K2', EntityRef.element(b)); // замінили код b
+      expect(await repo.qrFor(EntityRef.element(b)), 'K2');
+      expect(await repo.findByQr('K1'), isNull);
+    });
+
+    test('видалений вулик чи пасіка не знаходяться за кодом', () async {
+      final a = await repo.addElement(apiaryId, 0, 0);
+      await repo.linkQr('K', EntityRef.element(a));
+      await repo.deleteElement(a);
+      expect(await repo.findByQr('K'), isNull);
+
+      final other = await repo.addApiary('Інша');
+      final gid = await repo.addGroup(other, {'0,0': 'hive'}, 0, 0);
+      await repo.linkQr('G', EntityRef.group(gid));
+      expect(await repo.findByQr('G'), isNotNull);
+      await repo.deleteApiary(other);
+      expect(await repo.findByQr('G'), isNull);
+    });
   });
 }

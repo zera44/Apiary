@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
+import '../screens/qr_scan_screen.dart';
 import '../screens/templates_screen.dart';
+import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
 
@@ -36,9 +39,38 @@ class AppDrawer extends StatelessWidget {
             nav.pop();
             nav.push(MaterialPageRoute(builder: (_) => ParametersScreen.catalog(repo: repo)));
           }),
+          _item(context, 'qr', 'Сканувати QR вулика', () {
+            nav.pop();
+            openHiveByQr(nav, repo);
+          }),
         ]),
       ),
     );
+  }
+
+  /// Відсканувати код і відкрити карту пасіки з панеллю цього вулика.
+  /// Працює через [NavigatorState] — контекст меню після закриття вже
+  /// недійсний.
+  static Future<void> openHiveByQr(NavigatorState nav, Repository repo) async {
+    final code = await scanQrCode(nav.context);
+    if (code == null || !nav.mounted) return;
+    final found = await repo.findByQr(code);
+    if (!nav.mounted) return;
+    if (found == null) {
+      await showInfo(
+        nav.context,
+        'Цей QR-код ще не прив\'язаний до жодного вулика.\n\n'
+        'Щоб прив\'язати: відкрийте пасіку, торкніться вулика й на панелі '
+        '«Характеристики» натисніть «Прив\'язати QR-код».\n\nКод: $code',
+        title: 'Вулик не знайдено',
+      );
+      return;
+    }
+    nav.popUntil((r) => r.isFirst);
+    nav.push(MaterialPageRoute(
+      builder: (_) =>
+          MapScreen(repo: repo, apiary: found.apiary, focusElementId: found.element.id),
+    ));
   }
 
   Widget _item(BuildContext context, String icon, String text, VoidCallback onTap) {

@@ -15,6 +15,7 @@ import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
 import 'parameters_screen.dart';
+import 'qr_scan_screen.dart';
 import 'templates_screen.dart';
 
 /// Головний екран: карта пасіки (порт map_screen.py).
@@ -28,7 +29,11 @@ import 'templates_screen.dart';
 class MapScreen extends StatefulWidget {
   final Repository repo;
   final Apiary apiary;
-  const MapScreen({super.key, required this.repo, required this.apiary});
+
+  /// Одразу показати цей об'єкт і відкрити його панель (після сканування
+  /// QR-коду вулика).
+  final String? focusElementId;
+  const MapScreen({super.key, required this.repo, required this.apiary, this.focusElementId});
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
@@ -105,6 +110,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
     }
+    final focusId = widget.focusElementId;
+    if (focusId != null && mounted) {
+      final el = elements.where((e) => e.id == focusId).firstOrNull;
+      if (el != null) {
+        grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
+        await _onInfoRequest(el);
+      }
+    }
   }
 
   @override
@@ -113,6 +126,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
     grid.dispose();
+    // список пасік оновить мініатюру цієї карти
+    repo.mapChanges.value++;
     super.dispose();
   }
 
@@ -532,6 +547,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final params = await repo.attachedParameters(entity, elType: fresh.type);
     final latest = await repo.latestParameterValues(entity);
     final last = await repo.lastUpdated(entity);
+    final qr = await repo.qrFor(entity);
     if (!mounted) return;
     setState(() {
       panelElement = fresh;
@@ -544,6 +560,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         params: [for (final p in params) (p, latest[p.id])],
         placed: true,
         lastUpdated: last,
+        qrCode: qr,
       );
     });
   }
@@ -633,6 +650,77 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       builder: (_) => HistoryScreen(repo: repo, parameter: p, entity: el.entity),
     ));
     await _refreshPanel();
+  }
+
+  bool _qrBusy = false;
+
+  /// Прив'язати / замінити / відв'язати QR-код вулика з панелі.
+  Future<void> _panelQr() async {
+    final el = panelElement;
+    if (el == null || _qrBusy) return;
+    _qrBusy = true;
+    try {
+      final entity = el.entity;
+      final current = await repo.qrFor(entity);
+      if (!mounted) return;
+      if (current != null) {
+        final action = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('QR-код вулика'),
+            content: Text(current, style: TextStyle(color: AppColors.text)),
+            actions: [
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                PillButton(
+                    text: 'Сканувати інший',
+                    bg: AppColors.accent,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx, 'scan')),
+                const SizedBox(height: 8),
+                PillButton(
+                    text: 'Відв\'язати',
+                    bg: AppColors.danger,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx, 'unlink')),
+                const SizedBox(height: 8),
+                PillButton(
+                    text: 'Скасувати',
+                    bg: AppColors.neutralBtn,
+                    fg: AppColors.text,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx)),
+              ]),
+            ],
+          ),
+        );
+        if (action == null || !mounted) return;
+        if (action == 'unlink') {
+          await repo.unlinkQr(entity);
+          await _refreshPanel();
+          return;
+        }
+      }
+      final code = await scanQrCode(context, title: 'QR-код для вулика');
+      if (code == null || !mounted) return;
+      final other = await repo.findByQr(code);
+      if (!mounted) return;
+      if (other != null && other.element.entity != entity) {
+        final name = await repo.entityLabel(other.element.entity);
+        if (!mounted) return;
+        final move = await showConfirm(context,
+            title: 'Код уже використовується',
+            text: 'Цей QR-код прив\'язаний до «$name» (пасіка «${other.apiary.name}»). '
+                'Перенести його на цей вулик?',
+            confirmText: 'Перенести',
+            danger: false);
+        if (!move) return;
+      }
+      await repo.linkQr(code, entity);
+      await _refreshPanel();
+      _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
+    } finally {
+      _qrBusy = false;
+    }
   }
 
   Future<void> _openTemplates() async {
@@ -825,6 +913,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onEditParams: _panelEditParams,
                       onFill: _panelFill,
                       onHistory: _panelHistory,
+                      onQr: _panelQr,
                     ),
             ),
           ]);

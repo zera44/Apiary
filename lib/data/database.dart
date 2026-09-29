@@ -129,6 +129,20 @@ class AppDatabase {
         synced INTEGER NOT NULL DEFAULT 0
       )''');
 
+    // НОВЕ: QR-коди вуликів. Код (зазвичай посилання) прив'язаний рівно до
+    // однієї сутності — групи або окремого об'єкта; один об'єкт — один код.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS qr_codes (
+        id TEXT PRIMARY KEY,
+        code TEXT NOT NULL,
+        group_id TEXT,
+        element_id TEXT,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_qr_code ON qr_codes(code)');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

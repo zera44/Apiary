@@ -21,6 +21,9 @@ class PanelData {
   final bool placed;
   final double? lastUpdated;
 
+  /// Прив'язаний QR-код (для розміщених об'єктів), або null.
+  final String? qrCode;
+
   const PanelData({
     required this.type,
     this.variant,
@@ -30,6 +33,7 @@ class PanelData {
     this.params = const [],
     this.placed = false,
     this.lastUpdated,
+    this.qrCode,
   });
 }
 
@@ -58,6 +62,7 @@ class CharacteristicsPanel extends StatelessWidget {
   final VoidCallback? onEditParams;
   final VoidCallback? onFill;
   final void Function(String parameterId)? onHistory;
+  final VoidCallback? onQr;
 
   const CharacteristicsPanel({
     super.key,
@@ -69,6 +74,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onEditParams,
     this.onFill,
     this.onHistory,
+    this.onQr,
   });
 
   @override
@@ -174,6 +180,26 @@ class CharacteristicsPanel extends StatelessWidget {
                     fontSize: 13,
                     onPressed: onFill,
                   ),
+                  if (onQr != null) ...[
+                    const SizedBox(height: 14),
+                    Text('QR-код', style: muted),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.qrCode == null ? 'Не прив\'язано' : data.qrCode!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: AppColors.text, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    PillButton(
+                      text: data.qrCode == null ? 'Прив\'язати QR-код' : 'QR-код…',
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      height: 38,
+                      fontSize: 13,
+                      onPressed: onQr,
+                    ),
+                  ],
                 ],
               ],
             ),

@@ -88,6 +88,21 @@ void _hexagon(_Pen p, double w, double h) {
   p.line(_hexagonPoints(p.cx, p.cy, r), 1.6, close: true);
 }
 
+void _qr(_Pen p, double w, double h) {
+  // три кутові "очі" QR-коду + кілька модулів
+  final s = math.min(w, h) * 0.5, x0 = p.cx - s / 2, y0 = p.cy - s / 2, e = s * 0.36;
+  void eye(double x, double y) =>
+      p.line([x, y, x + e, y, x + e, y + e, x, y + e], 1.5, close: true, round: false);
+  eye(x0, y0);
+  eye(x0 + s - e, y0);
+  eye(x0, y0 + s - e);
+  final m = s * 0.12;
+  for (final (dx, dy) in [(0.62, 0.62), (0.86, 0.62), (0.62, 0.86), (0.86, 0.86), (0.74, 0.74)]) {
+    final cx = x0 + s * dx, cy = y0 + s * dy;
+    p.line([cx - m / 2, cy, cx + m / 2, cy], m * 1.6 / _kStroke, round: false);
+  }
+}
+
 void _menu(_Pen p, double w, double h) {
   final hw = w * 0.22, gap = h * 0.13;
   for (final dy in [-gap, 0.0, gap]) {
@@ -376,6 +391,7 @@ void _history(_Pen p, double w, double h) {
 const Map<String, _Drawer> _drawers = {
   'hexagon': _hexagon,
   'menu': _menu,
+  'qr': _qr,
   'beehive': _beehive,
   'mountain': _mountain,
   'rotate': _rotate,

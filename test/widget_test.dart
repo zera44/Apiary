@@ -206,4 +206,44 @@ void main() {
     await settle(tester);
     expect(result, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
+
+  testWidgets('меню: сканер QR відкриває вулик на карті з панеллю', (tester) async {
+    // у тестах камери немає — код вводиться вручну (як на комп'ютері)
+    await tester.runAsync(() => repo.linkQr('https://pasika.example/h/7', EntityRef.group(groupId)));
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Сканувати QR вулика'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'https://pasika.example/h/7');
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Тестова пасіка'), findsWidgets); // карта пасіки
+    expect(find.text('Лежак 1'), findsWidgets); // панель вулика
+    expect(find.text('https://pasika.example/h/7'), findsOneWidget); // код на панелі
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('меню: невідомий QR-код — пояснення, як прив\'язати', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Сканувати QR вулика'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'невідомий');
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Вулик не знайдено'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

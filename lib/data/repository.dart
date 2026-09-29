@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,12 +26,18 @@ const kSyncTables = [
   'parameters',
   'element_parameters',
   'parameter_records',
+  'qr_codes',
 ];
 
 /// Усі операції з локальною базою (порт db.py).
 class Repository {
   final Database db;
   Repository(this.db);
+
+  /// Лічильник "дані карти змінились" — список пасік слухає його й
+  /// оновлює мініатюри (зокрема, коли карту відкрили не з самого списку,
+  /// а, наприклад, через сканер QR).
+  final ValueNotifier<int> mapChanges = ValueNotifier<int>(0);
 
   static const _uuid = Uuid();
   static String newId() => _uuid.v4();
@@ -426,6 +433,87 @@ class Repository {
   }
 
   // ---------------------------------------------------------------------
+  // QR-коди вуликів
+  // ---------------------------------------------------------------------
+
+  /// Нормалізація відсканованого тексту: без пробілів/переносів по краях.
+  static String normalizeQr(String raw) => raw.trim();
+
+  /// Прив'язати [code] до об'єкта/групи. Попередня прив'язка цього коду (до
+  /// іншого вулика) і попередній код цього вулика знімаються — завжди
+  /// "один код — один вулик".
+  Future<void> linkQr(String code, EntityRef e) async {
+    final c = normalizeQr(code);
+    if (c.isEmpty) return;
+    final t = now();
+    final (w, args) = _ownerWhere(e);
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? '
+        'WHERE deleted = 0 AND (code = ? OR ($w))',
+        [t, c, ...args],
+      );
+      await txn.insert('qr_codes', {
+        'id': newId(),
+        'code': c,
+        'group_id': e.groupId,
+        'element_id': e.elementId,
+        'deleted': 0,
+        'updated_at': t,
+        'synced': 0,
+      });
+    });
+  }
+
+  /// Зняти прив'язку QR-коду з об'єкта/групи.
+  Future<void> unlinkQr(EntityRef e) async {
+    final (w, args) = _ownerWhere(e);
+    await db.rawUpdate(
+      'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? WHERE deleted = 0 AND $w',
+      [now(), ...args],
+    );
+  }
+
+  /// Код, прив'язаний до об'єкта/групи, або null.
+  Future<String?> qrFor(EntityRef e) async {
+    final (w, args) = _ownerWhere(e);
+    final rows = await db.rawQuery(
+      'SELECT code FROM qr_codes WHERE deleted = 0 AND $w ORDER BY updated_at DESC LIMIT 1',
+      args,
+    );
+    return rows.isEmpty ? null : rows.first['code'] as String?;
+  }
+
+  /// Знайти вулик за кодом: елемент (для групи — будь-який її елемент) і
+  /// його пасіку. null — код не прив'язаний або вулик/пасіку видалено.
+  Future<({MapElement element, Apiary apiary})?> findByQr(String code) async {
+    final c = normalizeQr(code);
+    if (c.isEmpty) return null;
+    final links = await db.rawQuery(
+      'SELECT group_id, element_id FROM qr_codes WHERE deleted = 0 AND code = ? '
+      'ORDER BY updated_at DESC',
+      [c],
+    );
+    for (final l in links) {
+      final gid = l['group_id'] as String?;
+      final eid = l['element_id'] as String?;
+      MapElement? el;
+      if (gid != null) {
+        final els = await getGroupElements(gid);
+        el = els.isEmpty ? null : els.first;
+      } else if (eid != null) {
+        final e = await getElement(eid);
+        el = (e == null || e.deleted) ? null : e;
+      }
+      if (el == null || el.archived || el.apiaryId == null) continue;
+      final a = await getApiary(el.apiaryId!);
+      if (a == null || a.deleted) continue;
+      return (element: el, apiary: a);
+    }
+    return null;
+  }
+
+  // ---------------------------------------------------------------------
   // Шаблони
   // ---------------------------------------------------------------------
 
@@ -813,6 +901,8 @@ class Repository {
           'DELETE FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
       await txn.rawDelete(
           'DELETE FROM apiaries WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+      await txn.rawDelete(
+          'DELETE FROM qr_codes WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
     });
   }
 }
