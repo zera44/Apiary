@@ -15,7 +15,11 @@ import 'theme.dart';
 /// Характеристики.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
-  const AppDrawer({super.key, required this.repo});
+
+  /// Пасіка, з карти якої відкрито меню: генератор кодів тоді одразу
+  /// відкривається для неї, без питання "Для якої пасіки?".
+  final Apiary? currentApiary;
+  const AppDrawer({super.key, required this.repo, this.currentApiary});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +51,7 @@ class AppDrawer extends StatelessWidget {
           }),
           _item(context, 'qr', 'Генерувати QR-коди', () {
             nav.pop();
-            openQrGenerator(nav, repo);
+            openQrGenerator(nav, repo, current: currentApiary);
           }),
         ]),
       ),
@@ -80,7 +84,14 @@ class AppDrawer extends StatelessWidget {
   }
 
   /// Обрати пасіку (якщо їх кілька) і відкрити генератор кодів.
-  static Future<void> openQrGenerator(NavigatorState nav, Repository repo) async {
+  static Future<void> openQrGenerator(NavigatorState nav, Repository repo,
+      {Apiary? current}) async {
+    if (current != null) {
+      await nav.push(MaterialPageRoute(
+        builder: (_) => QrGenerateScreen(repo: repo, apiary: current),
+      ));
+      return;
+    }
     final list = await repo.listApiaries();
     if (!nav.mounted) return;
     if (list.isEmpty) {

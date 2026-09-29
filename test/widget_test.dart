@@ -294,4 +294,19 @@ void main() {
     expect(hiveLabelName(g3, all), 'Лежак 1 · 3');
     expect(hiveLabelName(solo, all), 'Вулик');
   });
+
+  testWidgets('генератор QR з меню карти відкриває цю ж пасіку без питання', (tester) async {
+    await tester.runAsync(() => repo.addApiary('Друга пасіка')); // пасік кілька
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Генерувати QR-коди'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Для якої пасіки?'), findsNothing);
+    expect(find.text('QR-коди: Тестова пасіка'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

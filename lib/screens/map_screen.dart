@@ -795,7 +795,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final placing = selectMode && pendingTemplate != null;
 
     return Scaffold(
-      drawer: AppDrawer(repo: repo),
+      drawer: AppDrawer(repo: repo, currentApiary: widget.apiary),
       // свайп від лівого краю конфліктував би з панорамуванням карти —
       // меню відкривається лише кнопкою
       drawerEnableOpenDragGesture: false,
