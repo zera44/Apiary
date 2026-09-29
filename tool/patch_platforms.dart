@@ -131,6 +131,12 @@ void main() {
   _patchAndroidCompressedLibs();
   _patchAndroidNotifications();
   _patchGradleProperties();
+  // Windows: автозапущений (--autostart) застосунок стартує згорнутим,
+  // без відбирання фокуса
+  patch(
+      'windows/runner/win32_window.cpp',
+      'ShowWindow(window_handle_, SW_SHOWNORMAL)',
+      'ShowWindow(window_handle_, wcsstr(GetCommandLineW(), L"--autostart") ? SW_SHOWMINNOACTIVE : SW_SHOWNORMAL)');
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');
   patch('ios/Runner/Info.plist', '<string>Apiary</string>', '<string>$appName</string>');
   patch('macos/Runner/Configs/AppInfo.xcconfig', 'PRODUCT_NAME = apiary', 'PRODUCT_NAME = $appName');

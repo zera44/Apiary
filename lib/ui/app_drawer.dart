@@ -7,6 +7,7 @@ import '../screens/parameters_screen.dart';
 import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/templates_screen.dart';
+import '../services/autostart.dart';
 import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
@@ -56,6 +57,10 @@ class AppDrawer extends StatelessWidget {
               builder: (_) => QrGenerateScreen(repo: repo, apiary: currentApiary),
             ));
           }),
+          if (Autostart.supported) ...[
+            const Spacer(),
+            const _AutostartTile(),
+          ],
         ]),
       ),
     );
@@ -91,6 +96,53 @@ class AppDrawer extends StatelessWidget {
       leading: AppIcon(icon, color: AppColors.text, size: 30),
       title: Text(text, style: TextStyle(color: AppColors.text, fontSize: 16)),
       onTap: onTap,
+    );
+  }
+}
+
+/// Перемикач "Запускати разом з Windows" (лише Windows).
+class _AutostartTile extends StatefulWidget {
+  const _AutostartTile();
+  @override
+  State<_AutostartTile> createState() => _AutostartTileState();
+}
+
+class _AutostartTileState extends State<_AutostartTile> {
+  bool? _on;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Autostart.isEnabled().then((v) {
+      if (mounted) setState(() => _on = v);
+    });
+  }
+
+  Future<void> _toggle(bool v) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final ok = await Autostart.setEnabled(v);
+    final now = await Autostart.isEnabled();
+    if (!mounted) return;
+    setState(() {
+      _on = now;
+      _busy = false;
+    });
+    if (!ok) {
+      await showInfo(context, 'Не вдалося змінити автозапуск.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      value: _on ?? false,
+      onChanged: (_on == null || _busy) ? null : _toggle,
+      title: Text('Запускати разом з Windows',
+          style: TextStyle(color: AppColors.text, fontSize: 15)),
+      subtitle: Text('Щоб приходили нагадування про обхід',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
     );
   }
 }
