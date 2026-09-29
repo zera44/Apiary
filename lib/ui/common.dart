@@ -127,7 +127,10 @@ class CapsuleLabel extends StatelessWidget {
           color: bg ?? AppColors.capsule,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(text, style: TextStyle(color: fg ?? AppColors.text, fontSize: 12)),
+        child: Text(text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: fg ?? AppColors.text, fontSize: 12)),
       ),
     );
   }

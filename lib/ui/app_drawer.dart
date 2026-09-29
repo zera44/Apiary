@@ -34,9 +34,7 @@ class AppDrawer extends StatelessWidget {
           }),
           _item(context, 'history', 'Характеристики', () {
             nav.pop();
-            nav.push(MaterialPageRoute(
-              builder: (_) => ParametersScreen.forTemplate(repo: repo, initialIds: const [], elType: null),
-            ));
+            nav.push(MaterialPageRoute(builder: (_) => ParametersScreen.catalog(repo: repo)));
           }),
         ]),
       ),

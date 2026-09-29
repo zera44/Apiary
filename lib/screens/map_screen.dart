@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
 import '../logic/merge_layout.dart';
 import '../ui/app_drawer.dart';
@@ -160,7 +161,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---------------------------------------------------------------------
 
   bool _onPressDown(GridPress p) {
-    if (pendingTemplate != null || !selectMode) return false;
+    // поки триває інша дія (запис у базу), нове перетягування не починаємо —
+    // воно спиралось би на застарілий список об'єктів
+    if (pendingTemplate != null || !selectMode || _busy) return false;
     final match = _elementAt(p.cell);
     if (match == null) return false;
     // вибір і початок перетягування — одним дотиком
@@ -201,7 +204,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _onPressUp(Offset delta) async {
     if (_drag == null) return;
     if (_busy) {
-      _drag = null;
+      setState(() {
+        _drag = null;
+        _blocked = false;
+      });
       return;
     }
     final (target, _) = _dragTarget(delta);
@@ -239,6 +245,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     final tpl = pendingTemplate;
     if (tpl == null || _busy) return;
+    // порожній шаблон (без жодної клітинки) не має що розміщувати
+    if (!tpl.cells.keys.any((k) => parseCellKey(k) != null)) {
+      _showWarning('Шаблон порожній', duration: const Duration(seconds: 1));
+      return;
+    }
     setState(() => _busy = true);
     try {
       final (gx, gy) = p.cell;
@@ -692,6 +703,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
     return Scaffold(
       drawer: AppDrawer(repo: repo),
+      // свайп від лівого краю конфліктував би з панорамуванням карти —
+      // меню відкривається лише кнопкою
+      drawerEnableOpenDragGesture: false,
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           return Stack(children: [
@@ -728,13 +742,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text(widget.apiary.name,
-                        style: TextStyle(
-                            color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
-                    const Spacer(),
-                    CapsuleLabel(status,
-                        bg: isWarn ? AppColors.warning : null,
-                        fg: isWarn ? Colors.white : null),
+                    // довга назва пасіки/статус більше не дають переповнення
+                    // рядка: обидва стискаються з "…"
+                    Expanded(
+                      flex: 2,
+                      child: Text(widget.apiary.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      flex: 3,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: CapsuleLabel(status,
+                            bg: isWarn ? AppColors.warning : null,
+                            fg: isWarn ? Colors.white : null),
+                      ),
+                    ),
                   ]),
                 ),
               ),

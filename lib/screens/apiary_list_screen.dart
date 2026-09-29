@@ -50,10 +50,12 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   }
 
   Future<void> _create() async {
-    await Navigator.of(context).push<void>(MaterialPageRoute(
+    final created = await Navigator.of(context).push<Apiary>(MaterialPageRoute(
       builder: (_) => NewApiaryScreen(repo: widget.repo),
     ));
     await _reload();
+    // нова пасіка одразу відкривається; _open оновить список після повернення
+    if (created != null && mounted) await _open(created);
   }
 
   Future<void> _rename(Apiary a) async {

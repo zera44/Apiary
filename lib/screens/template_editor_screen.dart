@@ -498,16 +498,30 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     );
   }
 
+  bool _saving = false;
+
   Future<void> _save() async {
-    final name = title.trim().isEmpty ? 'Новий шаблон' : title.trim();
-    final (w, h, out) = _export();
-    if (widget.templateId != null) {
-      await repo.updateTemplate(widget.templateId!, name: name, width: w, height: h, cells: out);
-    } else {
-      await repo.addTemplate(name, w, h, out);
+    // подвійний тап не має створювати два шаблони чи двічі закривати екран
+    if (_saving) return;
+    // порожній шаблон нічого не розмістить на карті — не зберігаємо
+    if (cells.isEmpty) {
+      _showWarning('Додайте хоча б одну клітинку');
+      return;
     }
-    _savedSnapshot = _snapshot();
-    if (mounted) Navigator.pop(context, true);
+    _saving = true;
+    try {
+      final name = title.trim().isEmpty ? 'Новий шаблон' : title.trim();
+      final (w, h, out) = _export();
+      if (widget.templateId != null) {
+        await repo.updateTemplate(widget.templateId!, name: name, width: w, height: h, cells: out);
+      } else {
+        await repo.addTemplate(name, w, h, out);
+      }
+      _savedSnapshot = _snapshot();
+      if (mounted) Navigator.pop(context, true);
+    } finally {
+      _saving = false;
+    }
   }
 
   Future<void> _back() async {

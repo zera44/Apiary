@@ -1,6 +1,7 @@
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
+import 'package:apiary/ui/date_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -91,5 +92,22 @@ void main() {
       expect(parseCellKey('3,4'), (3, 4));
       expect(parseCellKey('bad'), isNull);
     });
+  });
+
+  test('сітка календаря завжди починається з понеділка о 00:00 (також навколо зміни часу)', () {
+    for (var y = 2024; y <= 2027; y++) {
+      for (var m = 1; m <= 12; m++) {
+        final g = calendarGridStart(y, m);
+        expect(g.weekday, DateTime.monday, reason: '$y-$m');
+        expect(g.hour, 0, reason: '$y-$m');
+        // 1-ше число потрапляє в перший рядок (0..6 днів після початку)
+        final first = DateTime(y, m, 1);
+        final lead = DateTime(first.year, first.month, first.day)
+            .difference(DateTime(g.year, g.month, g.day))
+            .inDays;
+        expect(lead >= 0 && lead <= 6, isTrue, reason: '$y-$m');
+      }
+    }
+    expect(calendarGridStart(2026, 4), DateTime(2026, 3, 30));
   });
 }

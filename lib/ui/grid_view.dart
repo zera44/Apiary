@@ -576,7 +576,7 @@ class SceneThumbnail extends StatelessWidget {
         const pad = 8.0;
         final cols = maxX - minX + 1, rows = maxY - minY + 1;
         cs = math.min((w - 2 * pad) / cols, (h - 2 * pad) / rows);
-        cs = cs.clamp(4.0, 28.0);
+        cs = cs.clamp(0.5, 28.0); // велика карта теж має вміщатись повністю
         // центр знімка: середина обсягу клітинок -> середина віджета
         final cxWorld = (minX + cols / 2) * cs;
         final cyWorld = -(minY + rows / 2) * cs;

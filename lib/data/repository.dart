@@ -80,7 +80,7 @@ class Repository {
 
   Future<List<Apiary>> listApiaries() async {
     final rows =
-        await db.rawQuery('SELECT * FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC');
+        await db.rawQuery('SELECT * FROM apiaries WHERE deleted = 0 ORDER BY rowid ASC');
     return rows.map(Apiary.fromMap).toList();
   }
 

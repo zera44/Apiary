@@ -3,6 +3,7 @@ import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/main.dart';
 import 'package:apiary/screens/history_screen.dart';
+import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
@@ -86,5 +87,66 @@ void main() {
     await tester.pumpWidget(wrap(HistoryScreen(repo: repo, parameter: p)));
     await settle(tester);
     expect(find.text('12'), findsOneWidget);
+  });
+
+  testWidgets('довга назва пасіки не переповнює верхню панель карти', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final id = (await tester.runAsync(() => repo.addApiary('Дуже-дуже довга назва пасіки '
+        'на схилі біля річки, де багато липи та гречки')))!;
+    final a = (await tester.runAsync(() => repo.getApiary(id)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('меню: Характеристики — каталог без вибору й без «Зберегти»', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Характеристики'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Вага'), findsOneWidget);
+    expect(find.text('Зберегти'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('нова пасіка: створення -> карта -> «Головна» -> плитка в списку', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.tap(find.text('+  Створити карту'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'Нова пасіка');
+    await tester.tap(find.text('OK'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Нова пасіка'), findsWidgets); // шапка відкритої карти
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Головна'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Нова пасіка'), findsOneWidget); // плитка у списку
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('редактор шаблону: порожній шаблон не зберігається', (tester) async {
+    await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Додайте хоча б одну клітинку'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2)); // таймер попередження
+    final list = (await tester.runAsync(() => repo.listTemplates()))!;
+    expect(list.length, 1); // лише шаблон із setUp
   });
 }

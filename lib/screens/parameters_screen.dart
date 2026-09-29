@@ -22,18 +22,30 @@ class ParametersScreen extends StatefulWidget {
   final List<String> initialIds;
   final String? elType;
 
+  /// Загальний каталог (з бокового меню): без вибору й без "Зберегти" —
+  /// лише створення, редагування, видалення та історія параметрів.
+  final bool catalog;
+
   const ParametersScreen.forElement({super.key, required this.repo, required MapElement this.element})
       : initialIds = const [],
-        elType = null;
+        elType = null,
+        catalog = false;
+
+  const ParametersScreen.catalog({super.key, required this.repo})
+      : element = null,
+        initialIds = const [],
+        elType = null,
+        catalog = true;
 
   const ParametersScreen.forTemplate({
     super.key,
     required this.repo,
     required this.initialIds,
     required this.elType,
-  }) : element = null;
+  })  : element = null,
+        catalog = false;
 
-  bool get templateMode => element == null;
+  bool get templateMode => element == null && !catalog;
 
   @override
   State<ParametersScreen> createState() => _ParametersScreenState();
@@ -74,13 +86,23 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   bool _lockedBase(Parameter p) => p.isBase && targetType != null && p.baseType == targetType;
 
+  bool _saving = false;
+
   Future<void> _save() async {
+    // подвійний тап: другий виклик пізніше закрив би ще й екран під цим
+    if (_saving) return;
+    _saving = true;
     if (widget.templateMode) {
       Navigator.pop(context, List<String>.from(selected));
       return;
     }
-    await repo.setAttachedParameters(selected, widget.element!.entity);
-    if (mounted) Navigator.pop(context, true);
+    try {
+      await repo.setAttachedParameters(selected, widget.element!.entity);
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      _saving = false;
+      rethrow;
+    }
   }
 
   Future<void> _openForm([Parameter? param]) async {
@@ -218,7 +240,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         child: Stack(children: [
           Column(children: [
             TopBar(
-              title: 'Список параметрів',
+              title: widget.catalog ? 'Характеристики' : 'Список параметрів',
               onBack: () => Navigator.pop(context),
               trailing: CircleIconButton(
                 icon: 'plus_circle',
@@ -244,17 +266,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
                           itemBuilder: (_, i) => _card(list[i]),
                         ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: PillButton(
-                text: 'Зберегти',
-                bg: AppColors.accent,
-                height: 48,
-                radius: 16,
-                width: double.infinity,
-                onPressed: _save,
+            if (!widget.catalog)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: PillButton(
+                  text: 'Зберегти',
+                  bg: AppColors.accent,
+                  height: 48,
+                  radius: 16,
+                  width: double.infinity,
+                  onPressed: _save,
+                ),
               ),
-            ),
           ]),
           const Positioned.fill(child: ScreenFrame()),
         ]),
@@ -270,6 +293,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     return ListCard(
       height: 66,
       child: Row(children: [
+        if (!widget.catalog) ...[
         CheckToggle(
           checked: locked || selected.contains(p.id),
           onChanged: locked
@@ -284,6 +308,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   }),
         ),
         const SizedBox(width: 8),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

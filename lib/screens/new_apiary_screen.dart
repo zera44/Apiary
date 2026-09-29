@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
-import 'map_screen.dart';
 
 /// Створення нової пасіки: поки що лише назва (вибір місця на карті
 /// тимчасово прибрано).
@@ -40,9 +39,9 @@ class _NewApiaryScreenState extends State<NewApiaryScreen> {
       final id = await widget.repo.addApiary(name);
       final apiary = await widget.repo.getApiary(id);
       if (!mounted || apiary == null) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => MapScreen(repo: widget.repo, apiary: apiary),
-      ));
+      // повертаємо створену пасіку списку — він сам відкриє карту й, після
+      // повернення, оновить мініатюри (раніше вони лишались порожніми)
+      Navigator.of(context).pop(apiary);
     } finally {
       if (mounted) setState(() => _saving = false);
     }

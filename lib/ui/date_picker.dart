@@ -24,6 +24,15 @@ DateTime? parseDdMmYyyy(String? text) {
   return dt;
 }
 
+/// Перший (понеділок) день сітки календаря для місяця. Календарна
+/// арифметика, а не 24-годинні Duration: на переході на літній час
+/// subtract(Duration(days: n)) давав 23:00 попереднього дня й зсував усю
+/// сітку на день.
+DateTime calendarGridStart(int year, int month) {
+  final lead = DateTime(year, month, 1).weekday - 1; // понеділок = 0
+  return DateTime(year, month, 1 - lead);
+}
+
 String formatDdMmYyyy(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
@@ -80,9 +89,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final first = DateTime(year, month, 1);
-    final lead = first.weekday - 1; // понеділок = 0
-    final gridStart = first.subtract(Duration(days: lead));
+    final gridStart = calendarGridStart(year, month);
     final today = DateTime.now();
     final days = [for (var i = 0; i < 42; i++) DateTime(gridStart.year, gridStart.month, gridStart.day + i)];
 

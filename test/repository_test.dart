@@ -301,4 +301,12 @@ void main() {
     expect((await repo.listElements(apiaryId)).length, 3);
     expect(pid, isNotEmpty); // параметр створено (прив'язка — окремий тест)
   });
+
+  test('порядок пасік не змінюється після перейменування', () async {
+    final b = await repo.addApiary('Друга');
+    final c = await repo.addApiary('Третя');
+    await repo.updateApiary(apiaryId, name: 'Перша (нова назва)');
+    final ids = (await repo.listApiaries()).map((a) => a.id).toList();
+    expect(ids, [apiaryId, b, c]);
+  });
 }
