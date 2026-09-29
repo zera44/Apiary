@@ -234,6 +234,8 @@ class Repository {
     final t = now();
     final allParams = <String>[]; // упорядковано, без дублів
     await db.transaction((txn) async {
+      // усі клітинки — одним пакетом (один виклик у SQLite замість N)
+      final batch = txn.batch();
       for (final e in cells.entries) {
         final pos = parseCellKey(e.key);
         if (pos == null) continue;
@@ -242,7 +244,7 @@ class Repository {
         for (final pid in v.parameters) {
           if (!allParams.contains(pid)) allParams.add(pid);
         }
-        await txn.insert('elements', {
+        batch.insert('elements', {
           'id': newId(),
           'apiary_id': apiaryId,
           'x': anchorX + col,
@@ -258,6 +260,7 @@ class Repository {
           'color': v.color,
         });
       }
+      await batch.commit(noResult: true);
       if (allParams.isNotEmpty) {
         await setAttachedParameters(allParams, EntityRef.group(groupId), exec: txn);
       }
@@ -272,6 +275,26 @@ class Repository {
       [apiaryId],
     );
     return rows.map(MapElement.fromMap).toList();
+  }
+
+  /// Елементи кількох пасік ОДНИМ запитом (для мініатюр у списку пасік;
+  /// раніше — окремий запит на кожну пасіку).
+  Future<Map<String, List<MapElement>>> listElementsByApiary(Iterable<String> apiaryIds) async {
+    final ids = apiaryIds.toList();
+    final out = {for (final id in ids) id: <MapElement>[]};
+    const chunk = 400; // запас під ліміт змінних SQLite
+    for (var i = 0; i < ids.length; i += chunk) {
+      final part = ids.sublist(i, i + chunk > ids.length ? ids.length : i + chunk);
+      final rows = await db.rawQuery(
+        'SELECT * FROM elements WHERE deleted = 0 AND archived = 0 '
+        'AND apiary_id IN (${List.filled(part.length, '?').join(',')})',
+        part,
+      );
+      for (final r in rows) {
+        out[r['apiary_id'] as String]?.add(MapElement.fromMap(r));
+      }
+    }
+    return out;
   }
 
   Future<MapElement?> getElement(String id) async {
@@ -320,15 +343,17 @@ class Repository {
     final newPos = rotatedPositions({for (final e in els) e.id: (e.x, e.y)});
     final t = now();
     await db.transaction((txn) async {
+      final batch = txn.batch();
       for (final e in els) {
         final (nx, ny) = newPos[e.id]!;
-        await txn.update(
+        batch.update(
           'elements',
           {'x': nx, 'y': ny, 'rotation': (e.rotation + 90) % 360, 'updated_at': t, 'synced': 0},
           where: 'id = ?',
           whereArgs: [e.id],
         );
       }
+      await batch.commit(noResult: true);
     });
   }
 
@@ -353,12 +378,14 @@ class Repository {
     if (rows.isEmpty) return;
     final t = now();
     await db.transaction((txn) async {
+      final batch = txn.batch();
       for (final r in rows) {
         final m = r.toMap()
           ..['updated_at'] = t
           ..['synced'] = 0;
-        await txn.insert('elements', m, conflictAlgorithm: ConflictAlgorithm.replace);
+        batch.insert('elements', m, conflictAlgorithm: ConflictAlgorithm.replace);
       }
+      await batch.commit(noResult: true);
     });
   }
 
@@ -555,8 +582,9 @@ class Repository {
         'UPDATE element_parameters SET deleted = 1, synced = 0, updated_at = ? WHERE $w AND deleted = 0',
         [t, ...args],
       );
+      final batch = x.batch();
       for (var i = 0; i < ids.length; i++) {
-        await x.insert('element_parameters', {
+        batch.insert('element_parameters', {
           'id': newId(),
           'group_id': e.groupId,
           'element_id': e.elementId,
@@ -567,6 +595,7 @@ class Repository {
           'deleted': 0,
         });
       }
+      await batch.commit(noResult: true);
     }
 
     if (exec != null) {
@@ -707,6 +736,27 @@ class Repository {
     } else {
       await db.rawUpdate('UPDATE $table SET synced = 1 WHERE id = ?', [sentRow['id']]);
     }
+  }
+
+  /// Позначити синхронізованими одразу багато рядків однієї таблиці в ОДНІЙ
+  /// транзакції (той самий захист від змін під час відправки, що й у
+  /// [markSynced]). Раніше кожен рядок — окрема транзакція з fsync.
+  Future<void> markSyncedBatch(String table, List<Map<String, Object?>> sentRows) async {
+    assert(kSyncTables.contains(table));
+    if (sentRows.isEmpty) return;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final row in sentRows) {
+        final stamp = row['updated_at'];
+        if (stamp != null) {
+          batch.rawUpdate('UPDATE $table SET synced = 1 WHERE id = ? AND updated_at = ?',
+              [row['id'], stamp]);
+        } else {
+          batch.rawUpdate('UPDATE $table SET synced = 1 WHERE id = ?', [row['id']]);
+        }
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   /// Остаточно прибрати рядки, позначені deleted, що вже синхронізовані

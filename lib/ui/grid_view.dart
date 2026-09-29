@@ -112,6 +112,24 @@ class SceneCell {
   /// Тимчасовий зсув на екрані (перетягування / "трусіння").
   final Offset shift;
 
+  /// Та сама клітинка з іншим тимчасовим зсувом (для перетягування без
+  /// повторного обчислення злиття).
+  SceneCell withShift(Offset s) => SceneCell(
+        id: id,
+        x: x,
+        y: y,
+        type: type,
+        variant: variant,
+        icon: icon,
+        color: color,
+        merge: merge,
+        drawIcon: drawIcon,
+        iconOffset: iconOffset,
+        selected: selected,
+        selOpen: selOpen,
+        shift: s,
+      );
+
   const SceneCell({
     required this.id,
     required this.x,
@@ -413,14 +431,25 @@ class _ScenePainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
     }
 
+    // прямокутники рахуються один раз на кадр і для видимих клітинок
     final visible = (Offset.zero & size).inflate(cs * 2);
-    final vis = [for (final c in cells) if (visible.overlaps(_cellRect(c))) c];
+    final vis = <SceneCell>[];
+    final rects = <Rect>[];
+    for (final c in cells) {
+      final r = _cellRect(c);
+      if (visible.overlaps(r)) {
+        vis.add(c);
+        rects.add(r);
+      }
+    }
 
     // маска під обраними (щоб сітка не "прозирала" крізь підсвічений об'єкт)
     if (maskSelected) {
       final grass = Paint()..color = AppColors.grass;
-      for (final c in vis.where((c) => c.selected)) {
-        final b = bodyRect(_cellRect(c), c.merge);
+      for (var i = 0; i < vis.length; i++) {
+        final c = vis[i];
+        if (!c.selected) continue;
+        final b = bodyRect(rects[i], c.merge);
         const pad = 2.0;
         canvas.drawRect(
           Rect.fromLTRB(
@@ -434,13 +463,15 @@ class _ScenePainter extends CustomPainter {
       }
     }
     // 1) плашки
-    for (final c in vis) {
-      drawBody(canvas, bodyRect(_cellRect(c), c.merge), c.merge, fillColor(c.type, c.color));
+    for (var i = 0; i < vis.length; i++) {
+      final c = vis[i];
+      drawBody(canvas, bodyRect(rects[i], c.merge), c.merge, fillColor(c.type, c.color));
     }
     // 2) іконки — після всіх плашок, щоб сусідня плашка не перекрила іконку фігури
-    for (final c in vis) {
+    for (var i = 0; i < vis.length; i++) {
+      final c = vis[i];
       if (!c.drawIcon) continue;
-      final r = _cellRect(c);
+      final r = rects[i];
       final center = r.center + Offset(c.iconOffset.$1 * cs, -c.iconOffset.$2 * cs);
       drawCellIcon(canvas, center, cs, c.type, c.variant, c.icon);
     }
@@ -501,8 +532,15 @@ class _ScenePainter extends CustomPainter {
     ]);
   }
 
+  // Перемальовуємо лише коли щось справді змінилось (раніше — щоразу).
+  // Список клітинок незмінний: нова сцена завжди приходить НОВИМ списком.
   @override
-  bool shouldRepaint(_ScenePainter old) => true;
+  bool shouldRepaint(_ScenePainter old) =>
+      old.camera != camera ||
+      old.cs != cs ||
+      !identical(old.cells, cells) ||
+      old.blocked != blocked ||
+      old.maskSelected != maskSelected;
 }
 
 /// Лише для бенчмарків/тестів: painter сцени без віджета.

@@ -20,7 +20,7 @@ class ApiaryListScreen extends StatefulWidget {
 
 class _ApiaryListScreenState extends State<ApiaryListScreen> {
   List<Apiary>? apiaries;
-  final Map<String, List<MapElement>> _elements = {};
+  final Map<String, List<SceneCell>> _cells = {};
 
   @override
   void initState() {
@@ -30,15 +30,15 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   Future<void> _reload() async {
     final list = await widget.repo.listApiaries();
-    final els = <String, List<MapElement>>{
-      for (final a in list) a.id: await widget.repo.listElements(a.id),
-    };
+    // один запит на всі пасіки; клітинки для мініатюр рахуються тут раз,
+    // а не при кожному перемальовуванні списку
+    final els = await widget.repo.listElementsByApiary([for (final a in list) a.id]);
     if (!mounted) return;
     setState(() {
       apiaries = list;
-      _elements
+      _cells
         ..clear()
-        ..addAll(els);
+        ..addAll({for (final e in els.entries) e.key: _cellsOf(e.value)});
     });
   }
 
@@ -114,7 +114,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   }
 
   Widget _tile(Apiary a) {
-    final cells = _cellsOf(_elements[a.id] ?? const []);
+    final cells = _cells[a.id] ?? const <SceneCell>[];
     return Column(children: [
       Text(a.name,
           maxLines: 1,
@@ -138,7 +138,9 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                   onTap: () => _open(a),
                   onLongPress: () => _rename(a),
                   child: Stack(children: [
-                    Positioned.fill(child: IgnorePointer(child: SceneThumbnail(cells: cells))),
+                    Positioned.fill(
+                        child: IgnorePointer(
+                            child: RepaintBoundary(child: SceneThumbnail(cells: cells)))),
                     Positioned(
                       right: 3,
                       bottom: 3,

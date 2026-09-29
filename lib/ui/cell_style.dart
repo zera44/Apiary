@@ -40,6 +40,15 @@ Rect bodyRect(Rect cellRect, Merge m) {
   return Rect.fromLTWH(l, t, w, h);
 }
 
+// Paint-и перевикористовуються між викликами (колір виставляється перед
+// кожним малюванням) — так не створюється по 2 об'єкти на кожну клітинку
+// щокадру. Canvas копіює параметри Paint у момент виклику draw*, тож це
+// безпечно.
+final Paint _fillPaint = Paint();
+final Paint _borderPaint = Paint()
+  ..style = PaintingStyle.stroke
+  ..strokeWidth = 1.8;
+
 /// Плашка + темна межа: окрема клітинка — заокруглена рамка; злита —
 /// межа лише по зовнішніх сторонах.
 void drawBody(Canvas canvas, Rect r, Merge m, Color color, {double radius = 4}) {
@@ -51,11 +60,9 @@ void drawBody(Canvas canvas, Rect r, Merge m, Color color, {double radius = 4}) 
     bottomRight: (m.bottom || m.right) ? Radius.zero : rad,
     bottomLeft: (m.bottom || m.left) ? Radius.zero : rad,
   );
-  canvas.drawRRect(rrect, Paint()..color = color);
-  final border = Paint()
-    ..color = AppColors.objectBorder
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.8;
+  _fillPaint.color = color;
+  canvas.drawRRect(rrect, _fillPaint);
+  final border = _borderPaint..color = AppColors.objectBorder;
   if (!m.any) {
     canvas.drawRRect(RRect.fromRectAndRadius(r, rad), border);
     return;

@@ -74,11 +74,21 @@ class SyncService {
     if (_running) return (0, 0);
     _running = true;
     try {
-      if (!await hasInternet()) return (0, 0);
+      // Без адреси сервера (заглушка) інтернет не потрібен: перевірка
+      // сокетом кожні 20 с лише даремно будила мережу й радіомодуль.
+      if (apiUrl.isNotEmpty && !await hasInternet()) return (0, 0);
       var ok = 0, total = 0;
       for (final table in kSyncTables) {
-        for (final row in await repo.unsynced(table)) {
-          total++;
+        final rows = await repo.unsynced(table);
+        if (rows.isEmpty) continue;
+        total += rows.length;
+        if (apiUrl.isEmpty) {
+          // заглушка: усе позначається разом, однією транзакцією
+          await repo.markSyncedBatch(table, rows);
+          ok += rows.length;
+          continue;
+        }
+        for (final row in rows) {
           if (await _push(table, row)) {
             await repo.markSynced(table, row);
             ok++;

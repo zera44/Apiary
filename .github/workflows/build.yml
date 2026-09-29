@@ -59,6 +59,11 @@ jobs:
         run: |
           flutter create --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
+      # sqlite3_flutter_libs потрібен лише на комп'ютері: на Android
+      # sqflite користується системною SQLite, а власна копія додає
+      # ~1,7 МБ на кожну архітектуру.
+      - name: Прибрати зайву нативну SQLite з Android-збірки
+        run: flutter pub remove sqlite3_flutter_libs
       - name: Постійний ключ підпису (щоб оновлення встановлювались поверх старих)
         run: |
           mkdir -p ~/.android
@@ -67,7 +72,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter build apk --release --split-per-abi 2>&1 | tee build.log
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -110,7 +115,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter build windows --release 2>&1 | tee build.log
+          flutter build windows --release --obfuscate --split-debug-info=build/symbols 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -153,7 +158,7 @@ jobs:
           mv dist/apiary-apk/app-arm64-v8a-release.apk apiary-arm64.apk
           mv dist/apiary-apk/app-armeabi-v7a-release.apk apiary-arm32.apk
           mv dist/apiary-apk/app-x86_64-release.apk apiary-x86_64.apk
-          (cd dist/apiary-windows && zip -qr ../../apiary-windows.zip .)
+          (cd dist/apiary-windows && zip -qr9 ../../apiary-windows.zip .)
           ls -la apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip
       - name: Оновити реліз latest
         env:

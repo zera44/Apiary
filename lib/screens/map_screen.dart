@@ -636,8 +636,37 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // побудова
   // ---------------------------------------------------------------------
 
+  // Кеш сцени: злиття клітинок (mergeLayout) не залежить від зсувів під час
+  // перетягування/"трусіння", тож перераховується лише коли змінився список
+  // елементів або вибір — а не на кожному кадрі анімації.
+  List<MapElement>? _sceneEls;
+  String? _sceneSelId, _sceneSelGid;
+  List<SceneCell>? _sceneBase;
+  Set<String> _sceneSel = const {};
+
   List<SceneCell> _scene() {
-    final sel = {for (final e in selection) e.id};
+    if (_sceneBase == null ||
+        !identical(_sceneEls, elements) ||
+        _sceneSelId != selectedId ||
+        _sceneSelGid != selectedGroupId) {
+      _sceneSel = {for (final e in selection) e.id};
+      _sceneBase = _buildBaseScene(_sceneSel);
+      _sceneEls = elements;
+      _sceneSelId = selectedId;
+      _sceneSelGid = selectedGroupId;
+    }
+    final base = _sceneBase!;
+    final sel = _sceneSel;
+    final shakeX = _shake.isAnimating ? shakeOffset(_shake.value * 0.32, 0.32) : 0.0;
+    final d = _drag;
+    if (d == null && shakeX == 0) return base;
+    final cs = grid.cellSize;
+    final off = (d == null ? Offset.zero : Offset(d.shown.$1 * cs, -d.shown.$2 * cs)) +
+        Offset(shakeX, 0);
+    return [for (final c in base) sel.contains(c.id) ? c.withShift(off) : c];
+  }
+
+  List<SceneCell> _buildBaseScene(Set<String> sel) {
     final items = [
       for (final e in elements)
         MergeItem<String>(
@@ -652,17 +681,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       for (final e in elements)
         e.id: (type: e.type, variant: e.variant, icon: e.icon, color: e.color)
     };
-    final shifts = <String, Offset>{};
-    final shakeX = _shake.isAnimating ? shakeOffset(_shake.value * 0.32, 0.32) : 0.0;
-    final d = _drag;
-    if (d != null || shakeX != 0) {
-      final cs = grid.cellSize;
-      final off = d == null ? Offset.zero : Offset(d.shown.$1 * cs, -d.shown.$2 * cs);
-      for (final id in sel) {
-        shifts[id] = off + Offset(shakeX, 0);
-      }
-    }
-    return buildScene<String>(items: items, look: look, selected: sel, shifts: shifts);
+    return buildScene<String>(items: items, look: look, selected: sel);
   }
 
   @override

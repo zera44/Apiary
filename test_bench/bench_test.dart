@@ -105,6 +105,10 @@ void main() {
         await repo.listElements(a.id);
       }
     }));
+    report('list_screen_load_20x100_single_query', await timeIt(() async {
+      final list = await repo.listApiaries();
+      await repo.listElementsByApiary([for (final a in list) a.id]);
+    }));
     await repo.db.close();
 
     // повторний старт на заповненій базі

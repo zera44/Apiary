@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/services/excel_export.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -248,5 +249,56 @@ void main() {
     expect(sheet.maxRows, 2);
     expect(historyFileName('Мітка матки', null, DateTime(2026, 9, 28, 10, 5, 7)),
         'istoriya_Мітка_матки_20260928_100507.xlsx');
+  });
+
+  test('markSyncedBatch: не губить зміну, зроблену під час відправки', () async {
+    final a = await repo.addElement(apiaryId, 0, 0);
+    await repo.addElement(apiaryId, 1, 0);
+    final sent = await repo.unsynced('elements');
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await repo.moveElement(a, 5, 5); // змінили, поки "відправлялось"
+    await repo.markSyncedBatch('elements', sent);
+    final left = await repo.unsynced('elements');
+    expect(left.map((r) => r['id']), [a]);
+  });
+
+  test('syncOnce (заглушка без сервера) позначає все синхронізованим', () async {
+    await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+    final (ok, total) = await SyncService(repo).syncOnce();
+    expect(total, greaterThan(0));
+    expect(ok, total);
+    for (final t in kSyncTables) {
+      expect(await repo.unsynced(t), isEmpty, reason: t);
+    }
+  });
+
+  test('listElementsByApiary дає те саме, що listElements, для кожної пасіки', () async {
+    final other = await repo.addApiary('Друга');
+    await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+    await repo.addGroup(other, {'0,0': 'obstacle:trees'}, 4, 4);
+    final gid = await repo.addGroup(other, {'0,0': 'hive'}, 8, 8);
+    await repo.deleteGroup(gid); // видалені не потрапляють у знімок
+    final empty = await repo.addApiary('Порожня');
+    final all = await repo.listElementsByApiary([apiaryId, other, empty]);
+    for (final id in [apiaryId, other, empty]) {
+      final single = await repo.listElements(id);
+      expect(all[id]!.map((e) => e.id).toSet(), single.map((e) => e.id).toSet(), reason: id);
+    }
+    expect(all[apiaryId]!.length, 2);
+    expect(all[other]!.length, 1);
+    expect(all[empty], isEmpty);
+    expect(await repo.listElementsByApiary(const []), isEmpty);
+  });
+
+  test('пакетна вставка: addGroup зберігає всі клітинки та параметри', () async {
+    final pid = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
+    final gid = await repo.addGroup(
+        apiaryId, {'0,0': 'hive', '1,0': 'hive', '0,1': 'obstacle:trees'}, 2, 2,
+        groupLabel: 'Лежак');
+    final els = await repo.getGroupElements(gid);
+    expect(els.length, 3);
+    expect({for (final e in els) (e.x, e.y)}, {(2, 2), (3, 2), (2, 1)});
+    expect((await repo.listElements(apiaryId)).length, 3);
+    expect(pid, isNotEmpty); // параметр створено (прив'язка — окремий тест)
   });
 }
