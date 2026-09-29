@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
+import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/templates_screen.dart';
 import 'common.dart';
@@ -43,6 +45,10 @@ class AppDrawer extends StatelessWidget {
             nav.pop();
             openHiveByQr(nav, repo);
           }),
+          _item(context, 'qr', 'Генерувати QR-коди', () {
+            nav.pop();
+            openQrGenerator(nav, repo);
+          }),
         ]),
       ),
     );
@@ -70,6 +76,47 @@ class AppDrawer extends StatelessWidget {
     nav.push(MaterialPageRoute(
       builder: (_) =>
           MapScreen(repo: repo, apiary: found.apiary, focusElementId: found.element.id),
+    ));
+  }
+
+  /// Обрати пасіку (якщо їх кілька) і відкрити генератор кодів.
+  static Future<void> openQrGenerator(NavigatorState nav, Repository repo) async {
+    final list = await repo.listApiaries();
+    if (!nav.mounted) return;
+    if (list.isEmpty) {
+      await showInfo(nav.context, 'Спершу створіть пасіку.');
+      return;
+    }
+    Apiary? apiary = list.length == 1 ? list.first : null;
+    apiary ??= await showDialog<Apiary>(
+      context: nav.context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Для якої пасіки?'),
+        content: SizedBox(
+          width: 320,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              for (final a in list)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: PillButton(
+                    text: a.name,
+                    bg: AppColors.darkBtn,
+                    fg: AppColors.text,
+                    height: 44,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx, a),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+    if (apiary == null || !nav.mounted) return;
+    final chosen = apiary;
+    await nav.push(MaterialPageRoute(
+      builder: (_) => QrGenerateScreen(repo: repo, apiary: chosen),
     ));
   }
 

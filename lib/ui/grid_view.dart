@@ -112,6 +112,11 @@ class SceneCell {
   /// Тимчасовий зсув на екрані (перетягування / "трусіння").
   final Offset shift;
 
+  /// Зелений ободок (напр., "у вулика вже є QR-код") і сторони, по яких він
+  /// не малюється (злиття з іншою клітинкою з ободком — один контур).
+  final bool outlined;
+  final Merge outlineOpen;
+
   /// Та сама клітинка з іншим тимчасовим зсувом (для перетягування без
   /// повторного обчислення злиття).
   SceneCell withShift(Offset s) => SceneCell(
@@ -128,6 +133,8 @@ class SceneCell {
         selected: selected,
         selOpen: selOpen,
         shift: s,
+        outlined: outlined,
+        outlineOpen: outlineOpen,
       );
 
   const SceneCell({
@@ -144,6 +151,8 @@ class SceneCell {
     this.selected = false,
     this.selOpen = Merge.none,
     this.shift = Offset.zero,
+    this.outlined = false,
+    this.outlineOpen = Merge.none,
   });
 }
 
@@ -153,26 +162,30 @@ List<SceneCell> buildScene<K extends Object>({
   required Map<K, ({String type, String? variant, String? icon, String? color})> look,
   required Set<K> selected,
   Map<K, Offset> shifts = const {},
+  Set<K> outlined = const {},
 }) {
   final res = mergeLayout(items);
   final selKeys = <(int, int, String)>{
     for (final it in items)
       if (selected.contains(it.id)) (it.x, it.y, it.key)
   };
+  final outKeys = <(int, int, String)>{
+    for (final it in items)
+      if (outlined.contains(it.id)) (it.x, it.y, it.key)
+  };
+  Merge openAmong(MergeItem<K> it, Merge m, Set<(int, int, String)> keys) => Merge(
+        left: m.left && keys.contains((it.x - 1, it.y, it.key)),
+        right: m.right && keys.contains((it.x + 1, it.y, it.key)),
+        bottom: m.bottom && keys.contains((it.x, it.y - 1, it.key)),
+        top: m.top && keys.contains((it.x, it.y + 1, it.key)),
+      );
   final out = <SceneCell>[];
   for (final it in items) {
     final l = look[it.id]!;
     final m = res.merges[it.id] ?? Merge.none;
     final isSel = selected.contains(it.id);
-    var open = Merge.none;
-    if (isSel) {
-      open = Merge(
-        left: m.left && selKeys.contains((it.x - 1, it.y, it.key)),
-        right: m.right && selKeys.contains((it.x + 1, it.y, it.key)),
-        bottom: m.bottom && selKeys.contains((it.x, it.y - 1, it.key)),
-        top: m.top && selKeys.contains((it.x, it.y + 1, it.key)),
-      );
-    }
+    final open = isSel ? openAmong(it, m, selKeys) : Merge.none;
+    final isOut = outlined.contains(it.id);
     out.add(SceneCell(
       id: it.id,
       x: it.x,
@@ -187,6 +200,8 @@ List<SceneCell> buildScene<K extends Object>({
       selected: isSel,
       selOpen: open,
       shift: shifts[it.id] ?? Offset.zero,
+      outlined: isOut,
+      outlineOpen: isOut ? openAmong(it, m, outKeys) : Merge.none,
     ));
   }
   return out;
@@ -474,6 +489,35 @@ class _ScenePainter extends CustomPainter {
       final r = rects[i];
       final center = r.center + Offset(c.iconOffset.$1 * cs, -c.iconOffset.$2 * cs);
       drawCellIcon(canvas, center, cs, c.type, c.variant, c.icon);
+    }
+    // 2б) зелений ободок (напр., вулик уже має QR-код)
+    if (cells.any((c) => c.outlined)) {
+      final ring = Paint()
+        ..color = AppColors.qrLinked
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+      for (var i = 0; i < vis.length; i++) {
+        final c = vis[i];
+        if (!c.outlined) continue;
+        final b = bodyRect(rects[i], c.merge).deflate(2.5);
+        final o = c.outlineOpen;
+        if (!o.any) {
+          canvas.drawRRect(RRect.fromRectAndRadius(b, const Radius.circular(4)), ring);
+          continue;
+        }
+        final full = bodyRect(rects[i], c.merge);
+        // на злитих сторонах лінія доходить до краю, щоб контури з'єднались
+        final r = Rect.fromLTRB(
+          o.left ? full.left : b.left,
+          o.top ? full.top : b.top,
+          o.right ? full.right : b.right,
+          o.bottom ? full.bottom : b.bottom,
+        );
+        if (!o.bottom) canvas.drawLine(r.bottomLeft, r.bottomRight, ring);
+        if (!o.top) canvas.drawLine(r.topLeft, r.topRight, ring);
+        if (!o.left) canvas.drawLine(r.topLeft, r.bottomLeft, ring);
+        if (!o.right) canvas.drawLine(r.topRight, r.bottomRight, ring);
+      }
     }
     // 3) рамка виділення — одна по зовнішньому контуру обраної фігури
     final sel = cells.where((c) => c.selected).toList();

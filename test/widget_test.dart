@@ -5,6 +5,8 @@ import 'package:apiary/main.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
+import 'package:apiary/screens/qr_generate_screen.dart';
+import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
@@ -248,5 +250,48 @@ void main() {
     }
     expect(find.text('Вулик не знайдено'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('генератор QR: «Усі без коду» -> «Згенерувати» -> наліпки', (tester) async {
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(QrGenerateScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.textContaining('0 з 2'), findsOneWidget); // два вулики, кодів ще немає
+    await tester.tap(find.text('Усі без коду'));
+    await tester.pump();
+    expect(find.text('Згенерувати (2)'), findsOneWidget);
+    await tester.tap(find.text('Згенерувати (2)'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Наліпки (2)'), findsOneWidget);
+    final ids = (await tester.runAsync(() => repo.elementIdsWithQr(apiaryId)))!;
+    expect(ids.length, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('наліпка малюється в PNG, а PDF збирається', (tester) async {
+    final res = await tester.runAsync(() async {
+      final png = await renderLabelPng(
+          const QrLabel(code: 'MYAPIARY:H:1:abcdef12', name: 'Лежак 1 · 2', number: 1));
+      final pdf = await buildLabelsPdf(List.filled(13, png)); // 2 сторінки
+      return (png, pdf);
+    });
+    final (png, pdf) = res!;
+    expect(png.sublist(1, 4), 'PNG'.codeUnits);
+    expect(String.fromCharCodes(pdf.sublist(0, 5)), '%PDF-');
+  });
+
+  test('назва вулика на наліпці: номер у групі', () {
+    const g1 = MapElement(id: 'a', x: 0, y: 1, label: 'Лежак 1', groupId: 'g');
+    const g2 = MapElement(id: 'b', x: 1, y: 1, label: 'Лежак 1', groupId: 'g');
+    const g3 = MapElement(id: 'c', x: 0, y: 0, label: 'Лежак 1', groupId: 'g');
+    const o = MapElement(id: 'o', x: 1, y: 0, type: 'obstacle', label: 'Лежак 1', groupId: 'g');
+    const solo = MapElement(id: 's', x: 5, y: 5);
+    final all = [g3, o, g2, g1, solo];
+    expect(hiveLabelName(g1, all), 'Лежак 1 · 1');
+    expect(hiveLabelName(g2, all), 'Лежак 1 · 2');
+    expect(hiveLabelName(g3, all), 'Лежак 1 · 3');
+    expect(hiveLabelName(solo, all), 'Вулик');
   });
 }

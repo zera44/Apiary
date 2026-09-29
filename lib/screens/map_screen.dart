@@ -547,7 +547,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final params = await repo.attachedParameters(entity, elType: fresh.type);
     final latest = await repo.latestParameterValues(entity);
     final last = await repo.lastUpdated(entity);
-    final qr = await repo.qrFor(entity);
+    final qr = await repo.qrForElement(fresh);
     if (!mounted) return;
     setState(() {
       panelElement = fresh;
@@ -660,8 +660,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (el == null || _qrBusy) return;
     _qrBusy = true;
     try {
-      final entity = el.entity;
-      final current = await repo.qrFor(entity);
+      // код прив'язується до КОНКРЕТНОГО вулика (навіть у групі)
+      final target = EntityRef.element(el.id);
+      final current = await repo.qrForElement(el);
       if (!mounted) return;
       if (current != null) {
         final action = await showDialog<String>(
@@ -695,7 +696,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         );
         if (action == null || !mounted) return;
         if (action == 'unlink') {
-          await repo.unlinkQr(entity);
+          await repo.unlinkQr(target);
+          if (el.groupId != null) await repo.unlinkQr(EntityRef.group(el.groupId!));
           await _refreshPanel();
           return;
         }
@@ -704,7 +706,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (code == null || !mounted) return;
       final other = await repo.findByQr(code);
       if (!mounted) return;
-      if (other != null && other.element.entity != entity) {
+      final sameHive = other != null &&
+          (other.element.id == el.id ||
+              (el.groupId != null && other.element.groupId == el.groupId));
+      if (other != null && !sameHive) {
         final name = await repo.entityLabel(other.element.entity);
         if (!mounted) return;
         final move = await showConfirm(context,
@@ -715,7 +720,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             danger: false);
         if (!move) return;
       }
-      await repo.linkQr(code, entity);
+      await repo.linkQr(code, target);
       await _refreshPanel();
       _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
     } finally {

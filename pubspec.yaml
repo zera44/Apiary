@@ -26,6 +26,10 @@ dependencies:
   http: ^1.2.2
   # сканер QR-кодів вуликів (камера; лише Android/iOS)
   mobile_scanner: ^7.1.3
+  # генерація наліпок з QR-кодами вуликів і PDF для друку
+  qr: ^3.0.2
+  qr_flutter: ^4.1.0
+  pdf: ^3.11.3
 
 dev_dependencies:
   flutter_test:

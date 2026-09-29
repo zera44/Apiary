@@ -439,6 +439,22 @@ class Repository {
   /// Нормалізація відсканованого тексту: без пробілів/переносів по краях.
   static String normalizeQr(String raw) => raw.trim();
 
+  /// Префікс кодів, які генерує сам застосунок. Такий код — не посилання:
+  /// його розуміє лише "Моя пасіка" (сканер у меню).
+  static const appQrPrefix = 'MYAPIARY:H:';
+
+  /// Номер наліпки з коду застосунку ("MYAPIARY:H:12:ab34cd56" -> 12).
+  static int? appQrNumber(String code) {
+    final m = RegExp('^${RegExp.escape(appQrPrefix)}(\\d+):').firstMatch(code);
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
+
+  /// Номер наліпки, введений вручну: "12", "#12", "№ 0012".
+  static int? typedQrNumber(String text) {
+    final m = RegExp(r'^[#№]?\s*(\d{1,9})$').firstMatch(text.trim());
+    return m == null ? null : int.tryParse(m.group(1)!);
+  }
+
   /// Прив'язати [code] до об'єкта/групи. Попередня прив'язка цього коду (до
   /// іншого вулика) і попередній код цього вулика знімаються — завжди
   /// "один код — один вулик".
@@ -456,6 +472,7 @@ class Repository {
       await txn.insert('qr_codes', {
         'id': newId(),
         'code': c,
+        'number': appQrNumber(c),
         'group_id': e.groupId,
         'element_id': e.elementId,
         'deleted': 0,
@@ -463,6 +480,61 @@ class Repository {
         'synced': 0,
       });
     });
+  }
+
+  /// Згенерувати коди застосунку для вуликів [els] (кожен вулик — свій код,
+  /// навіть усередині групи). Вулик, у якого вже є ВЛАСНИЙ код, нового не
+  /// отримує — повертається наявний (щоб можна було передрукувати
+  /// наліпку). Результат — у тому ж порядку, що й [els].
+  Future<List<({String elementId, String code, int? number})>> generateQrForElements(
+      List<MapElement> els) async {
+    final out = <({String elementId, String code, int? number})>[];
+    final t = now();
+    await db.transaction((txn) async {
+      final maxRow = await txn.rawQuery('SELECT MAX(number) AS m FROM qr_codes');
+      var next = ((maxRow.first['m'] as num?) ?? 0).toInt() + 1;
+      for (final el in els) {
+        final existing = await txn.rawQuery(
+          'SELECT code, number FROM qr_codes WHERE deleted = 0 AND element_id = ? '
+          'AND group_id IS NULL ORDER BY updated_at DESC LIMIT 1',
+          [el.id],
+        );
+        if (existing.isNotEmpty) {
+          out.add((
+            elementId: el.id,
+            code: existing.first['code'] as String,
+            number: (existing.first['number'] as num?)?.toInt(),
+          ));
+          continue;
+        }
+        final n = next++;
+        final code = '$appQrPrefix$n:${newId().replaceAll('-', '').substring(0, 8)}';
+        await txn.insert('qr_codes', {
+          'id': newId(),
+          'code': code,
+          'number': n,
+          'group_id': null,
+          'element_id': el.id,
+          'deleted': 0,
+          'updated_at': t,
+          'synced': 0,
+        });
+        out.add((elementId: el.id, code: code, number: n));
+      }
+    });
+    return out;
+  }
+
+  /// Id об'єктів пасіки, що вже мають QR-код (власний або своєї групи).
+  Future<Set<String>> elementIdsWithQr(String apiaryId) async {
+    final rows = await db.rawQuery(
+      'SELECT e.id FROM elements e WHERE e.apiary_id = ? AND e.deleted = 0 AND ('
+      'EXISTS (SELECT 1 FROM qr_codes q WHERE q.deleted = 0 AND q.element_id = e.id '
+      'AND q.group_id IS NULL) OR (e.group_id IS NOT NULL AND EXISTS (SELECT 1 FROM '
+      'qr_codes q WHERE q.deleted = 0 AND q.group_id = e.group_id)))',
+      [apiaryId],
+    );
+    return {for (final r in rows) r['id'] as String};
   }
 
   /// Зняти прив'язку QR-коду з об'єкта/групи.
@@ -473,6 +545,12 @@ class Repository {
       [now(), ...args],
     );
   }
+
+  /// Код для панелі об'єкта: власний код вулика, а якщо його немає — код
+  /// його групи.
+  Future<String?> qrForElement(MapElement el) async =>
+      await qrFor(EntityRef.element(el.id)) ??
+      (el.groupId != null ? await qrFor(EntityRef.group(el.groupId!)) : null);
 
   /// Код, прив'язаний до об'єкта/групи, або null.
   Future<String?> qrFor(EntityRef e) async {
@@ -489,11 +567,20 @@ class Repository {
   Future<({MapElement element, Apiary apiary})?> findByQr(String code) async {
     final c = normalizeQr(code);
     if (c.isEmpty) return null;
-    final links = await db.rawQuery(
-      'SELECT group_id, element_id FROM qr_codes WHERE deleted = 0 AND code = ? '
-      'ORDER BY updated_at DESC',
-      [c],
-    );
+    // вручну можна ввести лише номер з наліпки
+    final typed = typedQrNumber(c);
+    final links = typed != null
+        ? await db.rawQuery(
+            // чужий код теж може складатись лише з цифр — тоді збіг за текстом
+            'SELECT group_id, element_id FROM qr_codes WHERE deleted = 0 '
+            'AND (number = ? OR code = ?) ORDER BY updated_at DESC',
+            [typed, c],
+          )
+        : await db.rawQuery(
+            'SELECT group_id, element_id FROM qr_codes WHERE deleted = 0 AND code = ? '
+            'ORDER BY updated_at DESC',
+            [c],
+          );
     for (final l in links) {
       final gid = l['group_id'] as String?;
       final eid = l['element_id'] as String?;

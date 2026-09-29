@@ -6,6 +6,7 @@ class AppColors {
   static Color _c(double r, double g, double b, [double a = 1]) =>
       Color.fromRGBO((r * 255).round(), (g * 255).round(), (b * 255).round(), a);
 
+  static const qrLinked = Color(0xFF43C463); // зелений ободок: у вулика є QR-код
   static final bg = _c(0.114, 0.086, 0.067);
   static final bgLight = _c(0.157, 0.122, 0.094);
   static final panel = _c(0.098, 0.075, 0.059);

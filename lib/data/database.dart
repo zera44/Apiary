@@ -141,6 +141,9 @@ class AppDatabase {
         updated_at REAL NOT NULL,
         synced INTEGER NOT NULL DEFAULT 0
       )''');
+    // номер наліпки (для кодів, згенерованих застосунком) — друкується під
+    // кодом і дозволяє знайти вулик, ввівши номер вручну
+    await _ensureColumn(db, 'qr_codes', 'number', 'INTEGER');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_qr_code ON qr_codes(code)');
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
