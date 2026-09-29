@@ -59,11 +59,13 @@ jobs:
         run: |
           flutter create --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
-      # Власна копія SQLite (пакет sqlite3, через native assets) потрібна лише
-      # на комп'ютері: на Android працює sqflite із системною SQLite, а
-      # додатковий libsqlite3.so важить ~0,9 МБ на кожну архітектуру.
+      # Власна копія SQLite потрібна лише на комп'ютері: на Android працює
+      # sqflite із системною SQLite, а додатковий libsqlite3.so важить
+      # ~0,8 МБ на кожну архітектуру. Її вкладають ДВА джерела: плагін
+      # sqlite3_flutter_libs і build-hook пакета sqlite3 — вимикаємо обидва.
       - name: Не вкладати власну SQLite в Android-збірку
         run: |
+          flutter pub remove sqlite3_flutter_libs
           cat >> pubspec.yaml <<'EOF2'
 
           hooks:
