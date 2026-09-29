@@ -208,7 +208,10 @@ void main() {
   });
 
   testWidgets('меню: сканер QR відкриває вулик на карті з панеллю', (tester) async {
-    // у тестах камери немає — код вводиться вручну (як на комп'ютері)
+    // у тестах камери немає — код вводиться вручну (як на комп'ютері);
+    // високе вікно, щоб уся панель (разом із рядком QR) була на екрані
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() => repo.linkQr('https://pasika.example/h/7', EntityRef.group(groupId)));
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
