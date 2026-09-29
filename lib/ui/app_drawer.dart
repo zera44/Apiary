@@ -11,15 +11,16 @@ import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
 
-/// Бічне меню (відкривається трьома смужками): Головна / Шаблони /
-/// Характеристики.
+/// Бічне меню карти пасіки (три смужки): Головна / Шаблони /
+/// Характеристики / QR-коди. Є лише на карті — зі списку пасік не
+/// відкривається.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
 
-  /// Пасіка, з карти якої відкрито меню: генератор кодів тоді одразу
-  /// відкривається для неї, без питання "Для якої пасіки?".
-  final Apiary? currentApiary;
-  const AppDrawer({super.key, required this.repo, this.currentApiary});
+  /// Пасіка, з карти якої відкрито меню (меню є лише на карті пасіки):
+  /// генератор кодів відкривається одразу для неї.
+  final Apiary currentApiary;
+  const AppDrawer({super.key, required this.repo, required this.currentApiary});
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +52,9 @@ class AppDrawer extends StatelessWidget {
           }),
           _item(context, 'qr', 'Генерувати QR-коди', () {
             nav.pop();
-            openQrGenerator(nav, repo, current: currentApiary);
+            nav.push(MaterialPageRoute(
+              builder: (_) => QrGenerateScreen(repo: repo, apiary: currentApiary),
+            ));
           }),
         ]),
       ),
@@ -80,54 +83,6 @@ class AppDrawer extends StatelessWidget {
     nav.push(MaterialPageRoute(
       builder: (_) =>
           MapScreen(repo: repo, apiary: found.apiary, focusElementId: found.element.id),
-    ));
-  }
-
-  /// Обрати пасіку (якщо їх кілька) і відкрити генератор кодів.
-  static Future<void> openQrGenerator(NavigatorState nav, Repository repo,
-      {Apiary? current}) async {
-    if (current != null) {
-      await nav.push(MaterialPageRoute(
-        builder: (_) => QrGenerateScreen(repo: repo, apiary: current),
-      ));
-      return;
-    }
-    final list = await repo.listApiaries();
-    if (!nav.mounted) return;
-    if (list.isEmpty) {
-      await showInfo(nav.context, 'Спершу створіть пасіку.');
-      return;
-    }
-    Apiary? apiary = list.length == 1 ? list.first : null;
-    apiary ??= await showDialog<Apiary>(
-      context: nav.context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Для якої пасіки?'),
-        content: SizedBox(
-          width: 320,
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              for (final a in list)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: PillButton(
-                    text: a.name,
-                    bg: AppColors.darkBtn,
-                    fg: AppColors.text,
-                    height: 44,
-                    width: double.infinity,
-                    onPressed: () => Navigator.pop(ctx, a),
-                  ),
-                ),
-            ]),
-          ),
-        ),
-      ),
-    );
-    if (apiary == null || !nav.mounted) return;
-    final chosen = apiary;
-    await nav.push(MaterialPageRoute(
-      builder: (_) => QrGenerateScreen(repo: repo, apiary: chosen),
     ));
   }
 

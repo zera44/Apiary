@@ -109,6 +109,8 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Почати'));
     await settle(tester);
+    await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
+    await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     await tester.tap(find.text('Характеристики'));
@@ -220,6 +222,8 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Почати'));
     await settle(tester);
+    await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
+    await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     await tester.tap(find.text('Сканувати QR вулика'));
@@ -239,6 +243,8 @@ void main() {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
     await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
@@ -352,5 +358,16 @@ void main() {
       expect(now, isNot(old[i].code));
     }
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('у списку пасік меню немає — лише на карті', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    expect(find.byTooltip('Меню'), findsNothing);
+    await tester.tap(find.byTooltip('Відкрити'));
+    await settle(tester);
+    expect(find.byTooltip('Меню'), findsOneWidget);
   });
 }
