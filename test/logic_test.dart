@@ -162,6 +162,13 @@ void main() {
       expect(p.first.when, DateTime(2026, 10, 3, 9));
     });
 
+    test('горизонт планування: ~45 днів наперед, але не менше 3 нагадувань', () {
+      final now = DateTime(2026, 10, 1, 10);
+      expect(planReminders([target(period: 1)], now: now).length, 45);
+      expect(planReminders([target(period: 2)], now: now).length, 22);
+      expect(planReminders([target(period: 30)], now: now).length, 3);
+    });
+
     test('ліміт кількості й порядок за часом', () {
       final many = [for (var i = 0; i < 50; i++) target()];
       final p = planReminders(many, now: DateTime(2026, 10, 1, 10), limit: 20);

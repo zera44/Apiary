@@ -51,7 +51,8 @@ class ReminderService {
   Timer? _debounce;
   Timer? _windowsTimer;
   List<VisitTarget> _targets = const [];
-  Map<String, int> _shown = {}; // Windows: ключ → мс часу показаного нагадування
+  // Windows: ключ об'єкта → показане нагадування (час + підпис даних)
+  final Map<String, _Shown> _shown = {};
   File? _stateFile;
 
   /// Запуск: перше планування + автооновлення при зміні карти. Безпечно
@@ -60,6 +61,7 @@ class ReminderService {
     if (!supported || _repo != null) return;
     _repo = repo;
     repo.mapChanges.addListener(_scheduleSoon);
+    repo.remindersChanged.addListener(_scheduleSoon);
     await reschedule();
     if (_windows) {
       _windowsTimer = Timer.periodic(const Duration(minutes: 1), (_) => _checkDueWindows());
@@ -123,7 +125,8 @@ class ReminderService {
     final now = DateTime.now();
     // iOS дозволяє лише 64 відкладені сповіщення
     final plans = planReminders(targets, now: now, limit: Platform.isIOS ? 60 : 300);
-    await _plugin.cancelAll();
+    // лише заплановані: уже показані в шторці сповіщення лишаються
+    await _plugin.cancelAllPendingNotifications();
     if (plans.isEmpty) return;
     await _requestPermission();
     var id = 1;
@@ -148,15 +151,23 @@ class ReminderService {
     if (_stateFile != null) return _stateFile;
     try {
       final dir = await getApplicationSupportDirectory();
-      _stateFile = File('${dir.path}${Platform.pathSeparator}reminders_state.json');
-      if (await _stateFile!.exists()) {
-        final m = jsonDecode(await _stateFile!.readAsString());
+      final file = File('${dir.path}${Platform.pathSeparator}reminders_state.json');
+      if (await file.exists()) {
+        final m = jsonDecode(await file.readAsString());
         if (m is Map) {
-          _shown = {for (final e in m.entries) e.key as String: (e.value as num).toInt()};
+          for (final e in m.entries) {
+            final v = _Shown.fromJson(e.value);
+            // те, що вже показано в цьому запуску, має перевагу над файлом
+            if (v != null) _shown.putIfAbsent(e.key as String, () => v);
+          }
         }
       }
-    } catch (_) {}
-    return _stateFile;
+      _stateFile = file; // кешуємо лише після успішного читання
+      return file;
+    } catch (e) {
+      debugPrint('Нагадування (стан): $e');
+      return null; // спробуємо ще раз при наступній перевірці
+    }
   }
 
   bool _checking = false;
@@ -172,23 +183,50 @@ class ReminderService {
         final d = dueReminder(t, now: now);
         if (d == null) continue;
         final ms = d.when.millisecondsSinceEpoch;
-        if ((_shown[t.key] ?? 0) >= ms) continue;
+        final sig = '${t.lastVisit}|${t.periodDays}|${t.periodSetAt?.millisecondsSinceEpoch}';
+        final prev = _shown[t.key];
+        // те саме нагадування вже показано (дані не змінювались); якщо дату
+        // обходу чи період змінили — рахуємо наново
+        if (prev != null && prev.ms >= ms && (prev.sig == null || prev.sig == sig)) continue;
         await _plugin.show(
           id: t.key.hashCode & 0x7fffffff,
           title: d.title,
           body: d.body,
           notificationDetails: _details,
         );
-        _shown[t.key] = ms;
+        _shown[t.key] = _Shown(ms, sig);
         changed = true;
       }
+      // прибрати записи вуликів, яких уже немає
+      final alive = {for (final t in _targets) t.key};
+      final before = _shown.length;
+      _shown.removeWhere((k, _) => !alive.contains(k));
+      if (_shown.length != before) changed = true;
       if (changed && file != null) {
-        await file.writeAsString(jsonEncode(_shown));
+        await file.writeAsString(jsonEncode({for (final e in _shown.entries) e.key: e.value.toJson()}));
       }
     } catch (e) {
       debugPrint('Нагадування (Windows): $e');
     } finally {
       _checking = false;
     }
+  }
+}
+
+/// Показане на Windows нагадування: час і "підпис" даних, з яких його
+/// порахували (щоб зміна дати обходу/періоду не ховала наступне).
+class _Shown {
+  final int ms;
+  final String? sig; // null — запис зі старого формату
+  const _Shown(this.ms, this.sig);
+
+  Map<String, Object?> toJson() => {'ms': ms, 'sig': sig};
+
+  static _Shown? fromJson(Object? v) {
+    if (v is num) return _Shown(v.toInt(), null);
+    if (v is Map && v['ms'] is num) {
+      return _Shown((v['ms'] as num).toInt(), v['sig'] as String?);
+    }
+    return null;
   }
 }

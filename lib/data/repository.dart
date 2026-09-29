@@ -45,6 +45,12 @@ class Repository {
   /// а, наприклад, через сканер QR).
   final ValueNotifier<int> mapChanges = ValueNotifier<int>(0);
 
+  /// Лічильник "могли змінитись дані, від яких залежать нагадування про
+  /// обхід" (вулики, пасіки, періодичність, дата обходу) — на нього
+  /// підписаний сервіс нагадувань і перебудовує план.
+  final ValueNotifier<int> remindersChanged = ValueNotifier<int>(0);
+  void _remindersDirty() => remindersChanged.value++;
+
   static const _uuid = Uuid();
   static String newId() => _uuid.v4();
 
@@ -113,6 +119,7 @@ class Repository {
       await txn.update('elements', {'deleted': 1, 'synced': 0, 'updated_at': t},
           where: 'apiary_id = ? AND deleted = 0', whereArgs: [id]);
     });
+    _remindersDirty();
   }
 
   Future<void> updateApiary(String id, {String? name, double? lat, double? lon}) async {
@@ -121,6 +128,7 @@ class Repository {
     if (lat != null) fields['lat'] = lat;
     if (lon != null) fields['lon'] = lon;
     await db.update('apiaries', fields, where: 'id = ?', whereArgs: [id]);
+    if (name != null) _remindersDirty(); // назва пасіки — у заголовку сповіщення
   }
 
   // ---------------------------------------------------------------------
@@ -363,12 +371,21 @@ class Repository {
     if (fields.isEmpty) return;
     await db.update('elements', {...fields, 'updated_at': now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    if (_affectsReminders(fields)) _remindersDirty();
   }
+
+  /// Зміни, що впливають на нагадування: видалення/архів/назва/тип.
+  static bool _affectsReminders(Map<String, Object?> f) =>
+      f.containsKey('deleted') ||
+      f.containsKey('archived') ||
+      f.containsKey('label') ||
+      f.containsKey('type');
 
   Future<void> updateGroup(String groupId, Map<String, Object?> fields) async {
     if (fields.isEmpty) return;
     await db.update('elements', {...fields, 'updated_at': now(), 'synced': 0},
         where: 'group_id = ?', whereArgs: [groupId]);
+    if (_affectsReminders(fields)) _remindersDirty();
   }
 
   Future<void> moveElement(String id, int x, int y) => updateElement(id, {'x': x, 'y': y});
@@ -438,6 +455,7 @@ class Repository {
       }
       await batch.commit(noResult: true);
     });
+    _remindersDirty();
   }
 
   /// Поточні (не видалені) прив'язки параметрів об'єкта/групи — повні
@@ -840,6 +858,7 @@ class Repository {
       'created_at': now(),
       'synced': 0,
     });
+    _remindersDirty();
   }
 
   static String formatVisitDate(DateTime d) =>

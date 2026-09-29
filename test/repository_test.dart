@@ -75,6 +75,20 @@ void main() {
     expect(targets[1].periodDays, isNull);
   });
 
+  test('нагадування перебудовуються після змін пасіки/вулика/обходу', () async {
+    var n = 0;
+    repo.remindersChanged.addListener(() => n++);
+    final el = await repo.addElement(apiaryId, 1, 1);
+    await repo.updateElement(el, {'x': 5}); // рух вулика не впливає
+    expect(n, 0);
+    await repo.updateElement(el, {'label': 'Вулик 9'});
+    await repo.deleteElement(el);
+    await repo.markVisited(EntityRef.element(el), when: DateTime(2026, 10, 3));
+    await repo.updateApiary(apiaryId, name: 'Нова назва');
+    await repo.deleteApiary(apiaryId);
+    expect(n, 5);
+  });
+
   test('ВИПРАВЛЕНО: перейменування базової характеристики не створює дубль', () async {
     final ids = await repo.baseParameterIds('hive');
     await repo.updateParameter(ids.first, {'name': 'Обхід'});

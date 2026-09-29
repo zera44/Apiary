@@ -99,7 +99,7 @@ List<DateTime> reminderTimes({
 List<PlannedReminder> planReminders(
   Iterable<VisitTarget> targets, {
   required DateTime now,
-  int perTarget = 3,
+  int? perTarget,
   int limit = 200,
 }) {
   final out = <PlannedReminder>[];
@@ -109,8 +109,11 @@ List<PlannedReminder> planReminders(
     final anchor = _parseDate(t.lastVisit) ?? t.periodSetAt;
     if (anchor == null) continue;
     final title = t.apiaryName.isEmpty ? 'Моя пасіка' : t.apiaryName;
+    // наперед — приблизно на 45 днів (щоб непройдений обхід «не замовкав»,
+    // навіть якщо застосунок довго не відкривали), але не менше 3
+    final count = perTarget ?? (45 ~/ period).clamp(3, 45);
     for (final when in reminderTimes(
-        lastVisit: anchor, periodDays: period, now: now, count: perTarget)) {
+        lastVisit: anchor, periodDays: period, now: now, count: count)) {
       out.add(PlannedReminder(t.elementId, title, reminderBody(t.name), when));
     }
   }
