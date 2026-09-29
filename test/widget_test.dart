@@ -7,6 +7,7 @@ import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
+import 'package:apiary/ui/fill_values_dialog.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -148,5 +149,61 @@ void main() {
     await tester.pump(const Duration(seconds: 2)); // таймер попередження
     final list = (await tester.runAsync(() => repo.listTemplates()))!;
     expect(list.length, 1); // лише шаблон із setUp
+  });
+
+  testWidgets('список пасік: видалення пасіки з підтвердженням', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Видалити'));
+    await settle(tester);
+    await tester.tap(find.text('Скасувати')); // скасували — пасіка на місці
+    await settle(tester);
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Видалити'));
+    await settle(tester);
+    await tester.tap(find.text('Видалити'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Тестова пасіка'), findsNothing);
+    expect(find.textContaining('Ще немає жодної пасіки'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Заповнити»: спорожнене поле й «Очистити» дату записують порожнє значення',
+      (tester) async {
+    const text = Parameter(id: 't', name: 'Нотатка');
+    const date = Parameter(id: 'd', name: 'Дата огляду', dataType: DataTypes.date);
+    const untouched = Parameter(id: 'u', name: 'Вага', dataType: DataTypes.text);
+    Map<String, String>? result;
+    await tester.pumpWidget(wrap(Builder(
+      builder: (ctx) => Center(
+        child: ElevatedButton(
+          onPressed: () async => result = await showFillValuesDialog(
+            ctx,
+            params: const [text, date, untouched],
+            latest: const {'t': 'привіт', 'd': '01.02.2026', 'u': '5'},
+          ),
+          child: const Text('відкрити'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('відкрити'));
+    await settle(tester);
+
+    // спорожнюємо текстове поле
+    await tester.enterText(find.byType(TextField).first, '');
+    // очищаємо дату через календар
+    await tester.tap(find.text('Обрати дату'));
+    await settle(tester);
+    await tester.tap(find.text('Очистити'));
+    await settle(tester);
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(result, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 }

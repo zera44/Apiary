@@ -309,4 +309,23 @@ void main() {
     final ids = (await repo.listApiaries()).map((a) => a.id).toList();
     expect(ids, [apiaryId, b, c]);
   });
+
+  test('deleteApiary: ховає пасіку з її об\'єктами, інші не чіпає, а purge прибирає рядки', () async {
+    final other = await repo.addApiary('Інша');
+    await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+    await repo.addGroup(other, {'0,0': 'hive'}, 0, 0);
+    await repo.deleteApiary(apiaryId);
+
+    expect((await repo.listApiaries()).map((a) => a.id), [other]);
+    expect(await repo.listElements(apiaryId), isEmpty);
+    expect((await repo.listElements(other)).length, 1);
+
+    // позначається до синхронізації, а після неї й пільгового терміну зникає
+    expect((await repo.unsynced('apiaries')).map((r) => r['id']), contains(apiaryId));
+    await SyncService(repo).syncOnce();
+    await repo.purgeDeleted(grace: Duration.zero);
+    expect(await repo.getApiary(apiaryId), isNull);
+    expect(await repo.getApiary(other), isNotNull);
+    expect((await repo.listElements(other)).length, 1);
+  });
 }

@@ -89,6 +89,19 @@ class Repository {
     return rows.isEmpty ? null : Apiary.fromMap(rows.first);
   }
 
+  /// М'яке видалення пасіки разом з усіма її об'єктами (в одній
+  /// транзакції). Історія значень лишається (як і для видалених об'єктів),
+  /// а самі рядки остаточно прибирає [purgeDeleted] після синхронізації.
+  Future<void> deleteApiary(String id) async {
+    final t = now();
+    await db.transaction((txn) async {
+      await txn.update('apiaries', {'deleted': 1, 'synced': 0, 'updated_at': t},
+          where: 'id = ?', whereArgs: [id]);
+      await txn.update('elements', {'deleted': 1, 'synced': 0, 'updated_at': t},
+          where: 'apiary_id = ? AND deleted = 0', whereArgs: [id]);
+    });
+  }
+
   Future<void> updateApiary(String id, {String? name, double? lat, double? lon}) async {
     final fields = <String, Object?>{'updated_at': now(), 'synced': 0};
     if (name != null) fields['name'] = name;
@@ -798,6 +811,8 @@ class Repository {
       );
       await txn.rawDelete(
           'DELETE FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+      await txn.rawDelete(
+          'DELETE FROM apiaries WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
     });
   }
 }

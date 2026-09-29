@@ -65,6 +65,22 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     await _reload();
   }
 
+  bool _deleting = false;
+
+  Future<void> _delete(Apiary a) async {
+    if (_deleting) return;
+    final ok = await showConfirm(context,
+        text: 'Видалити пасіку «${a.name}» разом з усіма її об\'єктами?');
+    if (!ok || _deleting) return;
+    _deleting = true;
+    try {
+      await widget.repo.deleteApiary(a.id);
+      await _reload();
+    } finally {
+      _deleting = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = apiaries;
@@ -143,6 +159,16 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                     Positioned.fill(
                         child: IgnorePointer(
                             child: RepaintBoundary(child: SceneThumbnail(cells: cells)))),
+                    Positioned(
+                      right: 3,
+                      top: 3,
+                      child: CircleIconButton(
+                          icon: 'trash',
+                          bg: AppColors.danger,
+                          size: 28,
+                          tooltip: 'Видалити',
+                          onPressed: () => _delete(a)),
+                    ),
                     Positioned(
                       right: 3,
                       bottom: 3,

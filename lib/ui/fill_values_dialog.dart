@@ -10,7 +10,8 @@ import 'theme.dart';
 /// Форма "Заповнити": поле на кожен прив'язаний параметр. Тип даних
 /// обмежує ввід (ціле / дробове), для "Дата" — календар, для "Колір" —
 /// фіксовані зразки. Повертає {parameter_id: нове значення} лише для
-/// змінених непорожніх полів, або null, якщо скасовано.
+/// змінених полів (порожній рядок — значення прибрали), або null, якщо
+/// скасовано.
 Future<Map<String, String>?> showFillValuesDialog(
   BuildContext context, {
   required List<Parameter> params,
@@ -67,7 +68,12 @@ class _FillDialogState extends State<_FillDialog> {
     final out = <String, String>{};
     for (final p in widget.params) {
       final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
-      if (raw.isEmpty) continue;
+      if (raw.isEmpty) {
+        // поле спорожнили (або "Очистити" в календарі): якщо раніше значення
+        // було — записуємо порожнє, тож у історії видно, що його прибрали
+        if ((widget.latest[p.id] ?? '').isNotEmpty) out[p.id] = '';
+        continue;
+      }
       var v = raw;
       if (p.dataType == DataTypes.int_) {
         final n = int.tryParse(v);
@@ -119,7 +125,8 @@ class _FillDialogState extends State<_FillDialog> {
               fill: c,
               selected: colorLabel == label,
               tooltip: label,
-              onTap: () => setState(() => _picked[p.id] = label),
+              // повторний тап по обраному кольору — зняти вибір
+              onTap: () => setState(() => _picked[p.id] = colorLabel == label ? '' : label),
             ),
         ]);
       default:
