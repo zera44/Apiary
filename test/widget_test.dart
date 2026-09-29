@@ -10,6 +10,7 @@ import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
+import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -307,6 +308,49 @@ void main() {
     await settle(tester);
     expect(find.text('Для якої пасіки?'), findsNothing);
     expect(find.text('QR-коди: Тестова пасіка'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('генератор QR: перегенерація питає підтвердження й вимикає старі коди',
+      (tester) async {
+    final els = (await tester.runAsync(() => repo.getGroupElements(groupId)))!;
+    final hives = els.where((e) => e.isHive).toList()..sort((a, b) => a.x.compareTo(b.x));
+    final old = (await tester.runAsync(() => repo.generateQrForElements(hives)))!;
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(QrGenerateScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.textContaining('2 з 2'), findsOneWidget);
+
+    // вулики (0,0) і (1,0), перешкода (0,-1): камера центрована на (1, 0),
+    // клітинка 34 px -> центри вуликів на (-17,-17) і (+17,-17) від центру
+    final c = tester.getCenter(find.byType(InfiniteGrid));
+    await tester.tapAt(c + const Offset(-17, -17));
+    await tester.pump();
+    await tester.tapAt(c + const Offset(17, -17));
+    await tester.pump();
+    await tester.tapAt(c + const Offset(-17, 17)); // перешкода — не обирається
+    await tester.pump();
+    expect(find.text('Згенерувати (2)'), findsOneWidget);
+
+    await tester.tap(find.text('Згенерувати (2)'));
+    await settle(tester);
+    expect(find.text('Перегенерувати коди?'), findsOneWidget);
+    await tester.tap(find.text('Скасувати')); // скасували — старі коди живі
+    await settle(tester);
+    expect((await tester.runAsync(() => repo.findByQr(old.first.code))), isNotNull);
+
+    await tester.tap(find.text('Згенерувати (2)'));
+    await settle(tester);
+    await tester.tap(find.text('Перегенерувати'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Наліпки (2)'), findsOneWidget);
+    for (var i = 0; i < hives.length; i++) {
+      expect((await tester.runAsync(() => repo.findByQr(old[i].code))), isNull);
+      final now = (await tester.runAsync(() => repo.qrForElement(hives[i])))!;
+      expect(now, isNot(old[i].code));
+    }
     expect(tester.takeException(), isNull);
   });
 }

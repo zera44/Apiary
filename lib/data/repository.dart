@@ -482,10 +482,10 @@ class Repository {
     });
   }
 
-  /// Згенерувати коди застосунку для вуликів [els] (кожен вулик — свій код,
-  /// навіть усередині групи). Вулик, у якого вже є ВЛАСНИЙ код, нового не
-  /// отримує — повертається наявний (щоб можна було передрукувати
-  /// наліпку). Результат — у тому ж порядку, що й [els].
+  /// Згенерувати НОВІ коди застосунку для вуликів [els] (кожен вулик — свій
+  /// код, навіть усередині групи). Попередній власний код вулика стає
+  /// неактивним: стара наліпка більше нічого не відкриває. Результат — у
+  /// тому ж порядку, що й [els].
   Future<List<({String elementId, String code, int? number})>> generateQrForElements(
       List<MapElement> els) async {
     final out = <({String elementId, String code, int? number})>[];
@@ -494,19 +494,11 @@ class Repository {
       final maxRow = await txn.rawQuery('SELECT MAX(number) AS m FROM qr_codes');
       var next = ((maxRow.first['m'] as num?) ?? 0).toInt() + 1;
       for (final el in els) {
-        final existing = await txn.rawQuery(
-          'SELECT code, number FROM qr_codes WHERE deleted = 0 AND element_id = ? '
-          'AND group_id IS NULL ORDER BY updated_at DESC LIMIT 1',
-          [el.id],
+        await txn.rawUpdate(
+          'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? '
+          'WHERE deleted = 0 AND element_id = ? AND group_id IS NULL',
+          [t, el.id],
         );
-        if (existing.isNotEmpty) {
-          out.add((
-            elementId: el.id,
-            code: existing.first['code'] as String,
-            number: (existing.first['number'] as num?)?.toInt(),
-          ));
-          continue;
-        }
         final n = next++;
         final code = '$appQrPrefix$n:${newId().replaceAll('-', '').substring(0, 8)}';
         await txn.insert('qr_codes', {

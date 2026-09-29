@@ -374,7 +374,7 @@ void main() {
   });
 
   group('генерація QR-кодів застосунку', () {
-    test('кожен вулик — свій код і номер; повторна генерація повертає ті самі', () async {
+    test('кожен вулик — свій код і номер; повторна генерація вимикає старі', () async {
       final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0,
           groupLabel: 'Лежак 1');
       final single = await repo.addElement(apiaryId, 5, 5);
@@ -394,13 +394,18 @@ void main() {
       expect(await repo.elementIdsWithQr(apiaryId), {for (final e in els) e.id});
 
       final again = await repo.generateQrForElements(els);
-      expect([for (final c in again) c.code], [for (final c in first) c.code]);
-
-      // нові номери не повторюють старі
-      final other = await repo.addElement(apiaryId, 9, 9);
-      final more = await repo.generateQrForElements([(await repo.getElement(other))!]);
       final maxOld = first.map((c) => c.number!).reduce((a, b) => a > b ? a : b);
-      expect(more.single.number, maxOld + 1);
+      for (var i = 0; i < els.length; i++) {
+        expect(again[i].elementId, first[i].elementId);
+        expect(again[i].code, isNot(first[i].code));
+        expect(again[i].number! > maxOld, isTrue); // номери не повторюються
+        // старий код і старий номер більше нічого не відкривають
+        expect(await repo.findByQr(first[i].code), isNull);
+        expect(await repo.findByQr('${first[i].number}'), isNull);
+        expect((await repo.findByQr(again[i].code))!.element.id, els[i].id);
+        expect(await repo.qrForElement(els[i]), again[i].code);
+      }
+      expect(await repo.elementIdsWithQr(apiaryId), {for (final e in els) e.id});
     });
 
     test('код групи підсвічує всі вулики групи; перенесений код зберігає номер', () async {
@@ -413,9 +418,9 @@ void main() {
       final b = await repo.addElement(apiaryId, 6, 4);
       final code = (await repo.generateQrForElements([(await repo.getElement(a))!])).single;
       await repo.linkQr(code.code, EntityRef.element(b)); // наліпку переклеїли
-      final again = (await repo.generateQrForElements([(await repo.getElement(b))!])).single;
-      expect(again.code, code.code);
-      expect(again.number, code.number);
+      expect(await repo.qrFor(EntityRef.element(b)), code.code);
+      expect(await repo.qrFor(EntityRef.element(a)), isNull);
+      // номер наліпки переїхав разом із кодом
       expect((await repo.findByQr('${code.number}'))!.element.id, b);
     });
 

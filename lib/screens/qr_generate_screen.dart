@@ -24,8 +24,9 @@ String hiveLabelName(MapElement el, List<MapElement> all) {
 }
 
 /// "Генерувати QR-коди": карта пасіки, де вулики з кодом мають зелений
-/// ободок. Тап обирає/знімає вулики (кілька), "Згенерувати" створює код для
-/// кожного обраного й показує наліпки.
+/// ободок. Тап обирає/знімає вулики (кілька), "Згенерувати" створює НОВИЙ
+/// код для кожного обраного (старий код вулика, якщо був, вимикається) і
+/// показує наліпки.
 class QrGenerateScreen extends StatefulWidget {
   final Repository repo;
   final Apiary apiary;
@@ -119,6 +120,15 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
 
   Future<void> _generate() async {
     if (_busy || selected.isEmpty) return;
+    final replacing = selected.where(linked.contains).length;
+    if (replacing > 0) {
+      final ok = await showConfirm(context,
+          title: 'Перегенерувати коди?',
+          text: 'У $replacing з ${selected.length} обраних вуликів уже є код. Вони отримають '
+              'нові коди, а старі наліпки перестануть працювати.',
+          confirmText: 'Перегенерувати');
+      if (!ok || !mounted || _busy) return;
+    }
     setState(() => _busy = true);
     try {
       final chosen = [for (final e in elements) if (selected.contains(e.id)) e]
