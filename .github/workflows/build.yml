@@ -19,7 +19,11 @@ jobs:
       - name: SQLite для тестів
         run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
       - run: flutter --version
-      - run: flutter pub get
+      - name: Залежності
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter pub get 2>&1 | tee build.log
       # падає лише на помилках (попередження й підказки — не критичні)
       - name: Аналіз коду
         shell: bash
