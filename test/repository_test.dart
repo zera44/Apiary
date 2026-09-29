@@ -31,7 +31,48 @@ void main() {
     final ids = await repo.baseParameterIds('hive');
     expect(ids.length, 3);
     final names = [for (final id in ids) (await repo.getParameter(id))!.name];
-    expect(names, ['Періодичність обходу', 'Дата початку обходу', 'Мітка матки']);
+    expect(names, ['Періодичність обходу', 'Дата останнього обходу', 'Мітка матки']);
+  });
+
+  test('стара назва "Дата початку обходу" міняється на "Дата останнього обходу"', () async {
+    final id = (await repo.baseParameterId('hive', 'visit_start'))!;
+    await repo.updateParameter(id, {'name': 'Дата початку обходу'});
+    await repo.init();
+    expect((await repo.getParameter(id))!.name, 'Дата останнього обходу');
+    // а власна назва користувача не чіпається
+    await repo.updateParameter(id, {'name': 'Мій обхід'});
+    await repo.init();
+    expect((await repo.getParameter(id))!.name, 'Мій обхід');
+  });
+
+  test('обхід: дата останнього обходу = сьогодні, без дубля того ж дня', () async {
+    final el = await repo.addElement(apiaryId, 1, 1, label: 'Вулик 5');
+    final ref = EntityRef.element(el);
+    final startId = (await repo.baseParameterId('hive', 'visit_start'))!;
+    expect((await repo.latestParameterValues(ref))[startId], isNull); // за замовчуванням порожньо
+    await repo.markVisited(ref, when: DateTime(2026, 10, 3));
+    await repo.markVisited(ref, when: DateTime(2026, 10, 3));
+    expect((await repo.latestParameterValues(ref))[startId], '03.10.2026');
+    expect((await repo.parameterHistory(startId, entity: ref)).length, 1);
+  });
+
+  test('цілі нагадувань: період + дата, групи одним записом, видалені не беруться', () async {
+    final a = await repo.addElement(apiaryId, 1, 1, label: 'Вулик 5');
+    final b = await repo.addElement(apiaryId, 2, 1, label: 'Вулик 6');
+    final gone = await repo.addElement(apiaryId, 3, 1, label: 'Вулик 7');
+    final periodId = (await repo.baseParameterId('hive', 'visit_period'))!;
+    final startId = (await repo.baseParameterId('hive', 'visit_start'))!;
+    await repo.addParameterRecord(periodId, '2', EntityRef.element(a));
+    await repo.addParameterRecord(startId, '01.10.2026', EntityRef.element(a));
+    await repo.addParameterRecord(periodId, 'abc', EntityRef.element(b)); // не число
+    await repo.addParameterRecord(periodId, '3', EntityRef.element(gone));
+    await repo.deleteElement(gone);
+    final targets = await repo.visitTargets();
+    expect(targets.map((t) => t.name), ['Вулик 5', 'Вулик 6']);
+    expect(targets[0].periodDays, 2);
+    expect(targets[0].lastVisit, '01.10.2026');
+    expect(targets[0].apiaryName, 'Тестова пасіка');
+    expect(targets[1].periodDays, isNull);
   });
 
   test('ВИПРАВЛЕНО: перейменування базової характеристики не створює дубль', () async {

@@ -7,6 +7,7 @@ import '../data/repository.dart';
 import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
 import '../logic/merge_layout.dart';
+import '../services/reminders.dart';
 import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
@@ -638,6 +639,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
     }
+    if (el.isHive) {
+      // обхід зроблено: дата останнього обходу = сьогодні, якщо її самі
+      // не змінювали в цій формі
+      final visitId = await repo.baseParameterId(el.type, 'visit_start');
+      if (visitId != null && !values.containsKey(visitId)) {
+        await repo.markVisited(entity, elType: el.type);
+      }
+    }
+    unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
   }
 

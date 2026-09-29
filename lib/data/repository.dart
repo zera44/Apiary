@@ -6,14 +6,20 @@ import 'package:uuid/uuid.dart';
 
 import '../logic/cell_value.dart';
 import '../logic/geometry.dart';
+import '../logic/visit_reminders.dart';
 import 'models.dart';
+
+/// Назва базової характеристики "дата останнього обходу" (ключ visit_start;
+/// раніше називалась "Дата початку обходу").
+const kVisitDateName = 'Дата останнього обходу';
+const _kOldVisitDateName = 'Дата початку обходу';
 
 /// Базові характеристики: обов'язкові для КОЖНОГО об'єкта свого типу.
 /// (стабільний ключ, назва за замовчуванням, одиниця, тип даних)
 const Map<String, List<(String, String, String?, String)>> kBaseParameters = {
   'hive': [
     ('visit_period', 'Періодичність обходу', 'днів', DataTypes.int_),
-    ('visit_start', 'Дата початку обходу', null, DataTypes.date),
+    ('visit_start', kVisitDateName, null, DataTypes.date),
     ('queen_mark', 'Мітка матки', null, DataTypes.color),
   ],
 };
@@ -148,12 +154,27 @@ class Repository {
           'AND deleted = 0 LIMIT 1',
           [baseType, key],
         );
-        if (exists.isNotEmpty) continue;
+        if (exists.isNotEmpty) {
+          // стара типова назва → нова (якщо її самі не перейменовували)
+          if (key == 'visit_start') {
+            await db.rawUpdate(
+              'UPDATE parameters SET name = ?, updated_at = ?, synced = 0 WHERE id = ? AND name = ?',
+              [kVisitDateName, now(), exists.first['id'], _kOldVisitDateName],
+            );
+          }
+          continue;
+        }
         if (legacyIdx < legacy.length) {
           await db.rawUpdate(
             'UPDATE parameters SET base_key = ? WHERE id = ?',
             [key, legacy[legacyIdx]['id']],
           );
+          if (key == 'visit_start') {
+            await db.rawUpdate(
+              'UPDATE parameters SET name = ?, updated_at = ?, synced = 0 WHERE id = ? AND name = ?',
+              [kVisitDateName, now(), legacy[legacyIdx]['id'], _kOldVisitDateName],
+            );
+          }
           legacyIdx++;
           continue;
         }
@@ -194,6 +215,16 @@ class Repository {
         return ((a['updated_at'] as num?) ?? 0).compareTo((b['updated_at'] as num?) ?? 0);
       });
     return [for (final r in sorted) r['id'] as String];
+  }
+
+  /// Id базової характеристики за стабільним ключем (наприклад 'visit_start').
+  Future<String?> baseParameterId(String elType, String key) async {
+    final rows = await db.rawQuery(
+      'SELECT id FROM parameters WHERE is_base = 1 AND base_type = ? AND base_key = ? '
+      'AND deleted = 0 ORDER BY rowid ASC LIMIT 1',
+      [elType, key],
+    );
+    return rows.isEmpty ? null : rows.first['id'] as String;
   }
 
   Future<Set<String>> allBaseParameterIds() async {
@@ -809,6 +840,76 @@ class Repository {
       'created_at': now(),
       'synced': 0,
     });
+  }
+
+  static String formatVisitDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+
+  /// Обхід зроблено: "Дата останнього обходу" вулика = [when] (сьогодні).
+  /// Якщо там уже ця дата — новий запис не додається (без сміття в історії).
+  Future<void> markVisited(EntityRef e, {String elType = 'hive', DateTime? when}) async {
+    final id = await baseParameterId(elType, 'visit_start');
+    if (id == null) return;
+    final text = formatVisitDate(when ?? DateTime.now());
+    final latest = await latestParameterValues(e);
+    if (latest[id] == text) return;
+    await addParameterRecord(id, text, e);
+  }
+
+  /// Усі вулики (для груп — по одному запису на групу) з їхніми
+  /// періодичністю й датою останнього обходу — для нагадувань. Тільки
+  /// живі, неархівні вулики у не видалених пасіках.
+  Future<List<VisitTarget>> visitTargets() async {
+    final periodId = await baseParameterId('hive', 'visit_period');
+    final startId = await baseParameterId('hive', 'visit_start');
+    if (periodId == null || startId == null) return [];
+    final els = await db.rawQuery(
+      'SELECT e.id, e.label, e.group_id, a.name AS apiary_name FROM elements e '
+      'JOIN apiaries a ON a.id = e.apiary_id '
+      "WHERE e.deleted = 0 AND e.archived = 0 AND e.type = 'hive' AND a.deleted = 0 "
+      'ORDER BY e.rowid ASC',
+    );
+    final recs = await db.rawQuery(
+      'SELECT group_id, element_id, parameter_id, value, created_at FROM parameter_records '
+      'WHERE parameter_id IN (?, ?) ORDER BY created_at ASC, rowid ASC',
+      [periodId, startId],
+    );
+    final period = <String, ({String? value, double at})>{};
+    final start = <String, String?>{};
+    for (final r in recs) {
+      final gid = r['group_id'] as String?;
+      final eid = r['element_id'] as String?;
+      final owner = gid != null ? 'g:$gid' : 'e:$eid';
+      if (r['parameter_id'] == periodId) {
+        period[owner] = (value: r['value'] as String?, at: ((r['created_at'] as num?) ?? 0).toDouble());
+      } else {
+        start[owner] = r['value'] as String?;
+      }
+    }
+    final seen = <String>{};
+    final out = <VisitTarget>[];
+    for (final r in els) {
+      final gid = r['group_id'] as String?;
+      final id = r['id'] as String;
+      final key = gid != null ? 'g:$gid' : 'e:$id';
+      if (!seen.add(key)) continue;
+      final p = period[key];
+      final n = int.tryParse((p?.value ?? '').trim());
+      final label = (r['label'] as String?) ?? '';
+      final last = (start[key] ?? '').trim();
+      out.add(VisitTarget(
+        key: key,
+        elementId: id,
+        apiaryName: (r['apiary_name'] as String?) ?? '',
+        name: label.isEmpty ? 'Вулик' : label,
+        periodDays: (n != null && n > 0) ? n : null,
+        lastVisit: last.isEmpty ? null : last,
+        periodSetAt: p == null
+            ? null
+            : DateTime.fromMicrosecondsSinceEpoch((p.at * 1e6).round()),
+      ));
+    }
+    return out;
   }
 
   /// Останні значення всіх параметрів об'єкта/групи: {parameter_id: value}.

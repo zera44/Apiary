@@ -1,6 +1,7 @@
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
+import 'package:apiary/logic/visit_reminders.dart';
 import 'package:apiary/ui/date_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -109,5 +110,73 @@ void main() {
       }
     }
     expect(calendarGridStart(2026, 4), DateTime(2026, 3, 30));
+  });
+
+  group('нагадування про обхід', () {
+    test('початок 1.10 і період 2 дні: нагадування 3.10, 5.10, 7.10 о 9:00', () {
+      final t = reminderTimes(
+          lastVisit: DateTime(2026, 10, 1), periodDays: 2, now: DateTime(2026, 10, 1, 10));
+      expect(t, [DateTime(2026, 10, 3, 9), DateTime(2026, 10, 5, 9), DateTime(2026, 10, 7, 9)]);
+    });
+
+    test('обійшов 3.10 — наступне нагадування 5.10', () {
+      final t = reminderTimes(
+          lastVisit: DateTime(2026, 10, 3), periodDays: 2, now: DateTime(2026, 10, 3, 12));
+      expect(t.first, DateTime(2026, 10, 5, 9));
+    });
+
+    test('прострочений обхід: далі кожні період днів у майбутньому', () {
+      final t = reminderTimes(
+          lastVisit: DateTime(2026, 10, 1), periodDays: 2, now: DateTime(2026, 10, 10, 12));
+      expect(t, [DateTime(2026, 10, 11, 9), DateTime(2026, 10, 13, 9), DateTime(2026, 10, 15, 9)]);
+    });
+
+    test('нульовий/від\'ємний/завеликий період — без нагадувань', () {
+      for (final p in [0, -1, 100000]) {
+        expect(reminderTimes(lastVisit: DateTime(2026, 10, 1), periodDays: p, now: DateTime(2026, 10, 1)),
+            isEmpty);
+      }
+    });
+
+    VisitTarget target({int? period = 2, String? last = '01.10.2026', DateTime? setAt}) => VisitTarget(
+        key: 'e:1',
+        elementId: '1',
+        apiaryName: 'Пасіка',
+        name: 'Вулик 5',
+        periodDays: period,
+        lastVisit: last,
+        periodSetAt: setAt);
+
+    test('текст сповіщення', () {
+      final p = planReminders([target()], now: DateTime(2026, 10, 1, 10));
+      expect(p.first.body, 'Ти давно не заглядав у вулик 5. Перевір його');
+      expect(p.first.title, 'Пасіка');
+      expect(reminderBody('Лежак 1'), 'Ти давно не заглядав у вулик Лежак 1. Перевір його');
+    });
+
+    test('без періоду або без дати відліку — нічого; дата відліку з моменту задання періоду', () {
+      final now = DateTime(2026, 10, 1, 10);
+      expect(planReminders([target(period: null)], now: now), isEmpty);
+      expect(planReminders([target(last: null)], now: now), isEmpty);
+      final p = planReminders([target(last: null, setAt: DateTime(2026, 10, 1, 8))], now: now);
+      expect(p.first.when, DateTime(2026, 10, 3, 9));
+    });
+
+    test('ліміт кількості й порядок за часом', () {
+      final many = [for (var i = 0; i < 50; i++) target()];
+      final p = planReminders(many, now: DateTime(2026, 10, 1, 10), limit: 20);
+      expect(p.length, 20);
+      for (var i = 1; i < p.length; i++) {
+        expect(p[i].when.isBefore(p[i - 1].when), isFalse);
+      }
+    });
+
+    test('dueReminder: найпізніше нагадування, що вже настало', () {
+      final d = dueReminder(target(), now: DateTime(2026, 10, 10, 12))!;
+      expect(d.when, DateTime(2026, 10, 9, 9));
+      expect(dueReminder(target(), now: DateTime(2026, 10, 2, 12)), isNull);
+      expect(dueReminder(target(), now: DateTime(2026, 10, 3, 8)), isNull);
+      expect(dueReminder(target(), now: DateTime(2026, 10, 3, 9, 1))!.when, DateTime(2026, 10, 3, 9));
+    });
   });
 }

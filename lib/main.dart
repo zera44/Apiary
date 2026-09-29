@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/database.dart';
 import 'data/repository.dart';
 import 'data/sync_service.dart';
 import 'screens/splash_screen.dart';
+import 'services/reminders.dart';
 import 'ui/theme.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
@@ -15,6 +18,8 @@ Future<void> main() async {
   final repo = Repository(db);
   await repo.init();
   final sync = SyncService(repo)..start();
+  // нагадування про обхід; збій не повинен заважати запуску
+  unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
   runApp(ApiaryApp(repo: repo, sync: sync));
 }
 
