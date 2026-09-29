@@ -34,6 +34,12 @@ jobs:
       - name: Показати помилку
         if: failure()
         run: python3 tool/ci_error_report.py build.log
+      - name: Бенчмарк швидкості
+        shell: bash
+        run: |
+          flutter test test_bench/bench_test.dart 2>&1 | tee bench.log || true
+          grep -h '^BENCH|' bench.log | sed 's/^BENCH|//' > bench.txt || true
+          echo "::notice title=BENCH::$(sed ':a;N;$!ba;s/\n/%0A/g' bench.txt)"
 
   android:
     name: APK для Android
@@ -66,6 +72,21 @@ jobs:
         if: failure()
         shell: bash
         run: python3 tool/ci_error_report.py build.log
+      - name: Розмір APK (звіт)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import zipfile, glob, os
+          out = []
+          for f in sorted(glob.glob('build/app/outputs/flutter-apk/*.apk')):
+              out.append(f'{os.path.basename(f)} = {os.path.getsize(f)}')
+          z = zipfile.ZipFile('build/app/outputs/flutter-apk/app-arm64-v8a-release.apk')
+          items = sorted(z.infolist(), key=lambda i: -i.compress_size)[:14]
+          out.append('arm64 top entries (compressed):')
+          for i in items:
+              out.append(f'  {i.compress_size:>9} {i.filename}')
+          print('::notice title=APKSIZE::' + '%0A'.join(out))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: apiary-apk
@@ -94,6 +115,21 @@ jobs:
         if: failure()
         shell: bash
         run: python tool/ci_error_report.py build.log
+      - name: Розмір Windows-збірки (звіт)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          rows = []
+          root = 'build/windows/x64/runner/Release'
+          for d, _, fs in os.walk(root):
+              for f in fs:
+                  q = os.path.join(d, f)
+                  rows.append((os.path.getsize(q), os.path.relpath(q, root)))
+          rows.sort(reverse=True)
+          out = [f'total = {sum(r[0] for r in rows)}'] + [f'  {a:>10} {b}' for a, b in rows[:12]]
+          print('::notice title=WINSIZE::' + '%0A'.join(out))
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: apiary-windows

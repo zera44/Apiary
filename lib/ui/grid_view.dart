@@ -505,6 +505,15 @@ class _ScenePainter extends CustomPainter {
   bool shouldRepaint(_ScenePainter old) => true;
 }
 
+/// Лише для бенчмарків/тестів: painter сцени без віджета.
+@visibleForTesting
+CustomPainter debugScenePainter({
+  required Offset camera,
+  required double cs,
+  required List<SceneCell> cells,
+}) =>
+    _ScenePainter(camera: camera, cs: cs, cells: cells, blocked: false, maskSelected: true);
+
 /// Статичний зменшений знімок карти: усі клітинки вписуються в доступний
 /// розмір (для плиток списку пасік). Без жестів і виділення.
 class SceneThumbnail extends StatelessWidget {
