@@ -95,9 +95,12 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
 
     return AlertDialog(
       title: const Text('Оберіть дату'),
+      // прокручується, щоб на низькому екрані/малому вікні не було
+      // переповнення (календар із 6 рядків доволі високий)
       content: SizedBox(
         width: 320,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+        child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
             CircleIconButton(
                 icon: 'arrow_left',
@@ -138,7 +141,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
               for (final d in days) _dayCell(d, today),
             ],
           ),
-        ]),
+        ])),
       ),
       actions: [
         Row(children: [
