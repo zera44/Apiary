@@ -483,13 +483,16 @@ class _ParametersScreenState extends State<ParametersScreen> {
             ],
           ),
         ),
-        CircleIconButton(
-            icon: 'history',
-            bg: AppColors.addObject,
-            size: 36,
-            tooltip: 'Історія',
-            onPressed: () => _history(p)),
-        const SizedBox(width: 6),
+        // історія характеристик у каталозі — окремою вкладкою меню («Історія»)
+        if (!widget.catalog) ...[
+          CircleIconButton(
+              icon: 'history',
+              bg: AppColors.addObject,
+              size: 36,
+              tooltip: 'Історія',
+              onPressed: () => _history(p)),
+          const SizedBox(width: 6),
+        ],
         // редагувати й видаляти параметр можна лише в каталозі (меню →
         // «Характеристики»); зміни назви одразу видно в усіх вуликах, бо
         // параметр один на всіх

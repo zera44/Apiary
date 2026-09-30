@@ -329,6 +329,10 @@ class _ItemDialogState extends State<_ItemDialog> {
 
   Widget _chip(String label, String value) => ChoiceChip(
         label: Text(label),
+        // компактні: з клавіатурою на екрані діалог і так невисокий
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         selected: _unit == value,
         onSelected: (_) => setState(() {
           _unit = value;
@@ -341,9 +345,13 @@ class _ItemDialogState extends State<_ItemDialog> {
     final edit = widget.item != null;
     return AlertDialog(
       title: Text(edit ? 'Номенклатура' : 'Нова номенклатура'),
+      scrollable: false,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       content: SizedBox(
         width: 340,
         child: SingleChildScrollView(
+          // відступ зверху — щоб підпис поля «Назва» не обрізався краєм прокрутки
+          padding: const EdgeInsets.only(top: 10, bottom: 4),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             TextField(
               controller: _name,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
 import '../screens/qr_generate_screen.dart';
@@ -13,8 +14,8 @@ import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
 
-/// Бічне меню карти пасіки (три смужки): Головна / Шаблони /
-/// Характеристики / Склад / QR-коди. Є лише на карті — зі списку пасік не
+/// Меню навігації (три смужки на карті пасіки): Головна / Шаблони /
+/// Характеристики / Склад / Історія / QR-коди. Є лише на карті — зі списку пасік не
 /// відкривається.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
@@ -43,7 +44,7 @@ class AppDrawer extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Text('Моя пасіка',
+            child: Text('Меню навігації',
                 style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
           ),
           _item(context, 'beehive', 'Головна', () {
@@ -54,6 +55,7 @@ class AppDrawer extends StatelessWidget {
           _item(context, 'history', 'Характеристики',
               () => _open(nav, ParametersScreen.catalog(repo: repo))),
           _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
+          _item(context, 'history', 'Історія', () => _open(nav, HistoryHubScreen(repo: repo))),
           _item(context, 'qr', 'Сканувати QR вулика', () {
             nav.pop();
             openHiveByQr(nav, repo);

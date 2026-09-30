@@ -4,6 +4,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
+import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
@@ -108,6 +109,27 @@ void main() {
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
     expect(find.text('1 кг'), findsOneWidget);
+  });
+
+  testWidgets('історія: вкладки «Характеристики» і «Склад», записи складу', (tester) async {
+    final id = await repo.addStockItem('Цукор', 'кг');
+    await repo.fillStock(id, 5, add: false);
+    await repo.fillStock(id, 2, add: true);
+    final params = await repo.listParameters();
+    await tester.pumpWidget(wrap(HistoryHubScreen(repo: repo)));
+    await settle(tester);
+    expect(find.text(params.first.nameWithUnit), findsOneWidget);
+
+    await tester.tap(find.text('Склад'));
+    await settle(tester);
+    expect(find.text('Зараз: 7 кг'), findsOneWidget);
+    await tester.tap(find.text('Цукор'));
+    await settle(tester);
+    expect(find.text('Історія: Цукор'), findsOneWidget);
+    expect(find.text('Додано'), findsOneWidget);
+    expect(find.text('+2 кг'), findsOneWidget);
+    expect(find.text('Перезаписано'), findsOneWidget);
+    expect(find.text('стало: 7 кг'), findsOneWidget);
   });
 
   testWidgets('заставка: кнопка «Пройти навчання» відкриває режим навчання', (tester) async {
