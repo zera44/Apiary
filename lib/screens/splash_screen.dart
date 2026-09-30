@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
 import '../ui/common.dart';
-import '../ui/icons.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'tutorial_screen.dart';
@@ -21,14 +20,18 @@ class SplashScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Material(
-                  color: AppColors.hive,
-                  shape: const CircleBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  child: const Padding(
-                    padding: EdgeInsets.all(22),
-                    child: AppIcon('beekeeper', color: Colors.white, size: 72),
+                // іконка застосунку: пасічник із рамкою меду на кремовому тлі
+                // (як на телефоні; малюнок — design/guide/beekeeper_honey_frame.pdf)
+                Container(
+                  width: 168,
+                  height: 168,
+                  padding: const EdgeInsets.fromLTRB(26, 16, 26, 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFBE9C4),
+                    borderRadius: BorderRadius.circular(38),
                   ),
+                  child: Image.asset('assets/guide/beekeeper_honey_frame.png',
+                      filterQuality: FilterQuality.medium),
                 ),
                 const SizedBox(height: 28),
                 Text('Vulyk',
