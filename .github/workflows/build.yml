@@ -224,7 +224,8 @@ jobs:
   release:
     name: Опублікувати реліз
     needs: [android, windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # main — реліз «latest»; ручний запуск з іншої гілки — пре-реліз test-<гілка>
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -241,7 +242,20 @@ jobs:
           sha256sum apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
           ls -la apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip
+      - name: Тестовий пре-реліз гілки
+        if: github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: test-${{ github.ref_name }}
+        run: |
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
+            --target "${{ github.sha }}" --prerelease \
+            --title "Тестова збірка гілки ${{ github.ref_name }}" \
+            --notes "Збірка з коміту ${GITHUB_SHA::7} гілки ${{ github.ref_name }} (не основна)."
       - name: Оновити реліз latest
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

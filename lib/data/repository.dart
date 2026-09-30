@@ -1479,32 +1479,97 @@ class Repository {
       where: 'id = ?', whereArgs: [id]);
 
   /// Прихід: залишок += [amount]. [date] — дата операції (типово — зараз),
-  /// [price] — ціна за одиницю. Повертає новий залишок.
+  /// [total] — загальна вартість (ціна за одиницю = total / amount).
+  /// Повертає новий залишок.
   Future<double> receiveStock(String id, double amount,
-          {DateTime? date, double? price, String? comment}) =>
-      _stockMove(id, 'in', amount, date: date, price: price, comment: comment);
+      {DateTime? date, double? total, String? comment}) {
+    if (!(amount > 0)) throw ArgumentError.value(amount, 'amount', 'має бути більше 0');
+    return _stockMove(id, 'in', amount, amount,
+        date: date, total: total, price: total == null ? null : total / amount, comment: comment);
+  }
 
   /// Вибуття (списання): залишок −= [amount]; більше за залишок — не можна
-  /// ([StateError]). [reason] — причина.
+  /// ([StateError]).
   Future<double> writeOffStock(String id, double amount,
-          {required String reason, DateTime? date, String? comment}) =>
-      _stockMove(id, 'out', amount, date: date, reason: reason, comment: comment);
+      {String? reason, DateTime? date, String? comment}) {
+    if (!(amount > 0)) throw ArgumentError.value(amount, 'amount', 'має бути більше 0');
+    return _stockMove(id, 'out', amount, -amount, date: date, reason: reason, comment: comment);
+  }
+
+  /// Інвентаризація: [actual] — фактична кількість. Записується різниця
+  /// (amount зі знаком: − нестача, + надлишок), залишок = [actual].
+  Future<double> inventoryStock(String id, double actual, {DateTime? date, String? comment}) {
+    if (actual.isNaN || actual < 0) throw ArgumentError.value(actual, 'actual', 'не менше 0');
+    return _stockMove(id, 'inv', 0, 0, date: date, comment: comment, setTo: actual);
+  }
+
+  /// Скасувати помилковий запис: сам запис лишається в історії з позначкою
+  /// «скасовано», а новий запис 'cancel' повертає залишок назад. Не можна
+  /// скасувати двічі, скасування, старий «перезапис» і прихід, який уже
+  /// (частково) списано так, що залишок став би від'ємним.
+  Future<double> cancelStockMove(String moveId) {
+    return db.transaction((txn) async {
+      final rows = await txn.query('stock_moves', where: 'id = ?', whereArgs: [moveId], limit: 1);
+      if (rows.isEmpty) throw StateError('Запис не знайдено');
+      final m = rows.first;
+      final kind = m['kind'] as String;
+      if ((m['cancelled'] as int? ?? 0) == 1) throw StateError('Цей запис уже скасовано');
+      if (kind == 'cancel') throw StateError('Скасування не можна скасувати');
+      if (kind == 'set') throw StateError('Старий запис «перезаписано» не можна скасувати');
+      final amount = (m['amount'] as num).toDouble();
+      final effect = switch (kind) { 'out' => -amount, _ => amount }; // in/add: +, inv: зі знаком
+      final itemId = m['item_id'] as String;
+      final items = await txn.query('stock_items',
+          columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
+      if (items.isEmpty) throw StateError('Номенклатуру не знайдено');
+      final prev = (items.first['quantity'] as num?)?.toDouble() ?? 0;
+      var next = prev - effect;
+      if (next < -1e-9) {
+        throw StateError('Не можна скасувати: частину вже списано '
+            '(залишок: ${_fmtQty(prev)} ${items.first['unit']})');
+      }
+      if (next.abs() < 1e-9) next = 0;
+      final t = now();
+      await txn.update('stock_moves', {'cancelled': 1, 'updated_at': t, 'synced': 0},
+          where: 'id = ?', whereArgs: [moveId]);
+      await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
+          where: 'id = ?', whereArgs: [itemId]);
+      await txn.insert('stock_moves', {
+        'id': newId(),
+        'item_id': itemId,
+        'kind': 'cancel',
+        'amount': -effect,
+        'quantity_after': next,
+        'op_date': t,
+        'ref_id': moveId,
+        'created_at': t,
+        'updated_at': t,
+        'synced': 0,
+      });
+      return next;
+    });
+  }
 
   /// Кожна операція — окремий запис у stock_moves; залишок у stock_items
-  /// змінюється в тій самій транзакції. Нічого не перезаписується.
-  Future<double> _stockMove(String id, String kind, double amount,
-      {DateTime? date, double? price, String? reason, String? comment}) {
-    if (!(amount > 0)) throw ArgumentError.value(amount, 'amount', 'має бути більше 0');
+  /// змінюється в тій самій транзакції ([delta] — на скільки, або [setTo]).
+  /// Нічого не перезаписується.
+  Future<double> _stockMove(String id, String kind, double amount, double delta,
+      {DateTime? date, double? total, double? price, String? reason, String? comment, double? setTo}) {
     return db.transaction((txn) async {
       final rows = await txn.query('stock_items',
           columns: ['quantity', 'unit'], where: 'id = ? AND deleted = 0', whereArgs: [id], limit: 1);
       if (rows.isEmpty) throw StateError('Номенклатуру не знайдено');
       final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
-      if (kind == 'out' && amount > prev + 1e-9) {
+      if (setTo != null) {
+        // різницю рахуємо по свіжому залишку всередині транзакції
+        amount = setTo - prev;
+        delta = amount;
+      }
+      var next = prev + delta;
+      if (next < -1e-9) {
         throw StateError('Не можна списати більше, ніж є на складі '
             '(залишок: ${_fmtQty(prev)} ${rows.first['unit']})');
       }
-      var next = kind == 'out' ? prev - amount : prev + amount;
       if (next.abs() < 1e-9) next = 0;
       final t = now();
       await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
@@ -1516,6 +1581,7 @@ class Repository {
         'amount': amount,
         'quantity_after': next,
         'op_date': date == null ? t : date.microsecondsSinceEpoch / 1e6,
+        'total': total,
         'price': price,
         'reason': reason,
         'comment': comment,
