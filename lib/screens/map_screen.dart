@@ -180,7 +180,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _onPressDown(GridPress p) {
     // поки триває інша дія (запис у базу), нове перетягування не починаємо —
     // воно спиралось би на застарілий список об'єктів
-    if (pendingTemplate != null || !selectMode || _busy) return false;
+    // у режимі розміщення шаблону теж: щойно поставлений (чи будь-який
+    // інший) об'єкт можна одразу перетягнути; тап по порожньому — новий
+    if (!selectMode || _busy) return false;
     final match = _elementAt(p.cell);
     if (match == null) return false;
     // вибір і початок перетягування — одним дотиком
@@ -311,7 +313,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String get _statusText {
     if (!selectMode) return '';
-    if (pendingTemplate != null) return 'Тапай, щоб ставити «${pendingTemplate!.name}»';
+    if (pendingTemplate != null) {
+      return 'Тапай — ставити «${pendingTemplate!.name}», тягни — перемістити';
+    }
     if (selectedGroupId != null) {
       final sel = selection;
       final label = sel.map((e) => e.label).firstWhere((l) => l != null && l.isNotEmpty,
@@ -976,7 +980,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ];
 
   Widget _actionBar() {
-    final enabled = hasSelection && pendingTemplate == null && !_busy;
+    final enabled = hasSelection && !_busy;
     return Container(
       height: 70,
       color: AppColors.panel,

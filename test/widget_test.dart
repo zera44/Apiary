@@ -396,4 +396,33 @@ void main() {
     expect(find.text('Новий шаблон'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('розміщення шаблону: щойно поставлений об\'єкт можна одразу перетягнути', (tester) async {
+    final id = (await tester.runAsync(() => repo.addApiary('Пасіка')))!;
+    final a = (await tester.runAsync(() => repo.getApiary(id)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.text('+').last);
+    await settle(tester);
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip("Додати об'єкт"));
+    await settle(tester);
+    await tester.tap(find.text('Лежак (2×2)'));
+    await settle(tester);
+    final center = tester.getCenter(find.byType(InfiniteGrid));
+    await tester.tapAt(center);
+    await settle(tester);
+    final before = (await tester.runAsync(() => repo.listElements(id)))!;
+    expect(before.length, 3);
+    // режим розміщення ще активний, але дотик по об'єкту — перетягування
+    await tester.dragFrom(center, const Offset(0, 260));
+    await settle(tester);
+    final after = (await tester.runAsync(() => repo.listElements(id)))!;
+    expect(after.length, 3, reason: 'перетягування не повинне ставити новий об\'єкт');
+    final moved = {for (final e in after) e.id: (e.x, e.y)};
+    expect(before.any((e) => moved[e.id] != (e.x, e.y)), isTrue);
+    expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
