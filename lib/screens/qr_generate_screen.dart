@@ -168,6 +168,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                   controller: grid,
                   cells: _scene(),
                   maskSelected: false,
+                  showMoveHints: false, // тут нічого не переміщується
                   onTap: _onTap,
                 ),
               ),

@@ -228,6 +228,10 @@ class InfiniteGrid extends StatefulWidget {
   final List<SceneCell> cells;
   final bool blocked;
   final bool maskSelected;
+
+  /// Стрілки-натяки "об'єкт можна перетягнути" біля обраного (вимикаються там,
+  /// де нічого переміщувати не можна, наприклад у генераторі QR).
+  final bool showMoveHints;
   final bool Function(GridPress p)? onPressDown;
   final void Function(Offset screenDelta)? onPressMove;
   final void Function(Offset screenDelta)? onPressUp;
@@ -239,6 +243,7 @@ class InfiniteGrid extends StatefulWidget {
     required this.cells,
     this.blocked = false,
     this.maskSelected = true,
+    this.showMoveHints = true,
     this.onPressDown,
     this.onPressMove,
     this.onPressUp,
@@ -397,6 +402,7 @@ class _InfiniteGridState extends State<InfiniteGrid> {
               cells: widget.cells,
               blocked: widget.blocked,
               maskSelected: widget.maskSelected,
+              showMoveHints: widget.showMoveHints,
             ),
           ),
         ),
@@ -411,6 +417,7 @@ class _ScenePainter extends CustomPainter {
   final List<SceneCell> cells;
   final bool blocked;
   final bool maskSelected;
+  final bool showMoveHints;
 
   _ScenePainter({
     required this.camera,
@@ -418,6 +425,7 @@ class _ScenePainter extends CustomPainter {
     required this.cells,
     required this.blocked,
     required this.maskSelected,
+    this.showMoveHints = true,
   });
 
   Rect _cellRect(SceneCell c) => Rect.fromLTWH(
@@ -542,7 +550,7 @@ class _ScenePainter extends CustomPainter {
       if (!o.right) canvas.drawLine(b.topRight, b.bottomRight, frame);
     }
     // 4) декоративні стрілки-натяки: об'єкт можна перетягнути
-    if (bounds != null) _hints(canvas, bounds, frameColor);
+    if (bounds != null && showMoveHints) _hints(canvas, bounds, frameColor);
   }
 
   void _hints(Canvas canvas, Rect b, Color color) {
@@ -584,7 +592,8 @@ class _ScenePainter extends CustomPainter {
       old.cs != cs ||
       !identical(old.cells, cells) ||
       old.blocked != blocked ||
-      old.maskSelected != maskSelected;
+      old.maskSelected != maskSelected ||
+      old.showMoveHints != showMoveHints;
 }
 
 /// Лише для бенчмарків/тестів: painter сцени без віджета.
