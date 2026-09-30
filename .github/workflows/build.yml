@@ -141,10 +141,12 @@ jobs:
             echo "::error title=ПІДПИС::невідомий очікуваний ключ «$EXPECTED_CERT»"; exit 1
           fi
           for f in build/app/outputs/flutter-apk/*.apk; do
-            certs=$("$signer" verify --print-certs "$f" | grep -E '^Signer #[0-9]+ certificate SHA-256 digest' | awk '{print $NF}')
-            got=$(echo "$certs" | sort -u)
+            out=$("$signer" verify --print-certs "$f" 2>&1) || { echo "::error title=ПІДПИС::apksigner: $(echo "$out" | head -5 | tr '\n' ' ')"; exit 1; }
+            # сертифікати підписувачів (без "Source Stamp", якщо він є)
+            got=$(echo "$out" | grep 'certificate SHA-256 digest' | grep -v -i 'stamp' | awk '{print $NF}' | sort -u || true)
             echo "$f: $got"
-            if [ "$(echo "$got" | wc -l)" != 1 ] || [ "$got" != "$expected" ]; then
+            if [ -z "$got" ] || [ "$(echo "$got" | wc -l)" != 1 ] || [ "$got" != "$expected" ]; then
+              echo "::error title=ПІДПИС-ВИВІД::$(echo "$out" | grep -i 'sha-256\|signer' | head -8 | tr '\n' ' ')"
               echo "::error title=ПІДПИС::$f підписано не тим ключем ($got, очікувався $EXPECTED_CERT)"
               exit 1
             fi
