@@ -6,6 +6,7 @@ import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
 import 'package:apiary/screens/apiary_list_screen.dart';
 import 'package:apiary/screens/feedback_screen.dart';
+import 'package:apiary/screens/home_screen.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/services/feedback.dart';
@@ -45,6 +46,16 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
       await tester.pump(const Duration(milliseconds: 50));
     }
+  }
+
+  /// Заставка «Почати» → головний екран «Почати» → «Мої пасіки».
+  Future<void> toApiaries(WidgetTester tester) async {
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
   }
 
   setUp(() async {
@@ -180,16 +191,44 @@ void main() {
     expect((await repo.getStockItem(id))!.quantity, 7);
   });
 
-  testWidgets('головна: «назад» повертає на заставку Vulyk', (tester) async {
+  testWidgets('заставка → головний екран → мої пасіки; «назад» — крок за кроком', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
     await tester.tap(find.text('Почати'));
     await settle(tester);
-    expect(find.text('Мої пасіки'), findsOneWidget);
-    await tester.tap(find.byType(CircleIconButton).first);
+    await tester.pump(const Duration(seconds: 1));
+    // головний екран: три кнопки
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Сканувати QR-код'), findsOneWidget);
+    expect(find.text('Інвентаризація'), findsOneWidget);
+    expect(find.text('Пройти навчання'), findsNothing);
+    await tester.tap(find.text('Почати'));
     await settle(tester);
-    await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
-    expect(find.text('Vulyk'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Мої пасіки'), findsOneWidget);
+    // «назад» із моїх пасік — на головний екран
+    await tester.tap(find
+        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
+        .first);
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Мої пасіки'), findsNothing);
+    // «Інвентаризація» — склад на вкладці інвентаризації
+    await tester.tap(find.text('Інвентаризація'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(StockScreen), findsOneWidget);
+    await tester.tap(find
+        .descendant(of: find.byType(StockScreen), matching: find.byType(CircleIconButton))
+        .first);
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    // системна «назад» з головного — на заставку
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Пройти навчання'), findsOneWidget);
     expect(find.text('Мої пасіки'), findsNothing);
   });
 
@@ -235,8 +274,7 @@ void main() {
     await settle(tester);
     expect(find.text('Vulyk'), findsOneWidget);
 
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Відкрити'));
@@ -310,8 +348,7 @@ void main() {
   testWidgets('меню: Характеристики — каталог без вибору й без «Зберегти»', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
@@ -327,8 +364,7 @@ void main() {
   testWidgets('нова пасіка: створення -> карта -> «Головна» -> плитка в списку', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     await tester.tap(find.text('+  Створити карту'));
     await settle(tester);
     await tester.enterText(find.byType(TextField), 'Нова пасіка');
@@ -362,8 +398,7 @@ void main() {
   testWidgets('список пасік: видалення пасіки з підтвердженням', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Видалити'));
@@ -470,8 +505,7 @@ void main() {
     await tester.runAsync(() => repo.linkQr('https://pasika.example/h/7', EntityRef.group(groupId)));
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
@@ -492,8 +526,7 @@ void main() {
   testWidgets('меню: невідомий QR-код — пояснення, як прив\'язати', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
@@ -631,8 +664,7 @@ void main() {
   testWidgets('у списку пасік меню немає — лише на карті', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
-    await settle(tester);
+    await toApiaries(tester);
     expect(find.byTooltip('Меню'), findsNothing);
     await tester.tap(find.byTooltip('Відкрити'));
     await settle(tester);

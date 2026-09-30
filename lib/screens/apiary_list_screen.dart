@@ -10,7 +10,6 @@ import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
 import 'new_apiary_screen.dart';
-import 'splash_screen.dart';
 
 /// Список пасік застосунку: тап відкриває карту, "+" — створює нову.
 class ApiaryListScreen extends StatefulWidget {
@@ -102,30 +101,14 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
   }
 
-  /// Назад із головної — на заставку Vulyk (кнопка «назад» і системна).
-  void _toSplash() {
-    if (widget.tutorial) {
-      Navigator.of(context).pop();
-      return;
-    }
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => SplashScreen(repo: widget.repo),
-    ));
-  }
-
   @override
   Widget build(BuildContext context) {
     final list = apiaries;
-    return PopScope(
-      canPop: widget.tutorial,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _toSplash();
-      },
-      child: Scaffold(
+    return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Мої пасіки', onBack: _toSplash),
+            TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
@@ -181,7 +164,6 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
           const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
-    ),
     );
   }
 

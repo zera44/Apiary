@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
-import 'apiary_list_screen.dart';
+import '../ui/app_logo.dart';
+import 'home_screen.dart';
 import 'tutorial_screen.dart';
 
-/// Заставка при запуску: назва застосунку й кнопка "Почати".
+/// Заставка при запуску: назва застосунку, «Почати» (головний екран) і
+/// «Пройти навчання».
 class SplashScreen extends StatelessWidget {
   final Repository repo;
   const SplashScreen({super.key, required this.repo});
@@ -20,19 +22,7 @@ class SplashScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // іконка застосунку: пасічник із рамкою меду на кремовому тлі
-                // (як на телефоні; малюнок — design/guide/beekeeper_honey_frame.pdf)
-                Container(
-                  width: 168,
-                  height: 168,
-                  padding: const EdgeInsets.fromLTRB(26, 16, 26, 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFBE9C4),
-                    borderRadius: BorderRadius.circular(38),
-                  ),
-                  child: Image.asset('assets/guide/beekeeper_honey_frame.png',
-                      filterQuality: FilterQuality.medium),
-                ),
+                const AppLogo(),
                 const SizedBox(height: 28),
                 Text('Vulyk',
                     style: TextStyle(
@@ -50,7 +40,7 @@ class SplashScreen extends StatelessWidget {
                   fontSize: 17,
                   onPressed: () {
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (_) => ApiaryListScreen(repo: repo),
+                      builder: (_) => HomeScreen(repo: repo),
                     ));
                   },
                 ),
