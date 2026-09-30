@@ -502,6 +502,23 @@ void main() {
     expect((await repo.getGroupElements(more.single)).single.label, 'Т 3');
   });
 
+  test('rotateGroups повертає кілька груп разом як одну фігуру', () async {
+    final ids = await repo.placeTemplate(apiaryId, {'0,0': 'hive', '2,0': 'hive'}, 0, 0, name: 'Р');
+    Future<Set<(int, int)>> pos() async => {
+          for (final g in ids)
+            for (final e in await repo.getGroupElements(g)) (e.x, e.y)
+        };
+    expect(await pos(), {(0, 0), (2, 0)});
+    await repo.rotateGroups(ids);
+    final r = await pos();
+    // жорстке обертання: відстань між вуликами зберігається, вони в одній колонці/рядку
+    expect(r.length, 2);
+    final l = r.toList();
+    expect((l[0].$1 - l[1].$1).abs() + (l[0].$2 - l[1].$2).abs(), 2);
+    expect(l[0].$1 == l[1].$1 || l[0].$2 == l[1].$2, isTrue);
+    expect(l[0].$1 == 0 && l[1].$1 == 2 || l[0].$1 == 2 && l[1].$1 == 0, isFalse);
+  });
+
   test('стара група з кількох вуликів ділиться на окремі, історія копіюється вуликам', () async {
     final gid = await repo.addGroup(
         apiaryId, {'0,0': 'hive', '2,0': 'hive', '1,0': 'obstacle:trees'}, 0, 0, groupLabel: 'Л 1');

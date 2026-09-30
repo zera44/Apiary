@@ -617,8 +617,15 @@ class Repository {
   }
 
   /// Повернути групу на 90° як жорстку фігуру (цілочисельно).
-  Future<void> rotateGroup(String groupId) async {
-    final els = await getGroupElements(groupId);
+  Future<void> rotateGroup(String groupId) => rotateGroups([groupId]);
+
+  /// Повернути кілька груп разом на 90° як одну жорстку фігуру (щойно
+  /// поставлений шаблон складається з окремих груп).
+  Future<void> rotateGroups(List<String> groupIds) async {
+    final els = <MapElement>[];
+    for (final g in groupIds) {
+      els.addAll(await getGroupElements(g));
+    }
     if (els.isEmpty) return;
     final newPos = rotatedPositions({for (final e in els) e.id: (e.x, e.y)});
     final t = now();

@@ -74,6 +74,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   ApiaryTemplate? pendingTemplate;
   String? selectedId;
   String? selectedGroupId;
+  // щойно поставлений шаблон: поки його не відпустили, усі його вулики й
+  // перешкоди тягнуться/повертаються/видаляються разом. Це лише на час
+  // розміщення — після цього кожен об'єкт вибирається окремо.
+  Set<String> _placedGids = const {};
   final List<_Undo> undoStack = [];
   // ВИПРАВЛЕНО: захищає від гонки при швидких повторних діях (два тапи
   // "Повернути" чи два тапи розміщення шаблону підряд) — без цього друга
@@ -151,11 +155,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   List<MapElement> get selection {
     if (selectedGroupId != null) {
-      return elements.where((e) => e.groupId == selectedGroupId).toList();
+      final gids = _selGids;
+      return elements.where((e) => gids.contains(e.groupId)).toList();
     }
     if (selectedId != null) return elements.where((e) => e.id == selectedId).toList();
     return const [];
   }
+
+  Set<String> get _selGids => selectedGroupId == null
+      ? const {}
+      : (_placedGids.contains(selectedGroupId) ? _placedGids : {selectedGroupId!});
 
   bool get hasSelection => selectedGroupId != null || selectedId != null;
 
@@ -167,6 +176,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _select(MapElement el) {
+    if (el.groupId == null || !_placedGids.contains(el.groupId)) _placedGids = const {};
     if (el.groupId != null) {
       selectedGroupId = el.groupId;
       selectedId = null;
@@ -255,7 +265,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
         } else if (selectedGroupId != null) {
           _pushUndo(_Undo.restore(sel));
-          await repo.moveGroup(selectedGroupId!, dx, dy);
+          for (final gid in _selGids) {
+            await repo.moveGroup(gid, dx, dy);
+          }
         } else if (selectedId != null) {
           final el = sel.first;
           _pushUndo(_Undo.restore([el]));
@@ -314,7 +326,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (gids.isEmpty) return;
       _pushUndo(_Undo.deleteGroups(gids));
       selectedId = null;
-      selectedGroupId = gids.first; // щойно поставлений (перший вулик) — обраний
+      selectedGroupId = gids.first; // щойно поставлений шаблон обраний цілим
+      _placedGids = {...gids};
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -391,6 +404,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }
         if (u.deleteGroupIds!.contains(selectedGroupId)) selectedGroupId = null;
       }
+      _placedGids = const {};
       await _reload();
       // вибір міг зникнути (об'єкта більше немає)
       if (selectedId != null && !elements.any((e) => e.id == selectedId)) selectedId = null;
@@ -413,6 +427,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       selectMode = true;
       selectedId = null;
       selectedGroupId = null;
+      _placedGids = const {};
     });
   }
 
@@ -422,6 +437,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       pendingTemplate = null;
       selectedId = null;
       selectedGroupId = null;
+      _placedGids = const {};
       undoStack.clear();
     });
     _clearWarning();
@@ -487,6 +503,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       pendingTemplate = picked;
       selectedId = null;
       selectedGroupId = null;
+      _placedGids = const {};
     });
   }
 
@@ -507,7 +524,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return;
         }
         _pushUndo(_Undo.restore(els));
-        await repo.rotateGroup(selectedGroupId!);
+        await repo.rotateGroups(_selGids.toList());
       } else if (selectedId != null) {
         final el = selection.firstOrNull;
         if (el == null) return;
@@ -532,16 +549,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // ВИПРАВЛЕНО: знімок прив'язок параметрів ПЕРЕД видаленням, щоб
       // "крок назад" міг відновити їх, навіть якщо фонова синхронізація
       // встигне остаточно прибрати їх із бази до натискання undo.
-      final gid = sel.first.groupId;
-      final paramRows = await repo.attachedParameterRows(sel.first.entity);
+      final paramRows = [
+        for (final e in sel) ...await repo.attachedParameterRows(e.entity),
+      ];
       _pushUndo(_Undo.restore(sel, paramRows: paramRows));
-      if (isGroup && gid != null) {
-        await repo.deleteGroup(gid);
+      if (isGroup) {
+        for (final gid in _selGids) {
+          await repo.deleteGroup(gid);
+        }
       } else {
         await repo.deleteElement(sel.first.id);
       }
       selectedId = null;
       selectedGroupId = null;
+      _placedGids = const {};
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -831,6 +852,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // елементів або вибір — а не на кожному кадрі анімації.
   List<MapElement>? _sceneEls;
   String? _sceneSelId, _sceneSelGid;
+  Set<String>? _scenePlaced;
   List<SceneCell>? _sceneBase;
   Set<String> _sceneSel = const {};
 
@@ -838,12 +860,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (_sceneBase == null ||
         !identical(_sceneEls, elements) ||
         _sceneSelId != selectedId ||
-        _sceneSelGid != selectedGroupId) {
+        _sceneSelGid != selectedGroupId ||
+        !identical(_scenePlaced, _placedGids)) {
       _sceneSel = {for (final e in selection) e.id};
       _sceneBase = _buildBaseScene(_sceneSel);
       _sceneEls = elements;
       _sceneSelId = selectedId;
       _sceneSelGid = selectedGroupId;
+      _scenePlaced = _placedGids;
     }
     final base = _sceneBase!;
     final sel = _sceneSel;
