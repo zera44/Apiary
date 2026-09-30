@@ -132,6 +132,37 @@ flutter build apk --dart-define=APIARY_API_URL=https://api.мій-сервер.c
 таблиць `elements`, `templates`, `parameters`, `element_parameters`,
 `parameter_records`. Успіх — відповідь 200/201.
 
+## Вхід через Google
+
+Перший екран — вхід через Google, він обов'язковий. Після першого входу
+користувач запам'ятовується на пристрої (файл `account.json` у теці даних
+застосунку), тож далі застосунок відкривається одразу на головному екрані
+й працює без інтернету. «Вийти» — внизу головного екрана.
+
+На Android вхід іде через пакет `google_sign_in`; на Windows цей пакет не
+працює, тому там відкривається браузер (OAuth 2.0 для настільних програм,
+повернення на `http://127.0.0.1:порт`, PKCE) — див. `lib/services/auth.dart`.
+
+Налаштування (один раз, у [Google Cloud Console](https://console.cloud.google.com)):
+
+1. Створи проєкт → «APIs & Services» → «OAuth consent screen»: тип External,
+   назва Vulyk, пошта підтримки; додай свою пошту в «Test users» (поки
+   застосунок не опубліковано, увійти зможуть лише тестові користувачі).
+2. «Credentials» → «Create credentials» → «OAuth client ID»:
+   * **Android**: package name `org.apiary.apiary`, SHA-1 ключа підпису
+     (тимчасовий ключ із `tool/debug.keystore`:
+     `0D:E8:20:13:CC:D7:E3:22:EF:FE:AE:A4:BD:90:6B:D8:52:AB:2B:B7`; коли
+     з'явиться справжній ключ — додай окремий клієнт і з його SHA-1);
+   * **Web application** — його Client ID потрібен Android-входу як
+     `serverClientId`;
+   * **Desktop app** — для Windows (Client ID і Client secret).
+3. У репозиторії GitHub → Settings → Secrets and variables → Actions:
+   `APIARY_GOOGLE_SERVER_CLIENT_ID` (Web client ID),
+   `APIARY_GOOGLE_DESKTOP_CLIENT_ID`, `APIARY_GOOGLE_DESKTOP_CLIENT_SECRET`.
+
+Локально: `flutter run --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID=… --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID=… --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET=…`.
+Без цих значень екран входу пише «Вхід через Google не налаштовано в цій збірці».
+
 ## Зворотний зв'язок
 
 У бічному меню карти (три смужки) є пункт «Зворотний зв'язок»: користувач

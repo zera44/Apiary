@@ -6,7 +6,9 @@ import 'data/database.dart';
 import 'data/repository.dart';
 import 'data/sync_service.dart';
 import 'icons/app_icons.dart';
+import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/auth.dart';
 import 'services/autostart.dart';
 import 'services/reminders.dart';
 import 'ui/theme.dart';
@@ -25,10 +27,12 @@ Future<void> main() async {
 /// запуску показується пояснення з кнопкою "Спробувати ще раз".
 Future<void> _start() async {
   final Repository repo;
+  final AuthService auth;
   try {
     final db = await AppDatabase.openDefault();
     repo = Repository(db);
     await repo.init();
+    auth = await GoogleAuthService.open();
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
@@ -38,13 +42,14 @@ Future<void> _start() async {
   unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
   // Windows: після оновлення в нову теку автозапуск веде на поточний exe
   unawaited(Autostart.syncPath());
-  runApp(ApiaryApp(repo: repo, sync: sync));
+  runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));
 }
 
 class ApiaryApp extends StatefulWidget {
   final Repository repo;
+  final AuthService auth;
   final SyncService? sync;
-  const ApiaryApp({super.key, required this.repo, this.sync});
+  const ApiaryApp({super.key, required this.repo, required this.auth, this.sync});
 
   @override
   State<ApiaryApp> createState() => _ApiaryAppState();
@@ -63,7 +68,10 @@ class _ApiaryAppState extends State<ApiaryApp> {
       title: 'Vulyk',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: SplashScreen(repo: widget.repo),
+      // вхід обов'язковий: хто вже увійшов — одразу на головний екран
+      home: widget.auth.user == null
+          ? SplashScreen(repo: widget.repo, auth: widget.auth)
+          : HomeScreen(repo: widget.repo, auth: widget.auth),
     );
   }
 }

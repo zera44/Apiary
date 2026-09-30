@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../services/auth.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
@@ -8,18 +9,29 @@ import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
+import 'tutorial_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
-/// «Інвентаризація» (склад). «Назад» — на заставку.
+/// «Інвентаризація» (склад), «Пройти навчання». Внизу — хто увійшов і
+/// «Вийти» (назад на екран входу).
 class HomeScreen extends StatelessWidget {
   final Repository repo;
-  const HomeScreen({super.key, required this.repo});
+  final AuthService auth;
+  const HomeScreen({super.key, required this.repo, required this.auth});
 
-  void _toSplash(BuildContext context) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-      builder: (_) => SplashScreen(repo: repo),
-    ));
+  Future<void> _signOut(BuildContext context) async {
+    final ok = await showConfirm(context,
+        title: 'Вийти?',
+        text: 'Дані пасік лишаються на цьому пристрої. Щоб продовжити, треба буде знову увійти.',
+        confirmText: 'Вийти');
+    if (!ok || !context.mounted) return;
+    await auth.signOut();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
+      (_) => false,
+    );
   }
 
   @override
@@ -39,12 +51,8 @@ class HomeScreen extends StatelessWidget {
           ),
         );
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _toSplash(context);
-      },
-      child: Scaffold(
+    final user = auth.user;
+    return Scaffold(
         body: SafeArea(
           child: Stack(children: [
             Center(
@@ -71,13 +79,26 @@ class HomeScreen extends StatelessWidget {
                       builder: (_) => StockScreen(repo: repo, initialTab: StockOp.inventory),
                     ));
                   }, fg: AppColors.text),
+                  button('Пройти навчання', AppColors.darkBtn, () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const TutorialScreen(),
+                    ));
+                  }, fg: AppColors.text),
+                  if (user != null) ...[
+                    const SizedBox(height: 18),
+                    Text(user.email,
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                    TextButton(
+                      onPressed: () => _signOut(context),
+                      child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
+                    ),
+                  ],
                 ]),
               ),
             ),
             const Positioned.fill(child: ScreenFrame()),
           ]),
         ),
-      ),
     );
   }
 }

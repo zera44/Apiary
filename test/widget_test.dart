@@ -7,6 +7,7 @@ import 'package:apiary/main.dart';
 import 'package:apiary/screens/apiary_list_screen.dart';
 import 'package:apiary/screens/feedback_screen.dart';
 import 'package:apiary/screens/home_screen.dart';
+import 'package:apiary/services/auth.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/services/feedback.dart';
@@ -23,6 +24,9 @@ import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/theme.dart';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -48,9 +52,9 @@ void main() {
     }
   }
 
-  /// Заставка «Почати» → головний екран «Почати» → «Мої пасіки».
+  /// Екран входу «Увійти через Google» → головний екран «Почати» → «Мої пасіки».
   Future<void> toApiaries(WidgetTester tester) async {
-    await tester.tap(find.text('Почати'));
+    await tester.tap(find.text('Увійти через Google'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
     await tester.tap(find.text('Почати'));
@@ -191,17 +195,22 @@ void main() {
     expect((await repo.getStockItem(id))!.quantity, 7);
   });
 
-  testWidgets('заставка → головний екран → мої пасіки; «назад» — крок за кроком', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+  testWidgets('вхід → головний екран → мої пасіки; «назад» — на головний; «Вийти»', (tester) async {
+    final auth = FakeAuth();
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: auth));
     await settle(tester);
-    await tester.tap(find.text('Почати'));
+    // вхід обов'язковий: на заставці лише «Увійти через Google»
+    expect(find.text('Почати'), findsNothing);
+    await tester.tap(find.text('Увійти через Google'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // головний екран: три кнопки
+    expect(auth.user, isNotNull);
+    // головний екран
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.text('Сканувати QR-код'), findsOneWidget);
     expect(find.text('Інвентаризація'), findsOneWidget);
-    expect(find.text('Пройти навчання'), findsNothing);
+    expect(find.text('Пройти навчання'), findsOneWidget);
+    expect(find.text('pasichnyk@example.com'), findsOneWidget);
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
@@ -213,7 +222,6 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('Мої пасіки'), findsNothing);
     // «Інвентаризація» — склад на вкладці інвентаризації
     await tester.tap(find.text('Інвентаризація'));
     await settle(tester);
@@ -224,24 +232,61 @@ void main() {
         .first);
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // системна «назад» з головного — на заставку
-    await tester.binding.handlePopRoute();
+    // «Вийти» — з підтвердженням, назад на екран входу
+    await tester.tap(find.text('Вийти'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(PillButton, 'Вийти'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Пройти навчання'), findsOneWidget);
-    expect(find.text('Мої пасіки'), findsNothing);
+    expect(auth.user, isNull);
+    expect(find.text('Увійти через Google'), findsOneWidget);
   });
 
-  testWidgets('заставка: кнопка «Пройти навчання» відкриває режим навчання', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+  testWidgets('вже увійшов — одразу головний екран, без заставки', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Увійти через Google'), findsNothing);
+  });
+
+  testWidgets('вхід скасовано — лишаємось на заставці без помилки; збій — пояснення', (tester) async {
+    final auth = FakeAuth(fail: const SignInCancelled());
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: auth));
+    await settle(tester);
+    await tester.tap(find.text('Увійти через Google'));
+    await settle(tester);
+    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.textContaining('Не вдалося'), findsNothing);
+    auth.fail = const SocketException('offline');
+    await tester.tap(find.text('Увійти через Google'));
+    await settle(tester);
+    expect(find.textContaining('Не вдалося увійти'), findsOneWidget);
+  });
+
+  test('id_token Google → користувач', () {
+    String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
+    final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';
+    final u = GoogleAuthService.userFromIdToken(token)!;
+    expect(u.id, '42');
+    expect(u.email, 'a@b.c');
+    expect(u.name, 'Бджоляр');
+    expect(GoogleAuthService.userFromIdToken('bad'), isNull);
+  });
+
+  testWidgets('головний екран: «Пройти навчання» відкриває режим навчання', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     await tester.tap(find.text('Пройти навчання'));
     await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('Навчання'), findsOneWidget);
     expect(find.text('Базові поняття'), findsOneWidget);
-    await tester.tap(find.byType(CircleIconButton).first); // «назад»
+    await tester.tap(find
+        .descendant(of: find.byType(TutorialScreen), matching: find.byType(CircleIconButton))
+        .first); // «назад»
     await settle(tester);
-    expect(find.text('Vulyk'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget);
   });
 
   testWidgets('навчання: «Базові поняття» — порожні «Мої пасіки» з підказкою пасічника',
@@ -270,7 +315,7 @@ void main() {
   });
 
   testWidgets('заставка -> список пасік -> карта', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     expect(find.text('Vulyk'), findsOneWidget);
 
@@ -346,7 +391,7 @@ void main() {
   });
 
   testWidgets('меню: Характеристики — каталог без вибору й без «Зберегти»', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
@@ -362,7 +407,7 @@ void main() {
   });
 
   testWidgets('нова пасіка: створення -> карта -> «Головна» -> «Почати» -> плитка в списку', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.text('+  Створити карту'));
@@ -401,7 +446,7 @@ void main() {
   });
 
   testWidgets('список пасік: видалення пасіки з підтвердженням', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
@@ -508,7 +553,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() => repo.linkQr('https://pasika.example/h/7', EntityRef.group(groupId)));
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
@@ -529,7 +574,7 @@ void main() {
   });
 
   testWidgets('меню: невідомий QR-код — пояснення, як прив\'язати', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
@@ -667,7 +712,7 @@ void main() {
   });
 
   testWidgets('у списку пасік меню немає — лише на карті', (tester) async {
-    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     expect(find.byTooltip('Меню'), findsNothing);
@@ -865,4 +910,27 @@ void main() {
     expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+/// Вхід без Google (для тестів).
+class FakeAuth implements AuthService {
+  Object? fail;
+  AppUser? _user;
+  FakeAuth({bool signedIn = false, this.fail}) {
+    if (signedIn) _user = _pasichnyk;
+  }
+  static const _pasichnyk = AppUser(id: '1', email: 'pasichnyk@example.com', name: 'Пасічник');
+
+  @override
+  AppUser? get user => _user;
+
+  @override
+  Future<AppUser> signIn() async {
+    final f = fail;
+    if (f != null) throw f;
+    return _user = _pasichnyk;
+  }
+
+  @override
+  Future<void> signOut() async => _user = null;
 }
