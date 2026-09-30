@@ -25,6 +25,7 @@
     {"id": "eye", "file": "ui/eye.svg", "label": "Око", "category": "ui"},
     {"id": "plus_circle", "file": "ui/plus_circle.svg", "label": "Додати", "category": "ui"},
     {"id": "check", "file": "ui/check.svg", "label": "Готово", "category": "ui"},
+    {"id": "lock", "file": "ui/lock.svg", "label": "Замок", "category": "ui"},
     {"id": "close", "file": "ui/close.svg", "label": "Закрити", "category": "ui"},
     {"id": "arrow_left", "file": "ui/arrow_left.svg", "label": "Стрілка вліво", "category": "ui"},
     {"id": "arrow_right", "file": "ui/arrow_right.svg", "label": "Стрілка вправо", "category": "ui"},

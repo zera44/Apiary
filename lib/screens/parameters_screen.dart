@@ -128,7 +128,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 children: [
                   Text('Назва', style: muted),
                   const SizedBox(height: 4),
-                  TextField(controller: nameCtrl, autofocus: !isEdit, style: TextStyle(color: AppColors.text)),
+                  TextField(
+                    controller: nameCtrl,
+                    autofocus: !isEdit,
+                    readOnly: isBase,
+                    style: TextStyle(color: isBase ? AppColors.textMuted : AppColors.text),
+                  ),
+                  if (isBase)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Назву Базової характеристики змінити не можна', style: muted),
+                    ),
                   const SizedBox(height: 10),
                   Text('Одиниця виміру', style: muted),
                   const SizedBox(height: 4),
@@ -197,7 +207,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
     if (isEdit) {
       await repo.updateParameter(param!.id, {
-        'name': name,
+        if (!isBase) 'name': name,
         'unit': unit.isEmpty ? null : unit,
         if (!isBase) 'data_type': type,
       });
@@ -293,12 +303,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
     return ListCard(
       height: 66,
       child: Row(children: [
-        if (!widget.catalog) ...[
+        if (!widget.catalog || p.isBase) ...[
+        if (locked || (widget.catalog && p.isBase))
+          const LockMark()
+        else
         CheckToggle(
-          checked: locked || selected.contains(p.id),
-          onChanged: locked
-              ? null
-              : (v) => setState(() {
+          checked: selected.contains(p.id),
+          onChanged: (v) => setState(() {
                     // тап додає id В КІНЕЦЬ — щойно обраний стає останнім
                     if (v) {
                       if (!selected.contains(p.id)) selected.add(p.id);

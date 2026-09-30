@@ -75,7 +75,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: PillButton(
-                text: '+  Додати',
+                text: 'Створити шаблон',
                 bg: AppColors.accent,
                 height: 48,
                 radius: 16,

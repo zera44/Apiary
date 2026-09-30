@@ -274,6 +274,26 @@ class CheckToggle extends StatelessWidget {
   }
 }
 
+/// "Замочок" замість чекбокса: характеристика обов'язкова й завжди обрана.
+class LockMark extends StatelessWidget {
+  const LockMark({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: SizedBox(
+        width: 26,
+        height: 26,
+        child: Tooltip(
+          message: "Обов'язкова характеристика",
+          child: AppIcon('lock', color: AppColors.textMuted, size: 26),
+        ),
+      ),
+    );
+  }
+}
+
 /// Кругла кнопка-зразок кольору (для типу даних "Колір").
 class ColorTagSwatch extends StatelessWidget {
   final Color? fill; // null — "без кольору"
