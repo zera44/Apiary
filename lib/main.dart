@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'data/database.dart';
 import 'data/repository.dart';
 import 'data/sync_service.dart';
+import 'icons/app_icons.dart';
 import 'screens/splash_screen.dart';
 import 'services/reminders.dart';
 import 'ui/theme.dart';
@@ -14,6 +15,7 @@ import 'ui/theme.dart';
 /// щойно з'являється інтернет.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppIcons.load(); // SVG-іконки з assets/icons
   final db = await AppDatabase.openDefault();
   final repo = Repository(db);
   await repo.init();

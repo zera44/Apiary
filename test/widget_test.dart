@@ -1,6 +1,7 @@
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
@@ -24,7 +25,11 @@ void main() {
   late String templateId;
   late String paramId;
 
-  setUpAll(sqfliteFfiInit);
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+    await AppIcons.load(); // SVG-іконки з assets/icons
+  });
 
   Future<void> settle(WidgetTester tester) async {
     for (var i = 0; i < 5; i++) {

@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
+import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/logic/merge_layout.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:flutter/material.dart';
@@ -62,8 +63,11 @@ double paintMs(List<SceneCell> cells, double cs, Size size) {
 }
 
 void main() {
-  setUpAll(sqfliteFfiInit);
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    sqfliteFfiInit();
+    await AppIcons.load(); // іконки малюються в сцені — вимірюємо з ними
+  });
 
   late Directory tmp;
   setUp(() => tmp = Directory.systemTemp.createTempSync('apiary_bench'));

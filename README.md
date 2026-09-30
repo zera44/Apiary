@@ -69,6 +69,13 @@ flutter test
 На Android сповіщення планує система (працює й при закритому застосунку);
 на Windows — застосунок показує їх, поки він запущений (можна згорнути).
 
+## Іконки
+
+Усі іконки — SVG-файли в [`assets/icons/`](assets/icons/README.md), поділені на
+`objects/`, `obstacles/` та `ui/`, з реєстром `icons.json`. Їх можна змінювати й
+додавати без правок коду — інструкція та правила малювання в
+[assets/icons/README.md](assets/icons/README.md). Галерея: `python3 tool/icon_gallery.py`.
+
 ## Безпека збірки
 
 * APK підписується ключем із секретів репозиторію `APIARY_KEYSTORE_B64`

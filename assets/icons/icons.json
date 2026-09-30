@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "viewBox": 24,
+  "categories": {
+    "objects": "Об'єкти на карті",
+    "obstacles": "Перешкоди",
+    "ui": "Інтерфейс (кнопки, меню)"
+  },
+  "icons": [
+    {"id": "beehive", "file": "objects/beehive.svg", "label": "Вулик", "category": "objects", "pickable": true},
+    {"id": "hexagon", "file": "objects/hexagon.svg", "label": "Стільник", "category": "objects", "pickable": true},
+    {"id": "mountain", "file": "obstacles/mountain.svg", "label": "Гора", "category": "obstacles", "pickable": true, "variantLabel": "Інше"},
+    {"id": "river", "file": "obstacles/river.svg", "label": "Річка", "category": "obstacles", "pickable": true, "variantLabel": "Річка"},
+    {"id": "lake", "file": "obstacles/lake.svg", "label": "Озеро", "category": "obstacles", "pickable": true, "variantLabel": "Озеро"},
+    {"id": "trees", "file": "obstacles/trees.svg", "label": "Дерева", "category": "obstacles", "pickable": true, "variantLabel": "Дерева"},
+    {"id": "houses", "file": "obstacles/houses.svg", "label": "Домівки", "category": "obstacles", "pickable": true, "variantLabel": "Домівки"},
+    {"id": "fence", "file": "obstacles/fence.svg", "label": "Забор", "category": "obstacles", "pickable": true, "variantLabel": "Забор"},
+    {"id": "road", "file": "obstacles/road.svg", "label": "Дорога", "category": "obstacles", "pickable": true, "variantLabel": "Дорога"},
+    {"id": "menu", "file": "ui/menu.svg", "label": "Меню", "category": "ui"},
+    {"id": "qr", "file": "ui/qr.svg", "label": "QR-код", "category": "ui"},
+    {"id": "rotate", "file": "ui/rotate.svg", "label": "Повернути", "category": "ui"},
+    {"id": "trash", "file": "ui/trash.svg", "label": "Видалити", "category": "ui"},
+    {"id": "back_arrow", "file": "ui/back_arrow.svg", "label": "Крок назад", "category": "ui"},
+    {"id": "pencil", "file": "ui/pencil.svg", "label": "Олівець", "category": "ui"},
+    {"id": "eye", "file": "ui/eye.svg", "label": "Око", "category": "ui"},
+    {"id": "plus_circle", "file": "ui/plus_circle.svg", "label": "Додати", "category": "ui"},
+    {"id": "check", "file": "ui/check.svg", "label": "Готово", "category": "ui"},
+    {"id": "close", "file": "ui/close.svg", "label": "Закрити", "category": "ui"},
+    {"id": "arrow_left", "file": "ui/arrow_left.svg", "label": "Стрілка вліво", "category": "ui"},
+    {"id": "arrow_right", "file": "ui/arrow_right.svg", "label": "Стрілка вправо", "category": "ui"},
+    {"id": "history", "file": "ui/history.svg", "label": "Історія", "category": "ui"}
+  ]
+}

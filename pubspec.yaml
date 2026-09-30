@@ -41,3 +41,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # іконки застосунку (див. assets/icons/README.md); кожна підпапка — окремий рядок
+    - assets/icons/icons.json
+    - assets/icons/objects/
+    - assets/icons/obstacles/
+    - assets/icons/ui/

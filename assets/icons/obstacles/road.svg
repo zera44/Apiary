@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Дорога</title>
+  <path d="M5.28 19.44 L10.12 4.56" stroke-width="1.41"/>
+  <path d="M18.72 19.44 L13.88 4.56" stroke-width="1.41"/>
+  <path d="M12 18.45 L12 16.07" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M12 13.49 L12 11.11" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M12 8.53 L12 6.15" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+</svg>
