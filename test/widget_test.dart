@@ -4,8 +4,11 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
+import 'package:apiary/screens/apiary_list_screen.dart';
+import 'package:apiary/screens/feedback_screen.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/services/feedback.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
@@ -13,6 +16,7 @@ import 'package:apiary/screens/qr_generate_screen.dart';
 import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
+import 'package:apiary/screens/tutorial_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
 import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
@@ -176,7 +180,7 @@ void main() {
     expect((await repo.getStockItem(id))!.quantity, 7);
   });
 
-  testWidgets('головна: «назад» повертає на заставку MyApiary', (tester) async {
+  testWidgets('головна: «назад» повертає на заставку Vulyk', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
     await tester.tap(find.text('Почати'));
@@ -185,7 +189,7 @@ void main() {
     await tester.tap(find.byType(CircleIconButton).first);
     await settle(tester);
     await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
-    expect(find.text('MyApiary'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
     expect(find.text('Мої пасіки'), findsNothing);
   });
 
@@ -194,16 +198,42 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Пройти навчання'));
     await settle(tester);
-    expect(find.text('Режим навчання'), findsOneWidget);
-    await tester.tap(find.text('Назад'));
+    expect(find.text('Навчання'), findsOneWidget);
+    expect(find.text('Базові поняття'), findsOneWidget);
+    await tester.tap(find.byType(CircleIconButton).first); // «назад»
     await settle(tester);
-    expect(find.text('MyApiary'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
+  });
+
+  testWidgets('навчання: «Базові поняття» — порожні «Мої пасіки» з підказкою пасічника',
+      (tester) async {
+    await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
+      final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+      await r.init();
+      return r;
+    })));
+    await settle(tester);
+    await tester.tap(find.text('Базові поняття'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Мої пасіки'), findsOneWidget);
+    // пісочниця: справжніх пасік не видно, замість порожнього тексту — підказка
+    expect(find.text('Тестова пасіка'), findsNothing);
+    expect(find.textContaining('Здоров був, новачок'), findsOneWidget);
+    expect(find.textContaining('«Створити карту»'), findsOneWidget);
+    expect(find.text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.'), findsNothing);
+    // «назад» — до плиток уроків, а не на заставку
+    await tester.tap(find
+        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
+        .first);
+    await settle(tester);
+    expect(find.text('Базові поняття'), findsOneWidget);
   });
 
   testWidgets('заставка -> список пасік -> карта', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    expect(find.text('MyApiary'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
 
     await tester.tap(find.text('Почати'));
     await settle(tester);
@@ -616,12 +646,8 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('+').last); // кнопка меню (перша «+» — зум)
-    await settle(tester);
+    // «Редагувати» одразу пропонує шаблони
     await tester.tap(find.text('Редагувати'));
-    await settle(tester);
-    expect(find.byTooltip('Перейменувати'), findsNothing);
-    await tester.tap(find.byTooltip("Додати об'єкт"));
     await settle(tester);
     expect(find.text('Ще немає жодного шаблону.'), findsOneWidget);
     await tester.tap(find.text('Створити шаблон'));
@@ -635,11 +661,7 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('+').last);
-    await settle(tester);
-    await tester.tap(find.text('Редагувати'));
-    await settle(tester);
-    await tester.tap(find.byTooltip("Додати об'єкт"));
+    await tester.tap(find.text('Редагувати')); // одразу вибір шаблону
     await settle(tester);
     await tester.tap(find.text('Лежак (2×2)'));
     await settle(tester);
@@ -696,9 +718,9 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('+').last);
-    await settle(tester);
     await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    await tester.tapAt(const Offset(12, 300)); // закрити вибір шаблону — лишаємось у редагуванні
     await settle(tester);
     expect(find.byTooltip('Повернути'), findsOneWidget); // лише внизу
     // вулик (0,0): камера по центру (1,0), клітинка 34
@@ -722,5 +744,88 @@ void main() {
     await tester.tap(find.text('Спробувати ще раз'));
     await tester.pump();
     expect(retried, 1);
+  });
+
+  group("зворотний зв'язок", () {
+    Widget host(Future<FeedbackResult> Function(String) send) => MaterialApp(
+          theme: buildAppTheme(),
+          home: Builder(
+            builder: (ctx) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx)
+                      .push(MaterialPageRoute(builder: (_) => FeedbackScreen(send: send))),
+                  child: const Text('відкрити'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('напис, порожній текст і успішна відправка', (tester) async {
+      final sent = <String>[];
+      await tester.pumpWidget(host((m) async {
+        sent.add(m);
+        return FeedbackResult.sent;
+      }));
+      await tester.tap(find.text('відкрити'));
+      await tester.pumpAndSettle();
+      expect(find.text(FeedbackScreen.intro), findsOneWidget);
+
+      await tester.tap(find.text('Надіслати'));
+      await tester.pump();
+      expect(find.text('Напишіть хоча б кілька слів'), findsOneWidget);
+      expect(sent, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'Додайте темну тему');
+      await tester.tap(find.text('Надіслати'));
+      await tester.pumpAndSettle();
+      expect(sent, ['Додайте темну тему']);
+      expect(find.text('Дякуємо! Ваше повідомлення надіслано.'), findsOneWidget);
+      await tester.tap(find.text('Гаразд'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedbackScreen), findsNothing);
+    });
+
+    testWidgets('не вдалося — текст лишається, можна скопіювати', (tester) async {
+      await tester.pumpWidget(host((_) async => FeedbackResult.failed));
+      await tester.tap(find.text('відкрити'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Не працює сканер');
+      await tester.tap(find.text('Надіслати'));
+      await tester.pumpAndSettle();
+      expect(find.text('Не надіслано'), findsOneWidget);
+      expect(find.textContaining(FeedbackService.email), findsOneWidget);
+      await tester.tap(find.text('Гаразд'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedbackScreen), findsOneWidget);
+      expect(find.text('Не працює сканер'), findsOneWidget);
+    });
+  });
+
+  testWidgets('карта: «Редагувати» одразу пропонує шаблони; «Шаблони» — лише в меню', (tester) async {
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.text('Шаблони'), findsNothing);
+    expect(find.text('Додати'), findsNothing);
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    expect(find.text('Оберіть шаблон'), findsOneWidget);
+    expect(find.text('Лежак (2×2)'), findsOneWidget);
+    // закрили вибір, нічого не обравши — лишаємось у редагуванні
+    await tester.tapAt(const Offset(12, 300));
+    await settle(tester);
+    expect(find.text('Оберіть шаблон'), findsNothing);
+    expect(find.byTooltip('Готово'), findsOneWidget);
+    // «Готово» — назад до перегляду; знову «Редагувати» й обрали шаблон — розміщення
+    await tester.tap(find.byTooltip('Готово'));
+    await settle(tester);
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    await tester.tap(find.text('Лежак (2×2)'));
+    await settle(tester);
+    expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

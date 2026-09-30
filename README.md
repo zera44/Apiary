@@ -69,6 +69,16 @@ flutter test
 На Android сповіщення планує система (працює й при закритому застосунку);
 на Windows — застосунок показує їх, поки він запущений (можна згорнути).
 
+## Назва та іконка застосунку
+
+Назва на телефоні й у заголовку вікна — **Vulyk** (`appName` у
+`tool/patch_platforms.dart`). Іконка — пасічник із рамкою
+(`design/app_icon/app_icon.pdf`). Щоб її змінити, заміни PDF і виконай
+`python3 tool/make_app_icon.py` (потрібні poppler-utils і Pillow): скрипт
+оновить `tool/app_icon/`, а `dart run tool/patch_platforms.dart` скопіює
+файли в платформні теки (Android — звичайна й адаптивна іконка та біла
+іконка сповіщень; Windows — `app_icon.ico`).
+
 ## Іконки
 
 Усі іконки — SVG-файли в [`assets/icons/`](assets/icons/README.md), поділені на
@@ -121,6 +131,27 @@ flutter build apk --dart-define=APIARY_API_URL=https://api.мій-сервер.c
 Кожен змінений рядок відправляється `POST {API_URL}/{таблиця}` (JSON) для
 таблиць `elements`, `templates`, `parameters`, `element_parameters`,
 `parameter_records`. Успіх — відповідь 200/201.
+
+## Зворотний зв'язок
+
+У бічному меню карти (три смужки) є пункт «Зворотний зв'язок»: користувач
+пише текст, і той приходить листом на **myapiaryrezvin@gmail.com**. Пароль від
+пошти в застосунку не зберігається — лист пересилає сервіс форм
+[Formspree](https://formspree.io) (безкоштовно — до 50 листів на місяць).
+
+Налаштування (один раз):
+
+1. Зареєструйся на formspree.io з адресою myapiaryrezvin@gmail.com і
+   підтверди її з листа.
+2. Створи форму (New Form), листи — на myapiaryrezvin@gmail.com. Скопіюй її
+   адресу виду `https://formspree.io/f/xxxxxxxx`.
+3. У репозиторії GitHub: Settings → Secrets and variables → Actions →
+   New repository secret, ім'я `APIARY_FEEDBACK_URL`, значення — ця адреса.
+
+Наступні збірки CI вже надсилатимуть відгуки. Локально:
+`flutter run --dart-define=APIARY_FEEDBACK_URL=https://formspree.io/f/xxxxxxxx`.
+Без адреси (або без інтернету) застосунок каже, що не вдалося надіслати, і
+пропонує скопіювати текст разом з адресою пошти.
 
 ## Стара база з Python-версії
 

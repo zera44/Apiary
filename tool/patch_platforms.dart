@@ -1,10 +1,11 @@
 // Після `flutter create` підставляє людську назву застосунку
-// ("Моя пасіка") у згенеровані платформні файли.
+// ("Vulyk") та іконку (tool/app_icon, див. tool/make_app_icon.py) у
+// згенеровані платформні файли.
 //
 //   dart run tool/patch_platforms.dart
 import 'dart:io';
 
-const appName = 'Моя пасіка';
+const appName = 'Vulyk';
 
 void patch(String path, String from, String to) {
   final f = File(path);
@@ -209,9 +210,9 @@ void _patchAndroidSigning() {
   exit(1);
 }
 
-/// Заголовок вікна Windows ("Моя пасіка") — через \u, щоб компілятор не
-/// залежав від кодування файлу.
-const _winTitle = r'L"\u041c\u043e\u044f \u043f\u0430\u0441\u0456\u043a\u0430"';
+/// Заголовок вікна Windows ("Vulyk"). Якщо в назві з'явиться кирилиця —
+/// писати її через \u, щоб компілятор не залежав від кодування файлу.
+const _winTitle = r'L"Vulyk"';
 
 /// Windows: лише одна копія програми. Друга (напр., відкрита з меню «Пуск»,
 /// коли вже працює автозапущена) показує вже запущене вікно й виходить —
@@ -248,7 +249,36 @@ void _patchWindowsSingleInstance() {
   stdout.writeln('✓ windows/runner/main.cpp (одна копія, заголовок вікна)');
 }
 
+/// Іконка застосунку: копіює готові файли з tool/app_icon (їх генерує
+/// tool/make_app_icon.py з design/app_icon/app_icon.pdf) поверх типових
+/// іконок Flutter. Для Android — ще й адаптивна іконка (Android 8+) і
+/// окрема біла іконка сповіщень.
+void _copyAppIcon() {
+  void copyTree(String from, String to) {
+    final src = Directory(from);
+    if (!src.existsSync() || !Directory(to).existsSync()) return;
+    var n = 0;
+    for (final e in src.listSync(recursive: true)) {
+      if (e is! File) continue;
+      final rel = e.path.substring(src.path.length + 1);
+      final dst = File('$to/$rel');
+      dst.parent.createSync(recursive: true);
+      e.copySync(dst.path);
+      n++;
+    }
+    stdout.writeln('✓ $to (іконка: $n файлів)');
+  }
+
+  copyTree('tool/app_icon/android/res', 'android/app/src/main/res');
+  final ico = File('tool/app_icon/windows/app_icon.ico');
+  if (ico.existsSync() && Directory('windows/runner/resources').existsSync()) {
+    ico.copySync('windows/runner/resources/app_icon.ico');
+    stdout.writeln('✓ windows/runner/resources/app_icon.ico');
+  }
+}
+
 void main() {
+  _copyAppIcon();
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
       'android:label="$appName"');
   _patchAndroidPermissions('android/app/src/main/AndroidManifest.xml');

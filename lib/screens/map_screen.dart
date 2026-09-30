@@ -19,11 +19,11 @@ import 'history_screen.dart';
 import 'parameters_screen.dart';
 import 'qr_scan_screen.dart';
 import 'template_editor_screen.dart';
-import 'templates_screen.dart';
 
 /// Головний екран: карта пасіки (порт map_screen.py).
 ///
-///  * FAB "+" — меню "Редагувати" / "Шаблони".
+///  * Зліва внизу: «Додати» (одразу вибір шаблону й розміщення) і
+///    «Редагувати». Список шаблонів — у меню ☰ → «Шаблони».
 ///  * "Редагувати": натиснути на об'єкт — обрати його (разом з усією групою)
 ///    і тим самим дотиком перетягувати; знизу — панель дій: додати об'єкт
 ///    із шаблону, повернути, перейменувати, крок назад, видалити, готово.
@@ -69,7 +69,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final grid = GridController(cellSize: 34, minCell: 18, maxCell: 56);
   List<MapElement> elements = [];
 
-  bool menuOpen = false;
   bool selectMode = false;
   ApiaryTemplate? pendingTemplate;
   String? selectedId;
@@ -423,7 +422,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void _enterEdit() {
     setState(() {
       panelOpen = false;
-      menuOpen = false;
       selectMode = true;
       selectedId = null;
       selectedGroupId = null;
@@ -835,14 +833,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
   }
 
-  Future<void> _openTemplates() async {
-    setState(() => menuOpen = false);
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => TemplatesScreen(repo: repo),
-    ));
-    await _reload();
-  }
-
   // ---------------------------------------------------------------------
   // побудова
   // ---------------------------------------------------------------------
@@ -1083,45 +1073,32 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
+  /// Кнопка зліва внизу (поза редагуванням): «Редагувати» — режим
+  /// редагування й одразу вибір шаблону, щоб додати вулик на карту.
+  /// Список шаблонів (створення, зміна) — лише в меню ☰ → «Шаблони».
   List<Widget> _fab() => [
-        if (menuOpen) ...[
-          Positioned(
-            left: 16,
-            bottom: 128,
-            child: PillButton(
-                text: 'Редагувати',
-                bg: AppColors.accent,
-                width: 150,
-                height: 42,
-                radius: 21,
-                onPressed: _enterEdit),
-          ),
-          Positioned(
-            left: 16,
-            bottom: 78,
-            child: PillButton(
-                text: 'Шаблони',
-                bg: AppColors.create,
-                width: 150,
-                height: 42,
-                radius: 21,
-                onPressed: _openTemplates),
-          ),
-        ],
         Positioned(
           left: 16,
           bottom: 18,
           child: PillButton(
-            text: menuOpen ? '×' : '+',
-            bg: AppColors.create,
-            width: 54,
-            height: 54,
-            radius: 27,
-            fontSize: 26,
-            onPressed: () => setState(() => menuOpen = !menuOpen),
+            text: 'Редагувати',
+            bg: AppColors.accent,
+            width: 150,
+            height: 50,
+            radius: 25,
+            fontSize: 16,
+            onPressed: _busy ? null : _editAndAdd,
           ),
         ),
       ];
+
+  /// «Редагувати»: увійти в редагування й одразу запропонувати шаблон.
+  /// Якщо шаблон не обрали — лишаємось у редагуванні (перемістити,
+  /// повернути, видалити; «Готово» — вийти).
+  Future<void> _editAndAdd() async {
+    _enterEdit();
+    await _onAddObject();
+  }
 
   Widget _actionBar() {
     final enabled = hasSelection && !_busy && _drag == null;

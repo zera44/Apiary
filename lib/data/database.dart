@@ -26,12 +26,19 @@ class AppDatabase {
     return open(platformFactory, p.join(dir.path, fileName));
   }
 
+  /// Тимчасова база в пам'яті для режиму навчання: щоразу нова й порожня,
+  /// справжні пасіки користувача не зачіпає; зникає після закриття.
+  static Future<Database> openSandbox([DatabaseFactory? factory]) =>
+      open(factory ?? platformFactory, inMemoryDatabasePath, singleInstance: false);
+
   /// [path] може бути [inMemoryDatabasePath] (тести).
-  static Future<Database> open(DatabaseFactory factory, String path) async {
+  static Future<Database> open(DatabaseFactory factory, String path,
+      {bool singleInstance = true}) async {
     final db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
         version: 1,
+        singleInstance: singleInstance,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
