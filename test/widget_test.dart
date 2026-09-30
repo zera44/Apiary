@@ -132,6 +132,18 @@ void main() {
     expect(find.text('стало: 7 кг'), findsOneWidget);
   });
 
+  testWidgets('головна: «назад» повертає на заставку MyApiary', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    expect(find.text('Мої пасіки'), findsOneWidget);
+    await tester.tap(find.byType(CircleIconButton).first);
+    await settle(tester);
+    expect(find.text('MyApiary'), findsOneWidget);
+    expect(find.text('Мої пасіки'), findsNothing);
+  });
+
   testWidgets('заставка: кнопка «Пройти навчання» відкриває режим навчання', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
