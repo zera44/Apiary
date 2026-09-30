@@ -281,7 +281,7 @@ void main() {
     await repo.addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
     await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
     final item = await repo.addStockItem('Цукор', 'кг');
-    await repo.fillStock(item, 1, add: false);
+    await repo.receiveStock(item, 1);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
@@ -504,19 +504,29 @@ void main() {
     expect((await repo.getGroupElements(more.single)).single.label, 'Т 3');
   });
 
-  test('склад: номенклатура, перезапис і додавання кількості', () async {
+  test('склад: прихід і вибуття — окремі записи, залишок рахується', () async {
     final id = await repo.addStockItem(' Цукор ', 'кг');
     var it = (await repo.listStockItems()).single;
     expect(it.name, 'Цукор');
     expect(it.quantity, isNull);
-    expect(await repo.fillStock(id, 5, add: false), 5);
-    expect(await repo.fillStock(id, 2.5, add: true), 7.5);
-    expect(await repo.fillStock(id, 3, add: false), 3);
+    expect(await repo.receiveStock(id, 5, date: DateTime(2026, 9, 1), price: 30), 5);
+    expect(await repo.receiveStock(id, 2.5, comment: 'чек 12'), 7.5);
+    expect(await repo.writeOffStock(id, 3, reason: 'Підгодівля'), 4.5);
+    // більше за залишок — не можна, залишок не змінюється
+    await expectLater(repo.writeOffStock(id, 5, reason: 'Продаж'), throwsStateError);
+    expect(() => repo.receiveStock(id, 0), throwsArgumentError);
+    expect(await repo.writeOffStock(id, 4.5, reason: 'Продаж'), 0);
     it = (await repo.getStockItem(id))!;
-    expect(it.quantity, 3);
+    expect(it.quantity, 0);
     final moves = await repo.stockMoves(id);
-    expect([for (final m in moves) m['kind']], ['set', 'add', 'set']);
-    expect([for (final m in moves) m['quantity_after']], [5, 7.5, 3]);
+    expect([for (final m in moves) m['kind']], ['in', 'in', 'out', 'out']);
+    expect([for (final m in moves) m['quantity_after']], [5, 7.5, 4.5, 0]);
+    expect(moves.first['price'], 30);
+    expect(moves[1]['comment'], 'чек 12');
+    expect(moves[2]['reason'], 'Підгодівля');
+    // дата операції — обрана, а не дата введення (1 вересня — найраніший запис)
+    expect(DateTime.fromMicrosecondsSinceEpoch(((moves.first['op_date'] as num) * 1e6).round()),
+        DateTime(2026, 9, 1));
     await repo.updateStockItem(id, name: 'Цукор білий', unit: 'г', photo: ('/x/stock_photos/a.jpg',));
     it = (await repo.getStockItem(id))!;
     expect((it.name, it.unit, it.photo), ('Цукор білий', 'г', '/x/stock_photos/a.jpg'));

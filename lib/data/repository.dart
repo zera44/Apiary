@@ -1478,25 +1478,47 @@ class Repository {
       'stock_items', {'deleted': 1, 'updated_at': now(), 'synced': 0},
       where: 'id = ?', whereArgs: [id]);
 
-  /// Заповнити кількість: [add] = false — перезаписати, true — додати до
-  /// наявної. Повертає нову кількість. Кожне заповнення записується в
-  /// stock_moves (історія приходу).
-  Future<double> fillStock(String id, double amount, {required bool add}) async {
+  /// Прихід: залишок += [amount]. [date] — дата операції (типово — зараз),
+  /// [price] — ціна за одиницю. Повертає новий залишок.
+  Future<double> receiveStock(String id, double amount,
+          {DateTime? date, double? price, String? comment}) =>
+      _stockMove(id, 'in', amount, date: date, price: price, comment: comment);
+
+  /// Вибуття (списання): залишок −= [amount]; більше за залишок — не можна
+  /// ([StateError]). [reason] — причина.
+  Future<double> writeOffStock(String id, double amount,
+          {required String reason, DateTime? date, String? comment}) =>
+      _stockMove(id, 'out', amount, date: date, reason: reason, comment: comment);
+
+  /// Кожна операція — окремий запис у stock_moves; залишок у stock_items
+  /// змінюється в тій самій транзакції. Нічого не перезаписується.
+  Future<double> _stockMove(String id, String kind, double amount,
+      {DateTime? date, double? price, String? reason, String? comment}) {
+    if (!(amount > 0)) throw ArgumentError.value(amount, 'amount', 'має бути більше 0');
     return db.transaction((txn) async {
       final rows = await txn.query('stock_items',
-          columns: ['quantity'], where: 'id = ?', whereArgs: [id], limit: 1);
-      if (rows.isEmpty) throw StateError('номенклатуру не знайдено');
+          columns: ['quantity', 'unit'], where: 'id = ? AND deleted = 0', whereArgs: [id], limit: 1);
+      if (rows.isEmpty) throw StateError('Номенклатуру не знайдено');
       final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
-      final next = add ? prev + amount : amount;
+      if (kind == 'out' && amount > prev + 1e-9) {
+        throw StateError('Не можна списати більше, ніж є на складі '
+            '(залишок: ${_fmtQty(prev)} ${rows.first['unit']})');
+      }
+      var next = kind == 'out' ? prev - amount : prev + amount;
+      if (next.abs() < 1e-9) next = 0;
       final t = now();
       await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
           where: 'id = ?', whereArgs: [id]);
       await txn.insert('stock_moves', {
         'id': newId(),
         'item_id': id,
-        'kind': add ? 'add' : 'set',
+        'kind': kind,
         'amount': amount,
         'quantity_after': next,
+        'op_date': date == null ? t : date.microsecondsSinceEpoch / 1e6,
+        'price': price,
+        'reason': reason,
+        'comment': comment,
         'created_at': t,
         'updated_at': t,
         'synced': 0,
@@ -1505,8 +1527,18 @@ class Repository {
     });
   }
 
+  static String _fmtQty(double v) {
+    final r = (v * 1000).roundToDouble() / 1000;
+    return r == r.truncateToDouble()
+        ? r.toInt().toString()
+        : r.toStringAsFixed(3).replaceFirst(RegExp(r'0+$'), '').replaceAll('.', ',');
+  }
+
+  /// Операції номенклатури за датою операції (найстаріші першими).
   Future<List<Map<String, Object?>>> stockMoves(String itemId) => db.query('stock_moves',
-      where: 'item_id = ? AND deleted = 0', whereArgs: [itemId], orderBy: 'created_at');
+      where: 'item_id = ? AND deleted = 0',
+      whereArgs: [itemId],
+      orderBy: 'COALESCE(op_date, created_at), created_at');
 
   Future<List<Map<String, Object?>>> unsynced(String table) async {
     _checkSyncTable(table);

@@ -60,7 +60,7 @@ void main() {
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
 
-  testWidgets('склад: додати номенклатуру, заповнити, перезаписати й додати', (tester) async {
+  testWidgets('склад: додати номенклатуру, прихід і списання', (tester) async {
     await tester.pumpWidget(wrap(StockScreen(repo: repo)));
     await settle(tester);
     expect(find.text('Прихід номенклатури'), findsOneWidget);
@@ -80,41 +80,56 @@ void main() {
     expect(find.text('Цукор'), findsOneWidget);
     expect(find.text('—'), findsOneWidget);
 
-    // уперше — одразу кількість
-    await tester.tap(find.text('Заповнити'));
+    // вибуття: поки приходу не було — нічого списувати
+    await tester.tap(find.text('Вибуття'));
     await settle(tester);
-    expect(find.text('Перезаписати'), findsNothing);
-    await tester.enterText(find.byType(TextField).last, '5');
+    expect(find.text('Вибуття номенклатури'), findsOneWidget);
+    expect(find.textContaining('Немає що списувати'), findsOneWidget);
+    await tester.tap(find.widgetWithText(PillButton, 'Прихід'));
+    await settle(tester);
+
+    // прихід: жодного «перезаписати» — лише кількість
+    await tester.tap(find.widgetWithText(PillButton, 'Прихід').last);
+    await settle(tester);
+    expect(find.text('Прихід: Цукор'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '5');
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
     expect(find.text('5 кг'), findsOneWidget);
-
-    // вдруге — вибір: «Додати»
-    await tester.tap(find.text('Заповнити'));
+    await tester.tap(find.widgetWithText(PillButton, 'Прихід').last);
     await settle(tester);
-    expect(find.text('Перезаписати'), findsOneWidget);
-    await tester.tap(find.text('Додати'));
-    await settle(tester);
-    await tester.enterText(find.byType(TextField).last, '2,5');
+    await tester.enterText(find.byType(TextField).first, '2,5');
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
     expect(find.text('7,5 кг'), findsOneWidget);
 
-    // «Перезаписати»
-    await tester.tap(find.text('Заповнити'));
+    // списання: не більше залишку і з причиною
+    await tester.tap(find.text('Вибуття'));
     await settle(tester);
-    await tester.tap(find.text('Перезаписати'));
+    await tester.tap(find.widgetWithText(PillButton, 'Списати'));
     await settle(tester);
-    await tester.enterText(find.byType(TextField).last, '1');
-    await tester.tap(find.text('Зберегти'));
+    expect(find.text('Списання: Цукор'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '10');
+    await tester.tap(find.widgetWithText(PillButton, 'Списати').last);
     await settle(tester);
-    expect(find.text('1 кг'), findsOneWidget);
+    expect(find.text('Можна списати не більше 7,5 кг'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '2');
+    await tester.tap(find.widgetWithText(PillButton, 'Списати').last);
+    await settle(tester);
+    expect(find.text('Оберіть причину списання'), findsOneWidget);
+    await tester.tap(find.text('Підгодівля'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(PillButton, 'Списати').last);
+    await settle(tester);
+    expect(find.text('5,5 кг'), findsOneWidget);
+    expect((await repo.listStockItems()).single.quantity, 5.5);
   });
 
   testWidgets('історія: вкладки «Характеристики» і «Склад», записи складу', (tester) async {
     final id = await repo.addStockItem('Цукор', 'кг');
-    await repo.fillStock(id, 5, add: false);
-    await repo.fillStock(id, 2, add: true);
+    await repo.receiveStock(id, 5);
+    await repo.receiveStock(id, 2, price: 30);
+    await repo.writeOffStock(id, 3, reason: 'Підгодівля');
     final params = await repo.listParameters();
     await tester.pumpWidget(wrap(HistoryHubScreen(repo: repo)));
     await settle(tester);
@@ -122,14 +137,16 @@ void main() {
 
     await tester.tap(find.text('Склад'));
     await settle(tester);
-    expect(find.text('Зараз: 7 кг'), findsOneWidget);
+    expect(find.text('Залишок: 4 кг'), findsOneWidget);
     await tester.tap(find.text('Цукор'));
     await settle(tester);
     expect(find.text('Історія: Цукор'), findsOneWidget);
-    expect(find.text('Додано'), findsOneWidget);
+    expect(find.text('Прихід'), findsNWidgets(2));
     expect(find.text('+2 кг'), findsOneWidget);
-    expect(find.text('Перезаписано'), findsOneWidget);
-    expect(find.text('стало: 7 кг'), findsOneWidget);
+    expect(find.text('Списано: Підгодівля'), findsOneWidget);
+    expect(find.text('−3 кг'), findsOneWidget);
+    expect(find.text('стало: 4 кг'), findsOneWidget);
+    expect(find.textContaining('30 грн/кг'), findsOneWidget);
   });
 
   testWidgets('головна: «назад» повертає на заставку MyApiary', (tester) async {

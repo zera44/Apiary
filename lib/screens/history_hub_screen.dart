@@ -10,7 +10,7 @@ import 'history_screen.dart';
 import 'stock_screen.dart' show StockPhoto;
 
 /// Меню навігації → «Історія»: окремо історія характеристик і історія
-/// складу (кожне «Заповнити» номенклатури).
+/// складу (прихід і вибуття номенклатури).
 class HistoryHubScreen extends StatefulWidget {
   final Repository repo;
 
@@ -116,7 +116,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
         final it = list[i];
         return _card(
           title: it.name,
-          subtitle: it.quantity == null ? 'Ще не заповнювали' : 'Зараз: ${formatAmount(it.quantity!)} ${it.unit}',
+          subtitle: it.quantity == null ? 'Ще не було приходу' : 'Залишок: ${formatAmount(it.quantity!)} ${it.unit}',
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: SizedBox(width: 44, height: 44, child: StockPhoto(path: it.photo)),
@@ -164,7 +164,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   }
 }
 
-/// Історія однієї номенклатури: кожне заповнення, найновіші першими.
+/// Історія однієї номенклатури: кожен прихід і списання, найновіші першими.
 class StockHistoryScreen extends StatefulWidget {
   final Repository repo;
   final StockItem item;
@@ -201,7 +201,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              'Ще немає жодного запису.\nЗаписи з\'являються після кнопки «Заповнити» на складі.',
+                              'Ще немає жодного запису.\nЗаписи з\'являються після приходу чи списання на складі.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),
@@ -213,9 +213,19 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final r = list[i];
-                            final add = r['kind'] == 'add';
+                            final kind = r['kind'] as String;
+                            final out = kind == 'out';
                             final amount = formatAmount((r['amount'] as num).toDouble());
                             final after = formatAmount((r['quantity_after'] as num).toDouble());
+                            final when = formatDdMmYyyy(DateTime.fromMicrosecondsSinceEpoch(
+                                (((r['op_date'] ?? r['created_at']) as num).toDouble() * 1e6).round()));
+                            final price = (r['price'] as num?)?.toDouble();
+                            final comment = r['comment'] as String?;
+                            final details = [
+                              when,
+                              if (price != null) '${formatAmount(price)} грн/$unit',
+                              if (comment != null && comment.isNotEmpty) comment,
+                            ].join(' · ');
                             return ListCard(
                               height: 62,
                               child: Row(children: [
@@ -224,12 +234,16 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(add ? 'Додано' : 'Перезаписано',
+                                      Text(stockMoveTitle(kind, r['reason'] as String?),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                               color: AppColors.text,
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold)),
-                                      Text(formatDateTime((r['created_at'] as num).toDouble()),
+                                      Text(details,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                                     ],
                                   ),
@@ -238,7 +252,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(add ? '+$amount $unit' : '$amount $unit',
+                                    Text(out ? '−$amount $unit' : (kind == 'set' ? '$amount $unit' : '+$amount $unit'),
                                         style: TextStyle(
                                             color: AppColors.text,
                                             fontSize: 15,

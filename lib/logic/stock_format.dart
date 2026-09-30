@@ -20,3 +20,13 @@ String formatAmount(double v) {
 
 /// Готові одиниці виміру (можна ввести й свою).
 const kStockUnits = ['шт', 'кг', 'г', 'л', 'мл', 'м', 'рамка', 'упаковка'];
+
+/// Причини списання (вибуття).
+const kWriteOffReasons = ['Підгодівля', 'Лікування', 'Продаж', 'Використано', 'Зіпсовано', 'Інше'];
+
+/// Назва операції складу для історії.
+String stockMoveTitle(String kind, String? reason) => switch (kind) {
+      'out' => reason == null || reason.isEmpty ? 'Списано' : 'Списано: $reason',
+      'set' => 'Перезаписано (старий запис)',
+      _ => 'Прихід',
+    };

@@ -8,14 +8,24 @@ import '../data/repository.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
 import '../ui/common.dart';
+import '../ui/date_picker.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 
-/// Склад → «Прихід номенклатури»: плитки номенклатури (з фото), кнопка
-/// «Заповнити» під кожною й «Додати номенклатуру» внизу.
+/// Склад: дві вкладки.
+/// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
+/// «Додати номенклатуру». «Вибуття» — номенклатура із залишком, під
+/// кожною «Списати».
+///
+/// За правилами обліку нічого не перезаписується: кожна операція — окремий
+/// запис (дата, кількість, ціна/причина, коментар), а залишок = прихід −
+/// вибуття.
 class StockScreen extends StatefulWidget {
   final Repository repo;
-  const StockScreen({super.key, required this.repo});
+
+  /// true — одразу відкрити вкладку «Вибуття».
+  final bool writeOff;
+  const StockScreen({super.key, required this.repo, this.writeOff = false});
   @override
   State<StockScreen> createState() => _StockScreenState();
 }
@@ -23,6 +33,7 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   List<StockItem>? items;
   bool _busy = false;
+  late bool _out = widget.writeOff;
 
   Repository get repo => widget.repo;
 
@@ -80,61 +91,77 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
       });
 
-  /// «Заповнити»: уперше — просто кількість; далі спершу вибір
-  /// «Перезаписати» / «Додати».
-  Future<void> _fill(StockItem it) => _guard(() async {
-        bool add = false;
-        if (it.quantity != null) {
-          final choice = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: Text(it.name),
-              content: Text(
-                'Зараз: ${formatAmount(it.quantity!)} ${it.unit}.\n'
-                '«Перезаписати» — замінити цю кількість новою.\n'
-                '«Додати» — додати нову кількість до наявної.',
-                style: TextStyle(color: AppColors.text),
-              ),
-              actions: [
-                _buttons([
-                  PillButton(
-                      text: 'Перезаписати',
-                      bg: AppColors.danger,
-                      onPressed: () => Navigator.pop(ctx, false)),
-                  PillButton(
-                      text: 'Додати', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx, true)),
-                ]),
-              ],
-            ),
-          );
-          if (choice == null) return;
-          add = choice;
-        }
-        if (!mounted) return;
-        final amount = await showDialog<double>(
+  /// «Прихід»: кількість, дата, ціна за одиницю (необов'язково), коментар.
+  Future<void> _receive(StockItem it) => _guard(() async {
+        final m = await showDialog<_Move>(
           context: context,
-          builder: (_) => _AmountDialog(item: it, add: add),
+          builder: (_) => _MoveDialog(item: it, out: false),
         );
-        if (amount == null) return;
-        await repo.fillStock(it.id, amount, add: add);
+        if (m == null) return;
+        await repo.receiveStock(it.id, m.amount, date: m.date, price: m.price, comment: m.comment);
         await _reload();
       });
 
+  /// «Списати»: кількість (не більше залишку), причина, дата, коментар.
+  Future<void> _writeOff(StockItem it) => _guard(() async {
+        final m = await showDialog<_Move>(
+          context: context,
+          builder: (_) => _MoveDialog(item: it, out: true),
+        );
+        if (m == null) return;
+        try {
+          await repo.writeOffStock(it.id, m.amount, reason: m.reason!, date: m.date, comment: m.comment);
+        } on StateError catch (e) {
+          if (mounted) await showInfo(context, e.message);
+        }
+        await _reload();
+      });
+
+  Widget _tab(String text, bool out) => Expanded(
+        child: PillButton(
+          text: text,
+          bg: _out == out ? AppColors.accent : AppColors.darkBtn,
+          fg: _out == out ? Colors.white : AppColors.text,
+          height: 40,
+          onPressed: () => setState(() => _out = out),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final list = items;
+    final all = items;
+    final list = all == null
+        ? null
+        : (_out ? [for (final i in all) if ((i.quantity ?? 0) > 0) i] : all);
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Прихід номенклатури', onBack: () => Navigator.pop(context)),
+            TopBar(
+                title: _out ? 'Вибуття номенклатури' : 'Прихід номенклатури',
+                onBack: () => Navigator.pop(context)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Row(children: [
+                _tab('Прихід', false),
+                const SizedBox(width: 8),
+                _tab('Вибуття', true),
+              ]),
+            ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
                   : list.isEmpty
                       ? Center(
-                          child: Text('Ще немає жодної номенклатури',
-                              style: TextStyle(color: AppColors.textMuted)))
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                                _out
+                                    ? 'Немає що списувати.\nСпершу оформіть прихід номенклатури.'
+                                    : 'Ще немає жодної номенклатури',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.textMuted)),
+                          ))
                       : GridView.builder(
                           padding: const EdgeInsets.all(12),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -147,17 +174,18 @@ class _StockScreenState extends State<StockScreen> {
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: PillButton(
-                text: 'Додати номенклатуру',
-                bg: AppColors.accent,
-                height: 48,
-                radius: 16,
-                width: double.infinity,
-                onPressed: _add,
+            if (!_out)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: PillButton(
+                  text: 'Додати номенклатуру',
+                  bg: AppColors.accent,
+                  height: 48,
+                  radius: 16,
+                  width: double.infinity,
+                  onPressed: _add,
+                ),
               ),
-            ),
           ]),
           const Positioned.fill(child: ScreenFrame()),
         ]),
@@ -165,7 +193,7 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  /// Плитка: назва, фото (тап — змінити), кількість і «Заповнити».
+  /// Плитка: назва, фото (тап — змінити), залишок і кнопка дії вкладки.
   Widget _tile(StockItem it) {
     final qty = it.quantity == null ? '—' : '${formatAmount(it.quantity!)} ${it.unit}';
     return Column(children: [
@@ -214,14 +242,23 @@ class _StockScreenState extends State<StockScreen> {
         ),
       ),
       const SizedBox(height: 6),
-      PillButton(
-        text: 'Заповнити',
-        bg: AppColors.addObject,
-        height: 36,
-        radius: 12,
-        width: double.infinity,
-        onPressed: () => _fill(it),
-      ),
+      _out
+          ? PillButton(
+              text: 'Списати',
+              bg: AppColors.danger,
+              height: 36,
+              radius: 12,
+              width: double.infinity,
+              onPressed: () => _writeOff(it),
+            )
+          : PillButton(
+              text: 'Прихід',
+              bg: AppColors.addObject,
+              height: 36,
+              radius: 12,
+              width: double.infinity,
+              onPressed: () => _receive(it),
+            ),
     ]);
   }
 }
@@ -442,68 +479,159 @@ class _ItemDialogState extends State<_ItemDialog> {
   }
 }
 
-/// Введення кількості (дробові числа — з комою або крапкою).
-class _AmountDialog extends StatefulWidget {
-  final StockItem item;
-  final bool add;
-  const _AmountDialog({required this.item, required this.add});
-  @override
-  State<_AmountDialog> createState() => _AmountDialogState();
+/// Результат діалогу операції.
+class _Move {
+  final double amount;
+  final DateTime date;
+  final double? price;
+  final String? reason;
+  final String? comment;
+  const _Move(this.amount, this.date, {this.price, this.reason, this.comment});
 }
 
-class _AmountDialogState extends State<_AmountDialog> {
-  final _ctrl = TextEditingController();
+/// Прихід або списання: кількість, дата (типово сьогодні), для приходу —
+/// ціна за одиницю, для списання — причина; коментар необов'язковий.
+class _MoveDialog extends StatefulWidget {
+  final StockItem item;
+  final bool out;
+  const _MoveDialog({required this.item, required this.out});
+  @override
+  State<_MoveDialog> createState() => _MoveDialogState();
+}
+
+class _MoveDialogState extends State<_MoveDialog> {
+  final _amount = TextEditingController();
+  final _price = TextEditingController();
+  final _comment = TextEditingController();
+  DateTime _date = DateTime.now();
+  String? _reason;
   String? _error;
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _amount.dispose();
+    _price.dispose();
+    _comment.dispose();
     super.dispose();
   }
 
-  void _save() {
-    final v = parseAmount(_ctrl.text);
-    if (v == null) {
-      setState(() => _error = 'Введіть число, не менше 0');
-      return;
-    }
-    if (widget.add && v == 0) {
-      setState(() => _error = 'Додати можна лише більше 0');
-      return;
-    }
-    Navigator.pop(context, v);
+  Future<void> _pickDate() async {
+    final v = await showAppDatePicker(context, formatDdMmYyyy(_date));
+    final d = parseDdMmYyyy(v);
+    if (d != null && mounted) setState(() => _date = d);
   }
+
+  void _save() {
+    final it = widget.item;
+    final v = parseAmount(_amount.text);
+    if (v == null || v == 0) {
+      setState(() => _error = 'Введіть кількість більше 0');
+      return;
+    }
+    if (widget.out) {
+      final left = it.quantity ?? 0;
+      if (v > left + 1e-9) {
+        setState(() => _error = 'Можна списати не більше ${formatAmount(left)} ${it.unit}');
+        return;
+      }
+      if (_reason == null) {
+        setState(() => _error = 'Оберіть причину списання');
+        return;
+      }
+    }
+    double? price;
+    if (!widget.out && _price.text.trim().isNotEmpty) {
+      price = parseAmount(_price.text);
+      if (price == null) {
+        setState(() => _error = 'Ціна — число, не менше 0');
+        return;
+      }
+    }
+    final c = _comment.text.trim();
+    Navigator.pop(
+        context, _Move(v, _date, price: price, reason: _reason, comment: c.isEmpty ? null : c));
+  }
+
+  InputDecoration _dec(String label, {String? suffix}) =>
+      InputDecoration(labelText: label, suffixText: suffix, isDense: true);
 
   @override
   Widget build(BuildContext context) {
     final it = widget.item;
-    final title = it.quantity == null ? 'Кількість' : (widget.add ? 'Додати кількість' : 'Нова кількість');
+    final numeric = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))];
     return AlertDialog(
-      title: Text('$title: ${it.name}'),
+      title: Text('${widget.out ? 'Списання' : 'Прихід'}: ${it.name}'),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       content: SizedBox(
-        width: 300,
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (it.quantity != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text('Зараз: ${formatAmount(it.quantity!)} ${it.unit}',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            ),
-          TextField(
-            controller: _ctrl,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-            style: TextStyle(color: AppColors.text),
-            decoration: InputDecoration(suffixText: it.unit),
-            onChanged: (_) => setState(() => _error = null),
-            onSubmitted: (_) => _save(),
-          ),
-          if (_error != null) ...[
+        width: 320,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 10, bottom: 4),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Залишок: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: 8),
-            Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
-          ],
-        ]),
+            TextField(
+              controller: _amount,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: numeric,
+              style: TextStyle(color: AppColors.text),
+              decoration: _dec('Кількість', suffix: it.unit),
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            if (widget.out) ...[
+              Text('Причина', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final r in kWriteOffReasons)
+                  ChoiceChip(
+                    label: Text(r),
+                    selected: _reason == r,
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    onSelected: (_) => setState(() {
+                      _reason = r;
+                      _error = null;
+                    }),
+                  ),
+              ]),
+              const SizedBox(height: 10),
+            ] else ...[
+              TextField(
+                controller: _price,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: numeric,
+                style: TextStyle(color: AppColors.text),
+                decoration: _dec('Ціна за 1 ${it.unit} (необов\'язково)', suffix: 'грн'),
+                onChanged: (_) => setState(() => _error = null),
+              ),
+              const SizedBox(height: 10),
+            ],
+            Row(children: [
+              Text('Дата: ', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+              Expanded(
+                child: PillButton(
+                  text: formatDdMmYyyy(_date),
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 36,
+                  onPressed: _pickDate,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _comment,
+              style: TextStyle(color: AppColors.text),
+              decoration: _dec('Коментар (необов\'язково)'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+            ],
+          ]),
+        ),
       ),
       actions: [
         _buttons([
@@ -512,7 +640,10 @@ class _AmountDialogState extends State<_AmountDialog> {
               bg: AppColors.neutralBtn,
               fg: AppColors.text,
               onPressed: () => Navigator.pop(context)),
-          PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: _save),
+          PillButton(
+              text: widget.out ? 'Списати' : 'Зберегти',
+              bg: widget.out ? AppColors.danger : AppColors.accent,
+              onPressed: _save),
         ]),
       ],
     );

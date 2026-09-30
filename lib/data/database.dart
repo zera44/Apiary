@@ -172,6 +172,13 @@ class AppDatabase {
         updated_at REAL NOT NULL,
         synced INTEGER NOT NULL DEFAULT 0
       )''');
+    // kind: 'in' (прихід), 'out' (вибуття); 'set'/'add' — старі записи
+    // op_date — дата операції (не дата введення), price — ціна за одиницю
+    // приходу, reason — причина списання
+    await _ensureColumn(db, 'stock_moves', 'op_date', 'REAL');
+    await _ensureColumn(db, 'stock_moves', 'price', 'REAL');
+    await _ensureColumn(db, 'stock_moves', 'reason', 'TEXT');
+    await _ensureColumn(db, 'stock_moves', 'comment', 'TEXT');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_moves(item_id)');
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
