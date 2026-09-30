@@ -4,7 +4,12 @@ import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
 import 'package:apiary/logic/stock_format.dart';
 import 'package:apiary/logic/visit_reminders.dart';
+import 'dart:convert';
+
+import 'package:apiary/services/feedback.dart';
 import 'package:apiary/ui/date_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -220,4 +225,53 @@ void main() {
       expect(SyncService.serverBase('https://h.example:8443').toString(), 'https://h.example:8443');
     });
   });
+
+  group("зворотний зв'язок", () {
+    test('адреса форми лише https і без паролів', () {
+      expect(FeedbackService.endpoint('https://formspree.io/f/abc'), isNotNull);
+      expect(FeedbackService.endpoint('http://formspree.io/f/abc'), isNull);
+      expect(FeedbackService.endpoint('https://u:p@formspree.io/f/abc'), isNull);
+      expect(FeedbackService.endpoint(''), isNull);
+    });
+
+    test('без адреси форми — «не налаштовано», запит не йде', () async {
+      var calls = 0;
+      final client = MockClient((_) async {
+        calls++;
+        return http.Response('{}', 200);
+      });
+      expect(await FeedbackService.send('Привіт', client: client, formUrl: ''),
+          FeedbackResult.notConfigured);
+      expect(calls, 0);
+    });
+
+    test('текст іде JSON-ом на адресу форми', () async {
+      http.Request? sent;
+      final client = MockClient((r) async {
+        sent = r;
+        return http.Response('{"ok":true}', 200);
+      });
+      final r = await FeedbackService.send('  Чудовий застосунок  ',
+          client: client, formUrl: 'https://formspree.io/f/abc');
+      expect(r, FeedbackResult.sent);
+      expect(sent!.url.toString(), 'https://formspree.io/f/abc');
+      expect(sent!.headers['Accept'], 'application/json');
+      final body = jsonDecode(sent!.body) as Map<String, dynamic>;
+      expect(body['message'], 'Чудовий застосунок');
+      expect(body['_subject'], FeedbackService.subject);
+    });
+
+    test('помилка сервісу чи мережі — «не надіслано»', () async {
+      final bad = MockClient((_) async => http.Response('{"error":"x"}', 422));
+      expect(await FeedbackService.send('a', client: bad, formUrl: 'https://formspree.io/f/abc'),
+          FeedbackResult.failed);
+      final offline = MockClient((_) async => throw const SocketExceptionStub());
+      expect(await FeedbackService.send('a', client: offline, formUrl: 'https://formspree.io/f/abc'),
+          FeedbackResult.failed);
+    });
+  });
+}
+
+class SocketExceptionStub implements Exception {
+  const SocketExceptionStub();
 }

@@ -105,6 +105,8 @@ jobs:
         env:
           KEYSTORE_B64: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.APIARY_KEYSTORE_B64 || '' }}
           KEYSTORE_PASSWORD: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.APIARY_KEYSTORE_PASSWORD || '' }}
+          # адреса форми зворотного зв'язку (Formspree); без неї відгуки не надсилаються
+          FEEDBACK_URL: ${{ secrets.APIARY_FEEDBACK_URL }}
         run: |
           set -o pipefail
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
@@ -125,7 +127,7 @@ jobs:
             echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
           fi
           unset KEYSTORE_B64 KEYSTORE_PASSWORD
-          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols 2>&1 | tee build.log
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -192,9 +194,11 @@ jobs:
           dart run tool/patch_platforms.dart
       - name: Зібрати для Windows
         shell: bash
+        env:
+          FEEDBACK_URL: ${{ secrets.APIARY_FEEDBACK_URL }}
         run: |
           set -o pipefail
-          flutter build windows --release --obfuscate --split-debug-info=build/symbols 2>&1 | tee build.log
+          flutter build windows --release --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash

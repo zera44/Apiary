@@ -4,8 +4,10 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
+import 'package:apiary/screens/feedback_screen.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/services/feedback.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
@@ -678,5 +680,62 @@ void main() {
     await tester.tap(find.text('Спробувати ще раз'));
     await tester.pump();
     expect(retried, 1);
+  });
+
+  group("зворотний зв'язок", () {
+    Widget host(Future<FeedbackResult> Function(String) send) => MaterialApp(
+          theme: buildAppTheme(),
+          home: Builder(
+            builder: (ctx) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx)
+                      .push(MaterialPageRoute(builder: (_) => FeedbackScreen(send: send))),
+                  child: const Text('відкрити'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('напис, порожній текст і успішна відправка', (tester) async {
+      final sent = <String>[];
+      await tester.pumpWidget(host((m) async {
+        sent.add(m);
+        return FeedbackResult.sent;
+      }));
+      await tester.tap(find.text('відкрити'));
+      await tester.pumpAndSettle();
+      expect(find.text(FeedbackScreen.intro), findsOneWidget);
+
+      await tester.tap(find.text('Надіслати'));
+      await tester.pump();
+      expect(find.text('Напишіть хоча б кілька слів'), findsOneWidget);
+      expect(sent, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'Додайте темну тему');
+      await tester.tap(find.text('Надіслати'));
+      await tester.pumpAndSettle();
+      expect(sent, ['Додайте темну тему']);
+      expect(find.text('Дякуємо! Ваше повідомлення надіслано.'), findsOneWidget);
+      await tester.tap(find.text('Гаразд'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedbackScreen), findsNothing);
+    });
+
+    testWidgets('не вдалося — текст лишається, можна скопіювати', (tester) async {
+      await tester.pumpWidget(host((_) async => FeedbackResult.failed));
+      await tester.tap(find.text('відкрити'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Не працює сканер');
+      await tester.tap(find.text('Надіслати'));
+      await tester.pumpAndSettle();
+      expect(find.text('Не надіслано'), findsOneWidget);
+      expect(find.textContaining(FeedbackService.email), findsOneWidget);
+      await tester.tap(find.text('Гаразд'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedbackScreen), findsOneWidget);
+      expect(find.text('Не працює сканер'), findsOneWidget);
+    });
   });
 }

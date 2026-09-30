@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../screens/feedback_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
@@ -15,7 +16,7 @@ import 'icons.dart';
 import 'theme.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Головна / Шаблони /
-/// Характеристики / Склад / Історія / QR-коди. Є лише на карті — зі списку пасік не
+/// Характеристики / Склад / Історія / QR-коди / Зворотний зв'язок. Є лише на карті — зі списку пасік не
 /// відкривається.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
@@ -62,6 +63,10 @@ class AppDrawer extends StatelessWidget {
           }),
           _item(context, 'qr', 'Генерувати QR-коди',
               () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
+          _item(context, 'pencil', "Зворотний зв'язок", () {
+            nav.pop(); // закрити меню
+            nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
+          }),
           if (Autostart.supported) ...[
             const Spacer(),
             const _AutostartTile(),
