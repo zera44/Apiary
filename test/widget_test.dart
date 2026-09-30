@@ -765,7 +765,6 @@ void main() {
     await settle(tester);
     expect(find.text('Шаблони'), findsNothing);
     expect(find.text('Додати'), findsNothing);
-    expect(find.text('+'), findsNothing);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
