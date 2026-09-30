@@ -10,9 +10,11 @@ build/
 .idea/
 .vscode/
 # згенеровані платформні теки (створюються командою flutter create)
-android/
-ios/
-windows/
-linux/
-macos/
-web/
+# (лише в корені проєкту: tool/app_icon/android і tool/app_icon/windows —
+# готові файли іконки, їх треба зберігати в git)
+/android/
+/ios/
+/windows/
+/linux/
+/macos/
+/web/

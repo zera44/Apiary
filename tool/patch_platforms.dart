@@ -269,6 +269,13 @@ void _copyAppIcon() {
     stdout.writeln('✓ $to (іконка: $n файлів)');
   }
 
+  // Без готових файлів збірка тихо брала типову іконку Flutter (а сповіщення —
+  // неіснуючу ic_notification), тож їх відсутність — помилка.
+  if (!File('tool/app_icon/android/res/mipmap-anydpi-v26/ic_launcher.xml').existsSync() ||
+      !File('tool/app_icon/windows/app_icon.ico').existsSync()) {
+    stderr.writeln('✗ немає файлів іконки в tool/app_icon — запустіть python3 tool/make_app_icon.py');
+    exit(1);
+  }
   copyTree('tool/app_icon/android/res', 'android/app/src/main/res');
   final ico = File('tool/app_icon/windows/app_icon.ico');
   if (ico.existsSync() && Directory('windows/runner/resources').existsSync()) {
