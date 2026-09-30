@@ -60,7 +60,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Моя пасіка',
+      title: 'In Riy',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: SplashScreen(repo: widget.repo),
@@ -84,7 +84,7 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Моя пасіка',
+      title: 'In Riy',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: Scaffold(

@@ -89,14 +89,14 @@ class ReminderService {
   Future<bool> _init() async {
     if (_ready) return true;
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings('@drawable/ic_notification'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
       ),
       windows: WindowsInitializationSettings(
-        appName: 'Моя пасіка',
+        appName: 'In Riy',
         appUserModelId: 'com.zera44.apiary',
         guid: '6f1c1f4e-3b0e-4b7a-9d55-2f8f0b6a1c11',
       ),

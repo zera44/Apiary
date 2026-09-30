@@ -31,7 +31,7 @@ class SplashScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 28),
-                Text('MyApiary',
+                Text('In Riy',
                     style: TextStyle(
                         color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),

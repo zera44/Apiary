@@ -69,6 +69,16 @@ flutter test
 На Android сповіщення планує система (працює й при закритому застосунку);
 на Windows — застосунок показує їх, поки він запущений (можна згорнути).
 
+## Назва та іконка застосунку
+
+Назва на телефоні й у заголовку вікна — **In Riy** (`appName` у
+`tool/patch_platforms.dart`). Іконка — пасічник із рамкою
+(`design/app_icon/app_icon.pdf`). Щоб її змінити, заміни PDF і виконай
+`python3 tool/make_app_icon.py` (потрібні poppler-utils і Pillow): скрипт
+оновить `tool/app_icon/`, а `dart run tool/patch_platforms.dart` скопіює
+файли в платформні теки (Android — звичайна й адаптивна іконка та біла
+іконка сповіщень; Windows — `app_icon.ico`).
+
 ## Іконки
 
 Усі іконки — SVG-файли в [`assets/icons/`](assets/icons/README.md), поділені на
