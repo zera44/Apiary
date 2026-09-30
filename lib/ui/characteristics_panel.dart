@@ -148,6 +148,8 @@ class CharacteristicsPanel extends StatelessWidget {
                     ),
                   ]),
                 ),
+                // у перешкод немає параметрів, історії й QR-кодів — лише назва й вигляд
+                if (data.type == 'hive') ...[
                 const SizedBox(height: 14),
                 Text('Параметри', style: muted),
                 const SizedBox(height: 6),
@@ -200,6 +202,7 @@ class CharacteristicsPanel extends StatelessWidget {
                       onPressed: onQr,
                     ),
                   ],
+                ],
                 ],
               ],
             ),

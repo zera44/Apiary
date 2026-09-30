@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 
 import '../logic/cell_value.dart';
 import '../logic/geometry.dart';
+import '../logic/hive_objects.dart';
+import '../logic/merge_layout.dart';
 import '../logic/value_convert.dart';
 import '../logic/visit_reminders.dart';
 import 'models.dart';
@@ -62,6 +64,7 @@ class Repository {
   Future<void> init() async {
     await ensureBaseParameters();
     await ensureLegacyApiary();
+    await splitMultiObjectGroups();
   }
 
   // ---------------------------------------------------------------------
@@ -291,7 +294,7 @@ class Repository {
     );
     // найбільший наявний номер + 1 (а не кількість груп): після видалення
     // чи перейменування однієї з груп лічильник інакше повторював номер
-    final pattern = RegExp('^${RegExp.escape(name)}(?: (\\d+))?\$');
+    final pattern = RegExp('^${RegExp.escape(name)}(?: (\\d+))?(?: · \\d+)?\$');
     var maxN = 0;
     for (final r in rows) {
       final m = pattern.firstMatch((r['label'] as String?) ?? '');
@@ -348,6 +351,178 @@ class Repository {
       }
     });
     return groupId;
+  }
+
+  /// Розмістити шаблон: це ОДНА дія, але на карті з'являються ОКРЕМІ
+  /// об'єкти — кожен вулик (злиті клітинки лежака — один вулик) і кожна
+  /// перешкода мають власну групу, а отже власні параметри, історію, дату
+  /// обходу, нагадування й QR-код. Вулики отримують назви "<шаблон> N" з
+  /// наступними вільними номерами в пасіці. Повертає id груп (спершу
+  /// вулики, зверху вниз, зліва направо).
+  Future<List<String>> placeTemplate(String apiaryId, Map<String, dynamic> cells, int anchorX,
+      int anchorY, {required String name}) async {
+    // клітинки шаблону в координатах карти
+    final placed = <MapElement>[];
+    final values = <String, CellValue>{};
+    var i = 0;
+    for (final e in cells.entries) {
+      final pos = parseCellKey(e.key);
+      if (pos == null) continue;
+      final v = CellValue.parse(e.value);
+      final id = 'c${i++}';
+      values[id] = v;
+      placed.add(MapElement(
+        id: id,
+        x: anchorX + pos.$1,
+        y: anchorY - pos.$2,
+        type: v.type,
+        groupId: 'tpl', // усі в одній "групі" — щоб злилися як у редакторі
+        variant: v.isHive ? null : v.effectiveVariant,
+        icon: v.icon,
+        color: v.color,
+      ));
+    }
+    final byId = {for (final e in placed) e.id: e};
+    final comps = [
+      for (final c in mergeLayout([for (final e in placed) MergeItem<String>(e.id, e.x, e.y, mergeKeyOf(e))])
+          .components)
+        [for (final id in c) byId[id]!]..sort(compareTopLeft)
+    ]..sort((a, b) {
+        // спершу вулики, далі перешкоди; всередині — зверху вниз, зліва направо
+        if (a.first.isHive != b.first.isHive) return a.first.isHive ? -1 : 1;
+        return compareTopLeft(a.first, b.first);
+      });
+    // номери для вуликів — наступні вільні в цій пасіці
+    var next = int.parse((await nextGroupLabel(apiaryId, name)).split(' ').last);
+    final t = now();
+    final ids = <String>[];
+    await db.transaction((txn) async {
+      for (final comp in comps) {
+        final gid = newId();
+        ids.add(gid);
+        final isHive = comp.first.isHive;
+        final label = isHive ? '$name ${next++}' : null;
+        final params = <String>[];
+        final batch = txn.batch();
+        for (final e in comp) {
+          final v = values[e.id]!;
+          for (final pid in v.parameters) {
+            if (!params.contains(pid)) params.add(pid);
+          }
+          batch.insert('elements', {
+            'id': newId(),
+            'apiary_id': apiaryId,
+            'x': e.x,
+            'y': e.y,
+            'type': e.type,
+            'label': label,
+            'rotation': 0,
+            'updated_at': t,
+            'synced': 0,
+            'group_id': gid,
+            'variant': e.variant,
+            'icon': e.icon,
+            'color': e.color,
+          });
+        }
+        await batch.commit(noResult: true);
+        // параметри шаблону — лише вуликам, яким їх призначили (у перешкод
+        // параметрів немає)
+        if (isHive && params.isNotEmpty) {
+          await setAttachedParameters(params, EntityRef.group(gid), exec: txn);
+        }
+      }
+    });
+    _remindersDirty();
+    return ids;
+  }
+
+  /// Одноразове перетворення старих розміщених шаблонів: група, де було
+  /// кілька окремих вуликів/перешкод, ділиться на окремі об'єкти (кожен —
+  /// своя група). Історія, параметри й нагадування групи копіюються КОЖНОМУ
+  /// новому об'єкту, тож нічого не губиться; QR-коди клітинок лишаються.
+  /// Вулики одного колишнього шаблону отримують назви "<назва> · N" (так
+  /// само, як уже було на наліпках). Повторний запуск нічого не змінює.
+  Future<void> splitMultiObjectGroups() async {
+    final rows = await db.rawQuery('SELECT * FROM elements WHERE deleted = 0 AND group_id IS NOT NULL');
+    final byGroup = <String, List<MapElement>>{};
+    for (final r in rows) {
+      final e = MapElement.fromMap(r);
+      byGroup.putIfAbsent(e.groupId!, () => []).add(e);
+    }
+    for (final entry in byGroup.entries) {
+      final els = entry.value;
+      final byId = {for (final e in els) e.id: e};
+      final comps = [
+        for (final c in mergeLayout([for (final e in els) MergeItem<String>(e.id, e.x, e.y, mergeKeyOf(e))])
+            .components)
+          [for (final id in c) byId[id]!]..sort(compareTopLeft)
+      ];
+      if (comps.length < 2) continue;
+      final hives = [for (final c in comps) if (c.first.isHive) c]
+        ..sort((a, b) => compareTopLeft(a.first, b.first));
+      // стара група лишається за першим вуликом (там і групові QR-коди)
+      final keep = hives.isNotEmpty ? hives.first : comps.first;
+      final oldGid = entry.key;
+      final t = now();
+      await db.transaction((txn) async {
+        final recs = await txn.rawQuery(
+            'SELECT parameter_id, value, created_at FROM parameter_records WHERE group_id = ? '
+            'ORDER BY created_at ASC, rowid ASC',
+            [oldGid]);
+        final binds = await txn.rawQuery(
+            'SELECT parameter_id, sort_order FROM element_parameters WHERE group_id = ? AND deleted = 0',
+            [oldGid]);
+        for (final comp in comps) {
+          final base = comp.first.label;
+          final hiveIdx = hives.indexOf(comp);
+          final label = (hiveIdx >= 0 && hives.length > 1 && base != null && base.isNotEmpty)
+              ? '$base · ${hiveIdx + 1}'
+              : base;
+          if (identical(comp, keep)) {
+            if (label != base) {
+              for (final e in comp) {
+                await txn.update('elements', {'label': label, 'updated_at': t, 'synced': 0},
+                    where: 'id = ?', whereArgs: [e.id]);
+              }
+            }
+            continue;
+          }
+          final gid = newId();
+          for (final e in comp) {
+            await txn.update(
+                'elements', {'group_id': gid, 'label': label, 'updated_at': t, 'synced': 0},
+                where: 'id = ?', whereArgs: [e.id]);
+          }
+          // у перешкод параметрів та історії немає — копіюємо лише вуликам
+          if (!comp.first.isHive) continue;
+          for (final r in recs) {
+            await txn.insert('parameter_records', {
+              'id': newId(),
+              'group_id': gid,
+              'element_id': null,
+              'parameter_id': r['parameter_id'],
+              'value': r['value'],
+              'created_at': r['created_at'],
+              'synced': 0,
+            });
+          }
+          for (final b in binds) {
+            await txn.insert('element_parameters', {
+              'id': newId(),
+              'group_id': gid,
+              'element_id': null,
+              'parameter_id': b['parameter_id'],
+              'updated_at': t,
+              'synced': 0,
+              'sort_order': b['sort_order'] ?? 0,
+              'deleted': 0,
+            });
+          }
+        }
+      });
+    }
+    if (byGroup.isNotEmpty) _remindersDirty();
   }
 
   Future<List<MapElement>> listElements(String apiaryId, {bool includeArchived = false}) async {

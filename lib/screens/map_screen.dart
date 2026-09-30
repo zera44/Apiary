@@ -47,9 +47,11 @@ class _Undo {
   // нього "крок назад" після видалення міг повернути об'єкт без
   // призначених йому (не базових) параметрів.
   final List<Map<String, Object?>>? paramRows;
-  final String? deleteGroupId;
-  const _Undo.restore(this.restore, {this.paramRows}) : deleteGroupId = null;
-  const _Undo.deleteGroup(this.deleteGroupId)
+  /// Прибрати ці групи (крок назад після розміщення шаблону — він дає
+  /// кілька окремих об'єктів).
+  final List<String>? deleteGroupIds;
+  const _Undo.restore(this.restore, {this.paramRows}) : deleteGroupIds = null;
+  const _Undo.deleteGroups(this.deleteGroupIds)
       : restore = null,
         paramRows = null;
 }
@@ -307,11 +309,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return;
         }
       }
-      final label = await repo.nextGroupLabel(widget.apiary.id, tpl.name);
-      final gid = await repo.addGroup(widget.apiary.id, tpl.cells, gx, gy, groupLabel: label);
-      _pushUndo(_Undo.deleteGroup(gid));
+      // одна дія — кілька окремих об'єктів (кожен вулик і перешкода окремо)
+      final gids = await repo.placeTemplate(widget.apiary.id, tpl.cells, gx, gy, name: tpl.name);
+      if (gids.isEmpty) return;
+      _pushUndo(_Undo.deleteGroups(gids));
       selectedId = null;
-      selectedGroupId = gid; // щойно поставлений — обраний
+      selectedGroupId = gids.first; // щойно поставлений (перший вулик) — обраний
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -382,9 +385,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (u.paramRows != null && u.paramRows!.isNotEmpty) {
           await repo.restoreParameterBindings(u.paramRows!);
         }
-      } else if (u.deleteGroupId != null) {
-        await repo.deleteGroup(u.deleteGroupId!);
-        if (selectedGroupId == u.deleteGroupId) selectedGroupId = null;
+      } else if (u.deleteGroupIds != null) {
+        for (final gid in u.deleteGroupIds!) {
+          await repo.deleteGroup(gid);
+        }
+        if (u.deleteGroupIds!.contains(selectedGroupId)) selectedGroupId = null;
       }
       await _reload();
       // вибір міг зникнути (об'єкта більше немає)

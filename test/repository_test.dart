@@ -480,6 +480,53 @@ void main() {
     }
   });
 
+  test('розміщення шаблону: окремі об\'єкти, параметри лише вуликам', () async {
+    final p = await repo.addParameter('Порода');
+    final ids = await repo.placeTemplate(apiaryId, {
+      '0,0': 'hive',
+      '1,0': 'hive', // злитий з (0,0) — один вулик
+      '3,0': {'type': 'hive', 'parameters': [p]},
+      '0,1': {'type': 'obstacle', 'variant': 'trees', 'parameters': [p]},
+    }, 0, 0, name: 'Т');
+    expect(ids.length, 3);
+    final groups = [for (final g in ids) await repo.getGroupElements(g)];
+    expect(groups[0].map((e) => (e.x, e.y)).toSet(), {(0, 0), (1, 0)});
+    expect(groups[0].first.label, 'Т 1');
+    expect(groups[1].single.label, 'Т 2');
+    expect(groups[2].single.isHive, isFalse);
+    expect(await repo.attachedParameterIds(EntityRef.group(ids[0])), isEmpty);
+    expect(await repo.attachedParameterIds(EntityRef.group(ids[1])), [p]);
+    expect(await repo.attachedParameterIds(EntityRef.group(ids[2])), isEmpty); // перешкода — без параметрів
+    // наступне розміщення продовжує нумерацію
+    final more = await repo.placeTemplate(apiaryId, {'0,0': 'hive'}, 9, 9, name: 'Т');
+    expect((await repo.getGroupElements(more.single)).single.label, 'Т 3');
+  });
+
+  test('стара група з кількох вуликів ділиться на окремі, історія копіюється вуликам', () async {
+    final gid = await repo.addGroup(
+        apiaryId, {'0,0': 'hive', '2,0': 'hive', '1,0': 'obstacle:trees'}, 0, 0, groupLabel: 'Л 1');
+    final p = await repo.addParameter('Вага');
+    await repo.setAttachedParameters([p], EntityRef.group(gid));
+    await repo.addParameterRecord(p, '12', EntityRef.group(gid));
+    await repo.splitMultiObjectGroups();
+    final els = await repo.listElements(apiaryId);
+    final hives = els.where((e) => e.isHive).toList()..sort((a, b) => a.x.compareTo(b.x));
+    final tree = els.firstWhere((e) => !e.isHive);
+    expect({hives[0].groupId, hives[1].groupId, tree.groupId}.length, 3);
+    expect(hives.map((e) => e.label), ['Л 1 · 1', 'Л 1 · 2']);
+    for (final h in hives) {
+      expect((await repo.latestParameterValues(h.entity))[p], '12');
+      expect(await repo.attachedParameterIds(h.entity), contains(p));
+    }
+    expect(await repo.latestParameterValues(tree.entity), isEmpty);
+    // окрема історія: запис одному вулику не видно в іншого
+    await repo.addParameterRecord(p, '20', hives[1].entity);
+    expect((await repo.latestParameterValues(hives[0].entity))[p], '12');
+    // повторний запуск нічого не змінює
+    await repo.splitMultiObjectGroups();
+    expect((await repo.listElements(apiaryId)).map((e) => e.groupId).toSet().length, 3);
+  });
+
   group('перенесення історії параметра', () {
     test('записи копіюються з конвертацією, прив\'язки й шаблони переходять', () async {
       final old = await repo.addParameter('Рамки'); // текст
