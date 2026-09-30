@@ -15,6 +15,7 @@ import 'package:apiary/screens/qr_generate_screen.dart';
 import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
+import 'package:apiary/screens/tutorial_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
 import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
@@ -152,10 +153,34 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Пройти навчання'));
     await settle(tester);
-    expect(find.text('Режим навчання'), findsOneWidget);
-    await tester.tap(find.text('Назад'));
+    expect(find.text('Навчання'), findsOneWidget);
+    expect(find.text('Базові поняття'), findsOneWidget);
+    await tester.tap(find.byType(CircleIconButton).first); // «назад»
     await settle(tester);
     expect(find.text('Vulyk'), findsOneWidget);
+  });
+
+  testWidgets('навчання: «Базові поняття» — порожні «Мої пасіки» з підказкою пасічника',
+      (tester) async {
+    await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
+      final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+      await r.init();
+      return r;
+    })));
+    await settle(tester);
+    await tester.tap(find.text('Базові поняття'));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text('Мої пасіки'), findsOneWidget);
+    // пісочниця: справжніх пасік не видно, замість порожнього тексту — підказка
+    expect(find.text('Тестова пасіка'), findsNothing);
+    expect(find.textContaining('Здоров був, новачок'), findsOneWidget);
+    expect(find.textContaining('«Створити карту»'), findsOneWidget);
+    expect(find.text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.'), findsNothing);
+    // «назад» — до плиток уроків, а не на заставку
+    await tester.tap(find.byType(CircleIconButton).first);
+    await settle(tester);
+    expect(find.text('Базові поняття'), findsOneWidget);
   });
 
   testWidgets('заставка -> список пасік -> карта', (tester) async {

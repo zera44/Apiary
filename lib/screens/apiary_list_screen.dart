@@ -6,6 +6,7 @@ import '../logic/merge_layout.dart';
 import '../ui/app_drawer.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
+import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
 import 'new_apiary_screen.dart';
@@ -14,7 +15,19 @@ import 'splash_screen.dart';
 /// Список пасік застосунку: тап відкриває карту, "+" — створює нову.
 class ApiaryListScreen extends StatefulWidget {
   final Repository repo;
-  const ApiaryListScreen({super.key, required this.repo});
+
+  /// Урок «Базові поняття» (режим навчання): [repo] — пісочниця; поки
+  /// пасік немає, пасічник підказує створити карту; «назад» — до уроків.
+  final bool tutorial;
+  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false});
+
+  /// Перша підказка уроку «Базові поняття».
+  static final tutorialHello = <InlineSpan>[
+    const TextSpan(
+        text: 'Здоров був, новачок, укуси мене бджола! А де твоя пасіка? '
+            'Непорядок... Натисни '),
+    GuideBubble.highlight('«Створити карту»'),
+  ];
   @override
   State<ApiaryListScreen> createState() => _ApiaryListScreenState();
 }
@@ -91,6 +104,10 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   /// Назад із головної — на заставку Vulyk (кнопка «назад» і системна).
   void _toSplash() {
+    if (widget.tutorial) {
+      Navigator.of(context).pop();
+      return;
+    }
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => SplashScreen(repo: widget.repo),
     ));
@@ -100,7 +117,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   Widget build(BuildContext context) {
     final list = apiaries;
     return PopScope(
-      canPop: false,
+      canPop: widget.tutorial,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _toSplash();
       },
@@ -112,6 +129,13 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
+                  : list.isEmpty && widget.tutorial
+                      ? Align(
+                          alignment: Alignment.bottomCenter,
+                          child: SingleChildScrollView(
+                            child: GuideBubble(text: ApiaryListScreen.tutorialHello),
+                          ),
+                        )
                   : list.isEmpty
                       ? Center(
                           child: Text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.',

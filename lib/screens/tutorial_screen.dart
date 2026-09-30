@@ -1,43 +1,112 @@
 import 'package:flutter/material.dart';
 
+import '../data/database.dart';
+import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
+import 'apiary_list_screen.dart';
 
-/// Режим навчання: покроково показує, що вміє застосунок («натисни тут…»).
-/// Поки що заготовка — вміст додамо за окремим завданням.
-class TutorialScreen extends StatelessWidget {
-  const TutorialScreen({super.key});
+/// Відкриває порожню «пісочницю» для уроку (див. [AppDatabase.openSandbox]).
+typedef SandboxOpener = Future<Repository> Function();
+
+Future<Repository> openSandboxRepository() async {
+  final repo = Repository(await AppDatabase.openSandbox());
+  await repo.init();
+  return repo;
+}
+
+/// Режим навчання: плитки з уроками. Кожен урок проходить у «пісочниці» —
+/// тимчасовій порожній базі, тож справжні пасіки не змінюються.
+class TutorialScreen extends StatefulWidget {
+  /// Підміняється в тестах.
+  final SandboxOpener openSandbox;
+  const TutorialScreen({super.key, this.openSandbox = openSandboxRepository});
+
+  @override
+  State<TutorialScreen> createState() => _TutorialScreenState();
+}
+
+class _TutorialScreenState extends State<TutorialScreen> {
+  bool _opening = false;
+
+  /// «Базові поняття»: починаємо з порожнього списку «Мої пасіки», де
+  /// пасічник підказує створити першу карту.
+  Future<void> _basics() async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    Repository? sandbox;
+    try {
+      sandbox = await widget.openSandbox();
+      if (!mounted) return;
+      final repo = sandbox;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ApiaryListScreen(repo: repo, tutorial: true),
+      ));
+    } finally {
+      await sandbox?.db.close();
+      if (mounted) setState(() => _opening = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Навчання')),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              // пасічник-провідник (малюнок автора, assets/guide)
-              Image.asset('assets/guide/beekeeper.png', height: 220, filterQuality: FilterQuality.medium),
-              const SizedBox(height: 18),
-              Text('Режим навчання',
-                  style: TextStyle(
-                      color: AppColors.text, fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Text('Незабаром тут з\'являться підказки, як користуватися застосунком.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-              const SizedBox(height: 24),
-              PillButton(
-                text: 'Назад',
-                bg: AppColors.darkBtn,
-                fg: AppColors.text,
-                width: 160,
-                height: 44,
-                onPressed: () => Navigator.of(context).pop(),
+        child: Stack(children: [
+          Column(children: [
+            TopBar(title: 'Навчання', onBack: () => Navigator.of(context).pop()),
+            Expanded(
+              child: GridView.count(
+                padding: const EdgeInsets.all(16),
+                crossAxisCount: 2,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
+                childAspectRatio: 0.9,
+                children: [
+                  _LessonTile(
+                    title: 'Базові поняття',
+                    image: 'assets/guide/beekeeper.png',
+                    onTap: _opening ? null : _basics,
+                  ),
+                ],
               ),
-            ]),
-          ),
+            ),
+          ]),
+          const Positioned.fill(child: ScreenFrame()),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Плитка уроку: малюнок і назва.
+class _LessonTile extends StatelessWidget {
+  final String title;
+  final String image;
+  final VoidCallback? onTap;
+  const _LessonTile({required this.title, required this.image, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: AppColors.darkBtn, width: 3),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(children: [
+            Expanded(child: Image.asset(image, filterQuality: FilterQuality.medium)),
+            const SizedBox(height: 8),
+            Text(title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
+          ]),
         ),
       ),
     );
