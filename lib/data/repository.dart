@@ -1020,15 +1020,23 @@ class Repository {
   // Для синхронізації
   // ---------------------------------------------------------------------
 
+  /// Ім'я таблиці підставляється в SQL текстом, тож дозволені лише таблиці
+  /// зі списку [kSyncTables]. (Раніше — assert, який у release-збірці вимкнено.)
+  static void _checkSyncTable(String table) {
+    if (!kSyncTables.contains(table)) {
+      throw ArgumentError.value(table, 'table', 'не таблиця синхронізації');
+    }
+  }
+
   Future<List<Map<String, Object?>>> unsynced(String table) async {
-    assert(kSyncTables.contains(table));
+    _checkSyncTable(table);
     return db.rawQuery('SELECT * FROM $table WHERE synced = 0');
   }
 
   /// Позначити рядок синхронізованим — лише якщо його не змінили, поки він
   /// відправлявся (інакше нова зміна загубилась би).
   Future<void> markSynced(String table, Map<String, Object?> sentRow) async {
-    assert(kSyncTables.contains(table));
+    _checkSyncTable(table);
     final stamp = sentRow['updated_at'];
     if (stamp != null) {
       await db.rawUpdate('UPDATE $table SET synced = 1 WHERE id = ? AND updated_at = ?',
@@ -1042,7 +1050,7 @@ class Repository {
   /// транзакції (той самий захист від змін під час відправки, що й у
   /// [markSynced]). Раніше кожен рядок — окрема транзакція з fsync.
   Future<void> markSyncedBatch(String table, List<Map<String, Object?>> sentRows) async {
-    assert(kSyncTables.contains(table));
+    _checkSyncTable(table);
     if (sentRows.isEmpty) return;
     await db.transaction((txn) async {
       final batch = txn.batch();

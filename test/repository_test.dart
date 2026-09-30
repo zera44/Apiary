@@ -307,6 +307,11 @@ void main() {
         'istoriya_Мітка_матки_20260928_100507.xlsx');
   });
 
+  test('безпека: чужа назва таблиці відхиляється навіть у release', () async {
+    expect(() => repo.unsynced('sqlite_master'), throwsArgumentError);
+    expect(() => repo.markSynced('x; DROP TABLE elements', {'id': '1'}), throwsArgumentError);
+  });
+
   test('markSyncedBatch: не губить зміну, зроблену під час відправки', () async {
     final a = await repo.addElement(apiaryId, 0, 0);
     await repo.addElement(apiaryId, 1, 0);

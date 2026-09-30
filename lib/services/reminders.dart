@@ -39,6 +39,8 @@ class ReminderService {
       channelDescription: 'Нагадує оглянути вулики за заданою періодичністю',
       importance: Importance.high,
       priority: Priority.high,
+      // на заблокованому екрані — за налаштуваннями приватності телефона
+      visibility: NotificationVisibility.private,
     ),
     iOS: DarwinNotificationDetails(),
     windows: WindowsNotificationDetails(),

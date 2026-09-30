@@ -1,3 +1,4 @@
+import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
@@ -184,6 +185,18 @@ void main() {
       expect(dueReminder(target(), now: DateTime(2026, 10, 2, 12)), isNull);
       expect(dueReminder(target(), now: DateTime(2026, 10, 3, 8)), isNull);
       expect(dueReminder(target(), now: DateTime(2026, 10, 3, 9, 1))!.when, DateTime(2026, 10, 3, 9));
+    });
+  });
+
+  group('безпека', () {
+    test('синхронізація лише через https (http — тільки локальний сервер розробки)', () {
+      expect(SyncService.serverBase('https://api.example.com/v1/').toString(),
+          'https://api.example.com/v1');
+      expect(SyncService.serverBase('http://api.example.com'), isNull);
+      expect(SyncService.serverBase('ftp://api.example.com'), isNull);
+      expect(SyncService.serverBase('https://user:pass@api.example.com'), isNull);
+      expect(SyncService.serverBase('не адреса'), isNull);
+      expect(SyncService.serverBase('http://localhost:8080'), isNotNull);
     });
   });
 }

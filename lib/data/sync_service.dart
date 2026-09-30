@@ -37,28 +37,44 @@ class SyncService {
     _client = null;
   }
 
+  /// Адреса сервера придатна лише з HTTPS (дані — зокрема координати пасік —
+  /// не повинні йти відкритим текстом). Виняток — локальний сервер розробки.
+  static Uri? serverBase(String url) {
+    final u = Uri.tryParse(url.trim());
+    if (u == null || u.host.isEmpty) return null;
+    final local = u.host == 'localhost' || u.host == '127.0.0.1' || u.host == '10.0.2.2';
+    if (u.scheme != 'https' && !(u.scheme == 'http' && local)) return null;
+    if (u.userInfo.isNotEmpty) return null; // жодних паролів в адресі
+    final path = u.path.endsWith('/') ? u.path.substring(0, u.path.length - 1) : u.path;
+    return u.replace(path: path, query: null, fragment: null);
+  }
+
+  static final Uri? _base = apiUrl.isEmpty ? null : serverBase(apiUrl);
+
   /// Швидка перевірка інтернету. (ВИПРАВЛЕНО: сокет тепер закривається, а
   /// таймаут не змінюється глобально для всього застосунку.)
-  static Future<bool> hasInternet({Duration timeout = const Duration(seconds: 2)}) async {
-    for (final host in const ['8.8.8.8', '1.1.1.1']) {
-      try {
-        final s = await Socket.connect(host, 53, timeout: timeout);
-        s.destroy();
-        return true;
-      } catch (_) {
-        continue;
-      }
+  /// Перевіряємо зв'язок із ВЛАСНИМ сервером (раніше — з публічними DNS
+  /// 8.8.8.8 / 1.1.1.1, що зайве повідомляло стороннім про роботу
+  /// застосунку й не працювало там, де їх заблоковано).
+  static Future<bool> hasInternet(String host, int port,
+      {Duration timeout = const Duration(seconds: 2)}) async {
+    try {
+      final s = await Socket.connect(host, port, timeout: timeout);
+      s.destroy();
+      return true;
+    } catch (_) {
+      return false;
     }
-    return false;
   }
 
   Future<bool> _push(String table, Map<String, Object?> row) async {
     if (apiUrl.isEmpty) return true;
+    final base = _base;
+    if (base == null) return false; // небезпечна адреса — нічого не відправляємо
     try {
       _client ??= http.Client();
-      final base = apiUrl.endsWith('/') ? apiUrl.substring(0, apiUrl.length - 1) : apiUrl;
       final resp = await _client!
-          .post(Uri.parse('$base/$table'),
+          .post(base.replace(pathSegments: [...base.pathSegments, table]),
               headers: {'Content-Type': 'application/json'}, body: jsonEncode(row))
           .timeout(const Duration(seconds: 5));
       return resp.statusCode == 200 || resp.statusCode == 201;
@@ -76,7 +92,11 @@ class SyncService {
     try {
       // Без адреси сервера (заглушка) інтернет не потрібен: перевірка
       // сокетом кожні 20 с лише даремно будила мережу й радіомодуль.
-      if (apiUrl.isNotEmpty && !await hasInternet()) return (0, 0);
+      if (apiUrl.isNotEmpty) {
+        final base = _base;
+        if (base == null) return (0, 0); // не https — не синхронізуємо
+        if (!await hasInternet(base.host, base.port)) return (0, 0);
+      }
       var ok = 0, total = 0;
       for (final table in kSyncTables) {
         final rows = await repo.unsynced(table);

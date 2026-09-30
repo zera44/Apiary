@@ -6,19 +6,27 @@ on:
   pull_request:
   workflow_dispatch: {}
 
+# за замовчуванням токен CI — лише на читання; запис має тільки публікація
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Перевірка й тести
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true
       - name: SQLite для тестів
         run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
-      - run: flutter --version
+      - name: Версія Flutter
+        shell: bash
+        run: echo "::notice title=FLUTTER::$(flutter --version --machine | tr -d '\n')"
       - name: Залежності
         shell: bash
         run: |
@@ -30,6 +38,10 @@ jobs:
         run: |
           set -o pipefail
           flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pubspec-lock
+          path: pubspec.lock
       - name: Тести
         shell: bash
         run: |
@@ -50,15 +62,39 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true
+      # Ключ підпису — із секретів репозиторію (у самому репозиторії його немає).
+      - name: Ключ підпису
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.APIARY_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.APIARY_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/apiary-release.p12"
+            {
+              echo "APIARY_KEYSTORE_PATH=$RUNNER_TEMP/apiary-release.p12"
+              echo "APIARY_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "APIARY_KEY_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "APIARY_KEY_ALIAS=apiary"
+              echo "EXPECTED_CERT=release"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::warning title=ПІДПИС::Секрети APIARY_KEYSTORE_B64 / APIARY_KEYSTORE_PASSWORD не задано — APK підписано старим ключем із репозиторію"
+            mkdir -p ~/.android
+            cp tool/debug.keystore ~/.android/debug.keystore
+            echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
+          fi
       - name: Згенерувати платформні файли
         run: |
           flutter create --platforms=android --org org.apiary --project-name apiary .
@@ -77,10 +113,6 @@ jobs:
               sqlite3:
                 source: system
           EOF2
-      - name: Постійний ключ підпису (щоб оновлення встановлювались поверх старих)
-        run: |
-          mkdir -p ~/.android
-          cp tool/debug.keystore ~/.android/debug.keystore
       - name: Зібрати APK
         shell: bash
         run: |
@@ -90,6 +122,22 @@ jobs:
         if: failure()
         shell: bash
         run: python3 tool/ci_error_report.py build.log
+      # APK з неочікуваним підписом не публікується
+      - name: Перевірити підпис APK
+        shell: bash
+        run: |
+          set -e
+          signer=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          expected=$(awk -v k="$EXPECTED_CERT" '$1==k {print $2}' tool/signing-cert.sha256)
+          for f in build/app/outputs/flutter-apk/*.apk; do
+            got=$("$signer" verify --print-certs "$f" | grep -m1 'SHA-256 digest' | awk '{print $NF}')
+            echo "$f: $got"
+            if [ "$got" != "$expected" ]; then
+              echo "::error title=ПІДПИС::$f підписано не тим ключем ($got, очікувався $EXPECTED_CERT)"
+              exit 1
+            fi
+          done
+          echo "::notice title=ПІДПИС::APK підписано ключем «$EXPECTED_CERT»"
       - name: Розмір APK (звіт)
         shell: bash
         run: |
@@ -105,7 +153,7 @@ jobs:
               out.append(f'  {i.compress_size:>9} {i.filename}')
           print('::notice title=APKSIZE::' + '%0A'.join(out))
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: apiary-apk
           path: build/app/outputs/flutter-apk/*.apk
@@ -115,8 +163,10 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true
@@ -148,7 +198,7 @@ jobs:
           out = [f'total = {sum(r[0] for r in rows)}'] + [f'  {a:>10} {b}' for a, b in rows[:12]]
           print('::notice title=WINSIZE::' + '%0A'.join(out))
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: apiary-windows
           path: build/windows/x64/runner/Release/
@@ -163,7 +213,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           path: dist
       - name: Підготувати файли
@@ -172,6 +222,8 @@ jobs:
           mv dist/apiary-apk/app-armeabi-v7a-release.apk apiary-arm32.apk
           mv dist/apiary-apk/app-x86_64-release.apk apiary-x86_64.apk
           (cd dist/apiary-windows && zip -qr9 ../../apiary-windows.zip .)
+          sha256sum apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
           ls -la apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip
       - name: Оновити реліз latest
         env:
@@ -179,11 +231,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip \
+          gh release create latest apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
             --target "${{ github.sha }}" \
             --title "Моя пасіка — остання збірка" \
             --notes "Автоматична збірка з коміту ${GITHUB_SHA::7}.
           - apiary-arm64.apk — для більшості сучасних Android-телефонів
           - apiary-arm32.apk — для старих/бюджетних Android-телефонів
           - apiary-x86_64.apk — для Android на процесорі x86 (рідко)
-          - apiary-windows.zip — розпакувати й запустити apiary.exe"
+          - apiary-windows.zip — розпакувати й запустити apiary.exe
+          - SHA256SUMS.txt — контрольні суми файлів"

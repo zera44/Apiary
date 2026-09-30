@@ -124,12 +124,98 @@ void _patchAndroidNotifications() {
   }
 }
 
+/// Дані застосунку (координати пасік, історія) не йдуть у хмарні резервні
+/// копії Google / adb backup. Перенесення на новий телефон напряму
+/// (device-transfer) лишається дозволеним.
+void _patchAndroidBackup() {
+  final mf = File('android/app/src/main/AndroidManifest.xml');
+  if (!mf.existsSync()) return;
+  final s = mf.readAsStringSync();
+  if (!s.contains('android:allowBackup')) {
+    final m = RegExp(r'<application\b').firstMatch(s);
+    if (m == null) return;
+    mf.writeAsStringSync('${s.substring(0, m.end)}\n        android:allowBackup="false"'
+        '\n        android:dataExtractionRules="@xml/data_extraction_rules"${s.substring(m.end)}');
+    stdout.writeln('✓ AndroidManifest.xml (без хмарних резервних копій)');
+  }
+  final rules = File('android/app/src/main/res/xml/data_extraction_rules.xml');
+  if (!rules.existsSync()) {
+    rules.createSync(recursive: true);
+    rules.writeAsStringSync('<?xml version="1.0" encoding="utf-8"?>\n'
+        '<data-extraction-rules>\n'
+        '    <cloud-backup>\n'
+        '        <exclude domain="root" />\n'
+        '        <exclude domain="file" />\n'
+        '        <exclude domain="database" />\n'
+        '        <exclude domain="sharedpref" />\n'
+        '        <exclude domain="external" />\n'
+        '    </cloud-backup>\n'
+        '</data-extraction-rules>\n');
+  }
+}
+
+/// Підпис release-APK власним ключем із секретів CI (змінні середовища
+/// APIARY_KEYSTORE_PATH / APIARY_KEYSTORE_PASSWORD / APIARY_KEY_ALIAS /
+/// APIARY_KEY_PASSWORD). Без них — як і раніше. Якщо ключ задано, а файл
+/// gradle змінити не вдалося, збірка ПАДАЄ — щоб APK з іншим підписом не
+/// вийшов непомітно.
+void _patchAndroidSigning() {
+  final keystore = Platform.environment['APIARY_KEYSTORE_PATH'] ?? '';
+  if (keystore.isEmpty) return;
+  for (final name in ['android/app/build.gradle.kts', 'android/app/build.gradle']) {
+    final f = File(name);
+    if (!f.existsSync()) continue;
+    var s = f.readAsStringSync();
+    if (s.contains('apiaryRelease')) return;
+    final kts = name.endsWith('.kts');
+    final use = kts
+        ? RegExp(r'signingConfig\s*=\s*signingConfigs\.getByName\("debug"\)')
+        : RegExp(r'signingConfig\s+signingConfigs\.debug');
+    final bt = RegExp(r'^[ \t]*buildTypes\s*\{', multiLine: true).firstMatch(s);
+    if (!use.hasMatch(s) || bt == null) {
+      stderr.writeln('✗ $name: не знайдено, куди вставити підпис release');
+      exit(1);
+    }
+    const env = 'System.getenv';
+    final block = kts
+        ? '    signingConfigs {\n'
+            '        create("apiaryRelease") {\n'
+            '            storeFile = file($env("APIARY_KEYSTORE_PATH"))\n'
+            '            storePassword = $env("APIARY_KEYSTORE_PASSWORD")\n'
+            '            keyAlias = $env("APIARY_KEY_ALIAS")\n'
+            '            keyPassword = $env("APIARY_KEY_PASSWORD")\n'
+            '        }\n'
+            '    }\n'
+        : '    signingConfigs {\n'
+            '        apiaryRelease {\n'
+            '            storeFile file($env("APIARY_KEYSTORE_PATH"))\n'
+            '            storePassword $env("APIARY_KEYSTORE_PASSWORD")\n'
+            '            keyAlias $env("APIARY_KEY_ALIAS")\n'
+            '            keyPassword $env("APIARY_KEY_PASSWORD")\n'
+            '        }\n'
+            '    }\n';
+    s = s.substring(0, bt.start) + block + s.substring(bt.start);
+    s = s.replaceFirst(
+        use,
+        kts
+            ? 'signingConfig = signingConfigs.getByName("apiaryRelease")'
+            : 'signingConfig signingConfigs.apiaryRelease');
+    f.writeAsStringSync(s);
+    stdout.writeln('✓ $name (підпис власним ключем)');
+    return;
+  }
+  stderr.writeln('✗ не знайдено android/app/build.gradle(.kts)');
+  exit(1);
+}
+
 void main() {
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
       'android:label="$appName"');
   _patchAndroidPermissions('android/app/src/main/AndroidManifest.xml');
   _patchAndroidCompressedLibs();
   _patchAndroidNotifications();
+  _patchAndroidBackup();
+  _patchAndroidSigning();
   _patchGradleProperties();
   // Windows: автозапущений (--autostart) застосунок стартує згорнутим,
   // без відбирання фокуса
