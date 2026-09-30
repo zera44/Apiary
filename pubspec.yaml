@@ -14,7 +14,7 @@ dependencies:
   # на комп'ютері (Windows/Linux/macOS) і в тестах.
   sqflite: ^2.3.3
   sqflite_common_ffi: ^2.3.3
-  sqlite3_flutter_libs: ^0.5.24
+  sqlite3_flutter_libs: ^0.6.0+eol
   path: ^1.9.0
   path_provider: ^2.1.4
   uuid: ^4.4.0
