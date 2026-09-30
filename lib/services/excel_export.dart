@@ -44,8 +44,8 @@ Future<String> exportHistoryToExcel({
       }
       return 'Збережено:\n${f.path}';
     }
-    final name = uri.pathSegments.isNotEmpty ? Uri.decodeComponent(uri.pathSegments.last) : fileName;
-    return 'Збережено:\n${p.basename(name)}';
+    // Android: адреса — внутрішній код документа (наприклад, 1361), не показуємо
+    return 'Збережено.';
   } catch (_) {
     // запасний варіант — власна тека застосунку
     try {
