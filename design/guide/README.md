@@ -4,3 +4,4 @@
 - beekeeper_bust.pdf — по пояс, руки на рамці (→ assets/guide/beekeeper_bust.png)
 
 PNG зроблено з PDF: прозорий фон, обрізано по краях.
+- beekeeper_honey_frame.pdf — по пояс, тримає рамку з медом (→ assets/guide/beekeeper_honey_frame.png)
