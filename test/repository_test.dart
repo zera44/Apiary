@@ -281,7 +281,7 @@ void main() {
     await repo.addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
     await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
     final item = await repo.addStockItem('Цукор', 'кг');
-    await repo.receiveStock(item, 1);
+    await repo.receiveStock(item, 1, total: 30);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
@@ -511,11 +511,12 @@ void main() {
     expect(it.quantity, isNull);
     // загальна вартість 150 грн за 5 кг → 30 грн/кг
     expect(await repo.receiveStock(id, 5, date: DateTime(2026, 9, 1), total: 150), 5);
-    expect(await repo.receiveStock(id, 2.5, comment: 'чек 12'), 7.5);
+    expect(await repo.receiveStock(id, 2.5, total: 100, comment: 'чек 12'), 7.5);
     expect(await repo.writeOffStock(id, 3, comment: 'підгодівля'), 4.5);
     // більше за залишок — не можна, залишок не змінюється
     await expectLater(repo.writeOffStock(id, 5), throwsStateError);
-    expect(() => repo.receiveStock(id, 0), throwsArgumentError);
+    expect(() => repo.receiveStock(id, 0, total: 10), throwsArgumentError);
+    expect(() => repo.receiveStock(id, 1, total: -1), throwsArgumentError);
     expect(await repo.writeOffStock(id, 4.5), 0);
     it = (await repo.getStockItem(id))!;
     expect(it.quantity, 0);
@@ -524,7 +525,7 @@ void main() {
     expect([for (final m in moves) m['quantity_after']], [5, 7.5, 4.5, 0]);
     expect(moves.first['total'], 150);
     expect(moves.first['price'], 30);
-    expect(moves[1]['price'], isNull);
+    expect(moves[1]['price'], 40);
     expect(moves[1]['comment'], 'чек 12');
     // дата операції — обрана, а не дата введення (1 вересня — найраніший запис)
     expect(DateTime.fromMicrosecondsSinceEpoch(((moves.first['op_date'] as num) * 1e6).round()),
@@ -541,7 +542,7 @@ void main() {
 
   test('склад: інвентаризація записує різницю, скасування повертає залишок', () async {
     final id = await repo.addStockItem('Цукор', 'кг');
-    await repo.receiveStock(id, 10);
+    await repo.receiveStock(id, 10, total: 300);
     // фактично 8 → нестача −2
     expect(await repo.inventoryStock(id, 8), 8);
     var moves = await repo.stockMoves(id);

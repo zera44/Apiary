@@ -104,6 +104,10 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '2,5');
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
+    expect(find.text('Вкажіть загальну вартість приходу'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(1), '75');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
     expect(find.text('7,5 кг'), findsOneWidget);
 
     // списання: не більше залишку; поля — дата, кількість, коментар
@@ -140,7 +144,7 @@ void main() {
 
   testWidgets('історія: вкладки «Характеристики» і «Склад», записи складу', (tester) async {
     final id = await repo.addStockItem('Цукор', 'кг');
-    await repo.receiveStock(id, 5);
+    await repo.receiveStock(id, 5, total: 150);
     await repo.receiveStock(id, 2, total: 60);
     await repo.writeOffStock(id, 3, comment: 'підгодівля');
     final params = await repo.listParameters();

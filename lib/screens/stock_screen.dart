@@ -102,7 +102,7 @@ class _StockScreenState extends State<StockScreen> {
         try {
           switch (op) {
             case StockOp.receive:
-              await repo.receiveStock(it.id, m.amount, date: m.date, total: m.total, comment: m.comment);
+              await repo.receiveStock(it.id, m.amount, total: m.total!, date: m.date, comment: m.comment);
             case StockOp.writeOff:
               await repo.writeOffStock(it.id, m.amount, date: m.date, comment: m.comment);
             case StockOp.inventory:
@@ -493,7 +493,7 @@ class _Move {
 }
 
 /// Діалог операції. Порядок полів: дата (типово сьогодні) → кількість →
-/// (для приходу) загальна вартість → коментар. Ціну за одиницю система
+/// (для приходу, обов'язково) загальна вартість → коментар. Ціну за одиницю система
 /// рахує сама: вартість / кількість.
 class _MoveDialog extends StatefulWidget {
   final StockItem item;
@@ -550,10 +550,11 @@ class _MoveDialogState extends State<_MoveDialog> {
       }
     }
     double? total;
-    if (op == StockOp.receive && _total.text.trim().isNotEmpty) {
+    if (op == StockOp.receive) {
+      // вартість приходу обов'язкова: з неї рахується ціна за одиницю
       total = parseAmount(_total.text);
       if (total == null) {
-        setState(() => _error = 'Вартість — число, не менше 0');
+        setState(() => _error = 'Вкажіть загальну вартість приходу');
         return;
       }
     }
@@ -620,7 +621,7 @@ class _MoveDialogState extends State<_MoveDialog> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: numeric,
                 style: TextStyle(color: AppColors.text),
-                decoration: _dec('Загальна вартість (необов\'язково)', suffix: 'грн'),
+                decoration: _dec('Загальна вартість', suffix: 'грн'),
                 onChanged: (_) => setState(() => _error = null),
               ),
               if (price != null)

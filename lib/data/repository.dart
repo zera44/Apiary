@@ -1479,13 +1479,14 @@ class Repository {
       where: 'id = ?', whereArgs: [id]);
 
   /// Прихід: залишок += [amount]. [date] — дата операції (типово — зараз),
-  /// [total] — загальна вартість (ціна за одиницю = total / amount).
+  /// [total] — загальна вартість, обов'язкова (ціна за одиницю = total / amount).
   /// Повертає новий залишок.
   Future<double> receiveStock(String id, double amount,
-      {DateTime? date, double? total, String? comment}) {
+      {required double total, DateTime? date, String? comment}) {
     if (!(amount > 0)) throw ArgumentError.value(amount, 'amount', 'має бути більше 0');
+    if (total.isNaN || total < 0) throw ArgumentError.value(total, 'total', 'не менше 0');
     return _stockMove(id, 'in', amount, amount,
-        date: date, total: total, price: total == null ? null : total / amount, comment: comment);
+        date: date, total: total, price: total / amount, comment: comment);
   }
 
   /// Вибуття (списання): залишок −= [amount]; більше за залишок — не можна
