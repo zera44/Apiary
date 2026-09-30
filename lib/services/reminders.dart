@@ -124,26 +124,34 @@ class ReminderService {
       await _checkDueWindows();
       return;
     }
-    final now = DateTime.now();
     // iOS дозволяє лише 64 відкладені сповіщення
-    final plans = planReminders(targets, now: now, limit: Platform.isIOS ? 60 : 300);
+    final limit = Platform.isIOS ? 60 : 300;
     // лише заплановані: уже показані в шторці сповіщення лишаються
     await _plugin.cancelAllPendingNotifications();
-    if (plans.isEmpty) return;
+    if (planReminders(targets, now: DateTime.now(), limit: limit).isEmpty) return;
     await _requestPermission();
+    // план рахуємо ПІСЛЯ можливого діалогу дозволу (користувач міг відповісти
+    // через кілька хвилин) і з запасом: момент у минулому система відхиляє
+    final plans =
+        planReminders(targets, now: DateTime.now().add(const Duration(minutes: 1)), limit: limit);
     var id = 1;
     for (final p in plans) {
       final u = p.when.toUtc();
-      await _plugin.zonedSchedule(
-        id: id++,
-        title: p.title,
-        body: p.body,
-        // абсолютний момент часу (UTC), тож база часових поясів не потрібна
-        scheduledDate: tz.TZDateTime.utc(u.year, u.month, u.day, u.hour, u.minute),
-        notificationDetails: _details,
-        // неточний режим: не вимагає окремого дозволу на точні будильники
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      );
+      try {
+        await _plugin.zonedSchedule(
+          id: id++,
+          title: p.title,
+          body: p.body,
+          // абсолютний момент часу (UTC), тож база часових поясів не потрібна
+          scheduledDate: tz.TZDateTime.utc(u.year, u.month, u.day, u.hour, u.minute),
+          notificationDetails: _details,
+          // неточний режим: не вимагає окремого дозволу на точні будильники
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      } catch (e) {
+        // одне невдале нагадування не повинне скасовувати решту
+        debugPrint('Нагадування (${p.title}): $e');
+      }
     }
   }
 
@@ -151,9 +159,15 @@ class ReminderService {
 
   Future<File?> _state() async {
     if (_stateFile != null) return _stateFile;
+    final File file;
     try {
       final dir = await getApplicationSupportDirectory();
-      final file = File('${dir.path}${Platform.pathSeparator}reminders_state.json');
+      file = File('${dir.path}${Platform.pathSeparator}reminders_state.json');
+    } catch (e) {
+      debugPrint('Нагадування (стан): $e');
+      return null; // спробуємо ще раз при наступній перевірці
+    }
+    try {
       if (await file.exists()) {
         final m = jsonDecode(await file.readAsString());
         if (m is Map) {
@@ -164,12 +178,21 @@ class ReminderService {
           }
         }
       }
-      _stateFile = file; // кешуємо лише після успішного читання
-      return file;
     } catch (e) {
-      debugPrint('Нагадування (стан): $e');
-      return null; // спробуємо ще раз при наступній перевірці
+      // пошкоджений файл (напр., вимкнули живлення під час запису): стан
+      // починається з порожнього, і файл буде перезаписано справним —
+      // інакше нагадування повторювались би при кожному запуску
+      debugPrint('Нагадування (стан пошкоджено): $e');
     }
+    _stateFile = file;
+    return file;
+  }
+
+  /// Запис стану через тимчасовий файл: обрив посеред запису не псує стан.
+  static Future<void> _writeState(File file, String json) async {
+    final tmp = File('${file.path}.tmp');
+    await tmp.writeAsString(json, flush: true);
+    await tmp.rename(file.path);
   }
 
   bool _checking = false;
@@ -205,7 +228,7 @@ class ReminderService {
       _shown.removeWhere((k, _) => !alive.contains(k));
       if (_shown.length != before) changed = true;
       if (changed && file != null) {
-        await file.writeAsString(jsonEncode({for (final e in _shown.entries) e.key: e.value.toJson()}));
+        await _writeState(file, jsonEncode({for (final e in _shown.entries) e.key: e.value.toJson()}));
       }
     } catch (e) {
       debugPrint('Нагадування (Windows): $e');

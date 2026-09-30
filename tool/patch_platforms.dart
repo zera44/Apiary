@@ -209,6 +209,45 @@ void _patchAndroidSigning() {
   exit(1);
 }
 
+/// Заголовок вікна Windows ("Моя пасіка") — через \u, щоб компілятор не
+/// залежав від кодування файлу.
+const _winTitle = r'L"Моя пасіка"';
+
+/// Windows: лише одна копія програми. Друга (напр., відкрита з меню «Пуск»,
+/// коли вже працює автозапущена) показує вже запущене вікно й виходить —
+/// інакше дві копії давали подвійні/застарілі нагадування й ділили одну
+/// базу. Якщо шаблон flutter create змінився й вставити не вдалося, збірка
+/// ПАДАЄ, щоб це не пройшло непомітно.
+void _patchWindowsSingleInstance() {
+  final f = File('windows/runner/main.cpp');
+  if (!f.existsSync()) return;
+  var s = f.readAsStringSync();
+  if (s.contains('MojaPasika.SingleInstance')) return;
+  final create = RegExp(r'window\.Create\(L"[^"]*"');
+  final entry = RegExp(r'wWinMain\([^)]*\)\s*\{');
+  final m = entry.firstMatch(s);
+  if (m == null || !create.hasMatch(s)) {
+    stderr.writeln('✗ windows/runner/main.cpp: не знайдено, куди вставити «одну копію»');
+    exit(1);
+  }
+  final guard = [
+    '  // одна копія програми: друга лише показує вже запущену й виходить',
+    r'  HANDLE apiary_single = ::CreateMutexW(nullptr, TRUE, L"Local\\MojaPasika.SingleInstance");',
+    '  if (apiary_single != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {',
+    '    HWND existing = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", $_winTitle);',
+    '    if (existing != nullptr) {',
+    '      ::ShowWindow(existing, SW_RESTORE);',
+    '      ::SetForegroundWindow(existing);',
+    '    }',
+    '    return EXIT_SUCCESS;',
+    '  }',
+  ].join('\n');
+  s = '${s.substring(0, m.end)}\n$guard\n${s.substring(m.end)}';
+  s = s.replaceFirst(create, 'window.Create($_winTitle');
+  f.writeAsStringSync(s);
+  stdout.writeln('✓ windows/runner/main.cpp (одна копія, заголовок вікна)');
+}
+
 void main() {
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
       'android:label="$appName"');
@@ -218,6 +257,7 @@ void main() {
   _patchAndroidBackup();
   _patchAndroidSigning();
   _patchGradleProperties();
+  _patchWindowsSingleInstance();
   // Windows: автозапущений (--autostart) застосунок стартує згорнутим,
   // без відбирання фокуса
   patch(

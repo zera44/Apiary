@@ -567,4 +567,18 @@ void main() {
     expect(find.byType(CharacteristicsPanel), findsNothing); // інформація не відкривається
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('збій відкриття бази: пояснення й «Спробувати ще раз» замість порожнього екрана',
+      (tester) async {
+    var retried = 0;
+    await tester.pumpWidget(StartupErrorApp(
+      error: 'database is locked',
+      onRetry: () async => retried++,
+    ));
+    expect(find.text('Не вдалося відкрити дані пасіки'), findsOneWidget);
+    expect(find.text('database is locked'), findsOneWidget);
+    await tester.tap(find.text('Спробувати ще раз'));
+    await tester.pump();
+    expect(retried, 1);
+  });
 }

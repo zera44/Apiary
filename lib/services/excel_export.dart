@@ -79,12 +79,25 @@ Uint8List buildHistoryWorkbook({
   for (var c = 0; c < 3; c++) {
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).cellStyle = bold;
   }
+  // числа — числами, дати — датами: у Excel працюють суми, графіки й
+  // сортування за часом (раніше все було текстом)
+  final dateStyle = CellStyle(numberFormat: NumFormat.custom(formatCode: 'dd.mm.yyyy'));
+  final dateTimeStyle = CellStyle(numberFormat: NumFormat.custom(formatCode: 'dd.mm.yyyy hh:mm'));
   for (final r in rows) {
+    final value = historyValueCell(r.value, parameter.dataType);
+    final at = DateTime.fromMicrosecondsSinceEpoch((r.createdAt * 1e6).round());
     sheet.appendRow([
       TextCellValue(r.entityLabel.isEmpty ? '—' : r.entityLabel),
-      TextCellValue(r.value ?? ''),
-      TextCellValue(formatDateTime(r.createdAt)),
+      value,
+      DateTimeCellValue(
+          year: at.year, month: at.month, day: at.day, hour: at.hour, minute: at.minute),
     ]);
+    final row = sheet.maxRows - 1;
+    if (value is DateCellValue) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row)).cellStyle = dateStyle;
+    }
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row)).cellStyle =
+        dateTimeStyle;
   }
   sheet.setColumnWidth(0, 28);
   sheet.setColumnWidth(1, 22);
@@ -93,6 +106,25 @@ Uint8List buildHistoryWorkbook({
   final data = excel.encode();
   if (data == null) throw StateError('encode() повернув null');
   return Uint8List.fromList(data);
+}
+
+/// Клітинка значення за типом параметра: ціле/дробове число, дата або текст
+/// (якщо значення не відповідає типу — лишається текстом, як є).
+CellValue historyValueCell(String? raw, String dataType) {
+  final s = (raw ?? '').trim();
+  if (s.isEmpty) return TextCellValue('');
+  switch (dataType) {
+    case DataTypes.int_:
+      final i = int.tryParse(s);
+      if (i != null) return IntCellValue(i);
+    case DataTypes.float_:
+      final d = double.tryParse(s.replaceAll(',', '.'));
+      if (d != null && d.isFinite) return DoubleCellValue(d);
+    case DataTypes.date:
+      final dt = parseDdMmYyyy(s);
+      if (dt != null) return DateCellValue(year: dt.year, month: dt.month, day: dt.day);
+  }
+  return TextCellValue(s);
 }
 
 String historyFileName(String paramName, String? scopeName, DateTime now) {

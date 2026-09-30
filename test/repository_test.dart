@@ -309,6 +309,25 @@ void main() {
         'istoriya_Мітка_матки_20260928_100507.xlsx');
   });
 
+  test('Excel: числа й дати — клітинками потрібного типу', () {
+    expect(historyValueCell('7', DataTypes.int_), isA<IntCellValue>());
+    final f = historyValueCell('12,5', DataTypes.float_);
+    expect(f, isA<DoubleCellValue>());
+    expect((f as DoubleCellValue).value, 12.5);
+    expect(historyValueCell('01.02.2026', DataTypes.date), isA<DateCellValue>());
+    expect(historyValueCell('багато', DataTypes.int_), isA<TextCellValue>());
+    expect(historyValueCell('Білий', DataTypes.color), isA<TextCellValue>());
+    final bytes = buildHistoryWorkbook(
+      parameter: const Parameter(id: 'p', name: 'Дата', dataType: DataTypes.date),
+      rows: const [
+        ParameterRecord(
+            id: 'r', groupId: 'g', elementId: null, parameterId: 'p', value: '01.02.2026',
+            createdAt: 1767225600, entityLabel: 'Лежак 1'),
+      ],
+    );
+    expect(Excel.decodeBytes(bytes).tables['Дата']!.maxRows, 2);
+  });
+
   test('безпека: чужа назва таблиці відхиляється навіть у release', () async {
     expect(() => repo.unsynced('sqlite_master'), throwsArgumentError);
     expect(() => repo.markSynced('x; DROP TABLE elements', {'id': '1'}), throwsArgumentError);
