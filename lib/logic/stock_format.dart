@@ -21,12 +21,20 @@ String formatAmount(double v) {
 /// Готові одиниці виміру (можна ввести й свою).
 const kStockUnits = ['шт', 'кг', 'г', 'л', 'мл', 'м', 'рамка', 'упаковка'];
 
-/// Причини списання (вибуття).
-const kWriteOffReasons = ['Підгодівля', 'Лікування', 'Продаж', 'Використано', 'Зіпсовано', 'Інше'];
+/// Гроші: 2 знаки після коми, без зайвих нулів (12 → "12", 6.5 → "6,50").
+String formatMoney(double v) {
+  final r = (v * 100).roundToDouble() / 100;
+  if (r == r.truncateToDouble()) return r.toInt().toString();
+  return r.toStringAsFixed(2).replaceAll('.', ',');
+}
 
-/// Назва операції складу для історії.
-String stockMoveTitle(String kind, String? reason) => switch (kind) {
+/// Назва операції складу для історії ([amount] — для інвентаризації різниця зі знаком).
+String stockMoveTitle(String kind, String? reason, {double amount = 0}) => switch (kind) {
       'out' => reason == null || reason.isEmpty ? 'Списано' : 'Списано: $reason',
+      'inv' => amount < 0
+          ? 'Інвентаризація: нестача'
+          : (amount > 0 ? 'Інвентаризація: надлишок' : 'Інвентаризація: без розбіжностей'),
+      'cancel' => 'Скасування запису',
       'set' => 'Перезаписано (старий запис)',
       _ => 'Прихід',
     };

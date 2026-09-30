@@ -281,7 +281,7 @@ void main() {
     await repo.addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
     await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
     final item = await repo.addStockItem('Цукор', 'кг');
-    await repo.receiveStock(item, 1);
+    await repo.receiveStock(item, 1, total: 30);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
@@ -509,21 +509,24 @@ void main() {
     var it = (await repo.listStockItems()).single;
     expect(it.name, 'Цукор');
     expect(it.quantity, isNull);
-    expect(await repo.receiveStock(id, 5, date: DateTime(2026, 9, 1), price: 30), 5);
-    expect(await repo.receiveStock(id, 2.5, comment: 'чек 12'), 7.5);
-    expect(await repo.writeOffStock(id, 3, reason: 'Підгодівля'), 4.5);
+    // загальна вартість 150 грн за 5 кг → 30 грн/кг
+    expect(await repo.receiveStock(id, 5, date: DateTime(2026, 9, 1), total: 150), 5);
+    expect(await repo.receiveStock(id, 2.5, total: 100, comment: 'чек 12'), 7.5);
+    expect(await repo.writeOffStock(id, 3, comment: 'підгодівля'), 4.5);
     // більше за залишок — не можна, залишок не змінюється
-    await expectLater(repo.writeOffStock(id, 5, reason: 'Продаж'), throwsStateError);
-    expect(() => repo.receiveStock(id, 0), throwsArgumentError);
-    expect(await repo.writeOffStock(id, 4.5, reason: 'Продаж'), 0);
+    await expectLater(repo.writeOffStock(id, 5), throwsStateError);
+    expect(() => repo.receiveStock(id, 0, total: 10), throwsArgumentError);
+    expect(() => repo.receiveStock(id, 1, total: -1), throwsArgumentError);
+    expect(await repo.writeOffStock(id, 4.5), 0);
     it = (await repo.getStockItem(id))!;
     expect(it.quantity, 0);
     final moves = await repo.stockMoves(id);
     expect([for (final m in moves) m['kind']], ['in', 'in', 'out', 'out']);
     expect([for (final m in moves) m['quantity_after']], [5, 7.5, 4.5, 0]);
+    expect(moves.first['total'], 150);
     expect(moves.first['price'], 30);
+    expect(moves[1]['price'], 40);
     expect(moves[1]['comment'], 'чек 12');
-    expect(moves[2]['reason'], 'Підгодівля');
     // дата операції — обрана, а не дата введення (1 вересня — найраніший запис)
     expect(DateTime.fromMicrosecondsSinceEpoch(((moves.first['op_date'] as num) * 1e6).round()),
         DateTime(2026, 9, 1));
@@ -535,6 +538,41 @@ void main() {
     expect(await repo.unsynced('stock_items'), isNotEmpty);
     await repo.deleteStockItem(id);
     expect(await repo.listStockItems(), isEmpty);
+  });
+
+  test('склад: інвентаризація записує різницю, скасування повертає залишок', () async {
+    final id = await repo.addStockItem('Цукор', 'кг');
+    await repo.receiveStock(id, 10, total: 300);
+    // фактично 8 → нестача −2
+    expect(await repo.inventoryStock(id, 8), 8);
+    var moves = await repo.stockMoves(id);
+    expect(moves.last['kind'], 'inv');
+    expect(moves.last['amount'], -2);
+    // фактично 9 → надлишок +1
+    expect(await repo.inventoryStock(id, 9), 9);
+    expect((await repo.stockMoves(id)).last['amount'], 1);
+
+    // скасувати помилкове списання: запис лишається, залишок повертається
+    await repo.writeOffStock(id, 4);
+    moves = await repo.stockMoves(id);
+    final outId = moves.last['id'] as String;
+    expect(await repo.cancelStockMove(outId), 9);
+    moves = await repo.stockMoves(id);
+    expect(moves.firstWhere((m) => m['id'] == outId)['cancelled'], 1);
+    expect(moves.last['kind'], 'cancel');
+    expect(moves.last['ref_id'], outId);
+    expect(moves.last['amount'], 4);
+    // двічі не можна; скасування не скасовується
+    await expectLater(repo.cancelStockMove(outId), throwsStateError);
+    await expectLater(repo.cancelStockMove(moves.last['id'] as String), throwsStateError);
+    // скасувати інвентаризацію «+1» → 8
+    final invId = moves.lastWhere((m) => m['kind'] == 'inv')['id'] as String;
+    expect(await repo.cancelStockMove(invId), 8);
+    // прихід 10, з якого вже списали б більше залишку, — не скасовується
+    await repo.writeOffStock(id, 5);
+    final inId = moves.first['id'] as String;
+    await expectLater(repo.cancelStockMove(inId), throwsStateError);
+    expect((await repo.getStockItem(id))!.quantity, 3);
   });
 
   test('rotateGroups повертає кілька груп разом як одну фігуру', () async {

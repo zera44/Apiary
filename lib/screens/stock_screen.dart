@@ -12,10 +12,11 @@ import '../ui/date_picker.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 
-/// Склад: дві вкладки.
+/// Склад: три вкладки.
 /// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
 /// «Додати номенклатуру». «Вибуття» — номенклатура із залишком, під
-/// кожною «Списати».
+/// кожною «Списати». «Інвентаризація» — «Перерахувати»: фактична кількість,
+/// різниця (нестача/надлишок) записується окремо.
 ///
 /// За правилами обліку нічого не перезаписується: кожна операція — окремий
 /// запис (дата, кількість, ціна/причина, коментар), а залишок = прихід −
@@ -23,9 +24,9 @@ import '../ui/theme.dart';
 class StockScreen extends StatefulWidget {
   final Repository repo;
 
-  /// true — одразу відкрити вкладку «Вибуття».
-  final bool writeOff;
-  const StockScreen({super.key, required this.repo, this.writeOff = false});
+  /// Вкладка, що відкривається першою.
+  final StockOp initialTab;
+  const StockScreen({super.key, required this.repo, this.initialTab = StockOp.receive});
   @override
   State<StockScreen> createState() => _StockScreenState();
 }
@@ -33,7 +34,7 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   List<StockItem>? items;
   bool _busy = false;
-  late bool _out = widget.writeOff;
+  late StockOp _op = widget.initialTab;
 
   Repository get repo => widget.repo;
 
@@ -91,61 +92,64 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
       });
 
-  /// «Прихід»: кількість, дата, ціна за одиницю (необов'язково), коментар.
-  Future<void> _receive(StockItem it) => _guard(() async {
+  /// Операція з номенклатурою: прихід, списання або інвентаризація.
+  Future<void> _move(StockItem it, StockOp op) => _guard(() async {
         final m = await showDialog<_Move>(
           context: context,
-          builder: (_) => _MoveDialog(item: it, out: false),
-        );
-        if (m == null) return;
-        await repo.receiveStock(it.id, m.amount, date: m.date, price: m.price, comment: m.comment);
-        await _reload();
-      });
-
-  /// «Списати»: кількість (не більше залишку), причина, дата, коментар.
-  Future<void> _writeOff(StockItem it) => _guard(() async {
-        final m = await showDialog<_Move>(
-          context: context,
-          builder: (_) => _MoveDialog(item: it, out: true),
+          builder: (_) => _MoveDialog(item: it, op: op),
         );
         if (m == null) return;
         try {
-          await repo.writeOffStock(it.id, m.amount, reason: m.reason!, date: m.date, comment: m.comment);
+          switch (op) {
+            case StockOp.receive:
+              await repo.receiveStock(it.id, m.amount, total: m.total!, date: m.date, comment: m.comment);
+            case StockOp.writeOff:
+              await repo.writeOffStock(it.id, m.amount, date: m.date, comment: m.comment);
+            case StockOp.inventory:
+              await repo.inventoryStock(it.id, m.amount, date: m.date, comment: m.comment);
+          }
         } on StateError catch (e) {
           if (mounted) await showInfo(context, e.message);
         }
         await _reload();
       });
 
-  Widget _tab(String text, bool out) => Expanded(
+  Widget _tab(String text, StockOp op) => Expanded(
         child: PillButton(
           text: text,
-          bg: _out == out ? AppColors.accent : AppColors.darkBtn,
-          fg: _out == out ? Colors.white : AppColors.text,
+          bg: _op == op ? AppColors.accent : AppColors.darkBtn,
+          fg: _op == op ? Colors.white : AppColors.text,
           height: 40,
-          onPressed: () => setState(() => _out = out),
+          fontSize: 13,
+          onPressed: () => setState(() => _op = op),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
     final all = items;
+    final out = _op == StockOp.writeOff;
     final list = all == null
         ? null
-        : (_out ? [for (final i in all) if ((i.quantity ?? 0) > 0) i] : all);
+        : (out ? [for (final i in all) if ((i.quantity ?? 0) > 0) i] : all);
+    final title = switch (_op) {
+      StockOp.receive => 'Прихід номенклатури',
+      StockOp.writeOff => 'Вибуття номенклатури',
+      StockOp.inventory => 'Інвентаризація',
+    };
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(
-                title: _out ? 'Вибуття номенклатури' : 'Прихід номенклатури',
-                onBack: () => Navigator.pop(context)),
+            TopBar(title: title, onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [
-                _tab('Прихід', false),
-                const SizedBox(width: 8),
-                _tab('Вибуття', true),
+                _tab('Прихід', StockOp.receive),
+                const SizedBox(width: 6),
+                _tab('Вибуття', StockOp.writeOff),
+                const SizedBox(width: 6),
+                _tab('Інвентаризація', StockOp.inventory),
               ]),
             ),
             Expanded(
@@ -156,7 +160,7 @@ class _StockScreenState extends State<StockScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                                _out
+                                out
                                     ? 'Немає що списувати.\nСпершу оформіть прихід номенклатури.'
                                     : 'Ще немає жодної номенклатури',
                                 textAlign: TextAlign.center,
@@ -174,7 +178,7 @@ class _StockScreenState extends State<StockScreen> {
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),
             ),
-            if (!_out)
+            if (_op == StockOp.receive)
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: PillButton(
@@ -196,6 +200,11 @@ class _StockScreenState extends State<StockScreen> {
   /// Плитка: назва, фото (тап — змінити), залишок і кнопка дії вкладки.
   Widget _tile(StockItem it) {
     final qty = it.quantity == null ? '—' : '${formatAmount(it.quantity!)} ${it.unit}';
+    final (text, color) = switch (_op) {
+      StockOp.receive => ('Прихід', AppColors.addObject),
+      StockOp.writeOff => ('Списати', AppColors.danger),
+      StockOp.inventory => ('Перерахувати', AppColors.rename),
+    };
     return Column(children: [
       Text(it.name,
           maxLines: 1,
@@ -242,26 +251,20 @@ class _StockScreenState extends State<StockScreen> {
         ),
       ),
       const SizedBox(height: 6),
-      _out
-          ? PillButton(
-              text: 'Списати',
-              bg: AppColors.danger,
-              height: 36,
-              radius: 12,
-              width: double.infinity,
-              onPressed: () => _writeOff(it),
-            )
-          : PillButton(
-              text: 'Прихід',
-              bg: AppColors.addObject,
-              height: 36,
-              radius: 12,
-              width: double.infinity,
-              onPressed: () => _receive(it),
-            ),
+      PillButton(
+        text: text,
+        bg: color,
+        height: 36,
+        radius: 12,
+        width: double.infinity,
+        onPressed: () => _move(it, _op),
+      ),
     ]);
   }
 }
+
+/// Вкладки/операції складу.
+enum StockOp { receive, writeOff, inventory }
 
 /// Фото номенклатури або заглушка.
 class StockPhoto extends StatelessWidget {
@@ -479,38 +482,40 @@ class _ItemDialogState extends State<_ItemDialog> {
   }
 }
 
-/// Результат діалогу операції.
+/// Результат діалогу операції. [amount] — кількість (для інвентаризації —
+/// фактична кількість), [total] — загальна вартість приходу.
 class _Move {
   final double amount;
   final DateTime date;
-  final double? price;
-  final String? reason;
+  final double? total;
   final String? comment;
-  const _Move(this.amount, this.date, {this.price, this.reason, this.comment});
+  const _Move(this.amount, this.date, {this.total, this.comment});
 }
 
-/// Прихід або списання: кількість, дата (типово сьогодні), для приходу —
-/// ціна за одиницю, для списання — причина; коментар необов'язковий.
+/// Діалог операції. Порядок полів: дата (типово сьогодні) → кількість →
+/// (для приходу, обов'язково) загальна вартість → коментар. Ціну за одиницю система
+/// рахує сама: вартість / кількість.
 class _MoveDialog extends StatefulWidget {
   final StockItem item;
-  final bool out;
-  const _MoveDialog({required this.item, required this.out});
+  final StockOp op;
+  const _MoveDialog({required this.item, required this.op});
   @override
   State<_MoveDialog> createState() => _MoveDialogState();
 }
 
 class _MoveDialogState extends State<_MoveDialog> {
   final _amount = TextEditingController();
-  final _price = TextEditingController();
+  final _total = TextEditingController();
   final _comment = TextEditingController();
   DateTime _date = DateTime.now();
-  String? _reason;
   String? _error;
+
+  StockOp get op => widget.op;
 
   @override
   void dispose() {
     _amount.dispose();
-    _price.dispose();
+    _total.dispose();
     _comment.dispose();
     super.dispose();
   }
@@ -521,35 +526,40 @@ class _MoveDialogState extends State<_MoveDialog> {
     if (d != null && mounted) setState(() => _date = d);
   }
 
+  /// Ціна за одиницю з того, що введено зараз (або null).
+  String? get _unitPrice {
+    final a = parseAmount(_amount.text), t = parseAmount(_total.text);
+    if (a == null || a == 0 || t == null) return null;
+    return '${formatMoney(t / a)} грн/${widget.item.unit}';
+  }
+
   void _save() {
     final it = widget.item;
     final v = parseAmount(_amount.text);
-    if (v == null || v == 0) {
-      setState(() => _error = 'Введіть кількість більше 0');
+    if (v == null || (op != StockOp.inventory && v == 0)) {
+      setState(() => _error = op == StockOp.inventory
+          ? 'Введіть фактичну кількість (0 або більше)'
+          : 'Введіть кількість більше 0');
       return;
     }
-    if (widget.out) {
+    if (op == StockOp.writeOff) {
       final left = it.quantity ?? 0;
       if (v > left + 1e-9) {
         setState(() => _error = 'Можна списати не більше ${formatAmount(left)} ${it.unit}');
         return;
       }
-      if (_reason == null) {
-        setState(() => _error = 'Оберіть причину списання');
-        return;
-      }
     }
-    double? price;
-    if (!widget.out && _price.text.trim().isNotEmpty) {
-      price = parseAmount(_price.text);
-      if (price == null) {
-        setState(() => _error = 'Ціна — число, не менше 0');
+    double? total;
+    if (op == StockOp.receive) {
+      // вартість приходу обов'язкова: з неї рахується ціна за одиницю
+      total = parseAmount(_total.text);
+      if (total == null) {
+        setState(() => _error = 'Вкажіть загальну вартість приходу');
         return;
       }
     }
     final c = _comment.text.trim();
-    Navigator.pop(
-        context, _Move(v, _date, price: price, reason: _reason, comment: c.isEmpty ? null : c));
+    Navigator.pop(context, _Move(v, _date, total: total, comment: c.isEmpty ? null : c));
   }
 
   InputDecoration _dec(String label, {String? suffix}) =>
@@ -559,55 +569,27 @@ class _MoveDialogState extends State<_MoveDialog> {
   Widget build(BuildContext context) {
     final it = widget.item;
     final numeric = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))];
+    final (title, button, color) = switch (op) {
+      StockOp.receive => ('Прихід', 'Зберегти', AppColors.accent),
+      StockOp.writeOff => ('Списання', 'Списати', AppColors.danger),
+      StockOp.inventory => ('Інвентаризація', 'Зберегти', AppColors.accent),
+    };
+    final price = op == StockOp.receive ? _unitPrice : null;
     return AlertDialog(
-      title: Text('${widget.out ? 'Списання' : 'Прихід'}: ${it.name}'),
+      title: Text('$title: ${it.name}'),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       content: SizedBox(
         width: 320,
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(top: 10, bottom: 4),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Залишок: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
+            Text(
+                op == StockOp.inventory
+                    ? 'За обліком: ${formatAmount(it.quantity ?? 0)} ${it.unit}'
+                    : 'Залишок: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _amount,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: numeric,
-              style: TextStyle(color: AppColors.text),
-              decoration: _dec('Кількість', suffix: it.unit),
-              onChanged: (_) => setState(() => _error = null),
-            ),
             const SizedBox(height: 10),
-            if (widget.out) ...[
-              Text('Причина', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final r in kWriteOffReasons)
-                  ChoiceChip(
-                    label: Text(r),
-                    selected: _reason == r,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    onSelected: (_) => setState(() {
-                      _reason = r;
-                      _error = null;
-                    }),
-                  ),
-              ]),
-              const SizedBox(height: 10),
-            ] else ...[
-              TextField(
-                controller: _price,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: numeric,
-                style: TextStyle(color: AppColors.text),
-                decoration: _dec('Ціна за 1 ${it.unit} (необов\'язково)', suffix: 'грн'),
-                onChanged: (_) => setState(() => _error = null),
-              ),
-              const SizedBox(height: 10),
-            ],
+            // 1. дата
             Row(children: [
               Text('Дата: ', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
               Expanded(
@@ -621,6 +603,36 @@ class _MoveDialogState extends State<_MoveDialog> {
               ),
             ]),
             const SizedBox(height: 10),
+            // 2. кількість
+            TextField(
+              controller: _amount,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: numeric,
+              style: TextStyle(color: AppColors.text),
+              decoration: _dec(op == StockOp.inventory ? 'Фактична кількість' : 'Кількість', suffix: it.unit),
+              onChanged: (_) => setState(() => _error = null),
+            ),
+            const SizedBox(height: 10),
+            // 3. загальна вартість (лише прихід) — ціну за одиницю рахує система
+            if (op == StockOp.receive) ...[
+              TextField(
+                controller: _total,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: numeric,
+                style: TextStyle(color: AppColors.text),
+                decoration: _dec('Загальна вартість', suffix: 'грн'),
+                onChanged: (_) => setState(() => _error = null),
+              ),
+              if (price != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Ціна за одиницю: $price',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                ),
+              const SizedBox(height: 10),
+            ],
+            // 4. коментар
             TextField(
               controller: _comment,
               style: TextStyle(color: AppColors.text),
@@ -640,10 +652,7 @@ class _MoveDialogState extends State<_MoveDialog> {
               bg: AppColors.neutralBtn,
               fg: AppColors.text,
               onPressed: () => Navigator.pop(context)),
-          PillButton(
-              text: widget.out ? 'Списати' : 'Зберегти',
-              bg: widget.out ? AppColors.danger : AppColors.accent,
-              onPressed: _save),
+          PillButton(text: button, bg: color, onPressed: _save),
         ]),
       ],
     );
