@@ -81,10 +81,16 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   Future<void> _reload() async {
     final list = await repo.listParameters();
-    if (mounted) setState(() => params = list);
+    // обов'язкові (з замочком) — завжди вгорі, решта в тому ж порядку
+    final pinned = [for (final p in list) if (_pinned(p)) p];
+    final rest = [for (final p in list) if (!_pinned(p)) p];
+    if (mounted) setState(() => params = [...pinned, ...rest]);
   }
 
   bool _lockedBase(Parameter p) => p.isBase && targetType != null && p.baseType == targetType;
+
+  /// Характеристика з замочком: обов'язкова, закріплена вгорі, без редагування.
+  bool _pinned(Parameter p) => _lockedBase(p) || (widget.catalog && p.isBase);
 
   bool _saving = false;
 
@@ -304,7 +310,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       height: 66,
       child: Row(children: [
         if (!widget.catalog || p.isBase) ...[
-        if (locked || (widget.catalog && p.isBase))
+        if (_pinned(p))
           const LockMark()
         else
         CheckToggle(
@@ -343,13 +349,15 @@ class _ParametersScreenState extends State<ParametersScreen> {
             tooltip: 'Історія',
             onPressed: () => _history(p)),
         const SizedBox(width: 6),
-        CircleIconButton(
-            icon: 'pencil',
-            bg: AppColors.rename,
-            size: 36,
-            tooltip: 'Редагувати',
-            onPressed: () => _openForm(p)),
-        const SizedBox(width: 6),
+        if (!_pinned(p)) ...[
+          CircleIconButton(
+              icon: 'pencil',
+              bg: AppColors.rename,
+              size: 36,
+              tooltip: 'Редагувати',
+              onPressed: () => _openForm(p)),
+          const SizedBox(width: 6),
+        ],
         CircleIconButton(
             icon: 'trash',
             bg: AppColors.danger,

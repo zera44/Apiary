@@ -11,6 +11,7 @@ import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
+import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -89,6 +90,19 @@ void main() {
     await settle(tester);
     expect(find.text('Вага'), findsOneWidget);
     expect(find.text('Мітка матки'), findsOneWidget);
+    // обов'язкові (базові) — вгорі, з замочком і без кнопки редагування
+    expect(tester.getTopLeft(find.text('Мітка матки')).dy,
+        lessThan(tester.getTopLeft(find.text('Вага')).dy));
+    expect(find.byType(LockMark), findsWidgets);
+    expect(find.byTooltip('Редагувати'), findsOneWidget); // лише «Вага»
+    await tester.tap(find.byTooltip('Новий параметр'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester);
+    expect(tester.getTopLeft(find.text('Мітка матки')).dy,
+        lessThan(tester.getTopLeft(find.text('Сила сім\'ї')).dy));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('історія', (tester) async {
