@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/merge_layout.dart';
+import '../ui/app_drawer.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
@@ -115,6 +116,18 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                           itemCount: list.length,
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: PillButton(
+                text: 'Сканувати QR-код',
+                bg: AppColors.darkBtn,
+                fg: AppColors.text,
+                height: 48,
+                radius: 16,
+                width: double.infinity,
+                onPressed: () => AppDrawer.openHiveByQr(Navigator.of(context), widget.repo),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(12),
