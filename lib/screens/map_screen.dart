@@ -17,6 +17,7 @@ import '../ui/theme.dart';
 import 'history_screen.dart';
 import 'parameters_screen.dart';
 import 'qr_scan_screen.dart';
+import 'template_editor_screen.dart';
 import 'templates_screen.dart';
 
 /// Головний екран: карта пасіки (порт map_screen.py).
@@ -393,6 +394,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _clearWarning();
   }
 
+  /// Позначка "користувач натиснув «Створити шаблон»" у діалозі вибору.
+  static final ApiaryTemplate _createTemplate =
+      ApiaryTemplate(id: '', name: '', width: 0, height: 0, cells: const {});
+
   Future<void> _onAddObject() async {
     final templates = await repo.listTemplates();
     if (!mounted) return;
@@ -403,8 +408,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         content: SizedBox(
           width: 320,
           child: templates.isEmpty
-              ? Text('Ще немає жодного шаблону.\nСтвори його на екрані «Шаблони».',
-                  textAlign: TextAlign.center, style: TextStyle(color: AppColors.text))
+              ? Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('Ще немає жодного шаблону.',
+                      textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
+                  const SizedBox(height: 16),
+                  PillButton(
+                    text: 'Створити шаблон',
+                    bg: AppColors.accent,
+                    height: 44,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx, _createTemplate),
+                  ),
+                ])
               : SingleChildScrollView(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     for (final t in templates)
@@ -425,6 +440,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ),
     );
     if (picked == null) return;
+    if (identical(picked, _createTemplate)) {
+      // "Створити шаблон" → екран "Новий шаблон"; якщо шаблон з'явився —
+      // одразу знову показуємо вибір, щоб його можна було поставити на карту
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => TemplateEditorScreen(repo: repo),
+      ));
+      if (!mounted) return;
+      if ((await repo.listTemplates()).isNotEmpty && mounted) await _onAddObject();
+      return;
+    }
     setState(() {
       pendingTemplate = picked;
       selectedId = null;
@@ -455,33 +480,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (el == null) return;
         _pushUndo(_Undo.restore([el]));
         await repo.rotateElement(el.id);
-      }
-      await _reload();
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _onRename() async {
-    final sel = selection;
-    if (sel.isEmpty || _busy) return;
-    final gid = selectedGroupId;
-    final current = gid != null
-        ? (sel.map((e) => e.label).firstWhere((l) => l != null && l.isNotEmpty,
-                orElse: () => null) ??
-            'Група')
-        : ((sel.first.label?.isNotEmpty ?? false)
-            ? sel.first.label!
-            : (sel.first.isHive ? 'Вулик' : 'Перешкода'));
-    final name = await showTextPrompt(context, title: 'Перейменувати', initial: current);
-    if (name == null || _busy) return;
-    setState(() => _busy = true);
-    try {
-      _pushUndo(_Undo.restore(sel));
-      if (gid != null) {
-        await repo.renameGroup(gid, name);
-      } else {
-        await repo.updateElement(sel.first.id, {'label': name});
       }
       await _reload();
     } finally {
@@ -997,12 +995,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               bg: AppColors.darkBtn,
               tooltip: 'Повернути',
               onPressed: enabled ? _onRotate : null),
-          const SizedBox(width: 16),
-          CircleIconButton(
-              icon: 'pencil',
-              bg: AppColors.rename,
-              tooltip: 'Перейменувати',
-              onPressed: enabled ? _onRename : null),
           const SizedBox(width: 16),
           CircleIconButton(
               icon: 'back_arrow',

@@ -370,4 +370,24 @@ void main() {
     await settle(tester);
     expect(find.byTooltip('Меню'), findsOneWidget);
   });
+
+  testWidgets('редагування карти: без «Перейменувати»; немає шаблонів — «Створити шаблон» відкриває новий шаблон',
+      (tester) async {
+    final id = (await tester.runAsync(() => repo.addApiary('Пасіка')))!;
+    final a = (await tester.runAsync(() => repo.getApiary(id)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.text('+'));
+    await settle(tester);
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    expect(find.byTooltip('Перейменувати'), findsNothing);
+    await tester.tap(find.byTooltip("Додати об'єкт"));
+    await settle(tester);
+    expect(find.text('Ще немає жодного шаблону.'), findsOneWidget);
+    await tester.tap(find.text('Створити шаблон'));
+    await settle(tester);
+    expect(find.text('Новий шаблон'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }
