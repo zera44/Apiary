@@ -1073,44 +1073,31 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
-  /// Кнопки зліва внизу (поза редагуванням): «Додати» — одразу вибір
-  /// шаблону для розміщення на карті; «Редагувати» — режим редагування.
+  /// Кнопка зліва внизу (поза редагуванням): «Редагувати» — режим
+  /// редагування й одразу вибір шаблону, щоб додати вулик на карту.
   /// Список шаблонів (створення, зміна) — лише в меню ☰ → «Шаблони».
   List<Widget> _fab() => [
         Positioned(
           left: 16,
           bottom: 18,
-          child: Row(children: [
-            PillButton(
-              text: 'Додати',
-              bg: AppColors.create,
-              width: 120,
-              height: 50,
-              radius: 25,
-              fontSize: 16,
-              onPressed: _busy ? null : _addFromFab,
-            ),
-            const SizedBox(width: 10),
-            PillButton(
-              text: 'Редагувати',
-              bg: AppColors.accent,
-              width: 130,
-              height: 50,
-              radius: 25,
-              fontSize: 15,
-              onPressed: _enterEdit,
-            ),
-          ]),
+          child: PillButton(
+            text: 'Редагувати',
+            bg: AppColors.accent,
+            width: 150,
+            height: 50,
+            radius: 25,
+            fontSize: 16,
+            onPressed: _busy ? null : _editAndAdd,
+          ),
         ),
       ];
 
-  /// «Додати»: вибір шаблону й розміщення (у режимі редагування — там є
-  /// «Повернути», «Крок назад», «Готово»). Якщо нічого не обрали —
-  /// повертаємось до звичайного перегляду карти.
-  Future<void> _addFromFab() async {
+  /// «Редагувати»: увійти в редагування й одразу запропонувати шаблон.
+  /// Якщо шаблон не обрали — лишаємось у редагуванні (перемістити,
+  /// повернути, видалити; «Готово» — вийти).
+  Future<void> _editAndAdd() async {
     _enterEdit();
     await _onAddObject();
-    if (mounted && selectMode && pendingTemplate == null) _exitEdit();
   }
 
   Widget _actionBar() {
