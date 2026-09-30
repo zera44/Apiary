@@ -41,7 +41,11 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
       - name: Файл версій залежностей (для фіксації)
         shell: bash
-        run: echo "::notice title=LOCK::$(gzip -9c pubspec.lock | base64 -w0)"
+        run: |
+          i=0
+          for part in $(gzip -9nc pubspec.lock | base64 -w0 | fold -w 4000); do
+            i=$((i+1)); echo "::notice title=LOCK$i::$part"
+          done
       - name: Тести
         shell: bash
         run: |
