@@ -35,3 +35,17 @@ List<MapElement> hiveObjectOf(MapElement el, List<MapElement> all) {
   }
   return [el];
 }
+
+/// Злитий об'єкт (вулик чи перешкода), до якого належить [el]: сусідні
+/// однакові клітинки ТІЄЇ Ж групи. Для одиночного об'єкта — лише [el].
+List<MapElement> mergedObjectOf(MapElement el, List<MapElement> all) {
+  if (el.groupId == null) return [el];
+  final same = [for (final e in all) if (e.groupId == el.groupId) e];
+  if (!same.any((e) => e.id == el.id)) return [el];
+  final byId = {for (final e in same) e.id: e};
+  final res = mergeLayout([for (final e in same) MergeItem<String>(e.id, e.x, e.y, mergeKeyOf(e))]);
+  for (final comp in res.components) {
+    if (comp.contains(el.id)) return [for (final id in comp) byId[id]!]..sort(compareTopLeft);
+  }
+  return [el];
+}

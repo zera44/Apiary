@@ -222,39 +222,62 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _onPressUp(Offset delta) async {
-    if (_drag == null) return;
+    final d = _drag;
+    if (d == null) return;
     if (_busy) {
       setState(() {
         _drag = null;
         _blocked = false;
       });
+      _clearWarning();
       return;
     }
     final (target, _) = _dragTarget(delta);
     final releasedBlocked = _blocked;
-    _drag = null;
+    // _drag лишається, поки база не оновиться: об'єкт показується на новому
+    // місці без "стрибка" назад на кілька кадрів
     setState(() => _busy = true);
     try {
       final (dx, dy) = target;
       if (dx != 0 || dy != 0) {
-        if (selectedGroupId != null) {
-          final members = selection;
-          _pushUndo(_Undo.restore(members));
+        final sel = selection;
+        final ids = {for (final e in sel) e.id};
+        // перевірка по СВІЖОМУ стану: поки один палець тягнув, другим могли
+        // повернути фігуру чи "кроком назад" відновити інший об'єкт
+        final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
+        final sameShape = sel.length == d.cells.length && sel.every((e) => d.cells.contains((e.x, e.y)));
+        final free = sel.isNotEmpty &&
+            sameShape &&
+            !sel.any((e) => occupied.contains((e.x + dx, e.y + dy)));
+        if (!free) {
+          _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
+        } else if (selectedGroupId != null) {
+          _pushUndo(_Undo.restore(sel));
           await repo.moveGroup(selectedGroupId!, dx, dy);
         } else if (selectedId != null) {
-          final el = selection.firstOrNull;
-          if (el != null) {
-            _pushUndo(_Undo.restore([el]));
-            await repo.moveElement(el.id, el.x + dx, el.y + dy);
-          }
+          final el = sel.first;
+          _pushUndo(_Undo.restore([el]));
+          await repo.moveElement(el.id, el.x + dx, el.y + dy);
         }
       }
-      await _reload();
+      final els = await repo.listElements(widget.apiary.id);
+      if (!mounted) return;
+      // нові позиції й зняття зсуву — одним кадром
+      setState(() {
+        elements = els;
+        _drag = null;
+        _blocked = false;
+      });
       if (releasedBlocked) {
         _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _drag = null;
+        });
+      }
     }
   }
 
@@ -504,10 +527,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // ВИПРАВЛЕНО: знімок прив'язок параметрів ПЕРЕД видаленням, щоб
       // "крок назад" міг відновити їх, навіть якщо фонова синхронізація
       // встигне остаточно прибрати їх із бази до натискання undo.
+      final gid = sel.first.groupId;
       final paramRows = await repo.attachedParameterRows(sel.first.entity);
       _pushUndo(_Undo.restore(sel, paramRows: paramRows));
-      if (isGroup) {
-        await repo.deleteGroup(selectedGroupId!);
+      if (isGroup && gid != null) {
+        await repo.deleteGroup(gid);
       } else {
         await repo.deleteElement(sel.first.id);
       }
@@ -528,7 +552,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (panelOpen) setState(() => panelOpen = false);
       return;
     }
-    if (panelOpen && panelElement != null && panelElement!.entity == el.entity) {
+    // той самий об'єкт (будь-яка його клітинка) — закрити; інший вулик тієї ж
+    // групи — показати його (QR-код у панелі — свій для кожного вулика)
+    if (panelOpen &&
+        panelElement != null &&
+        mergedObjectOf(panelElement!, elements).any((e) => e.id == el.id)) {
       setState(() => panelOpen = false);
       return;
     }
@@ -572,6 +600,38 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     });
   }
 
+  bool _panelBusy = false;
+
+  /// Дія панелі, яка не запускається вдруге, поки перша не завершилась.
+  Future<void> _panelGuard(Future<void> Function() action) async {
+    if (_panelBusy) return;
+    _panelBusy = true;
+    try {
+      await action();
+    } finally {
+      _panelBusy = false;
+    }
+  }
+
+  /// Повернення з екранів, відкритих через меню ☰ (шаблони, характеристики,
+  /// генератор QR): дані могли змінитись — оновити карту, панель і шаблон,
+  /// обраний для розміщення.
+  Future<void> _afterExternalChange() async {
+    if (!mounted) return;
+    final tpl = pendingTemplate;
+    if (tpl != null) {
+      final fresh = (await repo.listTemplates()).where((t) => t.id == tpl.id).firstOrNull;
+      if (!mounted) return;
+      setState(() => pendingTemplate = fresh);
+      if (fresh == null) _showWarning('Шаблон видалено', duration: const Duration(seconds: 1));
+    }
+    if (panelOpen && panelElement != null) {
+      await _refreshPanel();
+    } else {
+      await _reload();
+    }
+  }
+
   Future<void> _refreshPanel() async {
     await _reload();
     final el = panelElement;
@@ -597,11 +657,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (el == null) return;
     final r = await pickIcon(context);
     if (r == null) return;
-    if (el.groupId != null) {
-      await repo.setGroupIcon(el.groupId!, r.$1);
-    } else {
-      await repo.updateElement(el.id, {'icon': r.$1});
-    }
+    // лише цей об'єкт (усі його злиті клітинки), а не вся група: інші вулики
+    // й перешкоди шаблону зберігають свій вигляд
+    await repo.updateElements(
+        [for (final e in mergedObjectOf(el, elements)) e.id], {'icon': r.$1});
     await _refreshPanel();
   }
 
@@ -610,11 +669,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (el == null) return;
     final r = await pickObjectColor(context);
     if (r == null) return;
-    if (el.groupId != null) {
-      await repo.setGroupColor(el.groupId!, r.$1);
-    } else {
-      await repo.updateElement(el.id, {'color': r.$1});
-    }
+    await repo.updateElements(
+        [for (final e in mergedObjectOf(el, elements)) e.id], {'color': r.$1});
     await _refreshPanel();
   }
 
@@ -819,7 +875,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final placing = selectMode && pendingTemplate != null;
 
     return Scaffold(
-      drawer: AppDrawer(repo: repo, currentApiary: widget.apiary),
+      drawer: AppDrawer(repo: repo, currentApiary: widget.apiary, onReturn: _afterExternalChange),
       // свайп від лівого краю конфліктував би з панорамуванням карти —
       // меню відкривається лише кнопкою
       drawerEnableOpenDragGesture: false,
@@ -939,12 +995,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   : CharacteristicsPanel(
                       data: panelData!,
                       onClose: () => setState(() => panelOpen = false),
-                      onRename: _panelRename,
-                      onIcon: _panelIcon,
-                      onColor: _panelColor,
-                      onEditParams: _panelEditParams,
-                      onFill: _panelFill,
-                      onHistory: _panelHistory,
+                      // подвійний тап не відкриває два вікна
+                      onRename: () => _panelGuard(_panelRename),
+                      onIcon: () => _panelGuard(_panelIcon),
+                      onColor: () => _panelGuard(_panelColor),
+                      onEditParams: () => _panelGuard(_panelEditParams),
+                      onFill: () => _panelGuard(_panelFill),
+                      onHistory: (id) => _panelGuard(() => _panelHistory(id)),
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) ? _panelQr : null,
                     ),
@@ -1038,7 +1095,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ];
 
   Widget _actionBar() {
-    final enabled = hasSelection && !_busy;
+    final enabled = hasSelection && !_busy && _drag == null;
     return Container(
       height: 70,
       color: AppColors.panel,
@@ -1062,7 +1119,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               icon: 'back_arrow',
               bg: AppColors.darkBtn,
               tooltip: 'Крок назад',
-              onPressed: (undoStack.isEmpty || _busy) ? null : _onUndo),
+              onPressed: (undoStack.isEmpty || _busy || _drag != null) ? null : _onUndo),
           const SizedBox(width: 16),
           CircleIconButton(
               icon: 'trash',
@@ -1071,7 +1128,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               onPressed: enabled ? _onDelete : null),
           const SizedBox(width: 16),
           CircleIconButton(
-              icon: 'check', bg: AppColors.accent, tooltip: 'Готово', onPressed: _exitEdit),
+              icon: 'check',
+              bg: AppColors.accent,
+              tooltip: 'Готово',
+              // поки триває дія (розміщення, видалення…), вийти не можна: вона
+              // завершилась би вже поза редагуванням
+              onPressed: (_busy || _drag != null) ? null : _exitEdit),
         ]),
       ),
     );

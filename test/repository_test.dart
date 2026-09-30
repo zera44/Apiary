@@ -4,6 +4,7 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
+import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/logic/value_convert.dart';
 import 'package:apiary/services/excel_export.dart';
 import 'package:excel/excel.dart';
@@ -432,6 +433,32 @@ void main() {
       await repo.deleteApiary(other);
       expect(await repo.findByQr('G'), isNull);
     });
+  });
+
+  test('номер нової групи — найбільший + 1 (без повторів після видалення чи перейменування)',
+      () async {
+    final g1 = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
+    await repo.addGroup(apiaryId, {'0,0': 'hive'}, 2, 0, groupLabel: 'Лежак 2');
+    final g3 = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 4, 0, groupLabel: 'Лежак 3');
+    await repo.deleteGroup(g1);
+    expect(await repo.nextGroupLabel(apiaryId, 'Лежак'), 'Лежак 4');
+    await repo.renameGroup(g3, 'Південний');
+    expect(await repo.nextGroupLabel(apiaryId, 'Лежак'), 'Лежак 3');
+    expect(await repo.nextGroupLabel(apiaryId, 'Інший'), 'Інший 1');
+  });
+
+  test('колір/іконка змінюються лише для злитого об\'єкта, не для всієї групи', () async {
+    final gid = await repo.addGroup(
+        apiaryId, {'0,0': 'hive', '1,0': 'hive', '3,0': 'hive', '0,1': 'obstacle:trees'}, 0, 0);
+    final all = await repo.getGroupElements(gid);
+    final first = all.firstWhere((e) => e.x == 0 && e.isHive);
+    final obj = mergedObjectOf(first, all);
+    expect(obj.map((e) => (e.x, e.y)).toSet(), {(0, 0), (1, 0)}); // окремий вулик (3,0) і дерева — ні
+    await repo.updateElements([for (final e in obj) e.id], {'color': '#FF0000'});
+    final after = await repo.getGroupElements(gid);
+    for (final e in after) {
+      expect(e.color, obj.any((o) => o.id == e.id) ? '#FF0000' : isNull, reason: '${e.x},${e.y}');
+    }
   });
 
   group('перенесення історії параметра', () {

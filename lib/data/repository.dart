@@ -289,12 +289,17 @@ class Repository {
       'AND apiary_id = ? GROUP BY group_id',
       [apiaryId],
     );
-    final pattern = RegExp('^${RegExp.escape(name)}(?: \\d+)?\$');
-    final count = rows.where((r) {
-      final l = r['label'] as String?;
-      return l != null && pattern.hasMatch(l);
-    }).length;
-    return '$name ${count + 1}';
+    // найбільший наявний номер + 1 (а не кількість груп): після видалення
+    // чи перейменування однієї з груп лічильник інакше повторював номер
+    final pattern = RegExp('^${RegExp.escape(name)}(?: (\\d+))?\$');
+    var maxN = 0;
+    for (final r in rows) {
+      final m = pattern.firstMatch((r['label'] as String?) ?? '');
+      if (m == null) continue;
+      final n = m.group(1) == null ? 1 : (int.tryParse(m.group(1)!) ?? 0);
+      if (n > maxN) maxN = n;
+    }
+    return '$name ${maxN + 1}';
   }
 
   /// Розмістити заготовку на карті (у пасіці [apiaryId]) як один
@@ -383,6 +388,20 @@ class Repository {
     final rows = await db.query('elements',
         where: 'group_id = ? AND deleted = 0', whereArgs: [groupId]);
     return rows.map(MapElement.fromMap).toList();
+  }
+
+  /// Змінити однакові поля кількох об'єктів одразу (напр., колір злитого
+  /// вулика — усіх його клітинок).
+  Future<void> updateElements(List<String> ids, Map<String, Object?> fields) async {
+    if (fields.isEmpty || ids.isEmpty) return;
+    final t = now();
+    await db.transaction((txn) async {
+      for (final id in ids) {
+        await txn.update('elements', {...fields, 'updated_at': t, 'synced': 0},
+            where: 'id = ?', whereArgs: [id]);
+      }
+    });
+    if (_affectsReminders(fields)) _remindersDirty();
   }
 
   Future<void> updateElement(String id, Map<String, Object?> fields) async {

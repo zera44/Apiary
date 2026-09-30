@@ -369,6 +369,25 @@ class _InfiniteGridState extends State<InfiniteGrid> {
     }
   }
 
+  // Сенсорна панель ноутбука (Windows/macOS): прокрутка двома пальцями й
+  // щипок приходять окремими подіями PanZoom, а не колесом миші.
+  Offset _pzLastPan = Offset.zero;
+  double _pzStartCell = 0;
+
+  void _pzStart(PointerPanZoomStartEvent e) {
+    _pzLastPan = Offset.zero;
+    _pzStartCell = c.cellSize;
+  }
+
+  void _pzUpdate(PointerPanZoomUpdateEvent e) {
+    if (e.scale != 1.0 && _pzStartCell > 0) {
+      c.zoomTo(_pzStartCell * e.scale, focal: e.localPosition);
+    }
+    final d = e.pan - _pzLastPan;
+    _pzLastPan = e.pan;
+    if (d != Offset.zero) c.panBy(d);
+  }
+
   void _signal(PointerSignalEvent e) {
     if (e is PointerScrollEvent) {
       final ctrl = HardwareKeyboard.instance.isControlPressed ||
@@ -393,6 +412,8 @@ class _InfiniteGridState extends State<InfiniteGrid> {
         onPointerUp: (e) => _up(e),
         onPointerCancel: (e) => _up(e, cancelled: true),
         onPointerSignal: _signal,
+        onPointerPanZoomStart: _pzStart,
+        onPointerPanZoomUpdate: _pzUpdate,
         child: ClipRect(
           child: CustomPaint(
             size: Size(box.maxWidth, box.maxHeight),

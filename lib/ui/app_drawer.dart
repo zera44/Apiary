@@ -21,7 +21,17 @@ class AppDrawer extends StatelessWidget {
   /// Пасіка, з карти якої відкрито меню (меню є лише на карті пасіки):
   /// генератор кодів відкривається одразу для неї.
   final Apiary currentApiary;
-  const AppDrawer({super.key, required this.repo, required this.currentApiary});
+
+  /// Викликається після повернення з екранів меню (шаблони, характеристики,
+  /// генератор QR): там могли змінити дані, які показує карта.
+  final Future<void> Function()? onReturn;
+  const AppDrawer({super.key, required this.repo, required this.currentApiary, this.onReturn});
+
+  Future<void> _open(NavigatorState nav, Widget screen) async {
+    nav.pop(); // закрити меню
+    await nav.push(MaterialPageRoute(builder: (_) => screen));
+    await onReturn?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,24 +49,15 @@ class AppDrawer extends StatelessWidget {
             nav.pop(); // закрити меню
             nav.popUntil((r) => r.isFirst);
           }),
-          _item(context, 'hexagon', 'Шаблони', () {
-            nav.pop();
-            nav.push(MaterialPageRoute(builder: (_) => TemplatesScreen(repo: repo)));
-          }),
-          _item(context, 'history', 'Характеристики', () {
-            nav.pop();
-            nav.push(MaterialPageRoute(builder: (_) => ParametersScreen.catalog(repo: repo)));
-          }),
+          _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
+          _item(context, 'history', 'Характеристики',
+              () => _open(nav, ParametersScreen.catalog(repo: repo))),
           _item(context, 'qr', 'Сканувати QR вулика', () {
             nav.pop();
             openHiveByQr(nav, repo);
           }),
-          _item(context, 'qr', 'Генерувати QR-коди', () {
-            nav.pop();
-            nav.push(MaterialPageRoute(
-              builder: (_) => QrGenerateScreen(repo: repo, apiary: currentApiary),
-            ));
-          }),
+          _item(context, 'qr', 'Генерувати QR-коди',
+              () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
           if (Autostart.supported) ...[
             const Spacer(),
             const _AutostartTile(),

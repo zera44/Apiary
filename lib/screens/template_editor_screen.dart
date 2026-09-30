@@ -73,7 +73,13 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
 
   String _snapshot() {
     final (_, _, out) = _export();
-    return jsonEncode({'title': title, 'cells': out});
+    // порядок клітинок у мапі залежить від історії правок — сортуємо, щоб
+    // "прибрав і повернув" не рахувалось незбереженою зміною
+    final keys = out.keys.toList()..sort();
+    return jsonEncode({
+      'title': title,
+      'cells': {for (final k in keys) k: out[k]},
+    });
   }
 
   _EditorDrag? _drag;
