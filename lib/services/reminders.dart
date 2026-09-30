@@ -49,6 +49,18 @@ class ReminderService {
   Repository? _repo;
   bool _ready = false;
   bool _askedPermission = false;
+
+  /// Натиснули на нагадування: id вулика, який треба відкрити з формою
+  /// «Заповнити». Застосунок слухає це значення (див. main.dart) і, щойно
+  /// головний екран готовий, відкриває вулик і скидає значення в null.
+  /// Якщо застосунок запустили натисканням на сповіщення, значення
+  /// з'являється під час першого [start].
+  final ValueNotifier<String?> openHiveRequest = ValueNotifier<String?>(null);
+
+  void _onTapped(NotificationResponse r) {
+    final id = r.payload;
+    if (id != null && id.isNotEmpty) openHiveRequest.value = id;
+  }
   Future<void> _tail = Future.value();
   Timer? _debounce;
   Timer? _windowsTimer;
@@ -101,7 +113,21 @@ class ReminderService {
         guid: '6f1c1f4e-3b0e-4b7a-9d55-2f8f0b6a1c11',
       ),
     );
-    _ready = await _plugin.initialize(settings: settings) ?? false;
+    _ready = await _plugin.initialize(
+          settings: settings,
+          onDidReceiveNotificationResponse: _onTapped,
+        ) ??
+        false;
+    if (_ready) {
+      // застосунок запустили натисканням на нагадування
+      try {
+        final launch = await _plugin.getNotificationAppLaunchDetails();
+        final resp = launch?.notificationResponse;
+        if (launch?.didNotificationLaunchApp == true && resp != null) _onTapped(resp);
+      } catch (e) {
+        debugPrint('Нагадування (запуск): $e');
+      }
+    }
     return _ready;
   }
 
@@ -145,6 +171,7 @@ class ReminderService {
           // абсолютний момент часу (UTC), тож база часових поясів не потрібна
           scheduledDate: tz.TZDateTime.utc(u.year, u.month, u.day, u.hour, u.minute),
           notificationDetails: _details,
+          payload: p.elementId, // натискання відкриває цей вулик
           // неточний режим: не вимагає окремого дозволу на точні будильники
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         );
@@ -218,6 +245,7 @@ class ReminderService {
           title: d.title,
           body: d.body,
           notificationDetails: _details,
+          payload: t.elementId,
         );
         _shown[t.key] = _Shown(ms, sig);
         changed = true;

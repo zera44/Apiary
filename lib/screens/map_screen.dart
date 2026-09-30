@@ -36,7 +36,13 @@ class MapScreen extends StatefulWidget {
   /// Одразу показати цей об'єкт і відкрити його панель (після сканування
   /// QR-коду вулика).
   final String? focusElementId;
-  const MapScreen({super.key, required this.repo, required this.apiary, this.focusElementId});
+
+  /// Разом із [focusElementId]: одразу відкрити форму «Заповнити» цього
+  /// вулика (після сканування QR чи натискання на нагадування — людина
+  /// прийшла саме заповнити).
+  final bool openFill;
+  const MapScreen(
+      {super.key, required this.repo, required this.apiary, this.focusElementId, this.openFill = false});
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
@@ -124,6 +130,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (el != null) {
         grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
         await _onInfoRequest(el);
+        if (widget.openFill && el.isHive && mounted && panelElement != null) await _panelFill();
       }
     }
   }

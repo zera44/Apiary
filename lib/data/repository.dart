@@ -913,6 +913,20 @@ class Repository {
   // Шаблони
   // ---------------------------------------------------------------------
 
+  /// Типові шаблони «Вулик» (1×1) і «Лежак» (2×1): щоб поставити перший
+  /// вулик, не треба спершу малювати шаблон. Додаються ОДИН раз на базу —
+  /// видалені користувачем більше не повертаються.
+  Future<void> seedDefaultTemplates() async {
+    const key = 'default_templates_v1';
+    final done = await db.query('app_meta', where: 'key = ?', whereArgs: [key]);
+    if (done.isNotEmpty) return;
+    // «Лежак» спершу: список шаблонів — від новіших, тож «Вулик» буде першим
+    await addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
+    await addTemplate('Вулик', 1, 1, {'0,0': 'hive'});
+    await db.insert('app_meta', {'key': key, 'value': '1'},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   Future<String> addTemplate(String name, int width, int height, Map<String, dynamic> cells) async {
     final id = newId();
     await db.insert('templates', {

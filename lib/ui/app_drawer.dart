@@ -76,7 +76,8 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  /// Відсканувати код і відкрити карту пасіки з панеллю цього вулика.
+  /// Відсканувати код і відкрити карту пасіки з панеллю цього вулика й
+  /// одразу формою «Заповнити».
   /// Працює через [NavigatorState] — контекст меню після закриття вже
   /// недійсний.
   static Future<void> openHiveByQr(NavigatorState nav, Repository repo) async {
@@ -94,10 +95,17 @@ class AppDrawer extends StatelessWidget {
       );
       return;
     }
+    openHive(nav, repo, found.apiary, found.element.id, fill: true);
+  }
+
+  /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
+  /// [fill] — одразу форма «Заповнити».
+  static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
+      {bool fill = false}) {
     nav.popUntil((r) => r.isFirst);
     nav.push(MaterialPageRoute(
       builder: (_) =>
-          MapScreen(repo: repo, apiary: found.apiary, focusElementId: found.element.id),
+          MapScreen(repo: repo, apiary: apiary, focusElementId: elementId, openFill: fill),
     ));
   }
 

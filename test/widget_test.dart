@@ -8,6 +8,7 @@ import 'package:apiary/screens/apiary_list_screen.dart';
 import 'package:apiary/screens/feedback_screen.dart';
 import 'package:apiary/screens/home_screen.dart';
 import 'package:apiary/services/auth.dart';
+import 'package:apiary/services/reminders.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/services/feedback.dart';
@@ -269,6 +270,37 @@ void main() {
     await tester.tap(find.text('Увійти через Google'));
     await settle(tester);
     expect(find.textContaining('Не вдалося увійти'), findsOneWidget);
+  });
+
+  testWidgets('натискання на нагадування відкриває вулик одразу з формою', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
+        .firstWhere((e) => e.isHive);
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    ReminderService.instance.openHiveRequest.value = hive.id;
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(ReminderService.instance.openHiveRequest.value, isNull);
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
+    expect(find.text('Лежак 1'), findsWidgets); // панель цього вулика
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('нагадування без входу — нічого не відкриває', (tester) async {
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
+        .firstWhere((e) => e.isHive);
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
+    await settle(tester);
+    ReminderService.instance.openHiveRequest.value = hive.id;
+    await settle(tester);
+    expect(find.byType(MapScreen), findsNothing);
+    expect(find.text('Увійти через Google'), findsOneWidget);
   });
 
   test('id_token Google → користувач', () {
@@ -575,6 +607,10 @@ void main() {
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
+    // після сканування одразу форма «Заповнити» (людина біля вулика)
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
     expect(find.text('Тестова пасіка'), findsWidgets); // карта пасіки
     expect(find.text('Лежак 1'), findsWidgets); // панель вулика
     expect(find.text('https://pasika.example/h/7'), findsOneWidget); // код на панелі

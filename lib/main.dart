@@ -11,6 +11,7 @@ import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/autostart.dart';
 import 'services/reminders.dart';
+import 'ui/app_drawer.dart';
 import 'ui/theme.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
@@ -33,6 +34,7 @@ Future<void> _start() async {
     repo = Repository(db);
     await repo.init();
     auth = await GoogleAuthService.open();
+    await repo.seedDefaultTemplates(); // «Вулик» і «Лежак» — один раз
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
@@ -56,15 +58,45 @@ class ApiaryApp extends StatefulWidget {
 }
 
 class _ApiaryAppState extends State<ApiaryApp> {
+  final _nav = GlobalKey<NavigatorState>();
+  final _reminders = ReminderService.instance.openHiveRequest;
+
+  @override
+  void initState() {
+    super.initState();
+    _reminders.addListener(_openFromReminder);
+    // застосунок могли запустити натисканням на нагадування
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
+  }
+
   @override
   void dispose() {
+    _reminders.removeListener(_openFromReminder);
     widget.sync?.stop();
     super.dispose();
+  }
+
+  /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей
+  /// вулик на карті одразу з формою «Заповнити» (лише якщо вже увійшли).
+  Future<void> _openFromReminder() async {
+    final id = _reminders.value;
+    if (id == null) return;
+    final nav = _nav.currentState;
+    if (nav == null) return; // ще не побудовано — спрацює після першого кадру
+    _reminders.value = null;
+    if (widget.auth.user == null) return;
+    final el = await widget.repo.getElement(id);
+    final apiaryId = el?.apiaryId;
+    if (el == null || el.deleted || apiaryId == null) return;
+    final apiary = await widget.repo.getApiary(apiaryId);
+    if (apiary == null || apiary.deleted || !nav.mounted) return;
+    AppDrawer.openHive(nav, widget.repo, apiary, id, fill: true);
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _nav,
       title: 'Vulyk',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),

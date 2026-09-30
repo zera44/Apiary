@@ -808,4 +808,20 @@ void main() {
       expect(Repository.typedQrNumber('5a'), isNull);
     });
   });
+
+  test('типові шаблони «Вулик» і «Лежак» додаються один раз', () async {
+    final before = (await repo.listTemplates()).length;
+    await repo.seedDefaultTemplates();
+    final list = await repo.listTemplates();
+    expect(list.length, before + 2);
+    final hive = list.firstWhere((t) => t.name == 'Вулик');
+    expect((hive.width, hive.height), (1, 1));
+    final lying = list.firstWhere((t) => t.name == 'Лежак' && t.width == 2 && t.height == 1);
+    // повторний запуск не дублює, а видалений шаблон не повертається
+    await repo.deleteTemplate(hive.id);
+    await repo.seedDefaultTemplates();
+    final after = await repo.listTemplates();
+    expect(after.where((t) => t.name == 'Вулик'), isEmpty);
+    expect(after.where((t) => t.id == lying.id).length, 1);
+  });
 }

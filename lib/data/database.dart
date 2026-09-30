@@ -152,6 +152,13 @@ class AppDatabase {
     // кодом і дозволяє знайти вулик, ввівши номер вручну
     await _ensureColumn(db, 'qr_codes', 'number', 'INTEGER');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_qr_code ON qr_codes(code)');
+    // службові позначки застосунку (не синхронізуються): напр., що типові
+    // шаблони вже додавались і повторно їх додавати не треба
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )''');
 
     // склад: номенклатура (quantity NULL — ще жодного разу не заповнювали)
     await db.execute('''
