@@ -1,12 +1,15 @@
-# Пропозиції оновлень (зокрема з виправленнями безпеки) для пакетів Dart
-# і дій GitHub — приходять як pull request'и, самі нічого не змінюють.
+# Лише оновлення БЕЗПЕКИ для пакетів Dart і дій GitHub (звичайні
+# оновлення версій вимкнено: open-pull-requests-limit 0) — приходять як
+# pull request'и, самі нічого не змінюють.
 version: 2
 updates:
   - package-ecosystem: pub
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0

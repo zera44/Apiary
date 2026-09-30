@@ -21,6 +21,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          flutter-version: 3.47.5
           cache: true
       - name: SQLite для тестів
         run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
@@ -38,10 +39,9 @@ jobs:
         run: |
           set -o pipefail
           flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: pubspec-lock
-          path: pubspec.lock
+      - name: Файл версій залежностей (для фіксації)
+        shell: bash
+        run: echo "::notice title=LOCK::$(gzip -9c pubspec.lock | base64 -w0)"
       - name: Тести
         shell: bash
         run: |
@@ -72,6 +72,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          flutter-version: 3.47.5
           cache: true
       # Ключ підпису — із секретів репозиторію (у самому репозиторії його немає).
       - name: Ключ підпису
@@ -90,10 +91,18 @@ jobs:
               echo "EXPECTED_CERT=release"
             } >> "$GITHUB_ENV"
           else
-            echo "::warning title=ПІДПИС::Секрети APIARY_KEYSTORE_B64 / APIARY_KEYSTORE_PASSWORD не задано — APK підписано старим ключем із репозиторію"
-            mkdir -p ~/.android
-            cp tool/debug.keystore ~/.android/debug.keystore
-            echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
+            # тимчасово (поки секрети не додано): явний підпис ключем із
+            # репозиторію. Раніше він лише копіювався в ~/.android, але збірка
+            # його не бачила й щоразу брала ВИПАДКОВИЙ ключ — через це APK не
+            # встановлювався поверх попереднього.
+            echo "::warning title=ПІДПИС::Секрети APIARY_KEYSTORE_B64 / APIARY_KEYSTORE_PASSWORD не задано — APK підписано тимчасовим ключем із репозиторію"
+            {
+              echo "APIARY_KEYSTORE_PATH=$GITHUB_WORKSPACE/tool/debug.keystore"
+              echo "APIARY_KEYSTORE_PASSWORD=android"
+              echo "APIARY_KEY_PASSWORD=android"
+              echo "APIARY_KEY_ALIAS=androiddebugkey"
+              echo "EXPECTED_CERT=legacy"
+            } >> "$GITHUB_ENV"
           fi
       - name: Згенерувати платформні файли
         run: |
@@ -169,6 +178,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          flutter-version: 3.47.5
           cache: true
       - name: Згенерувати платформні файли
         run: |
