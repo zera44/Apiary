@@ -47,3 +47,5 @@ flutter:
     - assets/icons/objects/
     - assets/icons/obstacles/
     - assets/icons/ui/
+    # малюнки для режиму навчання (оригінали — design/guide/*.pdf)
+    - assets/guide/
