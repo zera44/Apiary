@@ -373,6 +373,7 @@ void main() {
 
   testWidgets('редагування карти: без «Перейменувати»; немає шаблонів — «Створити шаблон» відкриває новий шаблон',
       (tester) async {
+    await tester.runAsync(() => repo.deleteTemplate(templateId)); // шаблонів немає
     final id = (await tester.runAsync(() => repo.addApiary('Пасіка')))!;
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
