@@ -58,6 +58,17 @@ void main() {
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
 
+  testWidgets('заставка: кнопка «Пройти навчання» відкриває режим навчання', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo));
+    await settle(tester);
+    await tester.tap(find.text('Пройти навчання'));
+    await settle(tester);
+    expect(find.text('Режим навчання'), findsOneWidget);
+    await tester.tap(find.text('Назад'));
+    await settle(tester);
+    expect(find.text('MyApiary'), findsOneWidget);
+  });
+
   testWidgets('заставка -> список пасік -> карта', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);

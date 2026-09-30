@@ -5,6 +5,7 @@ import '../ui/common.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
+import 'tutorial_screen.dart';
 
 /// Заставка при запуску: назва застосунку й кнопка "Почати".
 class SplashScreen extends StatelessWidget {
@@ -47,6 +48,21 @@ class SplashScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                       builder: (_) => ApiaryListScreen(repo: repo),
+                    ));
+                  },
+                ),
+                const SizedBox(height: 12),
+                PillButton(
+                  text: 'Пройти навчання',
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  width: 200,
+                  height: 46,
+                  radius: 18,
+                  fontSize: 15,
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const TutorialScreen(),
                     ));
                   },
                 ),
