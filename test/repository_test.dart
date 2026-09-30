@@ -4,6 +4,7 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
+import 'package:apiary/logic/value_convert.dart';
 import 'package:apiary/services/excel_export.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -431,6 +432,73 @@ void main() {
       await repo.deleteApiary(other);
       expect(await repo.findByQr('G'), isNull);
     });
+  });
+
+  group('перенесення історії параметра', () {
+    test('записи копіюються з конвертацією, прив\'язки й шаблони переходять', () async {
+      final old = await repo.addParameter('Рамки'); // текст
+      final el = await repo.addElement(apiaryId, 1, 1);
+      final e = EntityRef.element(el);
+      await repo.setAttachedParameters([old], e);
+      for (final v in ['10', '12,5', 'багато', '', '7']) {
+        await repo.addParameterRecord(old, v, e);
+      }
+      final tpl = await repo.addTemplate('Т', 1, 1, {
+        '0,0': {'type': 'hive', 'parameters': [old]}
+      });
+      final neu = await repo.addParameter('Рамки', dataType: DataTypes.int_);
+
+      final pv = await repo.previewHistoryPort(old, neu);
+      expect((pv.movable, pv.skipped), (3, 2)); // "12,5" і "багато" не цілі
+
+      final r = await repo.portParameterHistory(old, neu);
+      expect((r.moved, r.skipped), (3, 2));
+      final hist = await repo.db.rawQuery(
+          'SELECT value FROM parameter_records WHERE parameter_id = ? ORDER BY created_at, rowid', [neu]);
+      expect(hist.map((h) => h['value']), ['10', '', '7']);
+      expect((await repo.latestParameterValues(e))[neu], '7');
+      expect(await repo.attachedParameterIds(e), containsAll([old, neu]));
+      final cells = (await repo.getTemplate(tpl))!.cells;
+      expect((cells['0,0'] as Map)['parameters'], [neu]);
+
+      // повторне перенесення не дублює; з видаленням старого
+      final again = await repo.portParameterHistory(old, neu, deleteSource: true);
+      expect(again.moved, 0);
+      expect((await repo.getParameter(old))!.deleted, isTrue);
+      expect(await repo.attachedParameterIds(e), isNot(contains(old)));
+      expect(await repo.attachedParameterIds(e), contains(neu));
+    });
+
+    test('конвертація значень між типами', () {
+      expect(convertValue('12', DataTypes.float_), '12.0');
+      expect(convertValue('12,50', DataTypes.float_), '12.5');
+      expect(convertValue('12.0', DataTypes.int_), '12');
+      expect(convertValue('12.5', DataTypes.int_), isNull);
+      expect(convertValue('1.2.2026', DataTypes.date), '01.02.2026');
+      expect(convertValue('31.02.2026', DataTypes.date), isNull);
+      expect(convertValue('жовтий', DataTypes.color), 'Жовтий');
+      expect(convertValue('фіолетовий', DataTypes.color), isNull);
+      expect(convertValue('будь-що', DataTypes.text), 'будь-що');
+      expect(convertValue('', DataTypes.int_), '');
+    });
+  });
+
+  test('зайві старі «базові» без ключа стають звичайними параметрами', () async {
+    await repo.db.insert('parameters', {
+      'id': 'dup',
+      'name': 'Мітка матки (стара)',
+      'data_type': 'color',
+      'is_base': 1,
+      'base_type': 'hive',
+      'updated_at': 1,
+      'synced': 0,
+    });
+    await repo.init();
+    final p = (await repo.getParameter('dup'))!;
+    expect(p.isBase, isFalse);
+    expect((await repo.listParameters()).where((p) => p.isBase).length, 3);
+    // тепер її можна прив'язати/видалити як звичайну
+    await repo.deleteParameter('dup');
   });
 
   group('генерація QR-кодів застосунку', () {

@@ -40,8 +40,8 @@ class _FillDialogState extends State<_FillDialog> {
   // числове значення.
   String? _error;
 
-  static final _intFilter = FilteringTextInputFormatter.allow(RegExp(r'^-?\d*'));
-  static final _floatFilter = FilteringTextInputFormatter.allow(RegExp(r'^-?\d*[.,]?\d*'));
+  static final _intFilter = WholeValueFormatter(RegExp(r'^-?\d*$'));
+  static final _floatFilter = WholeValueFormatter(RegExp(r'^-?\d*[.,]?\d*$'));
 
   @override
   void initState() {
@@ -68,6 +68,10 @@ class _FillDialogState extends State<_FillDialog> {
     final out = <String, String>{};
     for (final p in widget.params) {
       final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
+      final before = (widget.latest[p.id] ?? '').trim();
+      // поле не чіпали — не перевіряємо й не записуємо (навіть якщо старе
+      // значення не відповідає типу, напр., з давніших версій)
+      if (raw == before) continue;
       if (raw.isEmpty) {
         // поле спорожнили (або "Очистити" в календарі): якщо раніше значення
         // було — записуємо порожнє, тож у історії видно, що його прибрали
@@ -167,28 +171,54 @@ class _FillDialogState extends State<_FillDialog> {
               _field(p),
               const SizedBox(height: 14),
             ],
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(_error!,
-                    style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
-              ),
           ],
         )),
       ),
       actions: [
-        Row(children: [
-          Expanded(
-            child: PillButton(
-                text: 'Скасувати',
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                onPressed: () => Navigator.pop(context)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: _save)),
+        Column(mainAxisSize: MainAxisSize.min, children: [
+          // помилка — біля кнопок, щоб її було видно при будь-якій кількості полів
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(_error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
+            ),
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                  text: 'Скасувати',
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  onPressed: () => Navigator.pop(context)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: _save)),
+          ]),
         ]),
       ],
     );
+  }
+}
+
+/// Пропускає зміну поля, лише якщо ВЕСЬ новий текст відповідає [pattern];
+/// інакше лишає попередній (раніше фільтр вирізав "зайве" й з "1.5" у
+/// цілому полі виходило "15", а вставка " 25" очищала поле). Пробіли по
+/// краях вставленого тексту прибираються.
+class WholeValueFormatter extends TextInputFormatter {
+  final RegExp pattern;
+  WholeValueFormatter(this.pattern);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (pattern.hasMatch(newValue.text)) return newValue;
+    final trimmed = newValue.text.trim();
+    if (trimmed != newValue.text && pattern.hasMatch(trimmed)) {
+      return TextEditingValue(
+        text: trimmed,
+        selection: TextSelection.collapsed(offset: trimmed.length),
+      );
+    }
+    return oldValue;
   }
 }

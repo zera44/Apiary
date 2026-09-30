@@ -80,7 +80,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
   }
 
   Future<void> _reload() async {
-    final list = await repo.listParameters();
+    var list = await repo.listParameters();
+    // базові характеристики ІНШИХ типів об'єктів (напр., вулика в списку
+    // перешкоди) прив'язати не можна — у списку об'єкта їх не показуємо
+    if (!widget.catalog) list = [for (final p in list) if (!p.isBase || _lockedBase(p)) p];
     // обов'язкові (з замочком) — завжди вгорі, решта в тому ж порядку
     final pinned = [for (final p in list) if (_pinned(p)) p];
     final rest = [for (final p in list) if (!_pinned(p)) p];
@@ -111,18 +114,25 @@ class _ParametersScreenState extends State<ParametersScreen> {
     }
   }
 
-  Future<void> _openForm([Parameter? param]) async {
+  /// Форма "Новий параметр" / "Редагувати параметр". Повертає id
+  /// створеного параметра (для нового), інакше null.
+  ///
+  /// Тип даних обирається ОДИН раз — під час створення. Щоб перейти на
+  /// інший тип, створюють новий параметр і переносять у нього історію
+  /// (кнопка "Перенести історію…" у формі редагування).
+  Future<String?> _openForm([Parameter? param, String? presetName, String? presetUnit]) async {
     final isEdit = param != null;
     final isBase = param?.isBase ?? false;
-    final nameCtrl = TextEditingController(text: param?.name ?? '');
-    final unitCtrl = TextEditingController(text: param?.unit ?? '');
+    final nameCtrl = TextEditingController(text: param?.name ?? presetName ?? '');
+    final unitCtrl = TextEditingController(text: param?.unit ?? presetUnit ?? '');
     var type = param?.dataType ?? DataTypes.text;
 
-    final saved = await showDialog<bool>(
+    final action = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) {
         final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
+        final note = TextStyle(color: AppColors.textMuted, fontSize: 10.5);
         return AlertDialog(
           title: Text(isEdit ? 'Редагувати параметр' : 'Новий параметр'),
           content: SizedBox(
@@ -166,15 +176,32 @@ class _ParametersScreenState extends State<ParametersScreen> {
                           bg: key == type ? AppColors.accent : AppColors.typeBtn,
                           fontSize: 11,
                           radius: 12,
-                          onPressed: isBase ? null : () => setD(() => type = key),
+                          // тип обирається лише під час створення
+                          onPressed: isEdit ? null : () => setD(() => type = key),
                         ),
                     ],
                   ),
-                  if (isBase) ...[
-                    const SizedBox(height: 6),
-                    Text('Тип даних Базової характеристики змінити не можна',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                  const SizedBox(height: 6),
+                  Text(
+                    isEdit
+                        ? (isBase
+                            ? 'Тип даних Базової характеристики змінити не можна'
+                            : 'Тип даних обирається один раз. Щоб змінити тип — створіть '
+                                'новий параметр і перенесіть у нього історію.')
+                        : 'Тип даних потім змінити не можна — оберіть уважно.',
+                    textAlign: TextAlign.center,
+                    style: note,
+                  ),
+                  if (isEdit && !isBase) ...[
+                    const SizedBox(height: 8),
+                    PillButton(
+                      text: 'Перенести історію…',
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      height: 38,
+                      fontSize: 13,
+                      onPressed: () => Navigator.pop(ctx, 'port'),
+                    ),
                   ],
                 ],
               ),
@@ -187,7 +214,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     text: 'Скасувати',
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
-                    onPressed: () => Navigator.pop(ctx, false)),
+                    onPressed: () => Navigator.pop(ctx)),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -196,7 +223,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   bg: AppColors.accent,
                   onPressed: () {
                     if (nameCtrl.text.trim().isEmpty) return;
-                    Navigator.pop(ctx, true);
+                    Navigator.pop(ctx, 'save');
                   },
                 ),
               ),
@@ -207,22 +234,136 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
     // контролери не звільняємо одразу: діалог ще анімує закриття й
     // користується ними (їх прибере збирач сміття)
+    if (action == 'port' && param != null) {
+      await _portFlow(param);
+      return null;
+    }
     final name = nameCtrl.text.trim();
     final unit = unitCtrl.text.trim();
-    if (saved != true || name.isEmpty) return;
+    if (action != 'save' || name.isEmpty) return null;
 
+    String? created;
     if (isEdit) {
+      // тип даних не змінюється ніколи — лише назва й одиниця
       await repo.updateParameter(param!.id, {
         if (!isBase) 'name': name,
         'unit': unit.isEmpty ? null : unit,
-        if (!isBase) 'data_type': type,
       });
     } else {
-      final id = await repo.addParameter(name, unit: unit.isEmpty ? null : unit, dataType: type);
+      created = await repo.addParameter(name, unit: unit.isEmpty ? null : unit, dataType: type);
       // новостворений параметр одразу позначаємо обраним
-      selected.add(id);
+      if (!widget.catalog) selected.add(created);
     }
     await _reload();
+    return created;
+  }
+
+  /// "Перенести історію": обрати параметр-приймач (або створити новий),
+  /// показати, скільки записів перейде, і перенести.
+  Future<void> _portFlow(Parameter from) async {
+    final all = await repo.listParameters();
+    if (!mounted) return;
+    final targets = [for (final p in all) if (p.id != from.id && !p.deleted) p];
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Куди перенести історію?'),
+        content: SizedBox(
+          width: 340,
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('З «${from.nameWithUnit}» (${DataTypes.label(from.dataType)})',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              const SizedBox(height: 12),
+              PillButton(
+                text: '+ Новий параметр…',
+                bg: AppColors.accent,
+                height: 42,
+                width: double.infinity,
+                onPressed: () => Navigator.pop(ctx, ''),
+              ),
+              for (final p in targets) ...[
+                const SizedBox(height: 6),
+                PillButton(
+                  text: '${p.nameWithUnit} · ${DataTypes.label(p.dataType)}',
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 42,
+                  fontSize: 13,
+                  width: double.infinity,
+                  onPressed: () => Navigator.pop(ctx, p.id),
+                ),
+              ],
+            ]),
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    var toId = picked;
+    if (toId.isEmpty) {
+      final created = await _openForm(null, from.name, from.unit);
+      if (created == null || !mounted) return;
+      toId = created;
+    }
+    final to = await repo.getParameter(toId);
+    final preview = await repo.previewHistoryPort(from.id, toId);
+    if (to == null || !mounted) return;
+    final typeName = DataTypes.label(to.dataType);
+    final text = StringBuffer(
+        'З «${from.nameWithUnit}» у «${to.nameWithUnit}» ($typeName) буде перенесено '
+        '${preview.movable} запис(ів) історії з тими самими датами й об\'єктами.');
+    if (preview.skipped > 0) {
+      text.write('\n\n${preview.skipped} запис(ів) не підходять до типу «$typeName» — вони '
+          'лишаться в «${from.name}».');
+    }
+    text.write('\n\nДе був «${from.name}», там з\'явиться «${to.name}».');
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Перенести історію'),
+        content: Text(text.toString(), style: TextStyle(color: AppColors.text)),
+        actions: [
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            PillButton(
+                text: 'Перенести',
+                bg: AppColors.accent,
+                width: double.infinity,
+                onPressed: () => Navigator.pop(ctx, 'keep')),
+            if (!from.isBase) ...[
+              const SizedBox(height: 8),
+              PillButton(
+                  text: 'Перенести й видалити «${from.name}»',
+                  bg: AppColors.danger,
+                  width: double.infinity,
+                  onPressed: () => Navigator.pop(ctx, 'delete')),
+            ],
+            const SizedBox(height: 8),
+            PillButton(
+                text: 'Скасувати',
+                bg: AppColors.neutralBtn,
+                fg: AppColors.text,
+                width: double.infinity,
+                onPressed: () => Navigator.pop(ctx)),
+          ]),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    final hadFrom = selected.contains(from.id);
+    final res =
+        await repo.portParameterHistory(from.id, toId, deleteSource: choice == 'delete');
+    if (choice == 'delete') selected.remove(from.id);
+    if (hadFrom && !to.isBase && !selected.contains(toId)) selected.add(toId);
+    await _reload();
+    if (!mounted) return;
+    await showInfo(
+      context,
+      'Перенесено записів: ${res.moved}.'
+      '${res.skipped > 0 ? '\nНе підійшли до типу й лишились: ${res.skipped}.' : ''}',
+      title: 'Готово',
+    );
   }
 
   Future<void> _delete(Parameter p) async {

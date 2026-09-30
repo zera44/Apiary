@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../logic/cell_value.dart';
 import '../logic/geometry.dart';
+import '../logic/value_convert.dart';
 import '../logic/visit_reminders.dart';
 import 'models.dart';
 
@@ -204,6 +205,16 @@ class Repository {
           'updated_at': now(),
           'synced': 0,
         });
+      }
+      // зайві старі "базові" без ключа (дублікати з ранніх версій) стають
+      // звичайними параметрами: інакше вони показувались із замочком як
+      // обов'язкові, але ніде не з'являлись і не видалялись
+      for (var i = legacyIdx; i < legacy.length; i++) {
+        await db.rawUpdate(
+          'UPDATE parameters SET is_base = 0, base_type = NULL, updated_at = ?, synced = 0 '
+          'WHERE id = ? AND base_key IS NULL',
+          [now(), legacy[i]['id']],
+        );
       }
     }
   }
@@ -913,6 +924,143 @@ class Repository {
       'synced': 0,
     });
     _remindersDirty();
+  }
+
+  // ---------------------------------------------------------------------
+  // Перенесення історії параметра (тип даних змінити не можна — натомість
+  // створюють новий параметр і переносять у нього історію)
+  // ---------------------------------------------------------------------
+
+  /// Скільки записів історії [fromId] перейде в [toId] і скільки не
+  /// підходять до типу [toId] (вони лишаться в [fromId]).
+  Future<({int movable, int skipped})> previewHistoryPort(String fromId, String toId) async {
+    final to = await getParameter(toId);
+    if (to == null) return (movable: 0, skipped: 0);
+    final recs = await db.rawQuery(
+        'SELECT value FROM parameter_records WHERE parameter_id = ?', [fromId]);
+    var ok = 0;
+    for (final r in recs) {
+      if (convertValue(r['value'] as String?, to.dataType) != null) ok++;
+    }
+    return (movable: ok, skipped: recs.length - ok);
+  }
+
+  /// Перенести історію [fromId] у [toId]: кожен запис копіюється з тим самим
+  /// часом і власником, значення перетворюється на тип [toId]; записи, що не
+  /// підходять, лишаються лише в [fromId]. Прив'язки до об'єктів і згадки в
+  /// шаблонах теж переходять на [toId]. Повторне перенесення не дублює
+  /// записи. [deleteSource] — після перенесення видалити [fromId].
+  Future<({int moved, int skipped})> portParameterHistory(String fromId, String toId,
+      {bool deleteSource = false}) async {
+    if (fromId == toId) return (moved: 0, skipped: 0);
+    final to = await getParameter(toId);
+    final from = await getParameter(fromId);
+    if (to == null || to.deleted || from == null) return (moved: 0, skipped: 0);
+    var moved = 0, skipped = 0;
+    final t = now();
+    await db.transaction((txn) async {
+      final existing = await txn.rawQuery(
+        'SELECT group_id, element_id, value, created_at FROM parameter_records WHERE parameter_id = ?',
+        [toId],
+      );
+      final seen = {
+        for (final r in existing)
+          '${r['group_id']}|${r['element_id']}|${r['created_at']}|${r['value']}'
+      };
+      final recs = await txn.rawQuery(
+        'SELECT group_id, element_id, value, created_at FROM parameter_records '
+        'WHERE parameter_id = ? ORDER BY created_at ASC, rowid ASC',
+        [fromId],
+      );
+      for (final r in recs) {
+        final v = convertValue(r['value'] as String?, to.dataType);
+        if (v == null) {
+          skipped++;
+          continue;
+        }
+        final key = '${r['group_id']}|${r['element_id']}|${r['created_at']}|$v';
+        if (!seen.add(key)) continue; // уже перенесено раніше
+        await txn.insert('parameter_records', {
+          'id': newId(),
+          'group_id': r['group_id'],
+          'element_id': r['element_id'],
+          'parameter_id': toId,
+          'value': v,
+          'created_at': r['created_at'],
+          'synced': 0,
+        });
+        moved++;
+      }
+      // прив'язки: де був старий параметр — там тепер новий (базові й так є
+      // в усіх об'єктів свого типу)
+      if (!to.isBase) {
+        final binds = await txn.rawQuery(
+          'SELECT group_id, element_id, sort_order FROM element_parameters '
+          'WHERE parameter_id = ? AND deleted = 0',
+          [fromId],
+        );
+        for (final b in binds) {
+          final e = b['group_id'] != null
+              ? EntityRef.group(b['group_id'] as String)
+              : EntityRef.element(b['element_id'] as String);
+          final (w, args) = _ownerWhere(e);
+          final has = await txn.rawQuery(
+            'SELECT 1 FROM element_parameters WHERE $w AND parameter_id = ? AND deleted = 0 LIMIT 1',
+            [...args, toId],
+          );
+          if (has.isNotEmpty) continue;
+          await txn.insert('element_parameters', {
+            'id': newId(),
+            'group_id': e.groupId,
+            'element_id': e.elementId,
+            'parameter_id': toId,
+            'updated_at': t,
+            'synced': 0,
+            'sort_order': (b['sort_order'] as num?)?.toInt() ?? 0,
+            'deleted': 0,
+          });
+        }
+      }
+      // шаблони: згадки старого параметра -> новий
+      final tpls = await txn.rawQuery(
+          "SELECT id, cells FROM templates WHERE deleted = 0 AND cells LIKE ?", ['%$fromId%']);
+      for (final tpl in tpls) {
+        final raw = tpl['cells'] as String?;
+        if (raw == null) continue;
+        final Object? cells;
+        try {
+          cells = jsonDecode(raw);
+        } catch (_) {
+          continue;
+        }
+        if (cells is! Map) continue;
+        var changed = false;
+        for (final v in cells.values) {
+          if (v is! Map || v['parameters'] is! List) continue;
+          final ids = [for (final x in v['parameters'] as List) x.toString()];
+          if (!ids.contains(fromId)) continue;
+          final next = <String>[];
+          for (final id in ids) {
+            // базовий параметр і так є в кожного об'єкта свого типу
+            final r = id == fromId ? (to.isBase ? null : toId) : id;
+            if (r != null && !next.contains(r)) next.add(r);
+          }
+          v['parameters'] = next;
+          changed = true;
+        }
+        if (!changed) continue;
+        await txn.update('templates', {'cells': jsonEncode(cells), 'updated_at': t, 'synced': 0},
+            where: 'id = ?', whereArgs: [tpl['id']]);
+      }
+      if (deleteSource && !from.isBase) {
+        await txn.update('parameters', {'deleted': 1, 'updated_at': t, 'synced': 0},
+            where: 'id = ?', whereArgs: [fromId]);
+        await txn.update('element_parameters', {'deleted': 1, 'updated_at': t, 'synced': 0},
+            where: 'parameter_id = ? AND deleted = 0', whereArgs: [fromId]);
+      }
+    });
+    _remindersDirty();
+    return (moved: moved, skipped: skipped);
   }
 
   static String formatVisitDate(DateTime d) =>

@@ -243,6 +243,53 @@ void main() {
     expect(result, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 
+  testWidgets('«Заповнити»: старе значення не того типу не блокує збереження інших полів',
+      (tester) async {
+    const n = Parameter(id: 'n', name: 'Рамки', dataType: DataTypes.int_);
+    const note = Parameter(id: 't', name: 'Нотатка');
+    Map<String, String>? result;
+    await tester.pumpWidget(wrap(Builder(
+      builder: (ctx) => Center(
+        child: ElevatedButton(
+          onPressed: () async => result = await showFillValuesDialog(
+            ctx,
+            params: const [n, note],
+            latest: const {'n': 'багато', 't': ''},
+          ),
+          child: const Text('відкрити'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('відкрити'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).last, 'огляд');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(result, {'t': 'огляд'});
+  });
+
+  test('числові поля: зайве не «з\'їдає» введене', () {
+    final f = WholeValueFormatter(RegExp(r'^-?\d*$'));
+    TextEditingValue v(String t) => TextEditingValue(text: t);
+    expect(f.formatEditUpdate(v('1'), v('1.')).text, '1'); // крапку не приймає
+    expect(f.formatEditUpdate(v('1'), v('15')).text, '15');
+    expect(f.formatEditUpdate(v(''), v(' 25')).text, '25'); // вставка з пробілом
+    expect(f.formatEditUpdate(v('2'), v('2-5')).text, '2');
+    final g = WholeValueFormatter(RegExp(r'^-?\d*[.,]?\d*$'));
+    expect(g.formatEditUpdate(v('12'), v('12,5')).text, '12,5');
+    expect(g.formatEditUpdate(v('12,5'), v('12,5,')).text, '12,5');
+  });
+
+  testWidgets('список параметрів перешкоди: без обов\'язкових характеристик вулика', (tester) async {
+    final obstacle = (await tester.runAsync(() => repo.getGroupElements(groupId)))!
+        .firstWhere((e) => !e.isHive);
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: obstacle)));
+    await settle(tester);
+    expect(find.text('Вага'), findsOneWidget);
+    expect(find.text('Мітка матки'), findsNothing);
+    expect(find.byType(LockMark), findsNothing);
+  });
+
   testWidgets('меню: сканер QR відкриває вулик на карті з панеллю', (tester) async {
     // у тестах камери немає — код вводиться вручну (як на комп'ютері);
     // високе вікно, щоб уся панель (разом із рядком QR) була на екрані
