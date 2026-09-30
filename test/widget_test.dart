@@ -377,7 +377,7 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('+').first);
+    await tester.tap(find.text('+').last); // кнопка меню (перша «+» — зум)
     await settle(tester);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
