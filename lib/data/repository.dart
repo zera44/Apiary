@@ -116,6 +116,13 @@ class Repository {
     await db.transaction((txn) async {
       await txn.update('apiaries', {'deleted': 1, 'synced': 0, 'updated_at': t},
           where: 'id = ?', whereArgs: [id]);
+      // коди вуликів цієї пасіки більше нічого не відкривають
+      await txn.rawUpdate(
+        'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? WHERE deleted = 0 AND ('
+        'element_id IN (SELECT id FROM elements WHERE apiary_id = ?) OR group_id IN '
+        '(SELECT group_id FROM elements WHERE apiary_id = ? AND group_id IS NOT NULL))',
+        [t, id, id],
+      );
       await txn.update('elements', {'deleted': 1, 'synced': 0, 'updated_at': t},
           where: 'apiary_id = ? AND deleted = 0', whereArgs: [id]);
     });
@@ -504,6 +511,21 @@ class Repository {
     return m == null ? null : int.tryParse(m.group(1)!);
   }
 
+  /// Ручний ввід номера наліпки ("12", "№ 0012") -> повний код застосунку з
+  /// цим номером (активний чи колишній), щоб прив'язувалась справжня
+  /// наліпка, а не набраний текст. Інший текст (і номер, якого в базі
+  /// немає, — напр., чужа цифрова наліпка) повертається як є.
+  Future<String> resolveTypedQr(String raw) async {
+    final c = normalizeQr(raw);
+    final n = typedQrNumber(c);
+    if (n == null) return c;
+    final rows = await db.rawQuery(
+      'SELECT code FROM qr_codes WHERE number = ? ORDER BY deleted ASC, updated_at DESC LIMIT 1',
+      [n],
+    );
+    return rows.isEmpty ? c : rows.first['code'] as String;
+  }
+
   /// Прив'язати [code] до об'єкта/групи. Попередня прив'язка цього коду (до
   /// іншого вулика) і попередній код цього вулика знімаються — завжди
   /// "один код — один вулик".
@@ -555,6 +577,16 @@ class Repository {
             'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? '
             'WHERE deleted = 0 AND element_id = ? AND group_id IS NULL',
             [t, el.id],
+          );
+        }
+        // старий код усієї групи (з попередніх версій) теж вимикається:
+        // "стара наліпка перестає працювати"
+        final gid = obj.first.groupId;
+        if (gid != null) {
+          await txn.rawUpdate(
+            'UPDATE qr_codes SET deleted = 1, synced = 0, updated_at = ? '
+            'WHERE deleted = 0 AND group_id = ?',
+            [t, gid],
           );
         }
         final head = obj.first;
@@ -649,7 +681,8 @@ class Repository {
       MapElement? el;
       if (gid != null) {
         final els = await getGroupElements(gid);
-        el = els.isEmpty ? null : els.first;
+        // групою відкриваємо вулик, а не перешкоду
+        el = els.where((e) => e.isHive).firstOrNull ?? els.firstOrNull;
       } else if (eid != null) {
         final e = await getElement(eid);
         el = (e == null || e.deleted) ? null : e;
@@ -1129,8 +1162,13 @@ class Repository {
           'DELETE FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
       await txn.rawDelete(
           'DELETE FROM apiaries WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+      // коди з номером наліпки не прибираються ніколи (рядки крихітні): інакше
+      // MAX(number) "забув" би номер, і нова наліпка отримала б уже
+      // надрукований номер
       await txn.rawDelete(
-          'DELETE FROM qr_codes WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+          'DELETE FROM qr_codes WHERE deleted = 1 AND synced = 1 AND updated_at < ? '
+          'AND number IS NULL',
+          [cutoff]);
     });
   }
 }

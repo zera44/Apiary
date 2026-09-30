@@ -321,6 +321,14 @@ void main() {
     expect(String.fromCharCodes(pdf.sublist(0, 5)), '%PDF-');
   });
 
+  test('PDF наліпок: сітка вміщається на A4 повністю (12 на аркуш)', () {
+    final (cols, rows) = labelsGridA4();
+    expect((cols, rows), (3, 4));
+    // жоден ряд/стовпець не виходить за поля
+    expect(cols * kPdfLabelWmm + (cols - 1) * kPdfGapMm, lessThanOrEqualTo(210 - 2 * kPdfMarginMm));
+    expect(rows * pdfLabelHmm + (rows - 1) * kPdfGapMm, lessThanOrEqualTo(297 - 2 * kPdfMarginMm));
+  });
+
   test('назва вулика на наліпці: номер вулика-об\'єкта в групі', () {
     // три окремі вулики групи (не сусіди) і перешкода
     const g1 = MapElement(id: 'a', x: 0, y: 2, label: 'Лежак 1', groupId: 'g');

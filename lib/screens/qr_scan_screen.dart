@@ -39,8 +39,12 @@ class _QrScanScreenState extends State<QrScanScreen> {
   // перший, інакше pop викликався б кілька разів і закрив зайві екрани
   bool _done = false;
 
+  // поки відкрите вікно ручного вводу, камеру не слухаємо: інакше pop
+  // закрив би саме вікно, а екран камери лишився б "завислим"
+  bool _manualOpen = false;
+
   void _onDetect(BarcodeCapture capture) {
-    if (_done) return;
+    if (_done || _manualOpen) return;
     for (final b in capture.barcodes) {
       final v = b.rawValue?.trim();
       if (v != null && v.isNotEmpty) {
@@ -52,7 +56,14 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   Future<void> _manual() async {
-    final v = await _manualEntry(context);
+    if (_manualOpen || _done) return;
+    _manualOpen = true;
+    String? v;
+    try {
+      v = await _manualEntry(context);
+    } finally {
+      _manualOpen = false;
+    }
     if (v == null || !mounted || _done) return;
     _done = true;
     Navigator.of(context).pop(v);

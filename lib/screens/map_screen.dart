@@ -722,13 +722,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return;
         }
       }
-      final code = await scanQrCode(context, title: 'QR-код для вулика');
-      if (code == null || !mounted) return;
+      final scanned = await scanQrCode(context, title: 'QR-код для вулика');
+      if (scanned == null || !mounted) return;
+      // введений вручну номер -> справжній код наліпки з цим номером
+      final code = await repo.resolveTypedQr(scanned);
       final other = await repo.findByQr(code);
       if (!mounted) return;
-      final sameHive = other != null &&
-          (other.element.id == el.id ||
-              (el.groupId != null && other.element.groupId == el.groupId));
+      // "той самий вулик" — лише клітинки ЦЬОГО вулика, не вся група
+      final sameHive = other != null && members.any((m) => m.id == other.element.id);
       if (other != null && !sameHive) {
         final name = await repo.entityLabel(other.element.entity);
         if (!mounted) return;
@@ -944,7 +945,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onEditParams: _panelEditParams,
                       onFill: _panelFill,
                       onHistory: _panelHistory,
-                      onQr: _panelQr,
+                      // QR-коди — лише для вуликів
+                      onQr: (panelElement?.isHive ?? false) ? _panelQr : null,
                     ),
             ),
           ]);

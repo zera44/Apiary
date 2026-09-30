@@ -468,6 +468,56 @@ void main() {
       expect(await repo.elementIdsWithQr(apiaryId), {for (final e in els) e.id});
     });
 
+    test('ручний ввід номера прив\'язує справжній код наліпки', () async {
+      final a = await repo.addElement(apiaryId, 1, 1);
+      final b = await repo.addElement(apiaryId, 3, 1);
+      final code = (await repo.generateQrForElements([(await repo.getElement(a))!])).single;
+      // номер з наліпки -> повний код
+      expect(await repo.resolveTypedQr('№ ${code.number.toString().padLeft(4, '0')}'), code.code);
+      expect(await repo.resolveTypedQr(' ${code.number} '), code.code);
+      // чужий текст і невідомий номер — як є
+      expect(await repo.resolveTypedQr('https://x.y/1'), 'https://x.y/1');
+      expect(await repo.resolveTypedQr('987654'), '987654');
+      // перенесли наліпку введенням номера: справжній код тепер у b і сканується
+      await repo.linkQr(await repo.resolveTypedQr('${code.number}'), EntityRef.element(b));
+      expect((await repo.findByQr(code.code))!.element.id, b);
+      expect(await repo.qrFor(EntityRef.element(b)), code.code);
+    });
+
+    test('перегенерація вимикає й старий код усієї групи', () async {
+      final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '0,1': 'obstacle:trees'}, 0, 0);
+      await repo.linkQr('стара-групова', EntityRef.group(gid));
+      // групою відкривається вулик, а не перешкода
+      expect((await repo.findByQr('стара-групова'))!.element.isHive, isTrue);
+      final hive = (await repo.getGroupElements(gid)).firstWhere((e) => e.isHive);
+      await repo.generateQrForObjects([
+        [hive]
+      ]);
+      expect(await repo.findByQr('стара-групова'), isNull);
+    });
+
+    test('видалення пасіки вимикає коди її вуликів', () async {
+      final a = await repo.addElement(apiaryId, 1, 1);
+      final gid = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 5, 5);
+      final code = (await repo.generateQrForElements([(await repo.getElement(a))!])).single;
+      await repo.linkQr('групова', EntityRef.group(gid));
+      await repo.deleteApiary(apiaryId);
+      final active = await repo.db.rawQuery('SELECT * FROM qr_codes WHERE deleted = 0');
+      expect(active, isEmpty);
+      expect(await repo.findByQr(code.code), isNull);
+    });
+
+    test('номер наліпки не повторюється навіть після очистки', () async {
+      final a = await repo.addElement(apiaryId, 1, 1);
+      final el = (await repo.getElement(a))!;
+      final first = (await repo.generateQrForElements([el])).single;
+      await repo.unlinkQr(EntityRef.element(a));
+      await repo.db.rawUpdate('UPDATE qr_codes SET synced = 1');
+      await repo.purgeDeleted(grace: Duration.zero);
+      final second = (await repo.generateQrForElements([el])).single;
+      expect(second.number! > first.number!, isTrue);
+    });
+
     test('злитий вулик: один код на весь об\'єкт, старі коди клітинок вимикаються', () async {
       final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
       final cells = (await repo.getGroupElements(gid))..sort((a, b) => a.x.compareTo(b.x));

@@ -73,22 +73,50 @@ Future<Uint8List> renderLabelPng(QrLabel l) async {
   }
 }
 
-/// PDF на A4: сітка наліпок 3 × 4 на сторінці, ширина наліпки 6 см.
+/// Наліпка в PDF: ширина 5 см (висота — за пропорцією картинки), проміжок
+/// між наліпками й поля аркуша, мм.
+const double kPdfLabelWmm = 50, kPdfGapMm = 4, kPdfMarginMm = 10;
+
+/// Висота наліпки в PDF, мм.
+double get pdfLabelHmm => kPdfLabelWmm * kLabelH / kLabelW;
+
+/// Скільки наліпок уміщається на аркуші A4: (стовпці, рядки). Рахується з
+/// розмірів, а не задається числом — щоб жоден ряд не вийшов за аркуш.
+(int, int) labelsGridA4() {
+  const pageW = 210 - 2 * kPdfMarginMm, pageH = 297 - 2 * kPdfMarginMm;
+  final cols = ((pageW + kPdfGapMm) / (kPdfLabelWmm + kPdfGapMm)).floor();
+  final rows = ((pageH + kPdfGapMm) / (pdfLabelHmm + kPdfGapMm)).floor();
+  return (cols, rows);
+}
+
+/// PDF на A4: наліпки сіткою [labelsGridA4] (3 × 4 = 12 на аркуш).
 Future<Uint8List> buildLabelsPdf(List<Uint8List> pngs) async {
   final doc = pw.Document(title: 'QR-коди вуликів');
-  const perPage = 12;
-  const w = 60 * PdfPageFormat.mm;
+  final (cols, rows) = labelsGridA4();
+  final perPage = cols * rows;
+  const mm = PdfPageFormat.mm;
+  final w = kPdfLabelWmm * mm, h = pdfLabelHmm * mm, gap = kPdfGapMm * mm;
   for (var i = 0; i < pngs.length; i += perPage) {
     final part = pngs.sublist(i, i + perPage > pngs.length ? pngs.length : i + perPage);
     doc.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(10 * PdfPageFormat.mm),
-      build: (_) => pw.Wrap(
-        spacing: 4 * PdfPageFormat.mm,
-        runSpacing: 4 * PdfPageFormat.mm,
+      margin: const pw.EdgeInsets.all(kPdfMarginMm * mm),
+      build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          for (final png in part)
-            pw.SizedBox(width: w, child: pw.Image(pw.MemoryImage(png), fit: pw.BoxFit.contain)),
+          for (var r = 0; r * cols < part.length; r++) ...[
+            if (r > 0) pw.SizedBox(height: gap),
+            pw.Row(children: [
+              for (var c = 0; c < cols && r * cols + c < part.length; c++) ...[
+                if (c > 0) pw.SizedBox(width: gap),
+                pw.SizedBox(
+                  width: w,
+                  height: h,
+                  child: pw.Image(pw.MemoryImage(part[r * cols + c]), fit: pw.BoxFit.contain),
+                ),
+              ],
+            ]),
+          ],
         ],
       ),
     ));
