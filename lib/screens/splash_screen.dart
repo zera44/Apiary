@@ -27,7 +27,7 @@ class SplashScreen extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   child: const Padding(
                     padding: EdgeInsets.all(22),
-                    child: AppIcon('beehive', color: Colors.white, size: 64),
+                    child: AppIcon('beekeeper', color: Colors.white, size: 72),
                   ),
                 ),
                 const SizedBox(height: 28),

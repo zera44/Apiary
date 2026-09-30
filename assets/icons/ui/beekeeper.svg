@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Пасічник</title>
+  <path d="M8.2 7.2 C8.2 3.4 15.8 3.4 15.8 7.2" stroke-width="1.1"/>
+  <path d="M4.6 7.6 L19.4 7.6" stroke-width="1.1"/>
+  <path d="M6.4 7.8 L5.6 13.6 Q12 15.8 18.4 13.6 L17.6 7.8" stroke-width="1.1"/>
+  <circle cx="10" cy="10.3" r="0.55" stroke-width="0.9"/>
+  <circle cx="14" cy="10.3" r="0.55" stroke-width="0.9"/>
+  <path d="M10.6 12 Q12 13 13.4 12" stroke-width="0.9"/>
+  <path d="M3.6 21.6 C3.6 17.6 7.2 15.4 12 15.4 C16.8 15.4 20.4 17.6 20.4 21.6 Z" stroke-width="1.1"/>
+  <path d="M9.6 19.2 L9.6 21.4" stroke-width="0.9"/>
+  <path d="M16.5 17.7 L17.5 18.3 L17.5 19.6 L16.5 20.2 L15.5 19.6 L15.5 18.3 Z" stroke-width="0.9"/>
+</svg>

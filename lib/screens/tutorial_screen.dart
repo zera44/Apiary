@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../ui/common.dart';
+import '../ui/icons.dart';
 import '../ui/theme.dart';
 
 /// Режим навчання: покроково показує, що вміє застосунок («натисни тут…»).
@@ -17,6 +18,15 @@ class TutorialScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Material(
+                color: AppColors.hive,
+                shape: const CircleBorder(),
+                child: const Padding(
+                  padding: EdgeInsets.all(18),
+                  child: AppIcon('beekeeper', color: Colors.white, size: 56),
+                ),
+              ),
+              const SizedBox(height: 18),
               Text('Режим навчання',
                   style: TextStyle(
                       color: AppColors.text, fontSize: 20, fontWeight: FontWeight.bold)),
