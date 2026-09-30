@@ -280,6 +280,8 @@ void main() {
     await repo.addParameterRecord(p, '5', EntityRef.element(id));
     await repo.addTemplate('Лежак', 2, 1, {'0,0': 'hive', '1,0': 'hive'});
     await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
+    final item = await repo.addStockItem('Цукор', 'кг');
+    await repo.fillStock(item, 1, add: false);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
