@@ -71,7 +71,7 @@ flutter test
 
 ## Назва та іконка застосунку
 
-Назва на телефоні й у заголовку вікна — **In Riy** (`appName` у
+Назва на телефоні й у заголовку вікна — **Vulyk** (`appName` у
 `tool/patch_platforms.dart`). Іконка — пасічник із рамкою
 (`design/app_icon/app_icon.pdf`). Щоб її змінити, заміни PDF і виконай
 `python3 tool/make_app_icon.py` (потрібні poppler-utils і Pillow): скрипт

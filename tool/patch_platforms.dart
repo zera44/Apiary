@@ -1,11 +1,11 @@
 // Після `flutter create` підставляє людську назву застосунку
-// ("In Riy") та іконку (tool/app_icon, див. tool/make_app_icon.py) у
+// ("Vulyk") та іконку (tool/app_icon, див. tool/make_app_icon.py) у
 // згенеровані платформні файли.
 //
 //   dart run tool/patch_platforms.dart
 import 'dart:io';
 
-const appName = 'In Riy';
+const appName = 'Vulyk';
 
 void patch(String path, String from, String to) {
   final f = File(path);
@@ -210,9 +210,9 @@ void _patchAndroidSigning() {
   exit(1);
 }
 
-/// Заголовок вікна Windows ("In Riy"). Якщо в назві з'явиться кирилиця —
+/// Заголовок вікна Windows ("Vulyk"). Якщо в назві з'явиться кирилиця —
 /// писати її через \u, щоб компілятор не залежав від кодування файлу.
-const _winTitle = r'L"In Riy"';
+const _winTitle = r'L"Vulyk"';
 
 /// Windows: лише одна копія програми. Друга (напр., відкрита з меню «Пуск»,
 /// коли вже працює автозапущена) показує вже запущене вікно й виходить —

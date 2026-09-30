@@ -96,7 +96,7 @@ class ReminderService {
         requestSoundPermission: false,
       ),
       windows: WindowsInitializationSettings(
-        appName: 'In Riy',
+        appName: 'Vulyk',
         appUserModelId: 'com.zera44.apiary',
         guid: '6f1c1f4e-3b0e-4b7a-9d55-2f8f0b6a1c11',
       ),

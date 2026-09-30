@@ -89,7 +89,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
   }
 
-  /// Назад із головної — на заставку In Riy (кнопка «назад» і системна).
+  /// Назад із головної — на заставку Vulyk (кнопка «назад» і системна).
   void _toSplash() {
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => SplashScreen(repo: widget.repo),

@@ -134,7 +134,7 @@ void main() {
     expect(find.text('стало: 7 кг'), findsOneWidget);
   });
 
-  testWidgets('головна: «назад» повертає на заставку In Riy', (tester) async {
+  testWidgets('головна: «назад» повертає на заставку Vulyk', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
     await tester.tap(find.text('Почати'));
@@ -143,7 +143,7 @@ void main() {
     await tester.tap(find.byType(CircleIconButton).first);
     await settle(tester);
     await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
-    expect(find.text('In Riy'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
     expect(find.text('Мої пасіки'), findsNothing);
   });
 
@@ -155,13 +155,13 @@ void main() {
     expect(find.text('Режим навчання'), findsOneWidget);
     await tester.tap(find.text('Назад'));
     await settle(tester);
-    expect(find.text('In Riy'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
   });
 
   testWidgets('заставка -> список пасік -> карта', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
-    expect(find.text('In Riy'), findsOneWidget);
+    expect(find.text('Vulyk'), findsOneWidget);
 
     await tester.tap(find.text('Почати'));
     await settle(tester);
