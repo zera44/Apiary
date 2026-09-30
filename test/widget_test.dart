@@ -4,6 +4,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
+import 'package:apiary/screens/apiary_list_screen.dart';
 import 'package:apiary/screens/feedback_screen.dart';
 import 'package:apiary/screens/history_hub_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
@@ -178,7 +179,9 @@ void main() {
     expect(find.textContaining('«Створити карту»'), findsOneWidget);
     expect(find.text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.'), findsNothing);
     // «назад» — до плиток уроків, а не на заставку
-    await tester.tap(find.byType(CircleIconButton).first);
+    await tester.tap(find
+        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
+        .first);
     await settle(tester);
     expect(find.text('Базові поняття'), findsOneWidget);
   });
