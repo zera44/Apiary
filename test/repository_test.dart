@@ -468,6 +468,21 @@ void main() {
       expect(await repo.elementIdsWithQr(apiaryId), {for (final e in els) e.id});
     });
 
+    test('злитий вулик: один код на весь об\'єкт, старі коди клітинок вимикаються', () async {
+      final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+      final cells = (await repo.getGroupElements(gid))..sort((a, b) => a.x.compareTo(b.x));
+      final old = await repo.generateQrForElements(cells); // старі коди по клітинках
+      final res = await repo.generateQrForObjects([cells]);
+      expect(res.single.elementId, cells.first.id);
+      for (final c in old) {
+        expect(await repo.findByQr(c.code), isNull);
+      }
+      expect(await repo.qrForObject(cells), res.single.code);
+      expect(await repo.qrForObject(cells.reversed.toList()), res.single.code);
+      expect(await repo.qrFor(EntityRef.element(cells.last.id)), isNull);
+      expect((await repo.findByQr(res.single.code))!.element.id, cells.first.id);
+    });
+
     test('код групи підсвічує всі вулики групи; перенесений код зберігає номер', () async {
       final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
       await repo.linkQr('чужа-наліпка', EntityRef.group(gid));

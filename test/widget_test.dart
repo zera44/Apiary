@@ -1,6 +1,7 @@
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
 import 'package:apiary/screens/history_screen.dart';
@@ -282,17 +283,18 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(QrGenerateScreen(repo: repo, apiary: a)));
     await settle(tester);
-    expect(find.textContaining('0 з 2'), findsOneWidget); // два вулики, кодів ще немає
+    // дві сусідні клітинки-вулики групи злиті в ОДИН вулик: один код
+    expect(find.textContaining('0 з 1'), findsOneWidget);
     await tester.tap(find.text('Усі без коду'));
     await tester.pump();
-    expect(find.text('Згенерувати (2)'), findsOneWidget);
-    await tester.tap(find.text('Згенерувати (2)'));
+    expect(find.text('Згенерувати (1)'), findsOneWidget);
+    await tester.tap(find.text('Згенерувати (1)'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    expect(find.text('Наліпки (2)'), findsOneWidget);
+    expect(find.text('Наліпки (1)'), findsOneWidget);
     final ids = (await tester.runAsync(() => repo.elementIdsWithQr(apiaryId)))!;
-    expect(ids.length, 2);
+    expect(ids.length, 1);
     expect(tester.takeException(), isNull);
   });
 
@@ -308,9 +310,10 @@ void main() {
     expect(String.fromCharCodes(pdf.sublist(0, 5)), '%PDF-');
   });
 
-  test('назва вулика на наліпці: номер у групі', () {
-    const g1 = MapElement(id: 'a', x: 0, y: 1, label: 'Лежак 1', groupId: 'g');
-    const g2 = MapElement(id: 'b', x: 1, y: 1, label: 'Лежак 1', groupId: 'g');
+  test('назва вулика на наліпці: номер вулика-об\'єкта в групі', () {
+    // три окремі вулики групи (не сусіди) і перешкода
+    const g1 = MapElement(id: 'a', x: 0, y: 2, label: 'Лежак 1', groupId: 'g');
+    const g2 = MapElement(id: 'b', x: 2, y: 2, label: 'Лежак 1', groupId: 'g');
     const g3 = MapElement(id: 'c', x: 0, y: 0, label: 'Лежак 1', groupId: 'g');
     const o = MapElement(id: 'o', x: 1, y: 0, type: 'obstacle', label: 'Лежак 1', groupId: 'g');
     const solo = MapElement(id: 's', x: 5, y: 5);
@@ -319,6 +322,14 @@ void main() {
     expect(hiveLabelName(g2, all), 'Лежак 1 · 2');
     expect(hiveLabelName(g3, all), 'Лежак 1 · 3');
     expect(hiveLabelName(solo, all), 'Вулик');
+    // сусідні клітинки — один вулик, без номера
+    const m1 = MapElement(id: 'm1', x: 0, y: 0, label: 'Довгий', groupId: 'h');
+    const m2 = MapElement(id: 'm2', x: 1, y: 0, label: 'Довгий', groupId: 'h');
+    expect(hiveLabelName(m2, [m1, m2]), 'Довгий');
+    expect(hiveObjects([m2, m1, solo]).map((o) => [for (final e in o) e.id]).toList(), [
+      ['s'],
+      ['m1', 'm2'],
+    ]);
   });
 
   testWidgets('генератор QR з меню карти відкриває цю ж пасіку без питання', (tester) async {
@@ -344,38 +355,38 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(QrGenerateScreen(repo: repo, apiary: a)));
     await settle(tester);
-    expect(find.textContaining('2 з 2'), findsOneWidget);
+    expect(find.textContaining('1 з 1'), findsOneWidget); // один злитий вулик
 
     // вулики (0,0) і (1,0), перешкода (0,-1): камера центрована на (1, 0),
     // клітинка 34 px -> центри вуликів на (-17,-17) і (+17,-17) від центру
     final c = tester.getCenter(find.byType(InfiniteGrid));
-    await tester.tapAt(c + const Offset(-17, -17));
-    await tester.pump();
-    await tester.tapAt(c + const Offset(17, -17));
+    await tester.tapAt(c + const Offset(17, -17)); // будь-яка клітинка — весь вулик
     await tester.pump();
     await tester.tapAt(c + const Offset(-17, 17)); // перешкода — не обирається
     await tester.pump();
-    expect(find.text('Згенерувати (2)'), findsOneWidget);
+    expect(find.text('Згенерувати (1)'), findsOneWidget);
 
-    await tester.tap(find.text('Згенерувати (2)'));
+    await tester.tap(find.text('Згенерувати (1)'));
     await settle(tester);
     expect(find.text('Перегенерувати коди?'), findsOneWidget);
     await tester.tap(find.text('Скасувати')); // скасували — старі коди живі
     await settle(tester);
     expect((await tester.runAsync(() => repo.findByQr(old.first.code))), isNotNull);
 
-    await tester.tap(find.text('Згенерувати (2)'));
+    await tester.tap(find.text('Згенерувати (1)'));
     await settle(tester);
     await tester.tap(find.text('Перегенерувати'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    expect(find.text('Наліпки (2)'), findsOneWidget);
+    expect(find.text('Наліпки (1)'), findsOneWidget);
+    // старі коди обох клітинок вимкнено, новий — один на весь вулик
     for (var i = 0; i < hives.length; i++) {
       expect((await tester.runAsync(() => repo.findByQr(old[i].code))), isNull);
-      final now = (await tester.runAsync(() => repo.qrForElement(hives[i])))!;
-      expect(now, isNot(old[i].code));
     }
+    final now = (await tester.runAsync(() => repo.qrForObject(hives)))!;
+    expect(old.map((c) => c.code), isNot(contains(now)));
+    expect((await tester.runAsync(() => repo.qrForElement(hives[1]))), isNull);
     expect(tester.takeException(), isNull);
   });
 

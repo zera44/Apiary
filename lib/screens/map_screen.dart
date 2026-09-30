@@ -6,6 +6,7 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
+import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
 import '../services/reminders.dart';
 import '../ui/app_drawer.dart';
@@ -550,7 +551,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final params = await repo.attachedParameters(entity, elType: fresh.type);
     final latest = await repo.latestParameterValues(entity);
     final last = await repo.lastUpdated(entity);
-    final qr = await repo.qrForElement(fresh);
+    // вулик на кілька клітинок — один код на весь вулик
+    final qr = fresh.isHive
+        ? await repo.qrForObject(hiveObjectOf(fresh, elements))
+        : await repo.qrForElement(fresh);
     if (!mounted) return;
     setState(() {
       panelElement = fresh;
@@ -672,9 +676,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (el == null || _qrBusy) return;
     _qrBusy = true;
     try {
-      // код прив'язується до КОНКРЕТНОГО вулика (навіть у групі)
-      final target = EntityRef.element(el.id);
-      final current = await repo.qrForElement(el);
+      // код прив'язується до КОНКРЕТНОГО вулика (навіть у групі); вулик на
+      // кілька клітинок — до його першої клітинки
+      final members = hiveObjectOf(el, elements);
+      final target = EntityRef.element(members.first.id);
+      final current = await repo.qrForObject(members);
       if (!mounted) return;
       if (current != null) {
         final action = await showDialog<String>(
@@ -708,7 +714,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         );
         if (action == null || !mounted) return;
         if (action == 'unlink') {
-          await repo.unlinkQr(target);
+          for (final m in members) {
+            await repo.unlinkQr(EntityRef.element(m.id));
+          }
           if (el.groupId != null) await repo.unlinkQr(EntityRef.group(el.groupId!));
           await _refreshPanel();
           return;
@@ -731,6 +739,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             confirmText: 'Перенести',
             danger: false);
         if (!move) return;
+      }
+      // старі коди інших клітинок цього вулика вимикаються
+      for (final m in members.skip(1)) {
+        await repo.unlinkQr(EntityRef.element(m.id));
       }
       await repo.linkQr(code, target);
       await _refreshPanel();
@@ -789,8 +801,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           e.id,
           e.x,
           e.y,
-          // зливаються лише однакові на вигляд клітинки ОДНІЄЇ групи
-          '${e.groupId ?? e.id}|${e.type}|${e.isHive ? '' : (e.variant ?? '')}|${e.icon ?? ''}|${e.color ?? ''}',
+          mergeKeyOf(e), // зливаються лише однакові клітинки ОДНІЄЇ групи
         )
     ];
     final look = {

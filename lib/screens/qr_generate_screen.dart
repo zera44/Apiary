@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
 import '../services/qr_labels.dart';
 import '../ui/common.dart';
@@ -11,22 +12,20 @@ import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 
 /// Назва вулика для наліпки. Вулики однієї групи мають спільну назву, тож
-/// до неї додається порядковий номер у групі (зверху вниз, зліва направо).
+/// до неї додається порядковий номер вулика-об'єкта в групі (зверху вниз,
+/// зліва направо). Злиті клітинки одного вулика — один номер.
 String hiveLabelName(MapElement el, List<MapElement> all) {
   final base = (el.label != null && el.label!.isNotEmpty) ? el.label! : 'Вулик';
   if (el.groupId == null) return base;
-  final hives = [
-    for (final e in all)
-      if (e.groupId == el.groupId && e.isHive) e
-  ]..sort((a, b) => a.y != b.y ? b.y.compareTo(a.y) : a.x.compareTo(b.x));
-  if (hives.length < 2) return base;
-  return '$base · ${hives.indexWhere((e) => e.id == el.id) + 1}';
+  final objs = hiveObjects([for (final e in all) if (e.groupId == el.groupId) e]);
+  if (objs.length < 2) return base;
+  return '$base · ${objs.indexWhere((o) => o.any((e) => e.id == el.id)) + 1}';
 }
 
 /// "Генерувати QR-коди": карта пасіки, де вулики з кодом мають зелений
-/// ободок. Тап обирає/знімає вулики (кілька), "Згенерувати" створює НОВИЙ
-/// код для кожного обраного (старий код вулика, якщо був, вимикається) і
-/// показує наліпки.
+/// ободок. Тап обирає/знімає вулики (кілька; вулик на кілька клітинок —
+/// цілком), "Згенерувати" створює НОВИЙ код для кожного обраного (старий
+/// код вулика, якщо був, вимикається) і показує наліпки.
 class QrGenerateScreen extends StatefulWidget {
   final Repository repo;
   final Apiary apiary;
@@ -38,8 +37,20 @@ class QrGenerateScreen extends StatefulWidget {
 class _QrGenerateScreenState extends State<QrGenerateScreen> {
   final grid = GridController(cellSize: 34, minCell: 14, maxCell: 56);
   List<MapElement> elements = [];
+
+  /// Вулики-об'єкти (злиті клітинки одного вулика — один об'єкт).
+  List<List<MapElement>> objects = [];
+
+  /// Id головних клітинок об'єктів, що вже мають код.
   Set<String> linked = {};
+
+  /// Id головних клітинок обраних об'єктів.
   final Set<String> selected = {};
+
+  Set<String> _members(Set<String> heads) => {
+        for (final o in objects)
+          if (heads.contains(o.first.id)) ...o.map((e) => e.id)
+      };
   bool _busy = false;
 
   List<SceneCell>? _cells;
@@ -74,10 +85,15 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     final els = await widget.repo.listElements(widget.apiary.id);
     final l = await widget.repo.elementIdsWithQr(widget.apiary.id);
     if (!mounted) return;
+    final objs = hiveObjects(els);
     setState(() {
       elements = els;
-      linked = l;
-      selected.removeWhere((id) => !els.any((e) => e.id == id));
+      objects = objs;
+      linked = {
+        for (final o in objs)
+          if (o.any((e) => l.contains(e.id))) o.first.id
+      };
+      selected.removeWhere((id) => !objs.any((o) => o.first.id == id));
       _cells = null;
     });
   }
@@ -89,22 +105,23 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
               e.id,
               e.x,
               e.y,
-              '${e.groupId ?? e.id}|${e.type}|${e.isHive ? '' : (e.variant ?? '')}|${e.icon ?? ''}|${e.color ?? ''}',
+              mergeKeyOf(e),
             )
         ],
         look: {
           for (final e in elements) e.id: (type: e.type, variant: e.variant, icon: e.icon, color: e.color)
         },
-        selected: selected,
-        outlined: linked,
+        selected: _members(selected),
+        outlined: _members(linked),
       );
 
   void _onTap(GridPress p) {
     if (_busy) return;
     final el = elements.where((e) => e.x == p.cell.$1 && e.y == p.cell.$2).firstOrNull;
     if (el == null || !el.isHive) return; // коди — лише для вуликів
+    final head = objects.firstWhere((o) => o.any((e) => e.id == el.id), orElse: () => [el]).first;
     setState(() {
-      if (!selected.remove(el.id)) selected.add(el.id);
+      if (!selected.remove(head.id)) selected.add(head.id);
       _cells = null;
     });
   }
@@ -113,7 +130,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     setState(() {
       selected
         ..clear()
-        ..addAll([for (final e in elements) if (e.isHive && !linked.contains(e.id)) e.id]);
+        ..addAll([for (final o in objects) if (!linked.contains(o.first.id)) o.first.id]);
       _cells = null;
     });
   }
@@ -131,10 +148,10 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     }
     setState(() => _busy = true);
     try {
-      final chosen = [for (final e in elements) if (selected.contains(e.id)) e]
-        ..sort((a, b) => a.y != b.y ? b.y.compareTo(a.y) : a.x.compareTo(b.x));
-      final codes = await widget.repo.generateQrForElements(chosen);
-      final byId = {for (final e in chosen) e.id: e};
+      // objects уже впорядковані зверху вниз, зліва направо
+      final chosen = [for (final o in objects) if (selected.contains(o.first.id)) o];
+      final codes = await widget.repo.generateQrForObjects(chosen);
+      final byId = {for (final o in chosen) o.first.id: o.first};
       final labels = [
         for (final c in codes)
           QrLabel(code: c.code, name: hiveLabelName(byId[c.elementId]!, elements), number: c.number)
@@ -155,8 +172,8 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hives = elements.where((e) => e.isHive).length;
-    final withCode = elements.where((e) => e.isHive && linked.contains(e.id)).length;
+    final hives = objects.length;
+    final withCode = objects.where((o) => linked.contains(o.first.id)).length;
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
