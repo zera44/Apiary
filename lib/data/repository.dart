@@ -36,6 +36,8 @@ const kSyncTables = [
   'element_parameters',
   'parameter_records',
   'qr_codes',
+  'stock_items',
+  'stock_moves',
 ];
 
 /// Усі операції з локальною базою (порт db.py).
@@ -1430,6 +1432,81 @@ class Repository {
       throw ArgumentError.value(table, 'table', 'не таблиця синхронізації');
     }
   }
+
+  // ---------------------------------------------------------------------
+  // склад
+  // ---------------------------------------------------------------------
+
+  Future<List<StockItem>> listStockItems() async {
+    final rows = await db.query('stock_items',
+        where: 'deleted = 0', orderBy: 'created_at, name COLLATE NOCASE');
+    return rows.map(StockItem.fromRow).toList();
+  }
+
+  Future<StockItem?> getStockItem(String id) async {
+    final rows = await db.query('stock_items', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : StockItem.fromRow(rows.first);
+  }
+
+  Future<String> addStockItem(String name, String unit) async {
+    final id = newId();
+    final t = now();
+    await db.insert('stock_items', {
+      'id': id,
+      'name': name.trim(),
+      'unit': unit.trim(),
+      'created_at': t,
+      'updated_at': t,
+      'synced': 0,
+    });
+    return id;
+  }
+
+  /// Змінити назву/одиницю/фото. Для фото: [photo] = ('шлях',) або (null,) — прибрати.
+  Future<void> updateStockItem(String id, {String? name, String? unit, (String?,)? photo}) async {
+    final fields = <String, Object?>{
+      if (name != null) 'name': name.trim(),
+      if (unit != null) 'unit': unit.trim(),
+      if (photo != null) 'photo': photo.$1,
+    };
+    if (fields.isEmpty) return;
+    await db.update('stock_items', {...fields, 'updated_at': now(), 'synced': 0},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteStockItem(String id) => db.update(
+      'stock_items', {'deleted': 1, 'updated_at': now(), 'synced': 0},
+      where: 'id = ?', whereArgs: [id]);
+
+  /// Заповнити кількість: [add] = false — перезаписати, true — додати до
+  /// наявної. Повертає нову кількість. Кожне заповнення записується в
+  /// stock_moves (історія приходу).
+  Future<double> fillStock(String id, double amount, {required bool add}) async {
+    return db.transaction((txn) async {
+      final rows = await txn.query('stock_items',
+          columns: ['quantity'], where: 'id = ?', whereArgs: [id], limit: 1);
+      if (rows.isEmpty) throw StateError('номенклатуру не знайдено');
+      final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
+      final next = add ? prev + amount : amount;
+      final t = now();
+      await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
+          where: 'id = ?', whereArgs: [id]);
+      await txn.insert('stock_moves', {
+        'id': newId(),
+        'item_id': id,
+        'kind': add ? 'add' : 'set',
+        'amount': amount,
+        'quantity_after': next,
+        'created_at': t,
+        'updated_at': t,
+        'synced': 0,
+      });
+      return next;
+    });
+  }
+
+  Future<List<Map<String, Object?>>> stockMoves(String itemId) => db.query('stock_moves',
+      where: 'item_id = ? AND deleted = 0', whereArgs: [itemId], orderBy: 'created_at');
 
   Future<List<Map<String, Object?>>> unsynced(String table) async {
     _checkSyncTable(table);

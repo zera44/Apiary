@@ -26,6 +26,8 @@ dependencies:
   http: ^1.2.2
   # сканер QR-кодів вуликів (камера; лише Android/iOS)
   mobile_scanner: ^7.1.3
+  # фото номенклатури на складі (Android — камера; Windows — вибір файлу)
+  image_picker: ^1.1.2
   # генерація наліпок з QR-кодами вуликів і PDF для друку
   qr: ^3.0.2
   qr_flutter: ^4.1.0

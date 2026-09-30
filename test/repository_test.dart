@@ -502,6 +502,29 @@ void main() {
     expect((await repo.getGroupElements(more.single)).single.label, 'Т 3');
   });
 
+  test('склад: номенклатура, перезапис і додавання кількості', () async {
+    final id = await repo.addStockItem(' Цукор ', 'кг');
+    var it = (await repo.listStockItems()).single;
+    expect(it.name, 'Цукор');
+    expect(it.quantity, isNull);
+    expect(await repo.fillStock(id, 5, add: false), 5);
+    expect(await repo.fillStock(id, 2.5, add: true), 7.5);
+    expect(await repo.fillStock(id, 3, add: false), 3);
+    it = (await repo.getStockItem(id))!;
+    expect(it.quantity, 3);
+    final moves = await repo.stockMoves(id);
+    expect([for (final m in moves) m['kind']], ['set', 'add', 'set']);
+    expect([for (final m in moves) m['quantity_after']], [5, 7.5, 3]);
+    await repo.updateStockItem(id, name: 'Цукор білий', unit: 'г', photo: ('/x/stock_photos/a.jpg',));
+    it = (await repo.getStockItem(id))!;
+    expect((it.name, it.unit, it.photo), ('Цукор білий', 'г', '/x/stock_photos/a.jpg'));
+    await repo.updateStockItem(id, photo: (null,));
+    expect((await repo.getStockItem(id))!.photo, isNull);
+    expect(await repo.unsynced('stock_items'), isNotEmpty);
+    await repo.deleteStockItem(id);
+    expect(await repo.listStockItems(), isEmpty);
+  });
+
   test('rotateGroups повертає кілька груп разом як одну фігуру', () async {
     final ids = await repo.placeTemplate(apiaryId, {'0,0': 'hive', '2,0': 'hive'}, 0, 0, name: 'Р');
     Future<Set<(int, int)>> pos() async => {

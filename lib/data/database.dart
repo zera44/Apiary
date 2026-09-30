@@ -146,6 +146,34 @@ class AppDatabase {
     await _ensureColumn(db, 'qr_codes', 'number', 'INTEGER');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_qr_code ON qr_codes(code)');
 
+    // склад: номенклатура (quantity NULL — ще жодного разу не заповнювали)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stock_items (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        quantity REAL,
+        photo TEXT,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    // кожне заповнення: kind = 'set' (перезаписати) або 'add' (додати)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stock_moves (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        amount REAL NOT NULL,
+        quantity_after REAL NOT NULL,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_moves(item_id)');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

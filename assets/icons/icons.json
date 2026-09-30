@@ -28,6 +28,8 @@
     {"id": "lock", "file": "ui/lock.svg", "label": "Замок", "category": "ui"},
 
     {"id": "beekeeper", "file": "ui/beekeeper.svg", "label": "Пасічник", "category": "ui"},
+    {"id": "camera", "file": "ui/camera.svg", "label": "Фото", "category": "ui"},
+    {"id": "box", "file": "ui/box.svg", "label": "Склад", "category": "ui"},
     {"id": "move", "file": "ui/move.svg", "label": "Переміщення", "category": "ui"},
     {"id": "close", "file": "ui/close.svg", "label": "Закрити", "category": "ui"},
     {"id": "arrow_left", "file": "ui/arrow_left.svg", "label": "Стрілка вліво", "category": "ui"},

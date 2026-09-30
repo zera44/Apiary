@@ -6,6 +6,7 @@ import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
 import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
+import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
 import '../services/autostart.dart';
 import 'common.dart';
@@ -13,7 +14,7 @@ import 'icons.dart';
 import 'theme.dart';
 
 /// Бічне меню карти пасіки (три смужки): Головна / Шаблони /
-/// Характеристики / QR-коди. Є лише на карті — зі списку пасік не
+/// Характеристики / Склад / QR-коди. Є лише на карті — зі списку пасік не
 /// відкривається.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
@@ -52,6 +53,7 @@ class AppDrawer extends StatelessWidget {
           _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           _item(context, 'history', 'Характеристики',
               () => _open(nav, ParametersScreen.catalog(repo: repo))),
+          _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
           _item(context, 'qr', 'Сканувати QR вулика', () {
             nav.pop();
             openHiveByQr(nav, repo);

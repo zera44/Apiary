@@ -4,6 +4,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
+import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
@@ -57,6 +58,57 @@ void main() {
   tearDown(() async => repo.db.close());
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
+
+  testWidgets('склад: додати номенклатуру, заповнити, перезаписати й додати', (tester) async {
+    await tester.pumpWidget(wrap(StockScreen(repo: repo)));
+    await settle(tester);
+    expect(find.text('Прихід номенклатури'), findsOneWidget);
+    expect(find.text('Ще немає жодної номенклатури'), findsOneWidget);
+
+    await tester.tap(find.text('Додати номенклатуру'));
+    await settle(tester);
+    // без назви не зберігається
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(find.text('Вкажіть назву'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Цукор');
+    await tester.tap(find.text('кг'));
+    await settle(tester);
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(find.text('Цукор'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+
+    // уперше — одразу кількість
+    await tester.tap(find.text('Заповнити'));
+    await settle(tester);
+    expect(find.text('Перезаписати'), findsNothing);
+    await tester.enterText(find.byType(TextField).last, '5');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(find.text('5 кг'), findsOneWidget);
+
+    // вдруге — вибір: «Додати»
+    await tester.tap(find.text('Заповнити'));
+    await settle(tester);
+    expect(find.text('Перезаписати'), findsOneWidget);
+    await tester.tap(find.text('Додати'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).last, '2,5');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(find.text('7,5 кг'), findsOneWidget);
+
+    // «Перезаписати»
+    await tester.tap(find.text('Заповнити'));
+    await settle(tester);
+    await tester.tap(find.text('Перезаписати'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).last, '1');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(find.text('1 кг'), findsOneWidget);
+  });
 
   testWidgets('заставка: кнопка «Пройти навчання» відкриває режим навчання', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));

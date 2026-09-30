@@ -128,6 +128,35 @@ class ApiaryTemplate {
   });
 }
 
+/// Номенклатура складу.
+class StockItem {
+  final String id;
+  final String name;
+  final String unit;
+
+  /// null — ще жодного разу не заповнювали.
+  final double? quantity;
+
+  /// Шлях до фото на цьому пристрої (або null).
+  final String? photo;
+
+  const StockItem({
+    required this.id,
+    required this.name,
+    required this.unit,
+    this.quantity,
+    this.photo,
+  });
+
+  factory StockItem.fromRow(Map<String, Object?> r) => StockItem(
+        id: r['id'] as String,
+        name: r['name'] as String,
+        unit: r['unit'] as String,
+        quantity: (r['quantity'] as num?)?.toDouble(),
+        photo: r['photo'] as String?,
+      );
+}
+
 /// Типи даних параметра.
 class DataTypes {
   static const text = 'text';

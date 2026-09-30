@@ -2,11 +2,30 @@ import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
+import 'package:apiary/logic/stock_format.dart';
 import 'package:apiary/logic/visit_reminders.dart';
 import 'package:apiary/ui/date_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('склад: числа', () {
+    test('parseAmount приймає кому й крапку, відкидає від\'ємні й не-числа', () {
+      expect(parseAmount('2,5'), 2.5);
+      expect(parseAmount(' 10 '), 10);
+      expect(parseAmount('0.125'), 0.125);
+      expect(parseAmount(''), isNull);
+      expect(parseAmount('abc'), isNull);
+      expect(parseAmount('-1'), isNull);
+    });
+    test('formatAmount без зайвих нулів і з комою', () {
+      expect(formatAmount(5), '5');
+      expect(formatAmount(2.5), '2,5');
+      expect(formatAmount(0.125), '0,125');
+      expect(formatAmount(1 / 3), '0,333');
+      expect(formatAmount(7.0000001), '7');
+    });
+  });
+
   group('rotatedPositions', () {
     test('лежак 2×1 після повороту лишається злитим (не розсипається)', () {
       final r = rotatedPositions({'a': (0, 0), 'b': (1, 0)});
