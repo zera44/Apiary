@@ -602,8 +602,6 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('+').last); // кнопка меню (перша «+» — зум)
-    await settle(tester);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
     expect(find.byTooltip('Перейменувати'), findsNothing);
@@ -620,8 +618,6 @@ void main() {
     final id = (await tester.runAsync(() => repo.addApiary('Пасіка')))!;
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
-    await settle(tester);
-    await tester.tap(find.text('+').last);
     await settle(tester);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
@@ -681,8 +677,6 @@ void main() {
   testWidgets('редагування карти: над обраним об\'єктом — «Повернути» й «Видалити»', (tester) async {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
-    await settle(tester);
-    await tester.tap(find.text('+').last);
     await settle(tester);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
@@ -765,5 +759,30 @@ void main() {
       expect(find.byType(FeedbackScreen), findsOneWidget);
       expect(find.text('Не працює сканер'), findsOneWidget);
     });
+  });
+
+  testWidgets('карта: «Додати» одразу пропонує шаблони; «Шаблони» — лише в меню', (tester) async {
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.text('Шаблони'), findsNothing);
+    expect(find.text('Редагувати'), findsOneWidget);
+    await tester.tap(find.text('Додати'));
+    await settle(tester);
+    expect(find.text('Оберіть шаблон'), findsOneWidget);
+    expect(find.text('Лежак (2×2)'), findsOneWidget);
+    // закрили вибір, нічого не обравши — звичайний перегляд карти
+    await tester.tapAt(const Offset(12, 300));
+    await settle(tester);
+    expect(find.text('Оберіть шаблон'), findsNothing);
+    expect(find.byTooltip('Готово'), findsNothing);
+    expect(find.text('Додати'), findsOneWidget);
+    // обрали шаблон — режим розміщення
+    await tester.tap(find.text('Додати'));
+    await settle(tester);
+    await tester.tap(find.text('Лежак (2×2)'));
+    await settle(tester);
+    expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
