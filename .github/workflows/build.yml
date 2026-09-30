@@ -169,7 +169,7 @@ jobs:
               out.append(f'  {i.compress_size:>9} {i.filename}')
           print('::notice title=APKSIZE::' + '%0A'.join(out))
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apiary-apk
           path: build/app/outputs/flutter-apk/*.apk
@@ -218,7 +218,7 @@ jobs:
           out = [f'total = {sum(r[0] for r in rows)}'] + [f'  {a:>10} {b}' for a, b in rows[:12]]
           print('::notice title=WINSIZE::' + '%0A'.join(out))
           PY
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: apiary-windows
           path: build/windows/x64/runner/Release/
