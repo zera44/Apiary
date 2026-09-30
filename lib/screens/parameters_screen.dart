@@ -349,7 +349,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
             tooltip: 'Історія',
             onPressed: () => _history(p)),
         const SizedBox(width: 6),
-        if (!_pinned(p)) ...[
+        // редагувати й видаляти параметр можна лише в каталозі (меню →
+        // «Характеристики»); зміни назви одразу видно в усіх вуликах, бо
+        // параметр один на всіх
+        if (widget.catalog && !_pinned(p)) ...[
           CircleIconButton(
               icon: 'pencil',
               bg: AppColors.rename,
@@ -358,7 +361,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
               onPressed: () => _openForm(p)),
           const SizedBox(width: 6),
         ],
-        CircleIconButton(
+        if (widget.catalog)
+          CircleIconButton(
             icon: 'trash',
             bg: AppColors.danger,
             size: 36,

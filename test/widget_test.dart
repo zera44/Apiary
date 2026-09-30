@@ -12,6 +12,7 @@ import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
+import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/theme.dart';
@@ -102,7 +103,10 @@ void main() {
     expect(tester.getTopLeft(find.text('Мітка матки')).dy,
         lessThan(tester.getTopLeft(find.text('Вага')).dy));
     expect(find.byType(LockMark), findsWidgets);
-    expect(find.byTooltip('Редагувати'), findsOneWidget); // лише «Вага»
+    // у списку конкретного вулика параметри не редагуються й не видаляються
+    // (лише в меню → «Характеристики»)
+    expect(find.byTooltip('Редагувати'), findsNothing);
+    expect(find.byTooltip('Видалити'), findsNothing);
     await tester.tap(find.byTooltip('Новий параметр'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
@@ -455,6 +459,57 @@ void main() {
     final moved = {for (final e in after) e.id: (e.x, e.y)};
     expect(before.any((e) => moved[e.id] != (e.x, e.y)), isTrue);
     expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('редактор шаблону: тап — інформація, режим переміщення — тягнути й кнопки',
+      (tester) async {
+    await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo, templateId: templateId)));
+    await settle(tester);
+    // вулики шаблону — клітинки (0,1),(1,1), камера по центру (1,1), клітинка 32
+    final hive = tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-16, -16);
+    await tester.tapAt(hive);
+    await settle(tester);
+    expect(find.byType(CharacteristicsPanel), findsOneWidget);
+    expect(find.byTooltip('Повернути'), findsNothing);
+    // у режимі інформації перетягування не рухає вулик — лише зсуває поле
+    await tester.dragFrom(hive, const Offset(0, -96));
+    await settle(tester);
+    final undo = find.byWidgetPredicate((w) => w is CircleIconButton && w.tooltip == 'Скасувати');
+    expect(tester.widget<CircleIconButton>(undo).onPressed, isNull); // змін немає
+    final moved = hive + const Offset(0, -96); // поле зсунулось разом із пальцем
+
+    await tester.tap(find.byTooltip('Переміщення'));
+    await settle(tester);
+    expect(find.byType(CharacteristicsPanel), findsNothing);
+    await tester.tapAt(moved);
+    await settle(tester);
+    expect(find.byTooltip('Повернути'), findsOneWidget); // над обраним
+    expect(find.byType(CharacteristicsPanel), findsNothing);
+    await tester.dragFrom(moved, const Offset(0, -96));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await settle(tester);
+    final t = (await tester.runAsync(() => repo.getTemplate(templateId)))!;
+    expect(t.height, 5); // вулики піднялись на 3 клітинки над деревами
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('редагування карти: над обраним об\'єктом — «Повернути» й «Видалити»', (tester) async {
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.text('+').last);
+    await settle(tester);
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    expect(find.byTooltip('Повернути'), findsOneWidget); // лише внизу
+    // вулик (0,0): камера по центру (1,0), клітинка 34
+    await tester.tapAt(tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-17, -17));
+    await settle(tester);
+    expect(find.byTooltip('Повернути'), findsNWidgets(2)); // внизу + над об'єктом
+    expect(find.byTooltip('Видалити'), findsNWidgets(2));
+    expect(find.byType(CharacteristicsPanel), findsNothing); // інформація не відкривається
     expect(tester.takeException(), isNull);
   });
 }

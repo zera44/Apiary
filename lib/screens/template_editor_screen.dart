@@ -17,12 +17,14 @@ import 'parameters_screen.dart';
 
 /// Редактор заготовки (порт TemplateEditorScreen / TemplateGridArea).
 ///
-/// Два режими:
-///  * "За замовчуванням": натискання на намальовану клітинку обирає ВЕСЬ
-///    її злитий екземпляр і тим самим дотиком його можна перетягувати;
-///    повторний тап по обраному — зняти вибір; тап по порожньому — теж.
-///    Над обраним — плаваючі кнопки "Повернути"/"Видалити", справа —
-///    панель "Характеристики".
+/// Три режими:
+///  * "За замовчуванням" (інформація): тап по намальованій клітинці обирає
+///    ВЕСЬ її злитий екземпляр і відкриває справа панель "Характеристики";
+///    повторний тап по обраному чи тап по порожньому — зняти вибір.
+///    Нічого не переміщується.
+///  * "Переміщення" (кнопка зі стрілками): дотик до екземпляра обирає його
+///    й тим самим дотиком його можна перетягувати; над обраним — плаваючі
+///    кнопки "Повернути"/"Видалити". Панель не відкривається.
 ///  * "Додавання" (кнопка "+"): тап по порожній клітинці малює обраний тип,
 ///    по намальованій — стирає.
 class TemplateEditorScreen extends StatefulWidget {
@@ -58,6 +60,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   Set<Cell> selected = {};
   List<Set<Cell>> _components = [];
   bool addingMode = false;
+  bool moveMode = false;
   String mode = 'hive';
   String obstacleVariant = 'mountain';
   final List<_Snapshot> _undo = [];
@@ -164,7 +167,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
 
   /// Після будь-якої зміни клітинок/вибору — оновити панель.
   void _afterChange() {
-    if (_selectedCells.isEmpty) {
+    // у режимі переміщення панель не показується
+    if (_selectedCells.isEmpty || moveMode) {
       setState(() => _panelData = null);
     } else {
       _refreshPanel();
@@ -201,7 +205,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   // ---------------------------------------------------------------------
 
   bool _onPressDown(GridPress p) {
-    if (addingMode) return false;
+    // перетягувати можна лише в режимі переміщення
+    if (addingMode || !moveMode) return false;
     if (!cells.containsKey(p.cell)) return false;
     final comp = _componentAt(p.cell);
     final wasSelected = selected.length == comp.length && selected.containsAll(comp);
@@ -265,10 +270,29 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       _afterChange();
       return;
     }
+    if (!moveMode && cells.containsKey(key)) {
+      // режим інформації: тап обирає екземпляр і відкриває панель,
+      // повторний тап по ньому ж — закриває
+      final comp = _componentAt(key);
+      final same = selected.length == comp.length && selected.containsAll(comp);
+      setState(() => selected = same ? {} : Set.of(comp));
+      _afterChange();
+      return;
+    }
     if (selected.isNotEmpty) {
       setState(() => selected = {});
       _afterChange();
     }
+  }
+
+  /// Увімкнути/вимкнути режим переміщення (вимикає додавання).
+  void _toggleMove() {
+    setState(() {
+      moveMode = !moveMode;
+      addingMode = false;
+      selected = {};
+    });
+    _afterChange();
   }
 
   // ---------------------------------------------------------------------
@@ -425,6 +449,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       mode = picked.$1;
       if (picked.$2 != null) obstacleVariant = picked.$2!;
       addingMode = true;
+      moveMode = false;
       selected = {};
     });
     _afterChange();
@@ -587,13 +612,18 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
           : 'Перешкода — ${obstacleVariantLabel(obstacleVariant)}';
       return 'Додаємо: $what   ·   торкніться клітинки, щоб прибрати';
     }
-    if (_selectedCells.isNotEmpty) return 'Обрано екземпляр — перетягніть, щоб перемістити';
-    return 'Торкніться екземпляра, щоб обрати';
+    if (moveMode) {
+      return _selectedCells.isNotEmpty
+          ? 'Перетягніть, щоб перемістити · над ним — поворот і видалення'
+          : 'Переміщення: торкніться екземпляра й тягніть';
+    }
+    if (_selectedCells.isNotEmpty) return 'Інформація про екземпляр — справа';
+    return 'Торкніться екземпляра, щоб побачити інформацію';
   }
 
   @override
   Widget build(BuildContext context) {
-    final panelOpen = _panelData != null && _selectedCells.isNotEmpty;
+    final panelOpen = _panelData != null && _selectedCells.isNotEmpty && !moveMode;
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: (didPop, _) {
@@ -636,6 +666,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                         cells: _scene(),
                         blocked: _blocked,
                         maskSelected: false,
+                        showMoveHints: moveMode, // стрілки — лише в режимі переміщення
                         onPressDown: _onPressDown,
                         onPressMove: _onPressMove,
                         onPressUp: _onPressUp,
@@ -703,6 +734,13 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   ),
                   const SizedBox(width: 16),
                   CircleIconButton(
+                    icon: 'move',
+                    bg: moveMode ? AppColors.modeActive : AppColors.darkBtn,
+                    tooltip: moveMode ? 'Завершити переміщення' : 'Переміщення',
+                    onPressed: _toggleMove,
+                  ),
+                  const SizedBox(width: 16),
+                  CircleIconButton(
                     icon: 'back_arrow',
                     bg: AppColors.darkBtn,
                     tooltip: 'Скасувати',
@@ -747,7 +785,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   /// Плаваючі кнопки "Повернути"/"Видалити" над обраним екземпляром.
   /// Під час перетягування ховаються.
   List<Widget> _overlayButtons(Size area) {
-    if (_drag != null || addingMode) return const [];
+    if (_drag != null || addingMode || !moveMode) return const [];
     final sel = _selectedCells;
     if (sel.isEmpty) return const [];
     return [

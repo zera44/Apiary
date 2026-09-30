@@ -836,6 +836,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 onTap: _onTap,
               ),
             ),
+            // над обраним об'єктом у редагуванні — "Повернути"/"Видалити"
+            // (як у редакторі шаблону); кнопки внизу теж лишаються
+            ..._selectionButtons(box.biggest),
             // верхня панель: назва + статус
             Positioned(
               top: 0,
@@ -948,6 +951,48 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }),
       ),
     );
+  }
+
+  /// Плаваючі кнопки над обраним об'єктом у режимі редагування. Під час
+  /// перетягування та поки триває інша дія — ховаються.
+  List<Widget> _selectionButtons(Size area) {
+    if (!selectMode || _drag != null || _busy) return const [];
+    final cellsSel = [for (final e in selection) (e.x, e.y)];
+    if (cellsSel.isEmpty) return const [];
+    return [
+      AnimatedBuilder(
+        animation: grid,
+        builder: (context, _) {
+          final r = cellsScreenBounds(grid, cellsSel);
+          if (r == null) return const SizedBox.shrink();
+          const bs = 36.0;
+          const gap = kHintGap + kHintSize + 8;
+          var top = r.top - gap - bs;
+          if (top < 52) top = r.bottom + gap; // згори не вміщається — під об'єктом
+          final maxLeft = area.width - 2 * bs - 10;
+          final left = maxLeft <= 4 ? 4.0 : (r.center.dx - bs - 3).clamp(4.0, maxLeft).toDouble();
+          return Positioned(
+            left: left,
+            top: top,
+            child: Row(children: [
+              CircleIconButton(
+                  icon: 'rotate',
+                  bg: AppColors.darkBtn,
+                  size: bs,
+                  tooltip: 'Повернути',
+                  onPressed: _onRotate),
+              const SizedBox(width: 6),
+              CircleIconButton(
+                  icon: 'trash',
+                  bg: AppColors.danger,
+                  size: bs,
+                  tooltip: 'Видалити',
+                  onPressed: _onDelete),
+            ]),
+          );
+        },
+      ),
+    ];
   }
 
   List<Widget> _fab() => [
