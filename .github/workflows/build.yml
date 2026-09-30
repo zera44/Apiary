@@ -32,20 +32,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          flutter pub get 2>&1 | tee build.log
+          # точно ті версії й вміст пакетів, що в pubspec.lock (без тихих оновлень)
+          flutter pub get --enforce-lockfile 2>&1 | tee build.log
       # падає лише на помилках (попередження й підказки — не критичні)
       - name: Аналіз коду
         shell: bash
         run: |
           set -o pipefail
           flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
-      - name: Файл версій залежностей (для фіксації)
-        shell: bash
-        run: |
-          i=0
-          for part in $(gzip -9nc pubspec.lock | base64 -w0 | fold -w 4000); do
-            i=$((i+1)); echo "::notice title=LOCK$i::$part"
-          done
       - name: Тести
         shell: bash
         run: |
@@ -118,6 +112,7 @@ jobs:
       # sqlite3_flutter_libs і build-hook пакета sqlite3 — вимикаємо обидва.
       - name: Не вкладати власну SQLite в Android-збірку
         run: |
+          flutter pub get --enforce-lockfile
           flutter pub remove sqlite3_flutter_libs
           cat >> pubspec.yaml <<'EOF2'
 
@@ -187,6 +182,7 @@ jobs:
       - name: Згенерувати платформні файли
         run: |
           flutter create --platforms=windows --org org.apiary --project-name apiary .
+          flutter pub get --enforce-lockfile
           dart run tool/patch_platforms.dart
       - name: Зібрати для Windows
         shell: bash
