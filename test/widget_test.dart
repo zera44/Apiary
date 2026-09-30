@@ -76,6 +76,13 @@ void main() {
     await tester.pumpWidget(wrap(TemplatesScreen(repo: repo)));
     await settle(tester);
     expect(find.text('Лежак'), findsOneWidget);
+    // плитка — мініатюра шматка карти з шаблоном
+    expect(find.byType(SceneThumbnail), findsOneWidget);
+    expect(find.text('2×2'), findsOneWidget);
+    expect(find.text('Створити шаблон'), findsOneWidget);
+    final t = (await tester.runAsync(() => repo.getTemplate(templateId)))!;
+    expect(templateSceneCells(t).length, 3);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('редактор шаблону', (tester) async {

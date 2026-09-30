@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../logic/cell_value.dart';
+import '../logic/merge_layout.dart';
 import '../ui/common.dart';
-import '../ui/icons.dart';
+import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 import 'template_editor_screen.dart';
 
-/// Екран "Шаблони": список збережених конфігурацій + "Додати".
+/// Екран "Шаблони": плитки-мініатюри збережених конфігурацій + "Створити шаблон".
 class TemplatesScreen extends StatefulWidget {
   final Repository repo;
   const TemplatesScreen({super.key, required this.repo});
@@ -17,6 +19,7 @@ class TemplatesScreen extends StatefulWidget {
 
 class _TemplatesScreenState extends State<TemplatesScreen> {
   List<ApiaryTemplate>? templates;
+  final Map<String, List<SceneCell>> _thumbs = {};
 
   @override
   void initState() {
@@ -26,7 +29,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
 
   Future<void> _reload() async {
     final list = await widget.repo.listTemplates();
-    if (mounted) setState(() => templates = list);
+    if (mounted) {
+      setState(() {
+        templates = list;
+        _thumbs.clear();
+      });
+    }
   }
 
   Future<void> _open(String? id) async {
@@ -65,11 +73,16 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                       ? Center(
                           child: Text('Ще немає жодного шаблону',
                               style: TextStyle(color: AppColors.textMuted)))
-                      : ListView.separated(
+                      : GridView.builder(
                           padding: const EdgeInsets.all(12),
+                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 150,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.85,
+                          ),
                           itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (_, i) => _card(list[i]),
+                          itemBuilder: (_, i) => _tile(list[i]),
                         ),
             ),
             Padding(
@@ -90,56 +103,93 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     );
   }
 
-  Widget _card(ApiaryTemplate t) {
-    return ListCard(
-      height: 66,
-      child: Row(children: [
-        Material(
-          color: AppColors.hive,
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _open(t.id),
-            child: const AppIcon('beehive', color: Colors.white, size: 46),
+  /// Плитка шаблону — шматок карти з ним, як мініатюри пасік на головному
+  /// екрані. Тап — відкрити, олівець — перейменувати, кошик — видалити.
+  Widget _tile(ApiaryTemplate t) {
+    final cells = _thumbs[t.id] ??= templateSceneCells(t);
+    return Column(children: [
+      Text(t.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 5),
+      Expanded(
+        child: Tooltip(
+          message: 'Відкрити',
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.darkBtn, width: 3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _open(t.id),
+                  onLongPress: () => _rename(t),
+                  child: Stack(children: [
+                    Positioned.fill(
+                        child: IgnorePointer(
+                            child: RepaintBoundary(child: SceneThumbnail(cells: cells)))),
+                    Positioned(
+                      left: 6,
+                      bottom: 4,
+                      child: Text('${t.width}×${t.height}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              shadows: [Shadow(blurRadius: 3)])),
+                    ),
+                    Positioned(
+                      right: 3,
+                      top: 3,
+                      child: CircleIconButton(
+                          icon: 'trash',
+                          bg: AppColors.danger,
+                          size: 28,
+                          tooltip: 'Видалити',
+                          onPressed: () => _delete(t)),
+                    ),
+                    Positioned(
+                      right: 3,
+                      bottom: 3,
+                      child: CircleIconButton(
+                          icon: 'pencil',
+                          bg: AppColors.rename,
+                          size: 28,
+                          tooltip: 'Перейменувати',
+                          onPressed: () => _rename(t)),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(t.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
-              Text('${t.width}×${t.height}',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-            ],
-          ),
-        ),
-        CircleIconButton(
-            icon: 'pencil',
-            bg: AppColors.rename,
-            size: 38,
-            tooltip: 'Перейменувати',
-            onPressed: () => _rename(t)),
-        const SizedBox(width: 6),
-        CircleIconButton(
-            icon: 'eye',
-            bg: AppColors.darkBtn,
-            iconColor: AppColors.text,
-            size: 38,
-            tooltip: 'Відкрити',
-            onPressed: () => _open(t.id)),
-        const SizedBox(width: 6),
-        CircleIconButton(
-            icon: 'trash',
-            bg: AppColors.danger,
-            size: 38,
-            tooltip: 'Видалити',
-            onPressed: () => _delete(t)),
-      ]),
-    );
+      ),
+    ]);
   }
+}
+
+/// Клітинки мініатюри шаблону: та сама логіка злиття, що й у редакторі.
+List<SceneCell> templateSceneCells(ApiaryTemplate t) {
+  final h = t.height <= 0 ? 1 : t.height;
+  final cells = <(int, int), CellValue>{};
+  for (final e in t.cells.entries) {
+    final pos = parseCellKey(e.key);
+    if (pos == null) continue;
+    // рядок 0 у збереженому шаблоні — верхній
+    cells[(pos.$1, h - 1 - pos.$2)] = CellValue.parse(e.value);
+  }
+  return buildScene<(int, int)>(
+    items: [for (final e in cells.entries) MergeItem<(int, int)>(e.key, e.key.$1, e.key.$2, e.value.mergeKey)],
+    look: {
+      for (final e in cells.entries)
+        e.key: (type: e.value.type, variant: e.value.effectiveVariant, icon: e.value.icon, color: e.value.color)
+    },
+    selected: const {},
+  );
 }
