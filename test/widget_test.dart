@@ -140,6 +140,7 @@ void main() {
     expect(find.text('Мої пасіки'), findsOneWidget);
     await tester.tap(find.byType(CircleIconButton).first);
     await settle(tester);
+    await tester.pump(const Duration(seconds: 1)); // перехід між екранами завершився
     expect(find.text('MyApiary'), findsOneWidget);
     expect(find.text('Мої пасіки'), findsNothing);
   });
