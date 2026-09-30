@@ -197,6 +197,8 @@ void main() {
       expect(SyncService.serverBase('https://user:pass@api.example.com'), isNull);
       expect(SyncService.serverBase('не адреса'), isNull);
       expect(SyncService.serverBase('http://localhost:8080'), isNotNull);
+      expect(SyncService.serverBase('https://h.example/api?k=v#x').toString(), 'https://h.example/api');
+      expect(SyncService.serverBase('https://h.example:8443').toString(), 'https://h.example:8443');
     });
   });
 }

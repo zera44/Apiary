@@ -72,39 +72,15 @@ jobs:
           channel: stable
           flutter-version: 3.47.5
           cache: true
-      # Ключ підпису — із секретів репозиторію (у самому репозиторії його немає).
-      - name: Ключ підпису
-        shell: bash
-        env:
-          KEYSTORE_B64: ${{ secrets.APIARY_KEYSTORE_B64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.APIARY_KEYSTORE_PASSWORD }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/apiary-release.p12"
-            {
-              echo "APIARY_KEYSTORE_PATH=$RUNNER_TEMP/apiary-release.p12"
-              echo "APIARY_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
-              echo "APIARY_KEY_PASSWORD=$KEYSTORE_PASSWORD"
-              echo "APIARY_KEY_ALIAS=apiary"
-              echo "EXPECTED_CERT=release"
-            } >> "$GITHUB_ENV"
-          else
-            # тимчасово (поки секрети не додано): явний підпис ключем із
-            # репозиторію. Раніше він лише копіювався в ~/.android, але збірка
-            # його не бачила й щоразу брала ВИПАДКОВИЙ ключ — через це APK не
-            # встановлювався поверх попереднього.
-            echo "::warning title=ПІДПИС::Секрети APIARY_KEYSTORE_B64 / APIARY_KEYSTORE_PASSWORD не задано — APK підписано тимчасовим ключем із репозиторію"
-            {
-              echo "APIARY_KEYSTORE_PATH=$GITHUB_WORKSPACE/tool/debug.keystore"
-              echo "APIARY_KEYSTORE_PASSWORD=android"
-              echo "APIARY_KEY_PASSWORD=android"
-              echo "APIARY_KEY_ALIAS=androiddebugkey"
-              echo "EXPECTED_CERT=legacy"
-            } >> "$GITHUB_ENV"
-          fi
+      # Спершу — точно ті версії й вміст пакетів, що в pubspec.lock (до
+      # будь-яких інших кроків, які могли б тихо переписати файл версій).
+      - name: Залежності
+        run: flutter pub get --enforce-lockfile
       - name: Згенерувати платформні файли
+        env:
+          APIARY_SIGNING: '1'
         run: |
-          flutter create --platforms=android --org org.apiary --project-name apiary .
+          flutter create --no-pub --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
       # Власна копія SQLite потрібна лише на комп'ютері: на Android працює
       # sqflite із системною SQLite, а додатковий libsqlite3.so важить
@@ -112,7 +88,6 @@ jobs:
       # sqlite3_flutter_libs і build-hook пакета sqlite3 — вимикаємо обидва.
       - name: Не вкладати власну SQLite в Android-збірку
         run: |
-          flutter pub get --enforce-lockfile
           flutter pub remove sqlite3_flutter_libs
           cat >> pubspec.yaml <<'EOF2'
 
@@ -121,10 +96,35 @@ jobs:
               sqlite3:
                 source: system
           EOF2
+      # Ключ підпису — із секретів репозиторію, і ЛИШЕ для push у main
+      # (гілки, pull request'и й ручні запуски підписуються тимчасовим
+      # ключем, тож неперевірений код не отримає справжнього підпису).
+      # Пароль і файл ключа існують лише всередині цього кроку.
       - name: Зібрати APK
         shell: bash
+        env:
+          KEYSTORE_B64: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.APIARY_KEYSTORE_B64 || '' }}
+          KEYSTORE_PASSWORD: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.APIARY_KEYSTORE_PASSWORD || '' }}
         run: |
           set -o pipefail
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            key="$RUNNER_TEMP/apiary-release.p12"
+            trap 'rm -f "$key"' EXIT
+            echo "$KEYSTORE_B64" | base64 -d > "$key"
+            export APIARY_KEYSTORE_PATH="$key" APIARY_KEY_ALIAS=apiary
+            export APIARY_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" APIARY_KEY_PASSWORD="$KEYSTORE_PASSWORD"
+            echo "EXPECTED_CERT=release" >> "$GITHUB_ENV"
+          else
+            # тимчасово (поки секрети не додано) — явний підпис ключем із
+            # репозиторію. Раніше він лише копіювався в ~/.android, але збірка
+            # його не бачила й щоразу брала ВИПАДКОВИЙ ключ — через це APK не
+            # встановлювався поверх попереднього.
+            echo "::warning title=ПІДПИС::APK підписано тимчасовим ключем із репозиторію (секретів немає або це не push у main)"
+            export APIARY_KEYSTORE_PATH="$GITHUB_WORKSPACE/tool/debug.keystore" APIARY_KEY_ALIAS=androiddebugkey
+            export APIARY_KEYSTORE_PASSWORD=android APIARY_KEY_PASSWORD=android
+            echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
+          fi
+          unset KEYSTORE_B64 KEYSTORE_PASSWORD
           flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
@@ -134,13 +134,17 @@ jobs:
       - name: Перевірити підпис APK
         shell: bash
         run: |
-          set -e
+          set -eo pipefail
           signer=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
           expected=$(awk -v k="$EXPECTED_CERT" '$1==k {print $2}' tool/signing-cert.sha256)
+          if [ -z "$expected" ]; then
+            echo "::error title=ПІДПИС::невідомий очікуваний ключ «$EXPECTED_CERT»"; exit 1
+          fi
           for f in build/app/outputs/flutter-apk/*.apk; do
-            got=$("$signer" verify --print-certs "$f" | grep -m1 'SHA-256 digest' | awk '{print $NF}')
+            certs=$("$signer" verify --print-certs "$f" | grep -E '^Signer #[0-9]+ certificate SHA-256 digest' | awk '{print $NF}')
+            got=$(echo "$certs" | sort -u)
             echo "$f: $got"
-            if [ "$got" != "$expected" ]; then
+            if [ "$(echo "$got" | wc -l)" != 1 ] || [ "$got" != "$expected" ]; then
               echo "::error title=ПІДПИС::$f підписано не тим ключем ($got, очікувався $EXPECTED_CERT)"
               exit 1
             fi
@@ -181,8 +185,8 @@ jobs:
           cache: true
       - name: Згенерувати платформні файли
         run: |
-          flutter create --platforms=windows --org org.apiary --project-name apiary .
           flutter pub get --enforce-lockfile
+          flutter create --no-pub --platforms=windows --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
       - name: Зібрати для Windows
         shell: bash

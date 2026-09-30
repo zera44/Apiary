@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:http/http.dart' as http;
 
 import 'repository.dart';
@@ -42,11 +43,13 @@ class SyncService {
   static Uri? serverBase(String url) {
     final u = Uri.tryParse(url.trim());
     if (u == null || u.host.isEmpty) return null;
+    // http — лише для локального сервера розробки й лише не в release-збірці
     final local = u.host == 'localhost' || u.host == '127.0.0.1' || u.host == '10.0.2.2';
-    if (u.scheme != 'https' && !(u.scheme == 'http' && local)) return null;
+    if (u.scheme != 'https' && !(u.scheme == 'http' && local && !kReleaseMode)) return null;
     if (u.userInfo.isNotEmpty) return null; // жодних паролів в адресі
     final path = u.path.endsWith('/') ? u.path.substring(0, u.path.length - 1) : u.path;
-    return u.replace(path: path, query: null, fragment: null);
+    // лише схема, хост, порт і шлях (без ?параметрів і #фрагмента)
+    return Uri(scheme: u.scheme, host: u.host, port: u.port, path: path);
   }
 
   static final Uri? _base = apiUrl.isEmpty ? null : serverBase(apiUrl);

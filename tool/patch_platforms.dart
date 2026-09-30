@@ -156,12 +156,13 @@ void _patchAndroidBackup() {
 
 /// Підпис release-APK власним ключем із секретів CI (змінні середовища
 /// APIARY_KEYSTORE_PATH / APIARY_KEYSTORE_PASSWORD / APIARY_KEY_ALIAS /
-/// APIARY_KEY_PASSWORD). Без них — як і раніше. Якщо ключ задано, а файл
-/// gradle змінити не вдалося, збірка ПАДАЄ — щоб APK з іншим підписом не
+/// APIARY_KEY_PASSWORD під час збірки). Вмикається APIARY_SIGNING=1. Якщо
+/// файл gradle змінити не вдалося, збірка ПАДАЄ — щоб APK з іншим підписом не
 /// вийшов непомітно.
 void _patchAndroidSigning() {
-  final keystore = Platform.environment['APIARY_KEYSTORE_PATH'] ?? '';
-  if (keystore.isEmpty) return;
+  // увімкнено лише в Android-збірці CI; сам ключ і паролі gradle бере зі
+  // змінних середовища вже під час збірки
+  if (Platform.environment['APIARY_SIGNING'] != '1') return;
   for (final name in ['android/app/build.gradle.kts', 'android/app/build.gradle']) {
     final f = File(name);
     if (!f.existsSync()) continue;
