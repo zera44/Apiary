@@ -508,6 +508,16 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       _showWarning('Додайте хоча б одну клітинку');
       return;
     }
+    // новий шаблон: перед збереженням одразу питаємо назву (скасували —
+    // лишаємось у редакторі)
+    if (widget.templateId == null) {
+      _saving = true;
+      final asked = await showTextPrompt(context,
+          title: 'Назва шаблону', initial: title.trim().isEmpty ? 'Новий шаблон' : title.trim());
+      _saving = false;
+      if (asked == null || !mounted) return;
+      title = asked;
+    }
     _saving = true;
     try {
       final name = title.trim().isEmpty ? 'Новий шаблон' : title.trim();
