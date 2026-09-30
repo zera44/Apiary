@@ -361,7 +361,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('нова пасіка: створення -> карта -> «Головна» -> плитка в списку', (tester) async {
+  testWidgets('нова пасіка: створення -> карта -> «Головна» -> «Почати» -> плитка в списку', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo));
     await settle(tester);
     await toApiaries(tester);
@@ -379,6 +379,11 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget); // «Головна» — головний екран
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('Нова пасіка'), findsOneWidget); // плитка у списку
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect(tester.takeException(), isNull);
