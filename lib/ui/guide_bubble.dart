@@ -8,7 +8,11 @@ class GuideBubble extends StatelessWidget {
   /// Текст підказки; виділені слова — через [GuideBubble.highlight].
   final List<InlineSpan> text;
   final String image;
-  const GuideBubble({super.key, required this.text, this.image = 'assets/guide/beekeeper.png'});
+
+  /// Кнопки під текстом — усередині хмарки (не поверх екрана під нею).
+  final Widget? footer;
+  const GuideBubble(
+      {super.key, required this.text, this.image = 'assets/guide/beekeeper.png', this.footer});
 
   /// Назва кнопки в тексті підказки: іншим кольором і жирним.
   static TextSpan highlight(String s) => TextSpan(
@@ -30,9 +34,16 @@ class GuideBubble extends StatelessWidget {
               painter: _BubblePainter(fill: AppColors.popupBg, border: AppColors.create),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
-                child: Text.rich(
-                  TextSpan(children: text),
-                  style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text.rich(
+                      TextSpan(children: text),
+                      style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
+                    ),
+                    if (footer != null) ...[const SizedBox(height: 12), footer!],
+                  ],
                 ),
               ),
             ),

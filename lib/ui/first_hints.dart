@@ -90,10 +90,19 @@ class Hints {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                GuideBubble(text: text),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Row(children: [
+                // «Зрозуміло» і «Пропустити всі підказки» — у хмарці, під
+                // текстом: унизу екрана вони накладались на кнопки самого екрана
+                GuideBubble(
+                  text: text,
+                  footer: Column(mainAxisSize: MainAxisSize.min, children: [
+                    PillButton(
+                      text: 'Зрозуміло',
+                      bg: AppColors.accent,
+                      height: 44,
+                      radius: 16,
+                      fontSize: 15,
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
                     TextButton(
                       onPressed: () async {
                         await repo.setMeta('hints_off', '1');
@@ -102,17 +111,9 @@ class Hints {
                       child: Text('Пропустити всі підказки',
                           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                     ),
-                    const Spacer(),
-                    PillButton(
-                      text: 'Зрозуміло',
-                      bg: AppColors.accent,
-                      width: 150,
-                      height: 46,
-                      radius: 18,
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
                   ]),
                 ),
+                const SizedBox(height: 12),
               ]),
             ),
           ),
