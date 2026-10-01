@@ -814,23 +814,62 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelFill() async {
     final el = panelElement;
     if (el == null) return;
-    final entity = el.entity;
-    final params = await repo.attachedParameters(entity, elType: el.type);
-    if (!mounted) return;
-    if (params.isEmpty) {
+    final first = await _fillPage(el);
+    if (first == null || !mounted) return;
+    if (first.params.isEmpty) {
       _showWarning("Спершу прив'яжіть хоча б один параметр",
           duration: const Duration(milliseconds: 1200));
       return;
     }
-    final latest = await repo.latestParameterValues(entity);
-    if (!mounted) return;
-    final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
-    if (!mounted) return;
     await Hints.show(context, repo, Hints.fill);
     if (!mounted) return;
-    final result = await showFillValuesDialog(context,
-        params: params, latest: latest, offerNext: el.isHive, stock: stock);
-    if (result == null) return;
+    var cur = el;
+    ({Apiary apiary, String elementId})? away; // наступний — на іншій пасіці
+    final result = await showFillValuesDialog(
+      context,
+      params: first.params,
+      latest: first.latest,
+      stock: first.stock,
+      title: first.title,
+      offerNext: el.isHive,
+      // «Зберегти й далі»: зберегти, показати наступний вулик на карті й
+      // підставити його дані в ту саму форму (вікно не закривається)
+      onNext: (r) async {
+        await _saveFill(cur, r);
+        final n = await _nextTarget(cur);
+        if (n == null || !mounted) return null;
+        final here = n.here;
+        if (here == null) {
+          away = n.away;
+          return null;
+        }
+        cur = here;
+        await _showOnMap(here);
+        return _fillPage(here);
+      },
+    );
+    if (result != null) await _saveFill(cur, result);
+    final a = away;
+    if (a != null && mounted) {
+      AppDrawer.openHive(Navigator.of(context), repo, a.apiary, a.elementId,
+          fill: true, next: widget.next);
+    }
+  }
+
+  /// Дані форми для вулика: параметри, останні значення, склад, назва.
+  Future<FillPage?> _fillPage(MapElement el) async {
+    final entity = el.entity;
+    final params = await repo.attachedParameters(entity, elType: el.type);
+    final latest = await repo.latestParameterValues(entity);
+    final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
+    final title = panelElement?.id == el.id ? panelData?.title : null;
+    return FillPage(
+        params: params, latest: latest, stock: stock, title: title ?? el.label ?? 'Вулик');
+  }
+
+  /// Записати результат форми для вулика [el].
+  Future<void> _saveFill(MapElement el, FillResult result) async {
+    final entity = el.entity;
     final values = result.values;
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
@@ -840,7 +879,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (feed != null) {
       try {
         await repo.writeOffStock(feed.itemId, feed.amount,
-            reason: 'Підгодівля', comment: panelData?.title ?? el.label ?? 'Вулик');
+            reason: 'Підгодівля',
+            comment: (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик');
       } on StateError catch (e) {
         if (mounted) await showInfo(context, e.message, title: 'Не списано');
       }
@@ -856,7 +896,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
     await _refreshOverdue();
-    if (result.next && mounted) await _goNext(el);
   }
 
   /// «Оглянуто, змін немає»: лише дата огляду = сьогодні, без форми.
@@ -870,19 +909,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _showWarning('Огляд відмічено: сьогодні', duration: const Duration(milliseconds: 1200));
   }
 
-  /// Показати вулик на цій карті й одразу відкрити його форму.
-  Future<void> _focusAndFill(MapElement el) async {
+  /// Показати вулик на цій карті: центр, панель поруч (без форми).
+  Future<void> _showOnMap(MapElement el) async {
     grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
     await _loadPanel(el);
     if (!mounted) return;
     setState(() => panelOpen = true);
     _revealBesidePanel(el);
+  }
+
+  /// Показати вулик на цій карті й одразу відкрити його форму.
+  Future<void> _focusAndFill(MapElement el) async {
+    await _showOnMap(el);
+    if (!mounted) return;
     await _panelFill();
   }
 
-  /// «Зберегти й далі»: наступний вулик за [MapScreen.next].
-  Future<void> _goNext(MapElement cur) async {
-    final nav = Navigator.of(context);
+  /// «Зберегти й далі»: наступний вулик за [MapScreen.next] — на цій карті
+  /// ([here]) чи на іншій пасіці ([away]); null — далі нікого.
+  Future<({MapElement? here, ({Apiary apiary, String elementId})? away})?> _nextTarget(
+      MapElement cur) async {
     switch (widget.next) {
       case NextHive.order:
         // один представник на вулик/групу: верхня-ліва клітинка
@@ -897,25 +943,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final i = list.indexWhere((e) => ownerKeyOf(e) == ownerKeyOf(cur));
         if (i < 0 || i + 1 >= list.length) {
           _showWarning('Це останній вулик на карті', duration: const Duration(milliseconds: 1500));
-          return;
+          return null;
         }
-        await _focusAndFill(list[i + 1]);
+        return (here: list[i + 1], away: null);
       case NextHive.qr:
         final code = await scanQrCode(context, title: 'Наступний вулик');
-        if (code == null || !mounted) return;
+        if (code == null || !mounted) return null;
         final found = await repo.findByQr(code);
-        if (!mounted) return;
+        if (!mounted) return null;
         if (found == null) {
           await showInfo(context, 'Цей QR-код ще не прив\'язаний до жодного вулика.\n\nКод: $code',
               title: 'Вулик не знайдено');
-          return;
+          return null;
         }
         if (found.apiary.id == widget.apiary.id) {
           final el = elements.where((e) => e.id == found.element.id).firstOrNull ?? found.element;
-          await _focusAndFill(el);
-        } else {
-          AppDrawer.openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
+          return (here: el, away: null);
         }
+        return (here: null, away: (apiary: found.apiary, elementId: found.element.id));
       case NextHive.overdue:
         final now = DateTime.now();
         final due = [
@@ -923,21 +968,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (t.key != ownerKeyOf(cur))
               if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
         ]..sort((a, b) => a.at.compareTo(b.at));
-        if (!mounted) return;
+        if (!mounted) return null;
         if (due.isEmpty) {
           await showInfo(context, 'Прострочених оглядів більше немає.', title: 'Готово');
-          return;
+          return null;
         }
         final el = await repo.getElement(due.first.t.elementId);
         final aid = el?.apiaryId;
-        if (el == null || aid == null || !mounted) return;
+        if (el == null || aid == null || !mounted) return null;
         if (aid == widget.apiary.id) {
-          await _focusAndFill(elements.where((e) => e.id == el.id).firstOrNull ?? el);
-        } else {
-          final a = await repo.getApiary(aid);
-          if (a == null || !mounted) return;
-          AppDrawer.openHive(nav, repo, a, el.id, fill: true, next: NextHive.overdue);
+          return (here: elements.where((e) => e.id == el.id).firstOrNull ?? el, away: null);
         }
+        final a = await repo.getApiary(aid);
+        if (a == null) return null;
+        return (here: null, away: (apiary: a, elementId: el.id));
     }
   }
 

@@ -436,8 +436,11 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
-    // відкрилась форма наступного вулика
+    // та сама форма — вже з даними наступного вулика (вікно не закривалось)
     expect(find.text('Заповнити параметри'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Вулик 2')),
+        findsOneWidget);
     await tester.tap(find.text('Скасувати'));
     await settle(tester);
     expect(find.text('Вулик 2'), findsWidgets);

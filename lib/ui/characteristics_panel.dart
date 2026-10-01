@@ -252,16 +252,31 @@ class CharacteristicsPanel extends StatelessWidget {
                 p,
                 Text(p.nameWithUnit,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
-            cell(
-                p,
-                Text((value == null || value.isEmpty) ? '—' : value,
-                    style: TextStyle(
-                        color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600))),
+            cell(p, _valueView(p, value)),
           ]),
       ],
     );
+  }
+
+  /// Колір (мітка матки) — кружечком потрібного кольору, решта — текстом.
+  Widget _valueView(Parameter p, String? value) {
+    if (p.dataType == DataTypes.color && value != null && value.isNotEmpty) {
+      final c = queenTagChoices.where((e) => e.$1 == value).firstOrNull;
+      if (c != null) {
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Tooltip(
+            message: value,
+            child: ColorTagSwatch(fill: c.$2, size: 30),
+          ),
+        );
+      }
+    }
+    return Text((value == null || value.isEmpty) ? '—' : value,
+                    style: TextStyle(
+                        color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600));
   }
 }
 

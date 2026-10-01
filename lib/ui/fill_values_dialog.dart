@@ -13,22 +13,81 @@ import 'theme.dart';
 /// фіксовані зразки. Повертає {parameter_id: нове значення} лише для
 /// змінених полів (порожній рядок — значення прибрали), або null, якщо
 /// скасовано.
+///
+/// [onNext] — «Зберегти й далі» БЕЗ закриття вікна: викликач зберігає
+/// результат і повертає дані наступного вулика (вікно лише міняє вміст)
+/// або null — тоді вікно закривається (результат уже збережено).
 Future<FillResult?> showFillValuesDialog(
   BuildContext context, {
   required List<Parameter> params,
   required Map<String, String?> latest,
   bool offerNext = false,
   List<StockItem> stock = const [],
+  String? title,
+  Future<FillPage?> Function(FillResult result)? onNext,
 }) {
   return showDialog<FillResult>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _FillDialog(
-        params: params,
-        latest: latest,
-        offerNext: offerNext,
-        stock: [for (final it in stock) if ((it.quantity ?? 0) > 0) it]),
+    builder: (_) => _FillHost(
+      first: FillPage(params: params, latest: latest, stock: stock, title: title),
+      offerNext: offerNext,
+      onNext: onNext,
+    ),
   );
+}
+
+/// Вміст форми для одного вулика (для «Зберегти й далі» — наступного).
+class FillPage {
+  final String? title;
+  final List<Parameter> params;
+  final Map<String, String?> latest;
+  final List<StockItem> stock;
+  const FillPage(
+      {required this.params, required this.latest, this.stock = const [], this.title});
+}
+
+/// Тримає поточну сторінку: на «Зберегти й далі» підміняє вміст тієї самої
+/// форми даними наступного вулика (нове вікно не відкривається).
+class _FillHost extends StatefulWidget {
+  final FillPage first;
+  final bool offerNext;
+  final Future<FillPage?> Function(FillResult result)? onNext;
+  const _FillHost({required this.first, required this.offerNext, this.onNext});
+  @override
+  State<_FillHost> createState() => _FillHostState();
+}
+
+class _FillHostState extends State<_FillHost> {
+  late FillPage _page = widget.first;
+  int _n = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final onNext = widget.onNext;
+    return _FillDialog(
+      key: ValueKey(_n), // новий вулик — нові поля
+      title: _page.title,
+      params: _page.params,
+      latest: _page.latest,
+      offerNext: widget.offerNext,
+      stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
+      onNext: onNext == null
+          ? null
+          : (result) async {
+              final next = await onNext(result);
+              if (!mounted) return;
+              if (next == null) {
+                Navigator.pop(context);
+              } else {
+                setState(() {
+                  _page = next;
+                  _n++;
+                });
+              }
+            },
+    );
+  }
 }
 
 /// Результат форми: змінені значення й чи натиснули «Зберегти й далі»
@@ -43,12 +102,20 @@ class FillResult {
 }
 
 class _FillDialog extends StatefulWidget {
+  final String? title;
   final List<Parameter> params;
   final Map<String, String?> latest;
   final bool offerNext;
   final List<StockItem> stock;
+  final Future<void> Function(FillResult result)? onNext;
   const _FillDialog(
-      {required this.params, required this.latest, this.offerNext = false, this.stock = const []});
+      {super.key,
+      this.title,
+      required this.params,
+      required this.latest,
+      this.offerNext = false,
+      this.stock = const [],
+      this.onNext});
   @override
   State<_FillDialog> createState() => _FillDialogState();
 }
@@ -89,7 +156,10 @@ class _FillDialogState extends State<_FillDialog> {
   String? _feedItem;
   final _feedAmount = TextEditingController();
 
-  void _save({bool next = false}) {
+  bool _saving = false;
+
+  Future<void> _save({bool next = false}) async {
+    if (_saving) return;
     ({String itemId, double amount})? feed;
     final fid = _feedItem;
     if (fid != null) {
@@ -137,7 +207,18 @@ class _FillDialogState extends State<_FillDialog> {
       }
       if (v != (widget.latest[p.id] ?? '')) out[p.id] = v;
     }
-    Navigator.pop(context, FillResult(out, next: next, feed: feed));
+    final result = FillResult(out, next: next, feed: feed);
+    final onNext = widget.onNext;
+    if (next && onNext != null) {
+      setState(() => _saving = true);
+      try {
+        await onNext(result); // збереже й підставить наступний вулик
+      } finally {
+        if (mounted) setState(() => _saving = false);
+      }
+      return;
+    }
+    Navigator.pop(context, result);
   }
 
   /// Значення — таблицею, як на панелі вулика: зліва параметр, справа
@@ -274,7 +355,14 @@ class _FillDialogState extends State<_FillDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Заповнити параметри'),
+      // назва вулика — видно, що «Зберегти й далі» перейшло до наступного
+      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (widget.title != null) Text(widget.title!),
+        Text('Заповнити параметри',
+            style: widget.title == null
+                ? null
+                : TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w400)),
+      ]),
       content: SizedBox(
         width: 340,
         child: SingleChildScrollView(
@@ -303,7 +391,9 @@ class _FillDialogState extends State<_FillDialog> {
                   onPressed: () => Navigator.pop(context)),
             ),
             const SizedBox(width: 8),
-            Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: _save)),
+            Expanded(
+                child: PillButton(
+                    text: 'Зберегти', bg: AppColors.accent, onPressed: _saving ? null : _save)),
           ]),
           if (widget.offerNext) ...[
             const SizedBox(height: 8),
@@ -312,7 +402,7 @@ class _FillDialogState extends State<_FillDialog> {
               text: 'Зберегти й далі →',
               bg: AppColors.create,
               width: double.infinity,
-              onPressed: () => _save(next: true),
+              onPressed: _saving ? null : () => _save(next: true),
             ),
           ],
         ]),
