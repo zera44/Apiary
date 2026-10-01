@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
+import '../logic/stock_format.dart';
 import 'common.dart';
 import 'date_picker.dart';
 import 'icons.dart';
@@ -17,11 +18,16 @@ Future<FillResult?> showFillValuesDialog(
   required List<Parameter> params,
   required Map<String, String?> latest,
   bool offerNext = false,
+  List<StockItem> stock = const [],
 }) {
   return showDialog<FillResult>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _FillDialog(params: params, latest: latest, offerNext: offerNext),
+    builder: (_) => _FillDialog(
+        params: params,
+        latest: latest,
+        offerNext: offerNext,
+        stock: [for (final it in stock) if ((it.quantity ?? 0) > 0) it]),
   );
 }
 
@@ -30,14 +36,19 @@ Future<FillResult?> showFillValuesDialog(
 class FillResult {
   final Map<String, String> values;
   final bool next;
-  const FillResult(this.values, {this.next = false});
+
+  /// Підгодівля зі складу: що й скільки списати (або null).
+  final ({String itemId, double amount})? feed;
+  const FillResult(this.values, {this.next = false, this.feed});
 }
 
 class _FillDialog extends StatefulWidget {
   final List<Parameter> params;
   final Map<String, String?> latest;
   final bool offerNext;
-  const _FillDialog({required this.params, required this.latest, this.offerNext = false});
+  final List<StockItem> stock;
+  const _FillDialog(
+      {required this.params, required this.latest, this.offerNext = false, this.stock = const []});
   @override
   State<_FillDialog> createState() => _FillDialogState();
 }
@@ -71,10 +82,30 @@ class _FillDialogState extends State<_FillDialog> {
     for (final c in _text.values) {
       c.dispose();
     }
+    _feedAmount.dispose();
     super.dispose();
   }
 
+  String? _feedItem;
+  final _feedAmount = TextEditingController();
+
   void _save({bool next = false}) {
+    ({String itemId, double amount})? feed;
+    final fid = _feedItem;
+    if (fid != null) {
+      final it = widget.stock.firstWhere((s) => s.id == fid);
+      final a = parseAmount(_feedAmount.text);
+      if (a == null || a <= 0) {
+        setState(() => _error = 'Підгодівля: вкажіть кількість');
+        return;
+      }
+      if (a > (it.quantity ?? 0) + 1e-9) {
+        setState(() => _error =
+            'Підгодівля: на складі лише ${formatAmount(it.quantity ?? 0)} ${it.unit}');
+        return;
+      }
+      feed = (itemId: fid, amount: a);
+    }
     final out = <String, String>{};
     for (final p in widget.params) {
       final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
@@ -106,7 +137,48 @@ class _FillDialogState extends State<_FillDialog> {
       }
       if (v != (widget.latest[p.id] ?? '')) out[p.id] = v;
     }
-    Navigator.pop(context, FillResult(out, next: next));
+    Navigator.pop(context, FillResult(out, next: next, feed: feed));
+  }
+
+  /// Підгодівля: обрана номенклатура списується зі складу після збереження.
+  List<Widget> _feedSection() {
+    final it = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
+    return [
+      Text('Підгодівля зі складу',
+          style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
+      Text('Списується зі складу після збереження',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+      const SizedBox(height: 6),
+      DropdownButton<String?>(
+        value: _feedItem,
+        isExpanded: true,
+        dropdownColor: AppColors.popupBg,
+        hint: Text('Не списувати', style: TextStyle(color: AppColors.textMuted)),
+        items: [
+          DropdownMenuItem<String?>(
+              value: null, child: Text('Не списувати', style: TextStyle(color: AppColors.text))),
+          for (final s in widget.stock)
+            DropdownMenuItem<String?>(
+              value: s.id,
+              child: Text('${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
+                  style: TextStyle(color: AppColors.text)),
+            ),
+        ],
+        onChanged: (v) => setState(() {
+          _feedItem = v;
+          _error = null;
+        }),
+      ),
+      if (it != null)
+        TextField(
+          controller: _feedAmount,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: TextStyle(color: AppColors.text),
+          decoration: InputDecoration(labelText: 'Скільки', suffixText: it.unit),
+          onChanged: (_) => setState(() => _error = null),
+        ),
+      const SizedBox(height: 14),
+    ];
   }
 
   Widget _field(Parameter p) {
@@ -181,6 +253,7 @@ class _FillDialogState extends State<_FillDialog> {
               _field(p),
               const SizedBox(height: 14),
             ],
+            if (widget.stock.isNotEmpty) ..._feedSection(),
           ],
         )),
       ),

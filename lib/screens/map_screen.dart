@@ -783,12 +783,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     final latest = await repo.latestParameterValues(entity);
     if (!mounted) return;
+    final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
+    if (!mounted) return;
     final result = await showFillValuesDialog(context,
-        params: params, latest: latest, offerNext: el.isHive);
+        params: params, latest: latest, offerNext: el.isHive, stock: stock);
     if (result == null) return;
     final values = result.values;
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
+    }
+    // підгодівля: списати зі складу з назвою вулика в коментарі
+    final feed = result.feed;
+    if (feed != null) {
+      try {
+        await repo.writeOffStock(feed.itemId, feed.amount,
+            reason: 'Підгодівля', comment: panelData?.title ?? el.label ?? 'Вулик');
+      } on StateError catch (e) {
+        if (mounted) await showInfo(context, e.message, title: 'Не списано');
+      }
     }
     if (el.isHive) {
       // обхід зроблено: дата останнього обходу = сьогодні, якщо її самі

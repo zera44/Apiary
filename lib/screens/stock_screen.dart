@@ -67,7 +67,11 @@ class _StockScreenState extends State<StockScreen> {
         );
         if (res == null || res.delete) return;
         final id = await repo.addStockItem(res.name, res.unit);
-        if (res.photo != null) await repo.updateStockItem(id, photo: (res.photo,));
+        if (res.photo != null || res.min != null) {
+          await repo.updateStockItem(id,
+              photo: res.photo != null ? (res.photo,) : null,
+              minQuantity: res.min != null ? (res.min,) : null);
+        }
         await _reload();
       });
 
@@ -86,7 +90,10 @@ class _StockScreenState extends State<StockScreen> {
         } else {
           final photoChanged = res.photo != it.photo;
           await repo.updateStockItem(it.id,
-              name: res.name, unit: res.unit, photo: photoChanged ? (res.photo,) : null);
+              name: res.name,
+              unit: res.unit,
+              photo: photoChanged ? (res.photo,) : null,
+              minQuantity: res.min != it.minQuantity ? (res.min,) : null);
           if (photoChanged) await StockPhotos.remove(it.photo);
         }
         await _reload();
@@ -218,7 +225,8 @@ class _StockScreenState extends State<StockScreen> {
             decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.darkBtn, width: 3),
+              // дійшли до мінімального залишку — червона рамка
+              border: Border.all(color: it.low ? AppColors.danger : AppColors.darkBtn, width: 3),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
@@ -228,6 +236,20 @@ class _StockScreenState extends State<StockScreen> {
                   onTap: () => _edit(it),
                   child: Stack(children: [
                     Positioned.fill(child: StockPhoto(path: it.photo)),
+                    if (it.low)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          color: AppColors.danger,
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: const Text('Час докупити',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
                     Positioned(
                       left: 0,
                       right: 0,
@@ -296,8 +318,9 @@ class _ItemResult {
   final String name;
   final String unit;
   final String? photo;
+  final double? min;
   final bool delete;
-  const _ItemResult(this.name, this.unit, this.photo, {this.delete = false});
+  const _ItemResult(this.name, this.unit, this.photo, {this.min, this.delete = false});
 }
 
 /// Створення/зміна номенклатури: назва, одиниця виміру, фото.
@@ -316,6 +339,8 @@ class _ItemDialogState extends State<_ItemDialog> {
       ? null
       : (kStockUnits.contains(widget.item!.unit) ? widget.item!.unit : '');
   late String? _photo = widget.item?.photo;
+  late final _min = TextEditingController(
+      text: widget.item?.minQuantity == null ? '' : formatAmount(widget.item!.minQuantity!));
   String? _error;
   bool _picking = false;
 
@@ -326,6 +351,7 @@ class _ItemDialogState extends State<_ItemDialog> {
   void dispose() {
     _name.dispose();
     _custom.dispose();
+    _min.dispose();
     super.dispose();
   }
 
@@ -364,7 +390,13 @@ class _ItemDialogState extends State<_ItemDialog> {
       setState(() => _error = 'Вкажіть одиницю виміру');
       return;
     }
-    Navigator.pop(context, _ItemResult(name, _unitValue, _photo));
+    final minText = _min.text.trim();
+    final min = minText.isEmpty ? null : parseAmount(minText);
+    if (minText.isNotEmpty && min == null) {
+      setState(() => _error = 'Мінімальний залишок — число, не менше 0');
+      return;
+    }
+    Navigator.pop(context, _ItemResult(name, _unitValue, _photo, min: min));
   }
 
   Widget _chip(String label, String value) => ChoiceChip(
@@ -416,6 +448,18 @@ class _ItemDialogState extends State<_ItemDialog> {
                 decoration: const InputDecoration(labelText: 'Своя одиниця'),
                 onChanged: (_) => setState(() => _error = null),
               ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _min,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(color: AppColors.text),
+              decoration: InputDecoration(
+                labelText: 'Мінімальний залишок',
+                helperText: 'Дійде до нього — «час докупити»',
+                suffixText: _unitValue.isEmpty ? null : _unitValue,
+              ),
+              onChanged: (_) => setState(() => _error = null),
+            ),
             const SizedBox(height: 14),
             Row(children: [
               ClipRRect(

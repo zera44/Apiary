@@ -140,13 +140,20 @@ class StockItem {
   /// Шлях до фото на цьому пристрої (або null).
   final String? photo;
 
+  /// Мінімальний залишок (null — не стежити): досягли — «час докупити».
+  final double? minQuantity;
+
   const StockItem({
     required this.id,
     required this.name,
     required this.unit,
     this.quantity,
     this.photo,
+    this.minQuantity,
   });
+
+  /// Час докупити: залишок дійшов до мінімального.
+  bool get low => minQuantity != null && (quantity ?? 0) <= minQuantity! + 1e-9;
 
   factory StockItem.fromRow(Map<String, Object?> r) => StockItem(
         id: r['id'] as String,
@@ -154,6 +161,7 @@ class StockItem {
         unit: r['unit'] as String,
         quantity: (r['quantity'] as num?)?.toDouble(),
         photo: r['photo'] as String?,
+        minQuantity: (r['min_quantity'] as num?)?.toDouble(),
       );
 }
 

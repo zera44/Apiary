@@ -206,6 +206,8 @@ class AppDatabase {
     await _ensureColumn(db, 'stock_moves', 'cancelled', 'INTEGER NOT NULL DEFAULT 0');
     await _ensureColumn(db, 'stock_moves', 'ref_id', 'TEXT');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_moves(item_id)');
+    // мінімальний залишок: досягли — «час докупити»
+    await _ensureColumn(db, 'stock_items', 'min_quantity', 'REAL');
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');

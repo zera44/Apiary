@@ -54,6 +54,10 @@ class Repository {
   /// обхід" (вулики, пасіки, періодичність, дата обходу) — на нього
   /// підписаний сервіс нагадувань і перебудовує план.
   final ValueNotifier<int> remindersChanged = ValueNotifier<int>(0);
+
+  /// Змінився склад (залишки, номенклатура) — напр., «Час докупити» на
+  /// головному екрані перераховується.
+  final ValueNotifier<int> stockChanges = ValueNotifier<int>(0);
   void _remindersDirty() => remindersChanged.value++;
 
   static const _uuid = Uuid();
@@ -1532,20 +1536,25 @@ class Repository {
   }
 
   /// Змінити назву/одиницю/фото. Для фото: [photo] = ('шлях',) або (null,) — прибрати.
-  Future<void> updateStockItem(String id, {String? name, String? unit, (String?,)? photo}) async {
+  Future<void> updateStockItem(String id,
+      {String? name, String? unit, (String?,)? photo, (double?,)? minQuantity}) async {
     final fields = <String, Object?>{
       if (name != null) 'name': name.trim(),
       if (unit != null) 'unit': unit.trim(),
       if (photo != null) 'photo': photo.$1,
+      if (minQuantity != null) 'min_quantity': minQuantity.$1,
     };
     if (fields.isEmpty) return;
     await db.update('stock_items', {...fields, 'updated_at': now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    stockChanges.value++;
   }
 
-  Future<void> deleteStockItem(String id) => db.update(
-      'stock_items', {'deleted': 1, 'updated_at': now(), 'synced': 0},
-      where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteStockItem(String id) async {
+    await db.update('stock_items', {'deleted': 1, 'updated_at': now(), 'synced': 0},
+        where: 'id = ?', whereArgs: [id]);
+    stockChanges.value++;
+  }
 
   /// Прихід: залишок += [amount]. [date] — дата операції (типово — зараз),
   /// [total] — загальна вартість, обов'язкова (ціна за одиницю = total / amount).
@@ -1577,8 +1586,8 @@ class Repository {
   /// «скасовано», а новий запис 'cancel' повертає залишок назад. Не можна
   /// скасувати двічі, скасування, старий «перезапис» і прихід, який уже
   /// (частково) списано так, що залишок став би від'ємним.
-  Future<double> cancelStockMove(String moveId) {
-    return db.transaction((txn) async {
+  Future<double> cancelStockMove(String moveId) async {
+    final r = await db.transaction((txn) async {
       final rows = await txn.query('stock_moves', where: 'id = ?', whereArgs: [moveId], limit: 1);
       if (rows.isEmpty) throw StateError('Запис не знайдено');
       final m = rows.first;
@@ -1618,12 +1627,22 @@ class Repository {
       });
       return next;
     });
+    stockChanges.value++;
+    return r;
   }
 
   /// Кожна операція — окремий запис у stock_moves; залишок у stock_items
   /// змінюється в тій самій транзакції ([delta] — на скільки, або [setTo]).
   /// Нічого не перезаписується.
   Future<double> _stockMove(String id, String kind, double amount, double delta,
+      {DateTime? date, double? total, double? price, String? reason, String? comment, double? setTo}) async {
+    final r = await _stockMoveTx(id, kind, amount, delta,
+        date: date, total: total, price: price, reason: reason, comment: comment, setTo: setTo);
+    stockChanges.value++;
+    return r;
+  }
+
+  Future<double> _stockMoveTx(String id, String kind, double amount, double delta,
       {DateTime? date, double? total, double? price, String? reason, String? comment, double? setTo}) {
     return db.transaction((txn) async {
       final rows = await txn.query('stock_items',

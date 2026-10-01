@@ -470,6 +470,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('форма вулика: підгодівля списується зі складу', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final sugar = (await tester.runAsync(() async {
+      final id = await repo.addStockItem('Цукор', 'кг');
+      await repo.receiveStock(id, 5, total: 150);
+      return id;
+    }))!;
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a, focusElementId: hive.id, openFill: true)));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Підгодівля зі складу'), findsOneWidget);
+    await tester.tap(find.text('Не списувати'));
+    await settle(tester);
+    await tester.tap(find.text('Цукор (є 5 кг)').last);
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Скільки'), '2');
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    final item = (await tester.runAsync(() => repo.getStockItem(sugar)))!;
+    expect(item.quantity, 3);
+    final moves = (await tester.runAsync(() => repo.stockMoves(sugar)))!;
+    expect(moves.last['reason'], 'Підгодівля');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('головний: «Час докупити» — номенклатура на мінімальному залишку', (tester) async {
+    await tester.runAsync(() async {
+      final id = await repo.addStockItem('Рамки', 'шт');
+      await repo.receiveStock(id, 3, total: 90);
+      await repo.updateStockItem(id, minQuantity: (5,));
+    });
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Час докупити: Рамки'), findsOneWidget);
+    await tester.tap(find.text('Час докупити: Рамки'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(StockScreen), findsOneWidget);
+    expect(find.text('Час докупити'), findsOneWidget); // позначка на плитці
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';

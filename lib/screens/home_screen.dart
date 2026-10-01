@@ -98,6 +98,7 @@ class HomeScreen extends StatelessWidget {
                   Text('Моя пасіка', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
                   const SizedBox(height: 28),
                   _DueToday(repo: repo),
+                  _BuySoon(repo: repo),
                   const SizedBox(height: 12),
                   button('Почати', AppColors.accent, () => openStart(Navigator.of(context), repo)),
                   button('Сканувати QR-код', AppColors.darkBtn,
@@ -211,6 +212,67 @@ class _DueTodayState extends State<_DueToday> {
             const SizedBox(width: 10),
             Text('Почати →', style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// «Час докупити: N» — номенклатура, що дійшла до мінімального залишку.
+/// Тап — склад (вкладка «Прихід»).
+class _BuySoon extends StatefulWidget {
+  final Repository repo;
+  const _BuySoon({required this.repo});
+  @override
+  State<_BuySoon> createState() => _BuySoonState();
+}
+
+class _BuySoonState extends State<_BuySoon> {
+  List<String> _names = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.repo.stockChanges.addListener(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    widget.repo.stockChanges.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final low = [for (final it in await widget.repo.listStockItems()) if (it.low) it.name];
+    if (mounted) setState(() => _names = low);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_names.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: AppColors.create.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: Text(
+                'Час докупити: ${_names.join(', ')}',
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
         ),
       ),
     );
