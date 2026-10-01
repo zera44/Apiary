@@ -61,9 +61,11 @@ void main() {
     await tester.pumpWidget(app);
   }
 
-  /// З карти пасіки — назад (до списку пасік).
-  Future<void> backFromMap(WidgetTester tester) async {
-    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+  /// З карти пасіки — до списку пасік через меню ☰ → «Мої пасіки».
+  Future<void> listViaMenu(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Мої пасіки'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
   }
@@ -76,12 +78,8 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // «Почати» відкриває останню/єдину пасіку поверх списку — назад до списку
-    if (find.byType(MapScreen).evaluate().isNotEmpty) {
-      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
-      await settle(tester);
-      await tester.pump(const Duration(seconds: 1));
-    }
+    // «Почати» відкриває останню/єдину пасіку — список через меню ☰
+    if (find.byType(MapScreen).evaluate().isNotEmpty) await listViaMenu(tester);
   }
 
   setUp(() async {
@@ -237,9 +235,18 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // єдина пасіка — одразу її карта; «назад» — до списку
+    // єдина пасіка — одразу її карта; «назад» — на головний екран (не до списку)
     expect(find.byType(MapScreen), findsOneWidget);
-    await backFromMap(tester);
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(ApiaryListScreen), findsNothing);
+    // список пасік — через меню ☰ на карті
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await listViaMenu(tester);
     expect(find.text('Мої пасіки'), findsOneWidget);
     // «назад» із моїх пасік — на головний екран
     await tester.tap(find
@@ -343,7 +350,7 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(MapScreen), findsOneWidget);
-    await backFromMap(tester);
+    await listViaMenu(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
     // сканування — на головному екрані, у списку пасік його немає
     expect(find.descendant(of: find.byType(ApiaryListScreen), matching: find.text('Сканувати QR-код')),
@@ -693,9 +700,10 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // «Почати» — остання відкрита пасіка; «назад» — список
+    // «Почати» — остання відкрита пасіка; список — через меню ☰
     expect(find.byType(MapScreen), findsOneWidget);
-    await backFromMap(tester);
+    expect(find.text('Пасіка 1'), findsWidgets); // шапка карти
+    await listViaMenu(tester);
     expect(find.text('Пасіка 1'), findsOneWidget); // плитка у списку
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect(tester.takeException(), isNull);

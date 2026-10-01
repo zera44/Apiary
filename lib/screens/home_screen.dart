@@ -9,7 +9,7 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
-import 'map_screen.dart' show NextHive;
+import 'map_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
 import 'tutorial_screen.dart';
@@ -18,12 +18,14 @@ import 'tutorial_screen.dart';
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
 /// «Склад», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
 /// «Вийти» (назад на екран входу).
-/// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта поверх
-/// списку пасік; інакше — список.
+/// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
+/// на головний екран; список пасік — через меню ☰); інакше — список.
 Future<void> openStart(NavigatorState nav, Repository repo) async {
   final a = await repo.startApiary();
   if (!nav.mounted) return;
-  await nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo, openFirst: a)));
+  await nav.push(MaterialPageRoute(
+    builder: (_) => a == null ? ApiaryListScreen(repo: repo) : MapScreen(repo: repo, apiary: a),
+  ));
 }
 
 class HomeScreen extends StatelessWidget {

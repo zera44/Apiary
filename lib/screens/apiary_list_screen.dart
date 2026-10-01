@@ -16,11 +16,7 @@ class ApiaryListScreen extends StatefulWidget {
   /// Урок «Базові поняття» (режим навчання): [repo] — пісочниця; поки
   /// пасік немає, пасічник підказує створити карту; «назад» — до уроків.
   final bool tutorial;
-
-  /// Одразу відкрити карту цієї пасіки поверх списку («Почати» на головному
-  /// екрані): «назад» з карти — до списку.
-  final Apiary? openFirst;
-  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false, this.openFirst});
+  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false});
 
   /// Перша підказка уроку «Базові поняття».
   static final tutorialHello = <InlineSpan>[
@@ -42,12 +38,6 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     super.initState();
     widget.repo.mapChanges.addListener(_reload);
     _reload();
-    final first = widget.openFirst;
-    if (first != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _open(first);
-      });
-    }
   }
 
   @override
