@@ -11,6 +11,7 @@ import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
+import '../screens/tutorial_screen.dart';
 import '../services/autostart.dart';
 import 'common.dart';
 import 'icons.dart';
@@ -18,7 +19,7 @@ import 'theme.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
-/// Налаштування ▾ (характеристики, шаблони) / Зворотний зв'язок. «Що нового» —
+/// Налаштування ▾ (характеристики, шаблони) / Навчання / Зворотний зв'язок. «Що нового» —
 /// лише на головному екрані, туди — кнопкою «назад». Є лише на карті.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
@@ -87,6 +88,9 @@ class AppDrawer extends StatelessWidget {
                 iconData: Icons.list_alt),
             _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           ]),
+          _item(context, '', 'Навчання',
+              () => _open(nav, const TutorialScreen()),
+              iconData: Icons.school_outlined),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
