@@ -84,7 +84,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
     final nav = _nav.currentState;
     if (nav == null) return; // ще не побудовано — спрацює після першого кадру
     _reminders.value = null;
-    if (widget.auth.user == null) return;
+    if (widget.auth.configured && widget.auth.user == null) return;
     final el = await widget.repo.getElement(id);
     final apiaryId = el?.apiaryId;
     if (el == null || el.deleted || apiaryId == null) return;
