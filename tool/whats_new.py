@@ -10,7 +10,8 @@
     Виправлено: ...         — виправлена помилка (завжди у «Ще»)
 
 Коміти без таких рядків (тести, CI, рефакторинг) у «Що нового» не потрапляють.
-Версія запису — `version:` з pubspec.yaml того самого коміту.
+Версія запису — перший реліз (тег vX.Y.Z), що вже містить цей коміт; ще не
+випущене — поточна версія з pubspec.yaml (піде в наступний реліз).
 
   python3 tool/whats_new.py            → assets/whats_new.json (для застосунку)
   python3 tool/whats_new.py --md       → текст для опису релізу (поточна версія)
@@ -31,19 +32,19 @@ def git(*args: str) -> str:
                           text=True, encoding='utf-8').stdout
 
 
-def version_at(sha: str, cache: dict) -> str:
-    if sha not in cache:
-        try:
-            m = VERSION.search(git('show', f'{sha}:pubspec.yaml'))
-            cache[sha] = m.group(1) if m else '0.0.0'
-        except subprocess.CalledProcessError:
-            cache[sha] = '0.0.0'
-    return cache[sha]
+def _vkey(v: str) -> tuple:
+    return tuple(int(x) if x.isdigit() else 0 for x in v.split('.'))
+
+
+def released_in(sha: str, current: str) -> str:
+    tags = [t[1:] for t in git('tag', '--contains', sha, '--list', 'v*').split()]
+    return min(tags, key=_vkey) if tags else current
 
 
 def collect() -> list[dict]:
     log = git('log', '--reverse', '--format=%H%x1f%B%x1e', 'HEAD')
     entries: list[dict] = []
+    current = VERSION.search((ROOT / 'pubspec.yaml').read_text(encoding='utf-8')).group(1)
     vcache: dict = {}
     for n, rec in enumerate(r for r in log.split('\x1e') if r.strip()):
         sha, _, body = rec.strip().partition('\x1f')
@@ -55,7 +56,7 @@ def collect() -> list[dict]:
             entries.append({
                 'n': n + 1,
                 'i': i,
-                'v': version_at(sha, vcache),
+                'v': vcache.setdefault(sha, released_in(sha, current)),
                 't': 'feat' if kind == 'Нове' else 'fix',
                 'w': max(1, min(5, int(weight or 1))),
                 'text': text,
