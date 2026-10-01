@@ -243,10 +243,11 @@ void main() {
     expect(auth.user, isNotNull);
     // головний екран
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('Сканувати QR-код'), findsOneWidget);
+    expect(find.byTooltip('Сканувати QR-код'), findsOneWidget); // значок угорі праворуч
     expect(find.text('Склад'), findsOneWidget);
-    expect(find.text("Зворотний зв'язок"), findsOneWidget);
-    expect(find.text('Пройти навчання'), findsOneWidget);
+    expect(find.text('Відгук'), findsOneWidget);
+    expect(find.text('Навчання'), findsOneWidget);
+    expect(find.text('Що нового'), findsOneWidget);
     expect(find.text('pasichnyk@example.com'), findsOneWidget);
     await tester.tap(find.text('Почати'));
     await settle(tester);
@@ -635,13 +636,14 @@ void main() {
     expect(GoogleAuthService.userFromIdToken('bad'), isNull);
   });
 
-  testWidgets('головний екран: «Пройти навчання» відкриває режим навчання', (tester) async {
+  testWidgets('головний екран: «Навчання» відкриває режим навчання', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
-    await tester.tap(find.text('Пройти навчання'));
+    await tester.tap(find.text('Навчання'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Навчання'), findsOneWidget);
+    expect(find.descendant(of: find.byType(TutorialScreen), matching: find.text('Навчання')),
+        findsOneWidget);
     expect(find.text('Базові поняття'), findsOneWidget);
     await tester.tap(find
         .descendant(of: find.byType(TutorialScreen), matching: find.byType(CircleIconButton))

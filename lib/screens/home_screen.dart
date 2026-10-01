@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
@@ -6,6 +8,7 @@ import '../services/auth.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
+import '../ui/icons.dart';
 import '../ui/first_hints.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
@@ -71,64 +74,72 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget button(String text, Color bg, VoidCallback onPressed, {Color fg = Colors.white}) =>
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: PillButton(
-            text: text,
-            bg: bg,
-            fg: fg,
-            width: 240,
-            height: 52,
-            radius: 18,
-            fontSize: 16,
-            onPressed: onPressed,
-          ),
-        );
-
     final user = auth.user;
+    final nav = Navigator.of(context);
+    void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
     return Scaffold(
-        body: SafeArea(
-          child: Stack(children: [
-            Center(
-              child: SingleChildScrollView(
+      body: SafeArea(
+        child: Stack(children: [
+          const Positioned.fill(child: _HoneycombBackdrop()),
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 56, 16, 16),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const AppLogo(size: 128),
-                  const SizedBox(height: 20),
+                  const AppLogo(size: 104),
+                  const SizedBox(height: 10),
                   Text('Vulyk',
                       style: TextStyle(
-                          color: AppColors.text, fontSize: 30, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 6),
-                  Text('Моя пасіка', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
-                  const SizedBox(height: 28),
-                  _DueToday(repo: repo),
-                  _BuySoon(repo: repo),
-                  const SizedBox(height: 12),
-                  button('Почати', AppColors.accent, () => openStart(Navigator.of(context), repo)),
-                  button('Сканувати QR-код', AppColors.darkBtn,
-                      () => AppDrawer.openHiveByQr(Navigator.of(context), repo),
-                      fg: AppColors.text),
-                  button('Склад', AppColors.darkBtn, () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => StockScreen(repo: repo), // вкладка «Прихід»
-                    ));
-                  }, fg: AppColors.text),
-                  button('Пройти навчання', AppColors.darkBtn, () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const TutorialScreen(),
-                    ));
-                  }, fg: AppColors.text),
-                  button("Зворотний зв'язок", AppColors.darkBtn, () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const FeedbackScreen(),
-                    ));
-                  }, fg: AppColors.text),
-                  TextButton(
-                    onPressed: () => WhatsNewScreen.open(Navigator.of(context)),
-                    child: Text('Що нового', style: TextStyle(color: AppColors.textMuted)),
+                          color: AppColors.text, fontSize: 28, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 16),
+                  // панель у стилі вулика: медова рамка, пасічник-порадник,
+                  // «Почати» і піктограми решти розділів
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.popupBg,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: AppColors.hive, width: 2.5),
+                    ),
+                    child: Column(children: [
+                      _Banner(text: _greeting()),
+                      const SizedBox(height: 10),
+                      _Advisor(repo: repo),
+                      const SizedBox(height: 14),
+                      PillButton(
+                        text: 'Почати',
+                        bg: AppColors.accent,
+                        width: double.infinity,
+                        height: 56,
+                        radius: 18,
+                        fontSize: 18,
+                        onPressed: () => openStart(nav, repo),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(children: [
+                        _Tile(
+                            icon: AppIcon('box', size: 30, color: AppColors.text),
+                            label: 'Склад',
+                            onTap: () => push(StockScreen(repo: repo))), // вкладка «Прихід»
+                        _Tile(
+                            icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
+                            label: 'Навчання',
+                            onTap: () => push(const TutorialScreen())),
+                        _Tile(
+                            icon: AppIcon('pencil', size: 28, color: AppColors.text),
+                            label: 'Відгук',
+                            onTap: () => push(const FeedbackScreen())),
+                        _Tile(
+                            icon: Icon(Icons.new_releases_outlined,
+                                size: 30, color: AppColors.text),
+                            label: 'Що нового',
+                            onTap: () => WhatsNewScreen.open(nav)),
+                      ]),
+                    ]),
                   ),
                   if (user != null) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Text(user.email,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
                     TextButton(
@@ -137,7 +148,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ] else if (auth.configured) ...[
                     // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Text('Дані лише на цьому пристрої',
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
                     TextButton(
@@ -149,11 +160,257 @@ class HomeScreen extends StatelessWidget {
                 ]),
               ),
             ),
-            const Positioned.fill(child: ScreenFrame()),
-            _StartupPrompts(repo: repo),
-          ]),
-        ),
+          ),
+          // сканер QR — значком у правому верхньому куті
+          Positioned(
+            top: 12,
+            right: 12,
+            child: CircleIconButton(
+              icon: 'qr',
+              bg: AppColors.darkBtn,
+              iconColor: AppColors.text,
+              size: 48,
+              tooltip: 'Сканувати QR-код',
+              onPressed: () => AppDrawer.openHiveByQr(nav, repo),
+            ),
+          ),
+          const Positioned.fill(child: ScreenFrame()),
+          _StartupPrompts(repo: repo),
+        ]),
+      ),
     );
+  }
+
+  static String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 5) return 'Доброї ночі, пасічнику!';
+    if (h < 12) return 'Доброго ранку, пасічнику!';
+    if (h < 18) return 'Доброго дня, пасічнику!';
+    return 'Доброго вечора, пасічнику!';
+  }
+}
+
+/// Стрічка-заголовок панелі (як табличка на вулику).
+class _Banner extends StatelessWidget {
+  final String text;
+  const _Banner({required this.text});
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.hive,
+          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+        ),
+        child: Text(text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: Color(0xFF3A2410), fontSize: 15, fontWeight: FontWeight.w800)),
+      );
+}
+
+/// Піктограма розділу: значок і підпис, уся плитка натискається.
+class _Tile extends StatelessWidget {
+  final Widget icon;
+  final String label;
+  final VoidCallback onTap;
+  const _Tile({required this.icon, required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Material(
+            color: AppColors.darkBtn,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: onTap,
+              child: Container(
+                height: 78,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
+                ),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
+                  const SizedBox(height: 6),
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: AppColors.text, fontSize: 12)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Ледь помітні медові соти на тлі.
+class _HoneycombBackdrop extends StatelessWidget {
+  const _HoneycombBackdrop();
+  @override
+  Widget build(BuildContext context) =>
+      IgnorePointer(child: CustomPaint(painter: _HoneycombPainter(AppColors.hive)));
+}
+
+class _HoneycombPainter extends CustomPainter {
+  final Color color;
+  _HoneycombPainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    const r = 26.0;
+    final w = r * 1.7320508; // √3·r — ширина шестикутника
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    var row = 0;
+    for (var y = 0.0; y < size.height + r; y += r * 1.5, row++) {
+      for (var x = (row.isOdd ? w / 2 : 0.0); x < size.width + w; x += w) {
+        final path = Path();
+        for (var k = 0; k < 6; k++) {
+          final a = (60 * k - 30) * 3.1415926535 / 180;
+          final p = Offset(x + r * math.cos(a), y + r * math.sin(a));
+          k == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+        }
+        canvas.drawPath(path..close(), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HoneycombPainter old) => old.color != color;
+}
+
+/// Пасічник-порадник: спершу важливе (прострочені огляди, що докупити) —
+/// натискання веде туди; далі — поради. Натискання на пораду — наступна.
+class _Advisor extends StatefulWidget {
+  final Repository repo;
+  const _Advisor({required this.repo});
+  @override
+  State<_Advisor> createState() => _AdvisorState();
+}
+
+class _AdvisorState extends State<_Advisor> {
+  static const _tips = [
+    'Утримайте вулик на карті — одразу відкриється огляд.',
+    '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
+    'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
+    'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
+    'Звіт по пасіці в Excel — у меню ☰ → «Історія».',
+    'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
+  ];
+
+  List<({VisitTarget t, DateTime at})> _due = const [];
+  List<String> _low = const [];
+  int _i = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.repo.remindersChanged.addListener(_load);
+    widget.repo.mapChanges.addListener(_load);
+    widget.repo.stockChanges.addListener(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    widget.repo.remindersChanged.removeListener(_load);
+    widget.repo.mapChanges.removeListener(_load);
+    widget.repo.stockChanges.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final now = DateTime.now();
+    final due = [
+      for (final t in await widget.repo.visitTargets())
+        if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
+    ]..sort((a, b) => a.at.compareTo(b.at));
+    final low = [for (final it in await widget.repo.listStockItems()) if (it.low) it.name];
+    if (mounted) {
+      setState(() {
+        _due = due;
+        _low = low;
+      });
+    }
+  }
+
+  Future<void> _openFirstDue() async {
+    final nav = Navigator.of(context);
+    final el = await widget.repo.getElement(_due.first.t.elementId);
+    final aid = el?.apiaryId;
+    if (el == null || aid == null) return;
+    final a = await widget.repo.getApiary(aid);
+    if (a == null || !nav.mounted) return;
+    AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
+  }
+
+  /// Повідомлення по черзі: важливе — з дією, далі поради.
+  List<({String text, VoidCallback? action})> get _messages => [
+        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _openFirstDue),
+        if (_low.isNotEmpty)
+          (
+            text: 'Час докупити: ${_low.join(', ')}',
+            action: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
+          ),
+        for (final t in _tips) (text: t, action: null),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final list = _messages;
+    final m = list[_i % list.length];
+    final action = m.action;
+    return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      Image.asset('assets/guide/beekeeper.webp', height: 112, filterQuality: FilterQuality.medium),
+      const SizedBox(width: 6),
+      Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: action ?? () => setState(() => _i++),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 18),
+            padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(m.text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: action != null ? 15 : 13.5,
+                      height: 1.3,
+                      fontWeight: action != null ? FontWeight.w700 : FontWeight.w400)),
+              const SizedBox(height: 4),
+              Row(children: [
+                Expanded(
+                  child: Text(action != null ? 'Натисніть — перейти' : 'Натисніть — наступна порада',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                ),
+                // наступне повідомлення, навіть коли це — з дією
+                if (action != null)
+                  InkWell(
+                    onTap: () => setState(() => _i++),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+                    ),
+                  ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    ]);
   }
 }
 
@@ -180,135 +437,4 @@ class _StartupPromptsState extends State<_StartupPrompts> {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
-}
-
-/// «Сьогодні оглянути: N» — вулики, у яких настав час огляду (за
-/// періодичністю обходу). Тап — найдавніший із них одразу з формою; далі
-/// «Зберегти й далі» веде до наступного простроченого.
-class _DueToday extends StatefulWidget {
-  final Repository repo;
-  const _DueToday({required this.repo});
-  @override
-  State<_DueToday> createState() => _DueTodayState();
-}
-
-class _DueTodayState extends State<_DueToday> {
-  List<({VisitTarget t, DateTime at})> _due = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    widget.repo.remindersChanged.addListener(_load);
-    widget.repo.mapChanges.addListener(_load);
-    _load();
-  }
-
-  @override
-  void dispose() {
-    widget.repo.remindersChanged.removeListener(_load);
-    widget.repo.mapChanges.removeListener(_load);
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final now = DateTime.now();
-    final due = [
-      for (final t in await widget.repo.visitTargets())
-        if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
-    ]..sort((a, b) => a.at.compareTo(b.at));
-    if (mounted) setState(() => _due = due);
-  }
-
-  Future<void> _openFirst() async {
-    final nav = Navigator.of(context);
-    final el = await widget.repo.getElement(_due.first.t.elementId);
-    final aid = el?.apiaryId;
-    if (el == null || aid == null) return;
-    final a = await widget.repo.getApiary(aid);
-    if (a == null || !nav.mounted) return;
-    AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_due.isEmpty) return const SizedBox.shrink();
-    return Material(
-      color: AppColors.danger.withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: _openFirst,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('Сьогодні оглянути: ${_due.length}',
-                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-            const SizedBox(width: 10),
-            Text('Почати →', style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-/// «Час докупити: N» — номенклатура, що дійшла до мінімального залишку.
-/// Тап — склад (вкладка «Прихід»).
-class _BuySoon extends StatefulWidget {
-  final Repository repo;
-  const _BuySoon({required this.repo});
-  @override
-  State<_BuySoon> createState() => _BuySoonState();
-}
-
-class _BuySoonState extends State<_BuySoon> {
-  List<String> _names = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    widget.repo.stockChanges.addListener(_load);
-    _load();
-  }
-
-  @override
-  void dispose() {
-    widget.repo.stockChanges.removeListener(_load);
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final low = [for (final it in await widget.repo.listStockItems()) if (it.low) it.name];
-    if (mounted) setState(() => _names = low);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_names.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Material(
-        color: AppColors.create.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 300),
-              child: Text(
-                'Час докупити: ${_names.join(', ')}',
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
