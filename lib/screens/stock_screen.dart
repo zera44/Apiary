@@ -72,6 +72,8 @@ class _StockScreenState extends State<StockScreen> {
               photo: res.photo != null ? (res.photo,) : null,
               minQuantity: res.min != null ? (res.min,) : null);
         }
+        final r = res.receive;
+        if (r != null) await repo.receiveStock(id, r.amount, total: r.total);
         await _reload();
       });
 
@@ -320,7 +322,10 @@ class _ItemResult {
   final String? photo;
   final double? min;
   final bool delete;
-  const _ItemResult(this.name, this.unit, this.photo, {this.min, this.delete = false});
+
+  /// Нова номенклатура: одразу оприбуткувати (кількість і загальна вартість).
+  final ({double amount, double total})? receive;
+  const _ItemResult(this.name, this.unit, this.photo, {this.min, this.delete = false, this.receive});
 }
 
 /// Створення/зміна номенклатури: назва, одиниця виміру, фото.
@@ -339,6 +344,8 @@ class _ItemDialogState extends State<_ItemDialog> {
       ? null
       : (kStockUnits.contains(widget.item!.unit) ? widget.item!.unit : '');
   late String? _photo = widget.item?.photo;
+  final _recvAmount = TextEditingController();
+  final _recvTotal = TextEditingController();
   late final _min = TextEditingController(
       text: widget.item?.minQuantity == null ? '' : formatAmount(widget.item!.minQuantity!));
   String? _error;
@@ -352,6 +359,8 @@ class _ItemDialogState extends State<_ItemDialog> {
     _name.dispose();
     _custom.dispose();
     _min.dispose();
+    _recvAmount.dispose();
+    _recvTotal.dispose();
     super.dispose();
   }
 
@@ -396,7 +405,22 @@ class _ItemDialogState extends State<_ItemDialog> {
       setState(() => _error = 'Мінімальний залишок — число, не менше 0');
       return;
     }
-    Navigator.pop(context, _ItemResult(name, _unitValue, _photo, min: min));
+    // нова номенклатура: одразу прихід (якщо вказали кількість)
+    ({double amount, double total})? receive;
+    if (widget.item == null && _recvAmount.text.trim().isNotEmpty) {
+      final a = parseAmount(_recvAmount.text);
+      final t = parseAmount(_recvTotal.text);
+      if (a == null || a <= 0) {
+        setState(() => _error = 'Прихід: кількість — число більше 0');
+        return;
+      }
+      if (t == null) {
+        setState(() => _error = 'Прихід: вкажіть загальну вартість');
+        return;
+      }
+      receive = (amount: a, total: t);
+    }
+    Navigator.pop(context, _ItemResult(name, _unitValue, _photo, min: min, receive: receive));
   }
 
   Widget _chip(String label, String value) => ChoiceChip(
@@ -460,6 +484,34 @@ class _ItemDialogState extends State<_ItemDialog> {
               ),
               onChanged: (_) => setState(() => _error = null),
             ),
+            if (!edit) ...[
+              const SizedBox(height: 14),
+              Text('Одразу прихід (необов\'язково)',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _recvAmount,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: AppColors.text),
+                    decoration: InputDecoration(
+                        labelText: 'Кількість',
+                        suffixText: _unitValue.isEmpty ? null : _unitValue),
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _recvTotal,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: AppColors.text),
+                    decoration: const InputDecoration(labelText: 'Вартість', suffixText: 'грн'),
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                ),
+              ]),
+            ],
             const SizedBox(height: 14),
             Row(children: [
               ClipRRect(
