@@ -209,7 +209,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return hasHive ? null : (MapScreen.tutorialNoHives, null);
       case _Lesson.congrats:
         return (
-          const [TextSpan(text: 'З легким стартом, друже! Це тобі не рамки тягати.')],
+          const [TextSpan(text: 'З легким стартом, друже!')],
           () => setState(() => _lesson = _Lesson.openHive)
         );
       case _Lesson.openHive:
