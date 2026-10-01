@@ -77,7 +77,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             padding: const EdgeInsets.all(24),
                             child: Text(
                               'Ще немає жодного запису для цього параметра'
-                              '${scoped ? " у цього об'єкта" : ''}.\n'"                              'Записи з\'являються після кнопки «Оглянути» на карті.',
+                              '${scoped ? " у цього об'єкта" : ''}.\n'
+                              'Записи з\'являються після кнопки «Оглянути» на карті.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),
