@@ -324,3 +324,20 @@ jobs:
           - apiary-x86_64.apk — для Android на процесорі x86 (рідко)
           - apiary-windows.zip — розпакувати й запустити apiary.exe
           - SHA256SUMS.txt — контрольні суми файлів"
+      # окремий постійний реліз для кожної версії з pubspec (v0.3.5 тощо):
+      # створюється один раз, коли версія вперше потрапила в main
+      - name: Реліз версії
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          V=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*([^+[:space:]]+).*/\1/')
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "v$V уже є — пропускаю"
+          else
+            gh release create "v$V" apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
+              --target "${{ github.sha }}" \
+              --title "Vulyk $V" \
+              --notes-file notes.md
+          fi
