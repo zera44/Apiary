@@ -283,7 +283,7 @@ class _HoneycombPainter extends CustomPainter {
   bool shouldRepaint(_HoneycombPainter old) => old.color != color;
 }
 
-/// Пасічник-порадник: спершу важливе (прострочені огляди, що докупити) —
+/// Пасічник і ведмедик-порадники: спершу важливе (прострочені огляди, що докупити) —
 /// натискання веде туди; далі — поради. Натискання на пораду — наступна.
 class _Advisor extends StatefulWidget {
   final Repository repo;
@@ -293,13 +293,36 @@ class _Advisor extends StatefulWidget {
 }
 
 class _AdvisorState extends State<_Advisor> {
-  static const _tips = [
-    'Утримайте вулик на карті — одразу відкриється огляд.',
-    '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
-    'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
-    'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
-    'Звіт по пасіці в Excel — у меню ☰ → «Історія».',
-    'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
+  static const _beekeeper = 'assets/guide/beekeeper.webp';
+  static const _bear = 'assets/guide/bear.webp';
+  static const _bearLaptop = 'assets/guide/bear_bust_laptop.webp';
+  static const _bearAbacus = 'assets/guide/bear_bust_abacus.webp';
+  static const _bearStung = 'assets/guide/bear_bust_honey_frame.webp';
+
+  /// Поради по черзі: то пасічник, то ведмедик (з ноутбуком — про застосунок).
+  static const _tips = <({String text, bool bear, String bearImage})>[
+    (text: 'Утримайте вулик на карті — одразу відкриється огляд.', bear: false, bearImage: _bear),
+    (
+      text: '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
+      bear: true,
+      bearImage: _bearLaptop
+    ),
+    (
+      text: 'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
+      bear: false,
+      bearImage: _bear
+    ),
+    (
+      text: 'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
+      bear: true,
+      bearImage: _bearAbacus
+    ),
+    (text: 'Звіт по пасіці в Excel — у меню ☰ → «Історія».', bear: true, bearImage: _bearLaptop),
+    (
+      text: 'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
+      bear: false,
+      bearImage: _bear
+    ),
   ];
 
   List<({VisitTarget t, DateTime at})> _due = const [];
@@ -348,16 +371,26 @@ class _AdvisorState extends State<_Advisor> {
     AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
   }
 
-  /// Повідомлення по черзі: важливе — з дією, далі поради.
-  List<({String text, VoidCallback? action})> get _messages => [
-        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _openFirstDue),
+  /// Повідомлення по черзі: важливе — з дією, далі поради. [bear] — хто
+  /// говорить (ведмедик праворуч чи пасічник ліворуч), [bearImage] — у якій
+  /// позі ведмедик (вжалений — давно не оглядали, з рахівницею — склад…).
+  List<({String text, VoidCallback? action, bool bear, String bearImage})> get _messages => [
+        if (_due.isNotEmpty)
+          (
+            text: 'Сьогодні оглянути: ${_due.length}',
+            action: _openFirstDue,
+            bear: true,
+            bearImage: _bearStung
+          ),
         if (_low.isNotEmpty)
           (
             text: 'Час докупити: ${_low.join(', ')}',
             action: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
+            bear: true,
+            bearImage: _bearAbacus
           ),
-        for (final t in _tips) (text: t, action: null),
+        for (final t in _tips) (text: t.text, action: null, bear: t.bear, bearImage: t.bearImage),
       ];
 
   @override
@@ -365,35 +398,48 @@ class _AdvisorState extends State<_Advisor> {
     final list = _messages;
     final m = list[_i % list.length];
     final action = m.action;
+    // хто не говорить — трохи пригашений
+    Widget character(String image, bool speaking) => AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: speaking ? 1 : 0.45,
+          child: Image.asset(image, height: 96, width: 66, fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium),
+        );
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      Image.asset('assets/guide/beekeeper.webp', height: 112, filterQuality: FilterQuality.medium),
-      const SizedBox(width: 6),
+      character(_beekeeper, !m.bear),
+      const SizedBox(width: 4),
       Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: action ?? () => setState(() => _i++),
           child: Container(
-            margin: const EdgeInsets.only(bottom: 18),
-            padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
+              // «хвостик» — гострий кут з боку того, хто говорить
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: Radius.circular(m.bear ? 16 : 3),
+                bottomRight: Radius.circular(m.bear ? 3 : 16),
+              ),
               border: Border.all(
                   color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(m.text,
-                  maxLines: 3,
+                  maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: AppColors.text,
-                      fontSize: action != null ? 15 : 13.5,
+                      fontSize: action != null ? 15 : 13,
                       height: 1.3,
                       fontWeight: action != null ? FontWeight.w700 : FontWeight.w400)),
               const SizedBox(height: 4),
               Row(children: [
                 Expanded(
-                  child: Text(action != null ? 'Натисніть — перейти' : 'Натисніть — наступна порада',
+                  child: Text(action != null ? 'Натисніть — перейти' : 'Натисніть — далі',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                 ),
                 // наступне повідомлення, навіть коли це — з дією
@@ -410,12 +456,15 @@ class _AdvisorState extends State<_Advisor> {
           ),
         ),
       ),
+      const SizedBox(width: 4),
+      AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: KeyedSubtree(key: ValueKey(m.bearImage), child: character(m.bearImage, m.bear)),
+      ),
     ]);
   }
 }
 
-/// Після запуску: «Що нового» (раз після оновлення), далі — підказка
-/// першого запуску для головного екрана.
 class _StartupPrompts extends StatefulWidget {
   final Repository repo;
   const _StartupPrompts({required this.repo});

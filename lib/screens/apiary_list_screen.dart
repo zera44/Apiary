@@ -187,9 +187,15 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                         )
                   : list.isEmpty
                       ? Center(
-                          child: Text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColors.textMuted)),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            // ведмедик розгубився: пасіки ще немає
+                            Image.asset('assets/guide/bear_surprised_mess.webp',
+                                width: 200, filterQuality: FilterQuality.medium),
+                            const SizedBox(height: 12),
+                            Text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.textMuted)),
+                          ]),
                         )
                       : GridView.builder(
                           padding: const EdgeInsets.all(12),
