@@ -528,3 +528,30 @@ Future<(String?,)?> pickObjectColor(BuildContext context, {bool withReset = fals
 }
 
 Color _hex(String hex) => Color(int.parse('FF${hex.substring(1)}', radix: 16));
+
+/// Видалення без «Точно видалити?»: [hide] одразу прибирає з екрана, внизу —
+/// «[message]» з кнопкою «Відмінити». Відмінили — [restore]; повідомлення
+/// зникло (час минув, нове повідомлення, перехід) — [commit], справжнє
+/// видалення.
+Future<void> deleteWithUndo(
+  BuildContext context, {
+  required String message,
+  required VoidCallback hide,
+  required VoidCallback restore,
+  required Future<void> Function() commit,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  hide();
+  messenger.hideCurrentSnackBar();
+  final ctrl = messenger.showSnackBar(SnackBar(
+    content: Text(message),
+    duration: const Duration(seconds: 5),
+    action: SnackBarAction(label: 'Відмінити', onPressed: () {}),
+  ));
+  final reason = await ctrl.closed;
+  if (reason == SnackBarClosedReason.action) {
+    restore();
+  } else {
+    await commit();
+  }
+}

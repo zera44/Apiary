@@ -793,24 +793,32 @@ void main() {
     expect(list.length, 1); // лише шаблон із setUp
   });
 
-  testWidgets('список пасік: видалення пасіки з підтвердженням', (tester) async {
+  testWidgets('список пасік: видалення без підтвердження, з «Відмінити»', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
 
+    // видалили — зникла одразу; «Відмінити» — повернулась
     await tester.tap(find.byTooltip('Видалити'));
-    await settle(tester);
-    await tester.tap(find.text('Скасувати')); // скасували — пасіка на місці
-    await settle(tester);
-    expect(find.text('Тестова пасіка'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Видалити'));
-    await settle(tester);
-    await tester.tap(find.text('Видалити'));
-    await settle(tester);
     await settle(tester);
     expect(find.text('Тестова пасіка'), findsNothing);
+    expect(find.text('Пасіку «Тестова пасіка» видалено'), findsOneWidget);
+    await tester.tap(find.text('Відмінити'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
+
+    // видалили й не відмінили — повідомлення зникло, пасіку видалено з бази
+    await tester.tap(find.byTooltip('Видалити'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 6));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect((await tester.runAsync(() => repo.listApiaries()))!, isEmpty);
     expect(find.textContaining('Ще немає жодної пасіки'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

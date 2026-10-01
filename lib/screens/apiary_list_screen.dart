@@ -143,21 +143,18 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     await _reload();
   }
 
-  bool _deleting = false;
+  /// Видалення без підтвердження: пасіка зникає одразу, внизу «Відмінити».
+  Future<void> _delete(Apiary a) => deleteWithUndo(
+        context,
+        message: 'Пасіку «${a.name}» видалено',
+        hide: () => setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id)),
+        restore: () => _reload(),
+        commit: () async {
+          await widget.repo.deleteApiary(a.id);
+          if (mounted) await _reload();
+        },
+      );
 
-  Future<void> _delete(Apiary a) async {
-    if (_deleting) return;
-    final ok = await showConfirm(context,
-        text: 'Видалити пасіку «${a.name}» разом з усіма її об\'єктами?');
-    if (!ok || _deleting) return;
-    _deleting = true;
-    try {
-      await widget.repo.deleteApiary(a.id);
-      await _reload();
-    } finally {
-      _deleting = false;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

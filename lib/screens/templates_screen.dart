@@ -51,12 +51,17 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     await _reload();
   }
 
-  Future<void> _delete(ApiaryTemplate t) async {
-    final ok = await showConfirm(context, text: 'Видалити шаблон «${t.name}»?');
-    if (!ok) return;
-    await widget.repo.deleteTemplate(t.id);
-    await _reload();
-  }
+  /// Видалення без підтвердження: шаблон зникає одразу, внизу «Відмінити».
+  Future<void> _delete(ApiaryTemplate t) => deleteWithUndo(
+        context,
+        message: 'Шаблон «${t.name}» видалено',
+        hide: () => setState(() => templates = [...?templates]..removeWhere((x) => x.id == t.id)),
+        restore: () => _reload(),
+        commit: () async {
+          await widget.repo.deleteTemplate(t.id);
+          if (mounted) await _reload();
+        },
+      );
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -85,10 +86,19 @@ class _StockScreenState extends State<StockScreen> {
         if (res == null) return;
         if (res.delete) {
           if (!mounted) return;
-          final ok = await showConfirm(context, text: 'Видалити номенклатуру «${it.name}»?');
-          if (!ok) return;
-          await repo.deleteStockItem(it.id);
-          await StockPhotos.remove(it.photo);
+          // без підтвердження: позиція зникає одразу, внизу «Відмінити»
+          unawaited(deleteWithUndo(
+            context,
+            message: 'Номенклатуру «${it.name}» видалено',
+            hide: () => setState(() => items = [...?items]..removeWhere((x) => x.id == it.id)),
+            restore: () => _reload(),
+            commit: () async {
+              await repo.deleteStockItem(it.id);
+              await StockPhotos.remove(it.photo);
+              if (mounted) await _reload();
+            },
+          ));
+          return;
         } else {
           final photoChanged = res.photo != it.photo;
           await repo.updateStockItem(it.id,

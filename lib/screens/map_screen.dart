@@ -602,9 +602,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final sel = selection;
     if (sel.isEmpty || _busy) return;
     final isGroup = selectedGroupId != null;
-    final ok = await showConfirm(context,
-        text: isGroup ? "Точно видалити цю групу об'єктів?" : 'Точно видалити цей елемент?');
-    if (!ok || _busy) return;
+    // без «Точно видалити?»: одразу, а внизу «Відмінити» (= «Крок назад»)
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
       // ВИПРАВЛЕНО: знімок прив'язок параметрів ПЕРЕД видаленням, щоб
@@ -625,6 +624,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       selectedGroupId = null;
       _placedGids = const {};
       await _reload();
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        content: Text(isGroup ? "Групу об'єктів видалено" : "Об'єкт видалено"),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Відмінити',
+          onPressed: () {
+            if (mounted) _onUndo();
+          },
+        ),
+      ));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

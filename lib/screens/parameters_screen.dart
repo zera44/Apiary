@@ -397,11 +397,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
       );
       return;
     }
-    final ok = await showConfirm(context, text: 'Видалити параметр «${p.name}»?');
-    if (!ok) return;
-    await repo.deleteParameter(p.id);
-    selected.remove(p.id);
-    await _reload();
+    // без підтвердження: параметр зникає одразу, внизу «Відмінити»
+    await deleteWithUndo(
+      context,
+      message: 'Параметр «${p.name}» видалено',
+      hide: () => setState(() => params = [...?params]..removeWhere((x) => x.id == p.id)),
+      restore: () => _reload(),
+      commit: () async {
+        await repo.deleteParameter(p.id);
+        selected.remove(p.id);
+        if (mounted) await _reload();
+      },
+    );
   }
 
   Future<void> _history(Parameter p) async {
