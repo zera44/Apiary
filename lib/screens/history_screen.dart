@@ -78,7 +78,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             child: Text(
                               'Ще немає жодного запису для цього параметра'
                               '${scoped ? " у цього об'єкта" : ''}.\n'
-                              'Записи з\'являються після кнопки «Заповнити» на карті.',
+                              'Записи з\'являються після кнопки «Оглянути» на карті.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),

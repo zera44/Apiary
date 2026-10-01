@@ -81,7 +81,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
   }
 
   /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей
-  /// вулик на карті одразу з формою «Заповнити» (лише якщо вже увійшли).
+  /// вулик на карті одразу з формою «Оглянути» (лише якщо вже увійшли).
   Future<void> _openFromReminder() async {
     final id = _reminders.value;
     if (id == null) return;

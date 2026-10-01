@@ -598,3 +598,24 @@ Future<void> deleteWithUndo(
     await commit();
   }
 }
+
+/// Урок: медовий ободок навколо кнопки, яку треба натиснути.
+class HoneyRing extends StatelessWidget {
+  final bool on;
+  final Widget child;
+  final double radius;
+  const HoneyRing({super.key, required this.on, required this.child, this.radius = 999});
+  @override
+  Widget build(BuildContext context) {
+    if (!on) return child;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius + 3),
+        border: Border.all(color: AppColors.create, width: 3),
+        boxShadow: [BoxShadow(color: AppColors.create.withValues(alpha: 0.5), blurRadius: 12)],
+      ),
+      child: child,
+    );
+  }
+}

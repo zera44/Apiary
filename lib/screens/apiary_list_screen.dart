@@ -119,7 +119,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
               onSubmitted: (_) => save(),
             ),
             const SizedBox(height: 8),
-            Text('Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Заповнити».',
+            Text('Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Оглянути».',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             TextButton.icon(

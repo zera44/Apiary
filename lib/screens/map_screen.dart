@@ -55,7 +55,7 @@ class MapScreen extends StatefulWidget {
   /// QR-коду вулика).
   final String? focusElementId;
 
-  /// Разом із [focusElementId]: одразу відкрити форму «Заповнити» цього
+  /// Разом із [focusElementId]: одразу відкрити форму «Оглянути» цього
   /// вулика (після сканування QR чи натискання на нагадування — людина
   /// прийшла саме заповнити).
   final bool openFill;
@@ -83,6 +83,9 @@ class MapScreen extends StatefulWidget {
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
+
+/// Кроки уроку «Базові поняття» на карті.
+enum _Lesson { place, congrats, openHive, inspect }
 
 class _Undo {
   final List<MapElement>? restore;
@@ -114,6 +117,93 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   bool selectMode = false;
   ApiaryTemplate? pendingTemplate;
+
+  // ---- урок «Базові поняття» ----
+  _Lesson _lesson = _Lesson.place;
+  bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
+  String _lessonHive = 'Вулик';
+
+  /// Підтвердити розміщення: «Готово» в медовому ободку.
+  bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced;
+
+  /// Огляд: «Оглянути» на панелі в медовому ободку.
+  bool get _lessonInspect => widget.tutorial && _lesson == _Lesson.inspect && panelOpen;
+
+  /// Підказка пасічника для поточного кроку уроку.
+  List<Widget> _lessonOverlay() {
+    if (!widget.tutorial) return const [];
+    Widget bottom(List<InlineSpan> text, {String? image, VoidCallback? onTap}) => Positioned(
+          left: 0,
+          right: 0,
+          bottom: 80,
+          child: onTap == null
+              // дотики проходять крізь — до карти й кнопок
+              ? IgnorePointer(child: GuideBubble(text: text, image: image ?? _beekeeperImg))
+              : GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTap,
+                  child: GuideBubble(
+                    text: text,
+                    image: image ?? _beekeeperImg,
+                    below: Text('Торкнись, щоб продовжити',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ),
+                ),
+        );
+    final hasHive = elements.any((e) => e.isHive);
+    if (selectMode) {
+      if (pendingTemplate == null) return const []; // вибір шаблону — своя підказка
+      if (!_lessonPlaced) {
+        return [bottom(const [TextSpan(text: 'Натисни на карту в будь-якому місці')])];
+      }
+      return [
+        bottom([
+          const TextSpan(text: 'Підтверди вибір — натисни '),
+          GuideBubble.highlight('«Готово»'),
+        ])
+      ];
+    }
+    switch (_lesson) {
+      case _Lesson.place:
+        if (hasHive) return const [];
+        return [bottom(MapScreen.tutorialNoHives, image: 'assets/guide/beekeeper_nohive.webp')];
+      case _Lesson.congrats:
+        return [
+          bottom(const [TextSpan(text: 'З легким стартом, друже! Це тобі не рамки тягати.')],
+              onTap: () => setState(() => _lesson = _Lesson.openHive))
+        ];
+      case _Lesson.openHive:
+        if (panelOpen) return const [];
+        return [
+          bottom([
+            const TextSpan(text: 'Не час відпочивати, натисни на '),
+            GuideBubble.highlight('«$_lessonHive»'),
+          ])
+        ];
+      case _Lesson.inspect:
+        if (!panelOpen) return const [];
+        // панель праворуч — підказка згори, компактна, щоб не закривати «Оглянути»
+        return [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 56,
+            child: IgnorePointer(
+              child: GuideBubble(
+                imageHeight: 110,
+                gap: 30,
+                text: [
+                  const TextSpan(text: 'Це короткі замітки про твій вулик. '),
+                  GuideBubble.task('Проведи огляд по ньому'),
+                ],
+              ),
+            ),
+          ),
+        ];
+    }
+  }
+
+  static const _beekeeperImg = 'assets/guide/beekeeper.webp';
   String? selectedId;
   String? selectedGroupId;
   // щойно поставлений шаблон: поки його не відпустили, усі його вулики й
@@ -404,6 +494,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       selectedId = null;
       selectedGroupId = gids.first; // щойно поставлений шаблон обраний цілим
       _placedGids = {...gids};
+      if (widget.tutorial) _lessonPlaced = true;
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -498,6 +589,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   void _enterEdit() {
     setState(() {
+      _lessonPlaced = false;
       panelOpen = false;
       selectMode = true;
       selectedId = null;
@@ -507,6 +599,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _exitEdit() {
+    // урок: вулик поставили й підтвердили — привітання
+    if (widget.tutorial && _lesson == _Lesson.place && elements.any((e) => e.isHive)) {
+      final hive = elements.firstWhere((e) => e.isHive);
+      _lessonHive = (hive.label?.trim().isNotEmpty ?? false) ? hive.label!.trim() : 'Вулик';
+      _lesson = _Lesson.congrats;
+    }
     setState(() {
       selectMode = false;
       pendingTemplate = null;
@@ -711,7 +809,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     await _loadPanel(el);
     if (!mounted) return;
-    setState(() => panelOpen = true);
+    setState(() {
+      panelOpen = true;
+      // урок: відкрили свій вулик — тепер огляд
+      if (_lesson == _Lesson.openHive && el.isHive) _lesson = _Lesson.inspect;
+    });
     _revealBesidePanel(el);
     if (!widget.tutorial) await Hints.show(context, repo, Hints.panel);
   }
@@ -1362,20 +1464,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // розміщення шаблону завершує те саме «Готово», що й редагування
             if (selectMode) Positioned(left: 0, right: 0, bottom: 0, child: _actionBar()),
             if (!selectMode) ..._fab(),
-            // урок: вуликів ще немає — пасічник підказує «Редагувати»
-            // (над кнопкою, не перекриває її; дотики проходять крізь)
-            if (widget.tutorial && !selectMode && !elements.any((e) => e.isHive))
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 80,
-                child: IgnorePointer(
-                  child: GuideBubble(
-                    text: MapScreen.tutorialNoHives,
-                    image: 'assets/guide/beekeeper_nohive.webp',
-                  ),
-                ),
-              ),
             // панель "Характеристики"
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
@@ -1400,8 +1488,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onHistory: (id) => _panelGuard(() => _panelHistory(id)),
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) ? _panelQr : null,
+                      highlightFill: _lessonInspect,
                     ),
             ),
+            // урок «Базові поняття»: пасічник веде крок за кроком
+            ..._lessonOverlay(),
           ]);
         }),
       ),
@@ -1500,13 +1591,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               tooltip: 'Видалити',
               onPressed: enabled ? _onDelete : null),
           const SizedBox(width: 16),
-          CircleIconButton(
-              icon: 'check',
-              bg: AppColors.accent,
-              tooltip: 'Готово',
-              // поки триває дія (розміщення, видалення…), вийти не можна: вона
-              // завершилась би вже поза редагуванням
-              onPressed: (_busy || _drag != null) ? null : _exitEdit),
+          HoneyRing(
+            on: _lessonConfirm,
+            child: CircleIconButton(
+                icon: 'check',
+                bg: AppColors.accent,
+                tooltip: 'Готово',
+                // поки триває дія (розміщення, видалення…), вийти не можна: вона
+                // завершилась би вже поза редагуванням
+                onPressed: (_busy || _drag != null) ? null : _exitEdit),
+          ),
         ]),
       ),
     );

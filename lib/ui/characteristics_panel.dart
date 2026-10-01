@@ -64,6 +64,9 @@ class CharacteristicsPanel extends StatelessWidget {
   /// «Оглянуто, змін немає» — лише дата огляду (для вуликів).
   final VoidCallback? onVisited;
   final VoidCallback? onFill;
+
+  /// Урок: підсвітити «Оглянути» медовим ободком.
+  final bool highlightFill;
   final void Function(String parameterId)? onHistory;
   final VoidCallback? onQr;
 
@@ -77,6 +80,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onEditParams,
     this.onVisited,
     this.onFill,
+    this.highlightFill = false,
     this.onHistory,
     this.onQr,
   });
@@ -171,13 +175,17 @@ class CharacteristicsPanel extends StatelessWidget {
                 ),
                 if (data.placed) ...[
                   const SizedBox(height: 10),
-                  PillButton(
-                    text: 'Заповнити',
-                    bg: AppColors.roundBtn,
-                    fg: AppColors.text,
-                    height: 38,
-                    fontSize: 13,
-                    onPressed: onFill,
+                  HoneyRing(
+                    on: highlightFill,
+                    radius: 16,
+                    child: PillButton(
+                      text: 'Оглянути',
+                      bg: AppColors.roundBtn,
+                      fg: AppColors.text,
+                      height: 38,
+                      fontSize: 13,
+                      onPressed: onFill,
+                    ),
                   ),
                   if (onVisited != null) ...[
                     const SizedBox(height: 8),

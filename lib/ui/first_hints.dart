@@ -39,7 +39,7 @@ class Hints {
     ],
     panel: [
       const TextSpan(text: 'Тут останні значення вулика. Натисніть на рядок — побачите історію. '),
-      GuideBubble.highlight('Заповнити'),
+      GuideBubble.highlight('Оглянути'),
       const TextSpan(text: ' — записати огляд; '),
       GuideBubble.highlight('Оглянуто, змін немає'),
       const TextSpan(text: ' — якщо змін немає.'),

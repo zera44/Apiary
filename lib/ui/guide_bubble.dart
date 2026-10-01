@@ -12,8 +12,19 @@ class GuideBubble extends StatelessWidget {
   /// Під хмаркою (у проміжку між нею й низом пасічника) — наприклад,
   /// «Пропустити».
   final Widget? below;
+
+  /// Висота пасічника (компактна підказка — менша).
+  final double imageHeight;
+
+  /// Висота проміжку під хмаркою (до низу пасічника).
+  final double gap;
   const GuideBubble(
-      {super.key, required this.text, this.image = 'assets/guide/beekeeper.webp', this.below});
+      {super.key,
+      required this.text,
+      this.image = 'assets/guide/beekeeper.webp',
+      this.below,
+      this.imageHeight = 170,
+      this.gap = 70});
 
   /// Назва кнопки в тексті підказки: іншим кольором і жирним.
   static TextSpan highlight(String s) => TextSpan(
@@ -21,12 +32,18 @@ class GuideBubble extends StatelessWidget {
         style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w800),
       );
 
+  /// Те саме, але напівжирним — для завдання, а не назви кнопки.
+  static TextSpan task(String s) => TextSpan(
+        text: s,
+        style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Image.asset(image, height: 170, filterQuality: FilterQuality.medium),
+        Image.asset(image, height: imageHeight, filterQuality: FilterQuality.medium),
         const SizedBox(width: 4),
         Expanded(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -40,7 +57,7 @@ class GuideBubble extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(height: 70, child: Center(child: below)),
+            SizedBox(height: gap, child: Center(child: below)),
           ]),
         ),
       ]),

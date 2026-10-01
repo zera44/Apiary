@@ -678,7 +678,9 @@ void main() {
     expect(find.text('Базові поняття'), findsOneWidget);
   });
 
-  testWidgets('навчання: на порожній карті пасічник підказує «Редагувати»', (tester) async {
+  testWidgets('навчання: карта — «Редагувати», шаблон, вулик, «Готово», свій вулик, «Оглянути»', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
       final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
       await r.prepareLikeFreshInstall();
@@ -705,6 +707,35 @@ void main() {
     expect(find.textContaining('потурбувався'), findsOneWidget);
     expect(find.textContaining('«Вулик» і «Лежак»'), findsOneWidget);
     expect(find.textContaining('Обери «Вулик»'), findsOneWidget);
+
+    // обрали шаблон — «Натисни на карту»
+    await tester.tap(find.text('Вулик (1×1)'));
+    await settle(tester);
+    expect(find.textContaining('Натисни на карту'), findsOneWidget);
+    final spot = tester.getCenter(find.byType(InfiniteGrid)) - const Offset(150, 150);
+    await tester.tapAt(spot);
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    // вулик стоїть — «Підтверди вибір», «Готово» в медовому ободку
+    expect(find.textContaining('Підтверди вибір'), findsOneWidget);
+    expect(find.ancestor(of: find.byTooltip('Готово'), matching: find.byType(HoneyRing)),
+        findsOneWidget);
+    await tester.tap(find.byTooltip('Готово'));
+    await settle(tester);
+    expect(find.textContaining('З легким стартом'), findsOneWidget);
+    await tester.tap(find.textContaining('З легким стартом'));
+    await settle(tester);
+    expect(find.textContaining('Не час відпочивати'), findsOneWidget);
+    expect(find.textContaining('«Вулик 1»'), findsOneWidget);
+    // натиснули на свій вулик — панель і завдання «Проведи огляд»
+    await tester.tapAt(spot);
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.textContaining('короткі замітки'), findsOneWidget);
+    expect(find.textContaining('Проведи огляд по ньому'), findsOneWidget);
+    expect(find.text('Оглянути'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -878,7 +909,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Заповнити»: спорожнене поле й «Очистити» дату записують порожнє значення',
+  testWidgets('«Оглянути»: спорожнене поле й «Очистити» дату записують порожнє значення',
       (tester) async {
     const text = Parameter(id: 't', name: 'Нотатка');
     const date = Parameter(id: 'd', name: 'Дата огляду', dataType: DataTypes.date);
@@ -940,7 +971,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Заповнити»: «Так / Ні» кнопками, «Список» — випадаючим списком', (tester) async {
+  testWidgets('«Оглянути»: «Так / Ні» кнопками, «Список» — випадаючим списком', (tester) async {
     const yn = Parameter(id: 'b', name: 'Є розплід', dataType: DataTypes.bool_);
     const ch = Parameter(
         id: 'c', name: 'Сила сім\'ї', dataType: DataTypes.choice, options: ['Слабка', 'Сильна']);
@@ -992,7 +1023,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Заповнити»: старе значення не того типу не блокує збереження інших полів',
+  testWidgets('«Оглянути»: старе значення не того типу не блокує збереження інших полів',
       (tester) async {
     const n = Parameter(id: 'n', name: 'Рамки', dataType: DataTypes.int_);
     const note = Parameter(id: 't', name: 'Нотатка');
@@ -1059,7 +1090,7 @@ void main() {
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
-    // після сканування одразу форма «Заповнити» (людина біля вулика)
+    // після сканування одразу форма «Оглянути» (людина біля вулика)
     expect(find.text('Заповнити параметри'), findsOneWidget);
     await tester.tap(find.text('Скасувати'));
     await settle(tester);

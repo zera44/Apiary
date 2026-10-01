@@ -103,7 +103,7 @@ class AppDrawer extends StatelessWidget {
   }
 
   /// Відсканувати код і відкрити карту пасіки з панеллю цього вулика й
-  /// одразу формою «Заповнити».
+  /// одразу формою «Оглянути».
   /// Працює через [NavigatorState] — контекст меню після закриття вже
   /// недійсний.
   static Future<void> openHiveByQr(NavigatorState nav, Repository repo) async {
@@ -125,7 +125,7 @@ class AppDrawer extends StatelessWidget {
   }
 
   /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
-  /// [fill] — одразу форма «Заповнити».
+  /// [fill] — одразу форма «Оглянути».
   static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
       {bool fill = false, NextHive next = NextHive.order}) {
     nav.popUntil((r) => r.isFirst);
