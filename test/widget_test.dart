@@ -701,6 +701,10 @@ void main() {
     expect(find.text('Оберіть шаблон'), findsOneWidget);
     // як після встановлення: готові шаблони вже є
     expect(find.text('Вулик (1×1)'), findsOneWidget);
+    // пасічник називає готові шаблони
+    expect(find.textContaining('потурбувався'), findsOneWidget);
+    expect(find.text('«Вулик»'), findsOneWidget);
+    expect(find.text('«Лежак»'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

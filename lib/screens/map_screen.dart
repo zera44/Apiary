@@ -522,12 +522,40 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   static final ApiaryTemplate _createTemplate =
       ApiaryTemplate(id: '', name: '', width: 0, height: 0, cells: const {});
 
+  /// Урок: під вікном вибору шаблону — пасічник: «Я трохи про тебе
+  /// потурбувався і створив «Вулик» і «Лежак». Обери один з них».
+  Widget _withTutorialGuide(List<ApiaryTemplate> templates, Widget dialog) {
+    if (!widget.tutorial || templates.isEmpty) return dialog;
+    final names = [for (final t in templates) t.name];
+    final spans = <InlineSpan>[
+      const TextSpan(text: 'Я трохи про тебе потурбувався і створив '),
+      for (var i = 0; i < names.length; i++) ...[
+        if (i > 0) TextSpan(text: i == names.length - 1 ? ' і ' : ', '),
+        GuideBubble.highlight('«${names[i]}»'),
+      ],
+      TextSpan(text: names.length == 1 ? '. Обери його.' : '. Обери один з них.'),
+    ];
+    return Stack(children: [
+      // вікно вибору — вище, щоб пасічник унизу його не закривав
+      Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 250), child: dialog)),
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: 12,
+        child: IgnorePointer(child: Material(type: MaterialType.transparency,
+            child: GuideBubble(text: spans))),
+      ),
+    ]);
+  }
+
   Future<void> _onAddObject() async {
     final templates = await repo.listTemplates();
     if (!mounted) return;
     final picked = await showDialog<ApiaryTemplate>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => _withTutorialGuide(
+          templates,
+          AlertDialog(
         title: const Text('Оберіть шаблон'),
         content: SizedBox(
           width: 320,
@@ -561,7 +589,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ]),
                 ),
         ),
-      ),
+      )),
     );
     if (picked == null) return;
     if (identical(picked, _createTemplate)) {
