@@ -83,6 +83,11 @@ class AppDatabase {
         synced INTEGER NOT NULL DEFAULT 0
       )''');
 
+    // періодичність обходу всієї пасіки (днів) і коли її задали — точка
+    // відліку для вуликів без дати останнього обходу
+    await _ensureColumn(db, 'apiaries', 'visit_period', 'INTEGER');
+    await _ensureColumn(db, 'apiaries', 'visit_period_at', 'REAL');
+
     await db.execute('''
       CREATE TABLE IF NOT EXISTS templates (
         id TEXT PRIMARY KEY,

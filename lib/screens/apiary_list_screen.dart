@@ -94,10 +94,62 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
   }
 
+  /// Налаштування пасіки: назва й періодичність обходу всієї пасіки
+  /// (вулик із власною періодичністю її перекриває).
   Future<void> _rename(Apiary a) async {
-    final name = await showTextPrompt(context, title: 'Перейменувати пасіку', initial: a.name);
-    if (name == null) return;
-    await widget.repo.updateApiary(a.id, name: name);
+    final nameCtrl = TextEditingController(text: a.name);
+    final periodCtrl = TextEditingController(text: a.visitPeriod?.toString() ?? '');
+    final res = await showDialog<(String, int?)>(
+      context: context,
+      builder: (ctx) {
+        void save() {
+          final n = nameCtrl.text.trim();
+          final p = int.tryParse(periodCtrl.text.trim());
+          Navigator.pop(ctx, (n.isEmpty ? a.name : n, (p != null && p > 0) ? p : null));
+        }
+
+        return AlertDialog(
+          title: const Text('Налаштування пасіки'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              style: TextStyle(color: AppColors.text),
+              decoration: const InputDecoration(labelText: 'Назва'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: periodCtrl,
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: AppColors.text),
+              decoration: const InputDecoration(
+                  labelText: 'Обходити кожні … днів', hintText: 'порожньо — без нагадувань'),
+              onSubmitted: (_) => save(),
+            ),
+            const SizedBox(height: 8),
+            Text('Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Заповнити».',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ]),
+          actions: [
+            Row(children: [
+              Expanded(
+                child: PillButton(
+                    text: 'Скасувати',
+                    bg: AppColors.neutralBtn,
+                    fg: AppColors.text,
+                    onPressed: () => Navigator.pop(ctx)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
+            ]),
+          ],
+        );
+      },
+    );
+    if (res == null) return;
+    await widget.repo.updateApiary(a.id,
+        name: res.$1 == a.name ? null : res.$1,
+        visitPeriod: res.$2 == a.visitPeriod ? null : (res.$2,));
     await _reload();
   }
 
@@ -216,7 +268,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                           icon: 'pencil',
                           bg: AppColors.rename,
                           size: 28,
-                          tooltip: 'Перейменувати',
+                          tooltip: 'Налаштування пасіки',
                           onPressed: () => _rename(a)),
                     ),
                   ]),

@@ -899,6 +899,72 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _qrBusy = false;
 
   /// Прив'язати / замінити / відв'язати QR-код вулика з панелі.
+  /// «Прив'язати наліпки підряд»: застосунок по черзі виділяє вулики без
+  /// коду (зверху вниз, зліва направо), пасічник лише сканує наліпки.
+  /// Закрили камеру — зупинились.
+  Future<void> _bindQrInRow() async {
+    if (_qrBusy || _busy) return;
+    _qrBusy = true;
+    var linked = 0;
+    try {
+      if (selectMode) _exitEdit();
+      setState(() => panelOpen = false);
+      while (mounted) {
+        List<MapElement>? members;
+        for (final o in hiveObjects(elements)) {
+          if (await repo.qrForObject(o) == null) {
+            members = o;
+            break;
+          }
+        }
+        if (!mounted) return;
+        if (members == null) {
+          await showInfo(
+              context,
+              linked == 0
+                  ? 'У всіх вуликів цієї пасіки вже є QR-коди.'
+                  : 'Прив\'язано наліпок: $linked. Тепер у всіх вуликів є QR-коди.',
+              title: 'QR-коди');
+          return;
+        }
+        final hive = members.first;
+        final name = (hive.label ?? '').trim().isEmpty ? 'вулик' : hive.label!.trim();
+        grid.centerOnGrid(hive.x + 0.5, hive.y + 0.5);
+        setState(() => _select(hive)); // підсвітити, для якого вулика наліпка
+        final scanned = await scanQrCode(context, title: 'Наліпка для: $name');
+        if (scanned == null || !mounted) break;
+        final code = await repo.resolveTypedQr(scanned);
+        final other = await repo.findByQr(code);
+        if (!mounted) return;
+        if (other != null) {
+          final otherName = await repo.entityLabel(other.element.entity);
+          if (!mounted) return;
+          final move = await showConfirm(context,
+              title: 'Код уже використовується',
+              text: 'Цей QR-код прив\'язаний до «$otherName» (пасіка «${other.apiary.name}»). '
+                  'Перенести його на «$name»?',
+              confirmText: 'Перенести',
+              danger: false);
+          if (!move) continue; // той самий вулик — сканувати іншу наліпку
+        }
+        for (final m in members.skip(1)) {
+          await repo.unlinkQr(EntityRef.element(m.id));
+        }
+        await repo.linkQr(code, EntityRef.element(hive.id));
+        linked++;
+        _showWarning('Прив\'язано: $name', duration: const Duration(milliseconds: 900));
+      }
+    } finally {
+      _qrBusy = false;
+      if (mounted) {
+        setState(() {
+          selectedId = null;
+          selectedGroupId = null;
+        });
+      }
+    }
+  }
+
   Future<void> _panelQr() async {
     final el = panelElement;
     if (el == null || _qrBusy) return;
@@ -1047,7 +1113,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final status = _warning ?? _statusText;
     final isWarn = _warning != null;
     return Scaffold(
-      drawer: AppDrawer(repo: repo, currentApiary: widget.apiary, onReturn: _afterExternalChange),
+      drawer: AppDrawer(
+          repo: repo,
+          currentApiary: widget.apiary,
+          onReturn: _afterExternalChange,
+          onBindQrRow: _bindQrInRow),
       // свайп від лівого краю конфліктував би з панорамуванням карти —
       // меню відкривається лише кнопкою
       drawerEnableOpenDragGesture: false,

@@ -29,7 +29,11 @@ class AppDrawer extends StatelessWidget {
   /// Викликається після повернення з екранів меню (шаблони, характеристики,
   /// генератор QR): там могли змінити дані, які показує карта.
   final Future<void> Function()? onReturn;
-  const AppDrawer({super.key, required this.repo, required this.currentApiary, this.onReturn});
+
+  /// «Прив'язати наліпки підряд» (робить сама карта).
+  final VoidCallback? onBindQrRow;
+  const AppDrawer(
+      {super.key, required this.repo, required this.currentApiary, this.onReturn, this.onBindQrRow});
 
   Future<void> _open(NavigatorState nav, Widget screen) async {
     nav.pop(); // закрити меню
@@ -69,6 +73,11 @@ class AppDrawer extends StatelessWidget {
           }),
           _item(context, 'qr', 'Генерувати QR-коди',
               () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
+          if (onBindQrRow != null)
+            _item(context, 'qr', 'Прив\'язати наліпки підряд', () {
+              nav.pop(); // закрити меню
+              onBindQrRow!();
+            }),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));

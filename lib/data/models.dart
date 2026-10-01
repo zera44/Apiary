@@ -232,6 +232,10 @@ class Apiary {
   final bool deleted;
   final double updatedAt;
 
+  /// Періодичність обходу всієї пасіки, днів (null — не задано). Вулик із
+  /// власною періодичністю її перекриває.
+  final int? visitPeriod;
+
   const Apiary({
     required this.id,
     required this.name,
@@ -239,6 +243,7 @@ class Apiary {
     this.lon,
     this.deleted = false,
     this.updatedAt = 0,
+    this.visitPeriod,
   });
 
   bool get hasLocation => lat != null && lon != null;
@@ -250,6 +255,7 @@ class Apiary {
         lon: (m['lon'] as num?)?.toDouble(),
         deleted: ((m['deleted'] as num?) ?? 0) != 0,
         updatedAt: ((m['updated_at'] as num?) ?? 0).toDouble(),
+        visitPeriod: (m['visit_period'] as num?)?.toInt(),
       );
 }
 

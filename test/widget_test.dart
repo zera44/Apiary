@@ -448,6 +448,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('меню: «Прив\'язати наліпки підряд» — вулики без коду по черзі', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.text('Прив\'язати наліпки підряд'));
+    await settle(tester);
+    // у тестах камери немає — код вводиться вручну
+    await tester.enterText(find.byType(TextField), 'https://pasika.example/h/1');
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.textContaining('Прив\'язано наліпок: 1'), findsOneWidget);
+    final found = await tester.runAsync(() => repo.findByQr('https://pasika.example/h/1'));
+    expect(found?.element.groupId, groupId);
+    expect(tester.takeException(), isNull);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';
@@ -658,7 +680,7 @@ void main() {
     const text = Parameter(id: 't', name: 'Нотатка');
     const date = Parameter(id: 'd', name: 'Дата огляду', dataType: DataTypes.date);
     const untouched = Parameter(id: 'u', name: 'Вага', dataType: DataTypes.text);
-    Map<String, String>? result;
+    FillResult? result;
     await tester.pumpWidget(wrap(Builder(
       builder: (ctx) => Center(
         child: ElevatedButton(
@@ -683,14 +705,14 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
-    expect(result, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
+    expect(result?.values, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 
   testWidgets('«Заповнити»: старе значення не того типу не блокує збереження інших полів',
       (tester) async {
     const n = Parameter(id: 'n', name: 'Рамки', dataType: DataTypes.int_);
     const note = Parameter(id: 't', name: 'Нотатка');
-    Map<String, String>? result;
+    FillResult? result;
     await tester.pumpWidget(wrap(Builder(
       builder: (ctx) => Center(
         child: ElevatedButton(
@@ -708,7 +730,8 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'огляд');
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
-    expect(result, {'t': 'огляд'});
+    expect(result?.values, {'t': 'огляд'});
+    expect(result?.next, isFalse);
   });
 
   test('числові поля: зайве не «з\'їдає» введене', () {

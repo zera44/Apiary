@@ -840,4 +840,22 @@ void main() {
     await repo.deleteApiary(id);
     expect((await repo.startApiary())?.id, all.length == 1 ? all.first.id : null);
   });
+
+  test('періодичність обходу пасіки діє на вулики без власної', () async {
+    final aid = await repo.addApiary('Пасіка з періодом');
+    final gid = await repo.addGroup(aid, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 9');
+    Future<VisitTarget> t() async => (await repo.visitTargets()).firstWhere((x) => x.key == 'g:$gid');
+    expect((await t()).periodDays, isNull);
+    await repo.updateApiary(aid, visitPeriod: (7,));
+    expect((await t()).periodDays, 7);
+    expect((await t()).periodSetAt, isNotNull); // точка відліку без дати обходу
+    // своя періодичність вулика перекриває пасіку
+    final periodId = (await repo.baseParameterId('hive', 'visit_period'))!;
+    await repo.addParameterRecord(periodId, '3', EntityRef.group(gid));
+    expect((await t()).periodDays, 3);
+    // прибрали в пасіки — у вулика лишилась своя
+    await repo.updateApiary(aid, visitPeriod: (null,));
+    expect((await t()).periodDays, 3);
+    expect((await repo.getApiary(aid))!.visitPeriod, isNull);
+  });
 }

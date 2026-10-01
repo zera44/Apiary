@@ -148,13 +148,23 @@ class Repository {
     _remindersDirty();
   }
 
-  Future<void> updateApiary(String id, {String? name, double? lat, double? lon}) async {
-    final fields = <String, Object?>{'updated_at': now(), 'synced': 0};
+  /// [visitPeriod]: (днів,) — задати періодичність обходу всієї пасіки;
+  /// (null,) — прибрати; не передано — не змінювати.
+  Future<void> updateApiary(String id,
+      {String? name, double? lat, double? lon, (int?,)? visitPeriod}) async {
+    final t = now();
+    final fields = <String, Object?>{'updated_at': t, 'synced': 0};
     if (name != null) fields['name'] = name;
     if (lat != null) fields['lat'] = lat;
     if (lon != null) fields['lon'] = lon;
+    if (visitPeriod != null) {
+      final p = visitPeriod.$1;
+      fields['visit_period'] = (p != null && p > 0) ? p : null;
+      fields['visit_period_at'] = (p != null && p > 0) ? t : null;
+    }
     await db.update('apiaries', fields, where: 'id = ?', whereArgs: [id]);
-    if (name != null) _remindersDirty(); // назва пасіки — у заголовку сповіщення
+    // назва пасіки — у заголовку сповіщення; періодичність — у розкладі
+    if (name != null || visitPeriod != null) _remindersDirty();
   }
 
   // ---------------------------------------------------------------------
@@ -1342,7 +1352,8 @@ class Repository {
     final startId = await baseParameterId('hive', 'visit_start');
     if (periodId == null || startId == null) return [];
     final els = await db.rawQuery(
-      'SELECT e.id, e.label, e.group_id, a.name AS apiary_name FROM elements e '
+      'SELECT e.id, e.label, e.group_id, a.name AS apiary_name, '
+      'a.visit_period AS apiary_period, a.visit_period_at AS apiary_period_at FROM elements e '
       'JOIN apiaries a ON a.id = e.apiary_id '
       "WHERE e.deleted = 0 AND e.archived = 0 AND e.type = 'hive' AND a.deleted = 0 "
       'ORDER BY e.rowid ASC',
@@ -1372,7 +1383,13 @@ class Repository {
       final key = gid != null ? 'g:$gid' : 'e:$id';
       if (!seen.add(key)) continue;
       final p = period[key];
-      final n = int.tryParse((p?.value ?? '').trim());
+      final own = int.tryParse((p?.value ?? '').trim());
+      final ownOk = own != null && own > 0;
+      // своя періодичність вулика; якщо не задана — періодичність пасіки
+      final ap = (r['apiary_period'] as num?)?.toInt();
+      final apAt = (r['apiary_period_at'] as num?)?.toDouble();
+      final n = ownOk ? own : ((ap != null && ap > 0) ? ap : null);
+      final at = ownOk ? p!.at : (n != null ? apAt : null);
       final label = (r['label'] as String?) ?? '';
       final last = (start[key] ?? '').trim();
       out.add(VisitTarget(
@@ -1380,11 +1397,9 @@ class Repository {
         elementId: id,
         apiaryName: (r['apiary_name'] as String?) ?? '',
         name: label.isEmpty ? 'Вулик' : label,
-        periodDays: (n != null && n > 0) ? n : null,
+        periodDays: n,
         lastVisit: last.isEmpty ? null : last,
-        periodSetAt: p == null
-            ? null
-            : DateTime.fromMicrosecondsSinceEpoch((p.at * 1e6).round()),
+        periodSetAt: at == null ? null : DateTime.fromMicrosecondsSinceEpoch((at * 1e6).round()),
       ));
     }
     return out;
