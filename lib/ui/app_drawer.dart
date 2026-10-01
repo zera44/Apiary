@@ -47,7 +47,10 @@ class AppDrawer extends StatelessWidget {
     return Drawer(
       backgroundColor: AppColors.card,
       child: SafeArea(
+        // пункти прокручуються (на невисокому екрані всі вміщуються)
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+              child: ListView(padding: EdgeInsets.zero, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
             child: Text('Меню навігації',
@@ -82,10 +85,8 @@ class AppDrawer extends StatelessWidget {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           }),
-          if (Autostart.supported) ...[
-            const Spacer(),
-            const _AutostartTile(),
-          ],
+          ])),
+          if (Autostart.supported) const _AutostartTile(),
         ]),
       ),
     );

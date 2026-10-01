@@ -464,6 +464,8 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
+    await tester.ensureVisible(find.text('Прив\'язати наліпки підряд'));
+    await settle(tester);
     await tester.tap(find.text('Прив\'язати наліпки підряд'));
     await settle(tester);
     // у тестах камери немає — код вводиться вручну
@@ -929,6 +931,8 @@ void main() {
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.ensureVisible(find.text('Генерувати QR-коди'));
     await settle(tester);
     await tester.tap(find.text('Генерувати QR-коди'));
     await settle(tester);
