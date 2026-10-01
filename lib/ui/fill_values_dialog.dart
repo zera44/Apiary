@@ -407,7 +407,7 @@ class _FillDialogState extends State<_FillDialog> {
         // уся клітинка — кнопка календаря
         return InkWell(
           borderRadius: BorderRadius.circular(6),
-          onTap: () async {
+          onTap: _lesson != null ? null : () async {
             final r = await showAppDatePicker(context, dateText);
             if (r != null) setState(() => _picked[p.id] = r);
           },
@@ -477,10 +477,13 @@ class _FillDialogState extends State<_FillDialog> {
               selected: colorLabel == label,
               tooltip: label,
               // повторний тап по обраному кольору — зняти вибір
-              onTap: () {
-                setState(() => _picked[p.id] = colorLabel == label ? '' : label);
-                _lessonCheck();
-              },
+              // урок: лише той колір, який просять, і лише на цьому кроці
+              onTap: _lesson != null && !(_ring(3) && label == _lesson!.colorValue)
+                  ? null
+                  : () {
+                      setState(() => _picked[p.id] = colorLabel == label ? '' : label);
+                      _lessonCheck();
+                    },
             )),
         ]);
       default:
@@ -488,6 +491,8 @@ class _FillDialogState extends State<_FillDialog> {
           controller: _text[p.id],
           style: TextStyle(color: AppColors.text, fontSize: 15),
           decoration: _cellInput,
+          // урок: вписати можна лише на своєму кроці й лише в ту комірку
+          readOnly: _lesson != null && !(_ring(4) && p.id == _lesson!.periodParamId),
           onChanged: (_) => _lessonCheck(),
           keyboardType: p.dataType == DataTypes.int_
               ? const TextInputType.numberWithOptions(signed: true)
@@ -509,10 +514,10 @@ class _FillDialogState extends State<_FillDialog> {
     if (_lesson == null) return dialog;
     // урок: відкрита клавіатура — уся висота формі (інакше комірки не видно),
     // підказка повернеться, щойно клавіатуру сховають
-    if (MediaQuery.viewInsetsOf(context).bottom > 0) return dialog;
+    if (MediaQuery.viewInsetsOf(context).bottom > 0) return PopScope(canPop: false, child: dialog);
     // урок: форма вище, унизу — пасічник або ведмежа-помічник (на тому ж місці)
     final line = _lessonLine;
-    return Stack(children: [
+    return PopScope(canPop: false, child: Stack(children: [
       Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 270), child: dialog)),
       ...lessonScene(
         pose: line.bear ? LessonPose.bear : LessonPose.leaning,
@@ -524,7 +529,7 @@ class _FillDialogState extends State<_FillDialog> {
             : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
       ),
-    ]);
+    ]));
   }
 
   Widget _dialog() {
@@ -562,7 +567,8 @@ class _FillDialogState extends State<_FillDialog> {
                   text: 'Скасувати',
                   bg: AppColors.neutralBtn,
                   fg: AppColors.text,
-                  onPressed: () => Navigator.pop(context)),
+                  // урок: поки огляд не завершено — не вийти
+                  onPressed: _lesson != null ? null : () => Navigator.pop(context)),
             ),
             const SizedBox(width: 8),
             Expanded(

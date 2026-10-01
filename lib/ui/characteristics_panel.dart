@@ -67,6 +67,9 @@ class CharacteristicsPanel extends StatelessWidget {
 
   /// Урок: підсвітити «Оглянути» медовим ободком.
   final bool highlightFill;
+
+  /// Урок: ключ кнопки «Оглянути» (її дозволено натиснути).
+  final Key? fillKey;
   final void Function(String parameterId)? onHistory;
   final VoidCallback? onQr;
 
@@ -81,6 +84,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onVisited,
     this.onFill,
     this.highlightFill = false,
+    this.fillKey,
     this.onHistory,
     this.onQr,
   });
@@ -176,6 +180,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 if (data.placed) ...[
                   const SizedBox(height: 10),
                   HoneyRing(
+                    key: fillKey,
                     on: highlightFill,
                     radius: 16,
                     child: PillButton(

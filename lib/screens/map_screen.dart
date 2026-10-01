@@ -132,10 +132,88 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   _Lesson _lesson = _Lesson.place;
   bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
   bool _lessonFormOpen = false; // відкрита форма огляду (у ній свій пасічник)
+  (int, int)? _lessonTarget; // куди перетягнути щойно поставлений вулик
+  bool _lessonMoved = false; // перетягнули на підсвічену клітинку
+
+  // ключі кнопок, які урок дозволяє натиснути (решта — під «завісою»)
+  final _gateKey = GlobalKey();
+  final _backKey = GlobalKey();
+  final _editKey = GlobalKey();
+  final _doneKey = GlobalKey();
+  final _fillKey = GlobalKey();
+  final _actionBarKey = GlobalKey();
+  final _zoomKey = GlobalKey();
+  final _topKey = GlobalKey();
+
+  /// Урок: що зараз можна натиснути (у координатах карти).
+  bool _lessonAllows(Offset p) {
+    final ref = _gateKey.currentContext?.findRenderObject();
+    if (ref is! RenderBox) return true;
+    bool inKey(GlobalKey k) => rectOfKey(k, ref)?.contains(p) ?? false;
+    bool onHive() {
+      final el = elements.where((e) => e.isHive).firstOrNull;
+      if (el == null) return false;
+      return mergedObjectOf(el, elements).any((c) => grid.cellRect(c.x, c.y).contains(p));
+    }
+
+    if (inKey(_backKey)) return true; // вийти з уроку можна завжди
+    if (selectMode) {
+      if (pendingTemplate == null) return false; // вибір шаблону — у вікні
+      if (!_lessonPlaced) {
+        // будь-де на карті, але не кнопки
+        return !inKey(_actionBarKey) && !inKey(_zoomKey) && !inKey(_topKey);
+      }
+      if (!_lessonMoved) return onHive(); // лише тягнути свій вулик
+      return inKey(_doneKey);
+    }
+    switch (_lesson) {
+      case _Lesson.place:
+        return inKey(_editKey);
+      case _Lesson.openHive:
+        return !panelOpen && onHive();
+      case _Lesson.inspect:
+        return inKey(_fillKey);
+      case _Lesson.congrats:
+      case _Lesson.magic:
+        return false; // відповідь — у хмарці пасічника
+    }
+  }
+
+  /// Урок: підсвічена клітинка, куди перетягнути вулик.
+  List<Widget> _lessonTargetCell() {
+    final t = _lessonTarget;
+    if (!widget.tutorial || !selectMode || !_lessonPlaced || _lessonMoved || t == null) {
+      return const [];
+    }
+    return [
+      AnimatedBuilder(
+        animation: grid,
+        builder: (context, _) {
+          final r = grid.cellRect(t.$1, t.$2).inflate(2);
+          return Positioned.fromRect(
+            key: const ValueKey('lesson-target'),
+            rect: r,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.create.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.create, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.create.withValues(alpha: 0.6), blurRadius: 10)
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ];
+  }
   String _lessonHive = 'Вулик';
 
   /// Підтвердити розміщення: «Готово» в медовому ободку.
-  bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced;
+  bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced && _lessonMoved;
 
   /// Огляд: «Оглянути» на панелі в медовому ободку.
   bool get _lessonInspect => widget.tutorial && _lesson == _Lesson.inspect && panelOpen;
@@ -148,7 +226,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (selectMode && pendingTemplate == null) return const [];
     if (_lessonFormOpen) return const [];
     // кнопка «Редагувати» є — спирається на неї; немає — на свою «стійку»
-    final pose = selectMode ? LessonPose.leaning : LessonPose.onButton;
+    final pose = !selectMode && _lesson == _Lesson.place ? LessonPose.onButton : LessonPose.leaning;
     final msg = _lessonMessage();
     if (msg == null) return lessonScene(pose: pose);
     final (text, onTap) = msg;
@@ -200,6 +278,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (selectMode) {
       if (!_lessonPlaced) {
         return (const [TextSpan(text: 'Натисни на карту в будь-якому місці')], null);
+      }
+      if (!_lessonMoved) {
+        return (
+          const [
+            TextSpan(
+                text: 'Щось ти геть не туди поставив. Перемісти перетягуванням на сусідню клітинку')
+          ],
+          null
+        );
       }
       return (
         [const TextSpan(text: 'Підтверди вибір - натисни '), GuideBubble.highlight('«Готово»')],
@@ -324,6 +411,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       elements = els;
       _overdue = overdue;
       _blocked = false;
+      // урок: вулик уже на підсвіченій клітинці
+      final t = _lessonTarget;
+      if (widget.tutorial && t != null && !_lessonMoved &&
+          els.any((e) => e.isHive && e.x == t.$1 && e.y == t.$2)) {
+        _lessonMoved = true;
+      }
     });
   }
 
@@ -534,7 +627,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       selectedId = null;
       selectedGroupId = gids.first; // щойно поставлений шаблон обраний цілим
       _placedGids = {...gids};
-      if (widget.tutorial) _lessonPlaced = true;
+      if (widget.tutorial) {
+        _lessonPlaced = true;
+        // урок: сусідня вільна клітинка — сюди перетягнути
+        final occupied = {for (final e in elements) (e.x, e.y)};
+        _lessonTarget = [(gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)]
+            .firstWhere((c) => !occupied.contains(c), orElse: () => (gx + 2, gy));
+      }
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -630,6 +729,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void _enterEdit() {
     setState(() {
       _lessonPlaced = false;
+      _lessonMoved = false;
+      _lessonTarget = null;
       panelOpen = false;
       selectMode = true;
       selectedId = null;
@@ -694,9 +795,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _onAddObject() async {
     final templates = await repo.listTemplates();
     if (!mounted) return;
+    // урок: вибрати можна лише запропонований шаблон, закрити вікно — ні
+    final lessonPick = widget.tutorial && templates.isNotEmpty
+        ? (templates.where((t) => t.name == 'Вулик').firstOrNull ?? templates.first)
+        : null;
     final picked = await showDialog<ApiaryTemplate>(
       context: context,
-      builder: (ctx) => _withTutorialGuide(
+      barrierDismissible: lessonPick == null,
+      builder: (ctx) => PopScope(
+          canPop: lessonPick == null,
+          child: _withTutorialGuide(
           templates,
           AlertDialog(
         // ширше за звичайне вікно — щоб плитки шаблонів стали по 3 в ряд
@@ -728,13 +836,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         height: 106,
                         child: TemplateTile(
                           template: t,
-                          onTap: () => Navigator.pop(ctx, t),
+                          onTap: lessonPick != null && t.id != lessonPick.id
+                              ? null
+                              : () => Navigator.pop(ctx, t),
                         ),
                       ),
                   ]),
                 ),
         ),
-      )),
+      ))),
     );
     if (picked == null) return;
     if (identical(picked, _createTemplate)) {
@@ -1472,6 +1582,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ..._selectionButtons(box.biggest),
             // верхня панель: назва + статус
             Positioned(
+              key: _topKey,
               top: 0,
               left: 0,
               right: 0,
@@ -1484,6 +1595,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     Builder(
                       builder: (ctx) => widget.tutorial
                           ? CircleIconButton(
+                              key: _backKey,
                               icon: 'back_arrow',
                               bg: AppColors.roundBtn,
                               iconColor: AppColors.text,
@@ -1530,7 +1642,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             Positioned(
               right: 14,
               top: box.maxHeight / 2 - 46,
-              child: Column(children: [
+              child: Column(key: _zoomKey, children: [
                 PillButton(
                     text: '+',
                     bg: AppColors.roundBtn,
@@ -1553,8 +1665,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               ]),
             ),
             // розміщення шаблону завершує те саме «Готово», що й редагування
-            if (selectMode) Positioned(left: 0, right: 0, bottom: 0, child: _actionBar()),
-            if (!selectMode) ..._fab(),
+            if (selectMode)
+              Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: KeyedSubtree(key: _actionBarKey, child: _actionBar())),
+            // урок: «Редагувати» є лише на кроці, де її треба натиснути; далі
+            // на її місці пасічник спирається на свій вулик
+            if (!selectMode && (!widget.tutorial || _lesson == _Lesson.place)) ..._fab(),
             // панель "Характеристики"
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
@@ -1581,9 +1700,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) ? _panelQr : null,
                       highlightFill: _lessonInspect,
+                      fillKey: _fillKey,
                     ),
             ),
-            // урок «Базові поняття»: пасічник веде крок за кроком
+            // урок «Базові поняття»: підсвічена клітинка, «завіса» (поки урок
+            // чекає дії, решта не натискається) і пасічник
+            ..._lessonTargetCell(),
+            if (widget.tutorial)
+              Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
           ]);
         }),
@@ -1642,6 +1766,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           left: 16,
           bottom: 18,
           child: PillButton(
+            key: _editKey,
             text: 'Редагувати',
             bg: AppColors.accent,
             width: 150,
@@ -1689,6 +1814,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           HoneyRing(
             on: _lessonConfirm,
             child: CircleIconButton(
+                key: _doneKey,
                 icon: 'check',
                 bg: AppColors.accent,
                 tooltip: 'Готово',

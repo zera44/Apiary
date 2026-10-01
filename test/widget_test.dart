@@ -717,6 +717,17 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
+    // «геть не туди» — перетягнути на підсвічену клітинку
+    expect(find.textContaining('геть не туди'), findsOneWidget);
+    // поки не перетягнули — «Готово» не натискається (завіса уроку)
+    await tester.tap(find.byTooltip('Готово'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.textContaining('геть не туди'), findsOneWidget);
+    final target = tester.getCenter(find.byKey(const ValueKey('lesson-target')));
+    await tester.timedDragFrom(spot, target - spot, const Duration(milliseconds: 400));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
     // вулик стоїть — «Підтверди вибір», «Готово» в медовому ободку
     expect(find.textContaining('Підтверди вибір'), findsOneWidget);
     expect(find.ancestor(of: find.byTooltip('Готово'), matching: find.byType(HoneyRing)),
@@ -728,8 +739,10 @@ void main() {
     await settle(tester);
     expect(find.textContaining('Не час відпочивати'), findsOneWidget);
     expect(find.textContaining('«Вулик 1»'), findsOneWidget);
+    // «Редагувати» вже немає (на її місці пасічник із вуликом)
+    expect(find.text('Редагувати'), findsNothing);
     // натиснули на свій вулик — панель і завдання «Проведи огляд»
-    await tester.tapAt(spot);
+    await tester.tapAt(target);
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
@@ -782,11 +795,16 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
+    final target = tester.getCenter(find.byKey(const ValueKey('lesson-target')));
+    await tester.timedDragFrom(spot, target - spot, const Duration(milliseconds: 400));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
     await tester.tap(find.byTooltip('Готово'));
     await settle(tester);
     await tester.tap(find.textContaining('З легким стартом'));
     await settle(tester);
-    await tester.tapAt(spot);
+    await tester.tapAt(target);
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }

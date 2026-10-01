@@ -181,3 +181,45 @@ List<Widget> lessonScene({
 
 /// Хмарка уроку починається одразу праворуч від пасічника.
 const kLessonBubbleLeft = 150.0;
+
+/// Урок: «завіса» на весь екран — поки навчання чекає певної дії, інше
+/// натиснути не можна. Пропускає дотик лише там, де [allow] (у своїх
+/// координатах) каже «так»: кнопка, яку треба натиснути, вулик тощо.
+class LessonGate extends LeafRenderObjectWidget {
+  final bool Function(Offset local) allow;
+  const LessonGate({super.key, required this.allow});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderLessonGate(allow);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderLessonGate renderObject) {
+    renderObject.allow = allow;
+  }
+}
+
+class _RenderLessonGate extends RenderBox {
+  bool Function(Offset local) allow;
+  _RenderLessonGate(this.allow);
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => constraints.biggest;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (!size.contains(position) || allow(position)) return false; // пропустити
+    result.add(BoxHitTestEntry(this, position)); // поглинути дотик
+    return true;
+  }
+}
+
+/// Прямокутник віджета з ключем [key] у координатах [ref] (або null).
+Rect? rectOfKey(GlobalKey key, RenderBox ref) {
+  final box = key.currentContext?.findRenderObject();
+  if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+  final topLeft = ref.globalToLocal(box.localToGlobal(Offset.zero));
+  return topLeft & box.size;
+}
