@@ -9,10 +9,11 @@ class GuideBubble extends StatelessWidget {
   final List<InlineSpan> text;
   final String image;
 
-  /// Кнопки під текстом — усередині хмарки (не поверх екрана під нею).
-  final Widget? footer;
+  /// Під хмаркою (у проміжку між нею й низом пасічника) — наприклад,
+  /// «Пропустити».
+  final Widget? below;
   const GuideBubble(
-      {super.key, required this.text, this.image = 'assets/guide/beekeeper.png', this.footer});
+      {super.key, required this.text, this.image = 'assets/guide/beekeeper.png', this.below});
 
   /// Назва кнопки в тексті підказки: іншим кольором і жирним.
   static TextSpan highlight(String s) => TextSpan(
@@ -28,26 +29,19 @@ class GuideBubble extends StatelessWidget {
         Image.asset(image, height: 170, filterQuality: FilterQuality.medium),
         const SizedBox(width: 4),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 70),
-            child: CustomPaint(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            CustomPaint(
               painter: _BubblePainter(fill: AppColors.popupBg, border: AppColors.create),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(22, 14, 14, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text.rich(
-                      TextSpan(children: text),
-                      style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
-                    ),
-                    if (footer != null) ...[const SizedBox(height: 12), footer!],
-                  ],
+                child: Text.rich(
+                  TextSpan(children: text),
+                  style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
                 ),
               ),
             ),
-          ),
+            SizedBox(height: 70, child: Center(child: below)),
+          ]),
         ),
       ]),
     );

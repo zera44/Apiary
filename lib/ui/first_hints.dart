@@ -90,30 +90,34 @@ class Hints {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                // «Зрозуміло» і «Пропустити всі підказки» — у хмарці, під
-                // текстом: унизу екрана вони накладались на кнопки самого екрана
+                // «Пропустити» — під хмаркою, «Зрозуміло» — праворуч унизу
                 GuideBubble(
                   text: text,
-                  footer: Column(mainAxisSize: MainAxisSize.min, children: [
-                    PillButton(
+                  below: TextButton(
+                    onPressed: () async {
+                      await repo.setMeta('hints_off', '1');
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                    child: Text('Пропустити',
+                        style: TextStyle(
+                            color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: PillButton(
                       text: 'Зрозуміло',
                       bg: AppColors.accent,
-                      height: 44,
-                      radius: 16,
-                      fontSize: 15,
+                      width: 170,
+                      height: 50,
+                      radius: 18,
+                      fontSize: 16,
                       onPressed: () => Navigator.of(ctx).pop(),
                     ),
-                    TextButton(
-                      onPressed: () async {
-                        await repo.setMeta('hints_off', '1');
-                        if (ctx.mounted) Navigator.of(ctx).pop();
-                      },
-                      child: Text('Пропустити всі підказки',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                    ),
-                  ]),
+                  ),
                 ),
-                const SizedBox(height: 12),
               ]),
             ),
           ),

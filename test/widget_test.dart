@@ -1303,8 +1303,8 @@ void main() {
     await tester.tap(find.text('Склад'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Пропустити всі підказки'), findsOneWidget);
-    await tester.tap(find.text('Пропустити всі підказки'));
+    expect(find.text('Пропустити'), findsOneWidget);
+    await tester.tap(find.text('Пропустити'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
