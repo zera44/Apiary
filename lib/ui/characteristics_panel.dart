@@ -17,7 +17,7 @@ class PanelData {
   final List<(Parameter, String?)> params;
 
   /// true — об'єкт уже на карті: рядки параметрів тапаються (історія),
-  /// є кнопка "Заповнити" і рядок "Дата оновлення".
+  /// є кнопка "Заповнити".
   final bool placed;
   final double? lastUpdated;
 
@@ -160,14 +160,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 if (data.params.isEmpty)
                   Text('—', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
                 else
-                  for (final (p, value) in data.params) _paramRow(p, value),
-                if (data.placed) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'Дата оновлення: ${data.lastUpdated == null ? 'ще немає даних' : _date(data.lastUpdated!)}',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
-                ],
+                  _paramTable(),
                 const SizedBox(height: 18),
                 PillButton(
                   text: 'Параметри',
@@ -238,25 +231,37 @@ class CharacteristicsPanel extends StatelessWidget {
     );
   }
 
-  Widget _paramRow(Parameter p, String? value) {
-    final text = '•  ${p.nameWithUnit}${(value != null && value.isNotEmpty) ? ': $value' : ''}';
-    final style = TextStyle(
-      color: AppColors.text,
-      fontSize: 13,
-      decoration: data.placed ? TextDecoration.underline : null,
-      decorationColor: AppColors.textMuted,
-    );
-    final t = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Text(text, style: style),
-    );
-    if (!data.placed || onHistory == null) return t;
-    return InkWell(onTap: () => onHistory!(p.id), child: t);
-  }
+  /// Таблиця «параметр — значення» з медовою сіткою. Тап по рядку — історія
+  /// значень цього параметра (для розміщеного об'єкта).
+  Widget _paramTable() {
+    final grid = AppColors.hive.withValues(alpha: 0.55);
+    final tappable = data.placed && onHistory != null;
+    Widget cell(Parameter p, Widget child) {
+      final c = Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9), child: child);
+      return tappable ? TableRowInkWell(onTap: () => onHistory!(p.id), child: c) : c;
+    }
 
-  static String _date(double ts) {
-    final d = DateTime.fromMicrosecondsSinceEpoch((ts * 1e6).round());
-    return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
+    return Table(
+      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+      columnWidths: const {0: FlexColumnWidth(1.25), 1: FlexColumnWidth(1)},
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        for (final (p, value) in data.params)
+          TableRow(children: [
+            cell(
+                p,
+                Text(p.nameWithUnit,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
+            cell(
+                p,
+                Text((value == null || value.isEmpty) ? '—' : value,
+                    style: TextStyle(
+                        color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600))),
+          ]),
+      ],
+    );
   }
 }
 
