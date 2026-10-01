@@ -90,6 +90,11 @@ class MapScreen extends StatefulWidget {
 const kLessonBottom = 80.0;
 const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
 
+/// Коли кнопки «Редагувати» немає (редагування, вибір шаблону) — пасічник
+/// спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
+const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
+const kLessonLeaningHeight = 192.0;
+
 /// Урок: панель вулика закінчується над пасічником і його хмаркою.
 const kLessonPanelBottom = 290.0;
 
@@ -152,8 +157,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           left: 12,
           bottom: kLessonBottom,
           child: IgnorePointer(
-            child: Image.asset(kLessonBeekeeper,
-                height: 170, filterQuality: FilterQuality.medium),
+            child: Image.asset(selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
+                height: selectMode ? kLessonLeaningHeight : 170,
+                filterQuality: FilterQuality.medium),
           ),
         ),
       ];
@@ -166,7 +172,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         bottom: kLessonBottom,
         child: onTap == null
             // дотики проходять крізь — до карти й кнопок
-            ? IgnorePointer(child: GuideBubble(text: text, image: kLessonBeekeeper))
+            ? IgnorePointer(
+                child: GuideBubble(
+                    text: text,
+                    image: selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
+                    imageHeight: selectMode ? kLessonLeaningHeight : 170))
             : GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onTap,
@@ -668,7 +678,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         right: 0,
         bottom: kLessonBottom + MediaQuery.of(context).padding.bottom,
         child: IgnorePointer(child: Material(type: MaterialType.transparency,
-            child: GuideBubble(text: spans, image: kLessonBeekeeper))),
+            child: GuideBubble(
+                text: spans, image: kLessonBeekeeperLeaning, imageHeight: kLessonLeaningHeight))),
       ),
     ]);
   }
