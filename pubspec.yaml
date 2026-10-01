@@ -36,6 +36,10 @@ dependencies:
   qr: ^3.0.2
   qr_flutter: ^4.1.0
   pdf: ^3.11.3
+  # друк наліпок системним вікном друку (Android, Windows)
+  printing: ^5.15.1
+  # «Поділитися» звітом Excel (Telegram, пошта…)
+  share_plus: ^13.3.0
   # нагадування про обхід вуликів (Android/iOS — відкладені; Windows — поки застосунок запущений)
   flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1

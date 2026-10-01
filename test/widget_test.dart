@@ -953,14 +953,13 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('генератор QR: «Усі без коду» -> «Згенерувати» -> наліпки', (tester) async {
+  testWidgets('генератор QR: вулики без коду обрані одразу -> «Згенерувати» -> наліпки', (tester) async {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(QrGenerateScreen(repo: repo, apiary: a)));
     await settle(tester);
     // дві сусідні клітинки-вулики групи злиті в ОДИН вулик: один код
     expect(find.textContaining('0 з 1'), findsOneWidget);
-    await tester.tap(find.text('Усі без коду'));
-    await tester.pump();
+    // вулики без коду обрані одразу
     expect(find.text('Згенерувати (1)'), findsOneWidget);
     await tester.tap(find.text('Згенерувати (1)'));
     for (var i = 0; i < 3; i++) {

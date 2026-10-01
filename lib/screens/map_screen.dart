@@ -602,7 +602,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final sel = selection;
     if (sel.isEmpty || _busy) return;
     final isGroup = selectedGroupId != null;
-    // без «Точно видалити?»: одразу, а внизу «Відмінити» (= «Крок назад»)
+    // без «Точно видалити?»: одразу, а внизу «Відмінити»
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
@@ -1378,12 +1378,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               bg: AppColors.addObject,
               tooltip: "Додати об'єкт",
               onPressed: _onAddObject),
-          const SizedBox(width: 16),
-          CircleIconButton(
-              icon: 'back_arrow',
-              bg: AppColors.darkBtn,
-              tooltip: 'Крок назад',
-              onPressed: (undoStack.isEmpty || _busy || _drag != null) ? null : _onUndo),
           const SizedBox(width: 16),
           CircleIconButton(
               icon: 'trash',

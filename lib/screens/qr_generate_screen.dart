@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -69,6 +70,8 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
 
   Future<void> _init() async {
     await _reload();
+    // одразу обрано всі вулики без коду — найчастіший випадок
+    if (mounted && selected.isEmpty) _selectAllWithout();
     if (elements.isNotEmpty) {
       var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
       for (final e in elements) {
@@ -291,6 +294,31 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
     if (mounted) setState(() => _pngs = out);
   }
 
+  /// «Друк»: системне вікно друку телефона/комп'ютера, без збереження файлу.
+  Future<void> _print() async {
+    final pngs = _pngs;
+    if (pngs == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final bytes = await buildLabelsPdf(pngs);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: _fileName());
+    } catch (e) {
+      if (mounted) await showInfo(context, 'Не вдалося відкрити друк: $e\n\nЗбережіть PDF і надрукуйте його.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  String _fileName() {
+    final now = DateTime.now();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final safe = widget.apiaryName
+        .replaceAll(RegExp(r'[^\p{L}\p{N}_-]+', unicode: true), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
+    return 'qr_${safe.isEmpty ? 'pasika' : safe}_'
+        '${now.year}${two(now.month)}${two(now.day)}_${two(now.hour)}${two(now.minute)}.pdf';
+  }
+
   Future<void> _savePdf() async {
     final pngs = _pngs;
     if (pngs == null || _saving) return;
@@ -340,14 +368,28 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: PillButton(
-                text: _saving ? 'Зберігаємо…' : 'Зберегти PDF для друку',
-                bg: AppColors.accent,
-                height: 48,
-                radius: 16,
-                width: double.infinity,
-                onPressed: pngs == null || _saving ? null : _savePdf,
-              ),
+              child: Row(children: [
+                Expanded(
+                  child: PillButton(
+                    text: 'Друк',
+                    bg: AppColors.accent,
+                    height: 48,
+                    radius: 16,
+                    onPressed: pngs == null || _saving ? null : _print,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PillButton(
+                    text: _saving ? 'Зачекайте…' : 'Зберегти PDF',
+                    bg: AppColors.darkBtn,
+                    fg: AppColors.text,
+                    height: 48,
+                    radius: 16,
+                    onPressed: pngs == null || _saving ? null : _savePdf,
+                  ),
+                ),
+              ]),
             ),
           ]),
           const Positioned.fill(child: ScreenFrame()),
