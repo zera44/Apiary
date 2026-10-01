@@ -523,17 +523,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ApiaryTemplate(id: '', name: '', width: 0, height: 0, cells: const {});
 
   /// Урок: під вікном вибору шаблону — пасічник: «Я трохи про тебе
-  /// потурбувався і створив «Вулик» і «Лежак». Обери вулик».
+  /// потурбувався. Створив «Вулик» і «Лежак». Обери «Вулик»» (назви
+  /// шаблонів — жирним медовим).
   Widget _withTutorialGuide(List<ApiaryTemplate> templates, Widget dialog) {
     if (!widget.tutorial || templates.isEmpty) return dialog;
     final names = [for (final t in templates) t.name];
+    final pick = names.contains('Вулик') ? 'Вулик' : names.first;
+    // радимо перший — його й називаємо першим
+    names
+      ..remove(pick)
+      ..insert(0, pick);
     final spans = <InlineSpan>[
-      const TextSpan(text: 'Я трохи про тебе потурбувався і створив '),
+      const TextSpan(text: 'Я трохи про тебе потурбувався. Створив '),
       for (var i = 0; i < names.length; i++) ...[
         if (i > 0) TextSpan(text: i == names.length - 1 ? ' і ' : ', '),
         GuideBubble.highlight('«${names[i]}»'),
       ],
-      const TextSpan(text: '. Обери вулик'),
+      const TextSpan(text: '. Обери '),
+      GuideBubble.highlight('«$pick»'),
     ];
     return Stack(children: [
       // вікно вибору — вище, щоб пасічник унизу його не закривав

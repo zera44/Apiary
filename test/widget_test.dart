@@ -704,6 +704,7 @@ void main() {
     // пасічник називає готові шаблони
     expect(find.textContaining('потурбувався'), findsOneWidget);
     expect(find.textContaining('«Вулик» і «Лежак»'), findsOneWidget);
+    expect(find.textContaining('Обери «Вулик»'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
