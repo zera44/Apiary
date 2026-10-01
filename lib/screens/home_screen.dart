@@ -7,13 +7,14 @@ import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
+import 'feedback_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
 import 'tutorial_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
-/// «Інвентаризація» (склад), «Пройти навчання». Внизу — хто увійшов і
+/// «Склад», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
 /// «Вийти» (назад на екран входу).
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта поверх
 /// списку пасік; інакше — список.
@@ -98,14 +99,19 @@ class HomeScreen extends StatelessWidget {
                   button('Сканувати QR-код', AppColors.darkBtn,
                       () => AppDrawer.openHiveByQr(Navigator.of(context), repo),
                       fg: AppColors.text),
-                  button('Інвентаризація', AppColors.darkBtn, () {
+                  button('Склад', AppColors.darkBtn, () {
                     Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => StockScreen(repo: repo, initialTab: StockOp.inventory),
+                      builder: (_) => StockScreen(repo: repo), // вкладка «Прихід»
                     ));
                   }, fg: AppColors.text),
                   button('Пройти навчання', AppColors.darkBtn, () {
                     Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => const TutorialScreen(),
+                    ));
+                  }, fg: AppColors.text),
+                  button("Зворотний зв'язок", AppColors.darkBtn, () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const FeedbackScreen(),
                     ));
                   }, fg: AppColors.text),
                   if (user != null) ...[

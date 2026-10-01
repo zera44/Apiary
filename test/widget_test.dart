@@ -222,7 +222,8 @@ void main() {
     // головний екран
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.text('Сканувати QR-код'), findsOneWidget);
-    expect(find.text('Інвентаризація'), findsOneWidget);
+    expect(find.text('Склад'), findsOneWidget);
+    expect(find.text("Зворотний зв'язок"), findsOneWidget);
     expect(find.text('Пройти навчання'), findsOneWidget);
     expect(find.text('pasichnyk@example.com'), findsOneWidget);
     await tester.tap(find.text('Почати'));
@@ -239,8 +240,8 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
-    // «Інвентаризація» — склад на вкладці інвентаризації
-    await tester.tap(find.text('Інвентаризація'));
+    // «Склад» — склад на вкладці «Прихід»
+    await tester.tap(find.text('Склад'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(StockScreen), findsOneWidget);

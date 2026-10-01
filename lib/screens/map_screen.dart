@@ -198,6 +198,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // дотики по карті
   // ---------------------------------------------------------------------
 
+  /// Довгий дотик до об'єкта: одразу режим редагування, об'єкт обрано й
+  /// його можна тягнути тим самим дотиком (без «Редагувати» й вибору шаблону).
+  bool _onLongPress(GridPress p) {
+    if (_busy || _elementAt(p.cell) == null) return false;
+    if (!selectMode) _enterEdit();
+    return _onPressDown(p);
+  }
+
   bool _onPressDown(GridPress p) {
     // поки триває інша дія (запис у базу), нове перетягування не починаємо —
     // воно спиралось би на застарілий список об'єктів
@@ -917,6 +925,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 onPressMove: _onPressMove,
                 onPressUp: _onPressUp,
                 onTap: _onTap,
+                onLongPress: _onLongPress,
               ),
             ),
             // над обраним об'єктом у редагуванні — "Повернути"/"Видалити"

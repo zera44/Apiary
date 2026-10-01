@@ -151,7 +151,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 // у перешкод немає параметрів, історії й QR-кодів — лише назва й вигляд
                 if (data.type == 'hive') ...[
                 const SizedBox(height: 14),
-                Text('Параметри', style: muted),
+                Text('Значення', style: muted),
                 const SizedBox(height: 6),
                 if (data.params.isEmpty)
                   Text('—', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
@@ -166,7 +166,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 ],
                 const SizedBox(height: 18),
                 PillButton(
-                  text: 'Редагувати',
+                  text: 'Параметри',
                   bg: AppColors.accent,
                   height: 38,
                   fontSize: 13,

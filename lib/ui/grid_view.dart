@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -237,6 +238,11 @@ class InfiniteGrid extends StatefulWidget {
   final void Function(Offset screenDelta)? onPressUp;
   final void Function(GridPress p)? onTap;
 
+  /// Довгий дотик (0,5 с без руху). true — дотик «захоплено» (далі, як після
+  /// [onPressDown], ідуть [onPressMove]/[onPressUp], відлік зсуву — з цієї
+  /// точки).
+  final bool Function(GridPress p)? onLongPress;
+
   const InfiniteGrid({
     super.key,
     required this.controller,
@@ -268,6 +274,31 @@ class _InfiniteGridState extends State<InfiniteGrid> {
   bool _pinched = false;
   double _pinchStartDist = 0;
   double _pinchStartCell = 0;
+  Timer? _longTimer;
+
+  static const longPressDelay = Duration(milliseconds: 500);
+
+  void _cancelLong() {
+    _longTimer?.cancel();
+    _longTimer = null;
+  }
+
+  void _armLong() {
+    _cancelLong();
+    if (widget.onLongPress == null || _claimed) return;
+    _longTimer = Timer(longPressDelay, () {
+      _longTimer = null;
+      final id = _primary;
+      if (id == null || _panning || _pinched || _claimed || !mounted) return;
+      final pos = _pointers[id];
+      if (pos == null) return;
+      if (widget.onLongPress!(GridPress(pos, c.screenToCell(pos)))) {
+        _claimed = true;
+        _start = pos;
+        HapticFeedback.mediumImpact();
+      }
+    });
+  }
 
   GridController get c => widget.controller;
 
@@ -288,6 +319,7 @@ class _InfiniteGridState extends State<InfiniteGrid> {
 
   @override
   void dispose() {
+    _cancelLong();
     c.removeListener(_onCam);
     super.dispose();
   }
@@ -306,7 +338,9 @@ class _InfiniteGridState extends State<InfiniteGrid> {
       _pinched = false;
       _claimed = widget.onPressDown?.call(GridPress(e.localPosition, c.screenToCell(e.localPosition))) ??
           false;
+      _armLong();
     } else if (_pointers.length == 2 && !_claimed) {
+      _cancelLong();
       final pts = _pointers.values.toList();
       _pinched = true;
       _pinchStartDist = (pts[0] - pts[1]).distance;
@@ -331,7 +365,10 @@ class _InfiniteGridState extends State<InfiniteGrid> {
       widget.onPressMove?.call(delta);
       return;
     }
-    if (!_panning && delta.distance > InfiniteGrid.panThreshold) _panning = true;
+    if (!_panning && delta.distance > InfiniteGrid.panThreshold) {
+      _panning = true;
+      _cancelLong();
+    }
     if (_panning) {
       c.camera = _camStart - delta;
       c.refresh();
@@ -341,6 +378,7 @@ class _InfiniteGridState extends State<InfiniteGrid> {
   void _up(PointerEvent e, {bool cancelled = false}) {
     if (!_pointers.containsKey(e.pointer)) return;
     _pointers.remove(e.pointer);
+    if (e.pointer == _primary) _cancelLong();
     if (e.pointer == _primary) {
       final delta = e.localPosition - _start;
       if (_claimed) {
