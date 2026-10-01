@@ -347,6 +347,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _reload() async {
+    if (!repo.db.isOpen) return; // урок: пісочницю вже закрили
     final els = await repo.listElements(widget.apiary.id);
     final overdue = await _loadOverdue();
     if (!mounted) return;

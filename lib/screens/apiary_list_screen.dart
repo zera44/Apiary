@@ -53,10 +53,20 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   }
 
   Future<void> _reload() async {
-    final list = await widget.repo.listApiaries();
-    // один запит на всі пасіки; клітинки для мініатюр рахуються тут раз,
-    // а не при кожному перемальовуванні списку
-    final els = await widget.repo.listElementsByApiary([for (final a in list) a.id]);
+    // урок: пісочницю закривають, щойно урок скінчився, а екран ще може
+    // доживати анімацію закриття — тоді просто нічого не читаємо
+    if (!mounted || !widget.repo.db.isOpen) return;
+    final List<Apiary> list;
+    final Map<String, List<MapElement>> els;
+    try {
+      list = await widget.repo.listApiaries();
+      // один запит на всі пасіки; клітинки для мініатюр рахуються тут раз,
+      // а не при кожному перемальовуванні списку
+      els = await widget.repo.listElementsByApiary([for (final a in list) a.id]);
+    } catch (_) {
+      if (!widget.repo.db.isOpen) return; // базу закрили під час читання
+      rethrow;
+    }
     if (!mounted) return;
     setState(() {
       apiaries = list;
