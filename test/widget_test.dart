@@ -702,14 +702,14 @@ void main() {
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
     // як після встановлення: готові шаблони вже є
-    expect(find.text('Вулик (1×1)'), findsOneWidget);
+    expect(find.byTooltip('Вулик (1×1)'), findsOneWidget);
     // пасічник називає готові шаблони
     expect(find.textContaining('потурбувався'), findsOneWidget);
     expect(find.textContaining('«Вулик» і «Лежак»'), findsOneWidget);
     expect(find.textContaining('Обери «Вулик»'), findsOneWidget);
 
     // обрали шаблон — «Натисни на карту»
-    await tester.tap(find.text('Вулик (1×1)'));
+    await tester.tap(find.byTooltip('Вулик (1×1)'));
     await settle(tester);
     expect(find.textContaining('Натисни на карту'), findsOneWidget);
     final spot = tester.getCenter(find.byType(InfiniteGrid)) - const Offset(150, 150);
@@ -1283,7 +1283,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Редагувати')); // одразу вибір шаблону
     await settle(tester);
-    await tester.tap(find.text('Лежак (2×2)'));
+    await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     final center = tester.getCenter(find.byType(InfiniteGrid));
     await tester.tapAt(center);
@@ -1436,7 +1436,7 @@ void main() {
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
-    expect(find.text('Лежак (2×2)'), findsOneWidget);
+    expect(find.byTooltip('Лежак (2×2)'), findsOneWidget);
     // закрили вибір, нічого не обравши — лишаємось у редагуванні
     await tester.tapAt(const Offset(12, 300));
     await settle(tester);
@@ -1447,7 +1447,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
-    await tester.tap(find.text('Лежак (2×2)'));
+    await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає
     expect(find.byTooltip('Готово'), findsOneWidget);

@@ -108,10 +108,43 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     );
   }
 
-  /// Плитка шаблону — шматок карти з ним, як мініатюри пасік на головному
-  /// екрані. Тап — відкрити, олівець — перейменувати, кошик — видалити.
-  Widget _tile(ApiaryTemplate t) {
-    final cells = _thumbs[t.id] ??= templateSceneCells(t);
+  /// Плитка шаблону. Тап — відкрити, олівець — перейменувати, кошик — видалити.
+  Widget _tile(ApiaryTemplate t) => TemplateTile(
+        template: t,
+        cells: _thumbs[t.id] ??= templateSceneCells(t),
+        tooltip: 'Відкрити',
+        onTap: () => _open(t.id),
+        onLongPress: () => _rename(t),
+        onRename: () => _rename(t),
+        onDelete: () => _delete(t),
+      );
+}
+
+/// Плитка шаблону — шматок карти з ним (як мініатюри пасік): назва, мініатюра,
+/// розмір. Одна на весь застосунок: список шаблонів і вибір «Оберіть шаблон».
+class TemplateTile extends StatelessWidget {
+  final ApiaryTemplate template;
+  final List<SceneCell>? cells;
+  final String? tooltip;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
+  const TemplateTile({
+    super.key,
+    required this.template,
+    this.cells,
+    this.tooltip,
+    this.onTap,
+    this.onLongPress,
+    this.onRename,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = template;
+    final scene = cells ?? templateSceneCells(t);
     return Column(children: [
       Text(t.name,
           maxLines: 1,
@@ -120,7 +153,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
       const SizedBox(height: 5),
       Expanded(
         child: Tooltip(
-          message: 'Відкрити',
+          message: tooltip ?? '${t.name} (${t.width}×${t.height})',
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -132,12 +165,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => _open(t.id),
-                  onLongPress: () => _rename(t),
+                  onTap: onTap,
+                  onLongPress: onLongPress,
                   child: Stack(children: [
                     Positioned.fill(
                         child: IgnorePointer(
-                            child: RepaintBoundary(child: SceneThumbnail(cells: cells)))),
+                            child: RepaintBoundary(child: SceneThumbnail(cells: scene)))),
                     Positioned(
                       left: 6,
                       bottom: 4,
@@ -148,26 +181,28 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                               fontWeight: FontWeight.bold,
                               shadows: [Shadow(blurRadius: 3)])),
                     ),
-                    Positioned(
-                      right: 3,
-                      top: 3,
-                      child: CircleIconButton(
-                          icon: 'trash',
-                          bg: AppColors.danger,
-                          size: 28,
-                          tooltip: 'Видалити',
-                          onPressed: () => _delete(t)),
-                    ),
-                    Positioned(
-                      right: 3,
-                      bottom: 3,
-                      child: CircleIconButton(
-                          icon: 'pencil',
-                          bg: AppColors.rename,
-                          size: 28,
-                          tooltip: 'Перейменувати',
-                          onPressed: () => _rename(t)),
-                    ),
+                    if (onDelete != null)
+                      Positioned(
+                        right: 3,
+                        top: 3,
+                        child: CircleIconButton(
+                            icon: 'trash',
+                            bg: AppColors.danger,
+                            size: 28,
+                            tooltip: 'Видалити',
+                            onPressed: onDelete),
+                      ),
+                    if (onRename != null)
+                      Positioned(
+                        right: 3,
+                        bottom: 3,
+                        child: CircleIconButton(
+                            icon: 'pencil',
+                            bg: AppColors.rename,
+                            size: 28,
+                            tooltip: 'Перейменувати',
+                            onPressed: onRename),
+                      ),
                   ]),
                 ),
               ),

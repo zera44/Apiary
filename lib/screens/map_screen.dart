@@ -22,6 +22,7 @@ import 'history_screen.dart';
 import 'parameters_screen.dart';
 import 'qr_scan_screen.dart';
 import 'template_editor_screen.dart';
+import 'templates_screen.dart' show TemplateTile;
 
 /// Головний екран: карта пасіки (порт map_screen.py).
 ///
@@ -677,18 +678,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     onPressed: () => Navigator.pop(ctx, _createTemplate),
                   ),
                 ])
+              // плитки — ті самі, що в списку «Шаблони» (мініатюра й розмір)
+              // (Wrap, а не GridView: вікно міряє вміст, а сітка цього не вміє)
               : SingleChildScrollView(
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  child: Wrap(spacing: 12, runSpacing: 12, children: [
                     for (final t in templates)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: PillButton(
-                          text: '${t.name} (${t.width}×${t.height})',
-                          bg: AppColors.darkBtn,
-                          fg: AppColors.text,
-                          height: 44,
-                          width: double.infinity,
-                          onPressed: () => Navigator.pop(ctx, t),
+                      SizedBox(
+                        width: 140,
+                        height: 165,
+                        child: TemplateTile(
+                          template: t,
+                          onTap: () => Navigator.pop(ctx, t),
                         ),
                       ),
                   ]),
