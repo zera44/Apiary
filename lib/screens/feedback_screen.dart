@@ -47,8 +47,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     setState(() => _sending = false);
     if (result == FeedbackResult.sent) {
       _ctrl.clear();
-      await showInfo(context, 'Дякуємо! Ваше повідомлення надіслано.', title: 'Надіслано');
-      if (mounted) Navigator.of(context).pop();
+      // без окремого вікна з «Гаразд»: коротке повідомлення внизу й назад
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Дякуємо! Ваше повідомлення надіслано.')),
+      );
+      Navigator.of(context).pop();
       return;
     }
     await _showFailure(text, notConfigured: result == FeedbackResult.notConfigured);

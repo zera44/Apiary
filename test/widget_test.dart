@@ -1160,9 +1160,9 @@ void main() {
       await tester.tap(find.text('Надіслати'));
       await tester.pumpAndSettle();
       expect(sent, ['Додайте темну тему']);
+      // повідомлення внизу, без вікна «Гаразд»; екран закрився сам
       expect(find.text('Дякуємо! Ваше повідомлення надіслано.'), findsOneWidget);
-      await tester.tap(find.text('Гаразд'));
-      await tester.pumpAndSettle();
+      expect(find.text('Гаразд'), findsNothing);
       expect(find.byType(FeedbackScreen), findsNothing);
     });
 
