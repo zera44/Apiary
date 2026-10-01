@@ -657,7 +657,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
       final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
-      await r.init();
+      await r.prepareLikeFreshInstall();
       return r;
     })));
     await settle(tester);
@@ -681,7 +681,7 @@ void main() {
   testWidgets('навчання: на порожній карті пасічник підказує «Редагувати»', (tester) async {
     await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
       final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
-      await r.init();
+      await r.prepareLikeFreshInstall();
       return r;
     })));
     await settle(tester);
@@ -699,6 +699,8 @@ void main() {
     await tester.tap(find.text('Редагувати'));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
+    // як після встановлення: готові шаблони вже є
+    expect(find.text('Вулик (1×1)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

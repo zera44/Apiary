@@ -9,9 +9,13 @@ import 'apiary_list_screen.dart';
 /// Відкриває порожню «пісочницю» для уроку (див. [AppDatabase.openSandbox]).
 typedef SandboxOpener = Future<Repository> Function();
 
+/// Пісочниця = щойно встановлений застосунок: порожня база з усім, що дає
+/// перший запуск поточної версії (шаблони, базові характеристики). Екрани
+/// уроку — ті самі, що й у роботі, тож навчання завжди показує актуальну
+/// версію.
 Future<Repository> openSandboxRepository() async {
   final repo = Repository(await AppDatabase.openSandbox());
-  await repo.init();
+  await repo.prepareLikeFreshInstall();
   return repo;
 }
 

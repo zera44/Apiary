@@ -33,9 +33,8 @@ Future<void> _start() async {
   try {
     final db = await AppDatabase.openDefault();
     repo = Repository(db);
-    await repo.init();
+    await repo.prepareLikeFreshInstall();
     auth = await GoogleAuthService.open();
-    await repo.seedDefaultTemplates(); // «Вулик» і «Лежак» — один раз
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
