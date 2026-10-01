@@ -580,6 +580,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         elements = els;
         _drag = null;
         _blocked = false;
+        // урок: вулик перетягнули на підсвічену клітинку
+        final t = _lessonTarget;
+        if (widget.tutorial && t != null && !_lessonMoved &&
+            els.any((e) => e.isHive && e.x == t.$1 && e.y == t.$2)) {
+          _lessonMoved = true;
+        }
       });
       if (releasedBlocked) {
         _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
