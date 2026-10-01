@@ -1083,6 +1083,12 @@ class Repository {
 
   Future<void> deleteParameter(String id) => updateParameter(id, {'deleted': 1});
 
+  /// Чи є в параметра хоч один запис історії (тоді тип даних не змінюють).
+  Future<bool> parameterHasRecords(String id) async {
+    final r = await db.rawQuery('SELECT 1 FROM parameter_records WHERE parameter_id = ? LIMIT 1', [id]);
+    return r.isNotEmpty;
+  }
+
   // ---------------------------------------------------------------------
   // Прив'язка параметрів до об'єктів
   // ---------------------------------------------------------------------

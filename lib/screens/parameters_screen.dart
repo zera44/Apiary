@@ -97,6 +97,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   bool _saving = false;
 
+  /// «Для всіх вуликів пасіки»: такий самий набір і порядок — усім вуликам
+  /// пасіки цього вулика (лише для вулика на карті).
+  bool _allHives = false;
+
+  bool get _canApplyToAll => widget.element?.isHive == true && widget.element?.apiaryId != null;
+
   Future<void> _save() async {
     // подвійний тап: другий виклик пізніше закрив би ще й екран під цим
     if (_saving) return;
@@ -106,7 +112,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
       return;
     }
     try {
-      await repo.setAttachedParameters(selected, widget.element!.entity);
+      if (_allHives && _canApplyToAll) {
+        final owners = <String, EntityRef>{};
+        for (final e in await repo.listElements(widget.element!.apiaryId!)) {
+          if (!e.isHive) continue;
+          owners[e.groupId != null ? 'g:${e.groupId}' : 'e:${e.id}'] = e.entity;
+        }
+        for (final o in owners.values) {
+          await repo.setAttachedParameters(selected, o);
+        }
+      } else {
+        await repo.setAttachedParameters(selected, widget.element!.entity);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       _saving = false;
@@ -126,6 +143,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final nameCtrl = TextEditingController(text: param?.name ?? presetName ?? '');
     final unitCtrl = TextEditingController(text: param?.unit ?? presetUnit ?? '');
     var type = param?.dataType ?? DataTypes.text;
+    // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
+    final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
+    if (!mounted) return null;
 
     final action = await showDialog<String>(
       context: context,
@@ -176,19 +196,19 @@ class _ParametersScreenState extends State<ParametersScreen> {
                           bg: key == type ? AppColors.accent : AppColors.typeBtn,
                           fontSize: 11,
                           radius: 12,
-                          // тип обирається лише під час створення
-                          onPressed: isEdit ? null : () => setD(() => type = key),
+                          // тип змінюється, поки немає записів
+                          onPressed: typeLocked ? null : () => setD(() => type = key),
                         ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    isEdit
-                        ? (isBase
-                            ? 'Тип даних Базової характеристики змінити не можна'
-                            : 'Тип даних обирається один раз. Щоб змінити тип — створіть '
-                                'новий параметр і перенесіть у нього історію.')
-                        : 'Тип даних потім змінити не можна — оберіть уважно.',
+                    isBase
+                        ? 'Тип даних Базової характеристики змінити не можна'
+                        : typeLocked
+                            ? 'Записи вже є, тож тип даних змінити не можна. Щоб змінити тип — '
+                                'створіть новий параметр і перенесіть у нього історію.'
+                            : 'Тип даних можна змінити, поки немає жодного запису.',
                     textAlign: TextAlign.center,
                     style: note,
                   ),
@@ -244,9 +264,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
     String? created;
     if (isEdit) {
-      // тип даних не змінюється ніколи — лише назва й одиниця
+      // тип даних — лише поки немає записів
       await repo.updateParameter(param!.id, {
         if (!isBase) 'name': name,
+        if (!typeLocked && type != param!.dataType) 'data_type': type,
         'unit': unit.isEmpty ? null : unit,
       });
     } else {
@@ -425,6 +446,21 @@ class _ParametersScreenState extends State<ParametersScreen> {
                             )
                           : _orderList(list),
             ),
+            if (!widget.catalog && _canApplyToAll)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: InkWell(
+                  onTap: () => setState(() => _allHives = !_allHives),
+                  child: Row(children: [
+                    CheckToggle(checked: _allHives, onChanged: (v) => setState(() => _allHives = v)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Для всіх вуликів пасіки (такий самий набір і порядок)',
+                          style: TextStyle(color: AppColors.text, fontSize: 14)),
+                    ),
+                  ]),
+                ),
+              ),
             if (!widget.catalog)
               Padding(
                 padding: const EdgeInsets.all(12),

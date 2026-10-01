@@ -587,6 +587,28 @@ void main() {
     expect(item.quantity, 3);
   });
 
+  testWidgets('параметри: «Для всіх вуликів пасіки» — однаковий набір усім', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final other = (await tester.runAsync(
+        () => repo.addGroup(apiaryId, {'0,0': 'hive'}, 6, 6, groupLabel: 'Вулик 7')))!;
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
+        .firstWhere((e) => e.isHive && e.groupId == groupId);
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    await tester.tap(find.descendant(
+        of: find.widgetWithText(ListCard, 'Вага'), matching: find.byType(CheckToggle)));
+    await settle(tester);
+    await tester.tap(find.text('Для всіх вуликів пасіки (такий самий набір і порядок)'));
+    await settle(tester);
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    final a = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(groupId), elType: 'hive')))!;
+    final b = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(other), elType: 'hive')))!;
+    expect(a, contains(paramId));
+    expect(b, a);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';
