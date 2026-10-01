@@ -4,7 +4,12 @@ on:
   push:
     branches: [ main ]
   pull_request:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tests_only:
+        description: 'Лише аналіз і тести, без збірки APK/Windows (економія хвилин)'
+        type: boolean
+        default: false
 
 # за замовчуванням токен CI — лише на читання; запис має тільки публікація
 permissions:
@@ -58,6 +63,7 @@ jobs:
   android:
     name: APK для Android
     needs: test
+    if: ${{ !inputs.tests_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -181,6 +187,7 @@ jobs:
   windows:
     name: Програма для Windows
     needs: test
+    if: ${{ !inputs.tests_only }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
