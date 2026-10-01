@@ -736,6 +736,20 @@ void main() {
     expect(find.textContaining('короткі замітки'), findsOneWidget);
     expect(find.textContaining('Проведи огляд по ньому'), findsOneWidget);
     expect(find.text('Оглянути'), findsOneWidget);
+
+    // з уроку не вийти системним «назад» і немає меню ☰ — лише «Назад» угорі
+    expect(find.byTooltip('Меню'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.byType(MapScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('Назад'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(MapScreen), findsNothing);
+    expect(find.byType(ApiaryListScreen), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.byType(ApiaryListScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

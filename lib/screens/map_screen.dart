@@ -1361,12 +1361,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final status = _warning ?? _statusText;
     final isWarn = _warning != null;
-    return Scaffold(
-      drawer: AppDrawer(
-          repo: repo,
-          currentApiary: widget.apiary,
-          onReturn: _afterExternalChange,
-          onBindQrRow: _bindQrInRow),
+    // урок: вийти можна лише кнопкою «назад» угорі ліворуч (системне «назад»
+    // і меню ☰ вивели б із пісочниці на справжні екрани)
+    return PopScope(
+      canPop: !widget.tutorial,
+      child: Scaffold(
+      drawer: widget.tutorial
+          ? null
+          : AppDrawer(
+              repo: repo,
+              currentApiary: widget.apiary,
+              onReturn: _afterExternalChange,
+              onBindQrRow: _bindQrInRow),
       // свайп від лівого краю конфліктував би з панорамуванням карти —
       // меню відкривається лише кнопкою
       drawerEnableOpenDragGesture: false,
@@ -1400,14 +1406,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(children: [
                     Builder(
-                      builder: (ctx) => CircleIconButton(
-                        icon: 'menu',
-                        bg: AppColors.roundBtn,
-                        iconColor: AppColors.text,
-                        size: 34,
-                        tooltip: 'Меню',
-                        onPressed: () => Scaffold.of(ctx).openDrawer(),
-                      ),
+                      builder: (ctx) => widget.tutorial
+                          ? CircleIconButton(
+                              icon: 'back_arrow',
+                              bg: AppColors.roundBtn,
+                              iconColor: AppColors.text,
+                              size: 34,
+                              tooltip: 'Назад',
+                              onPressed: () => Navigator.of(ctx).pop(),
+                            )
+                          : CircleIconButton(
+                              icon: 'menu',
+                              bg: AppColors.roundBtn,
+                              iconColor: AppColors.text,
+                              size: 34,
+                              tooltip: 'Меню',
+                              onPressed: () => Scaffold.of(ctx).openDrawer(),
+                            ),
                     ),
                     const SizedBox(width: 10),
                     // довга назва пасіки/статус більше не дають переповнення
@@ -1496,6 +1511,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ]);
         }),
       ),
+    ),
     );
   }
 

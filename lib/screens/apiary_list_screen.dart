@@ -170,7 +170,10 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   @override
   Widget build(BuildContext context) {
     final list = apiaries;
-    return Scaffold(
+    // урок: системне «назад» не працює — лише кнопка вгорі ліворуч
+    return PopScope(
+      canPop: !widget.tutorial,
+      child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
@@ -224,6 +227,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
           const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
+    ),
     );
   }
 
