@@ -428,7 +428,7 @@ class _AdvisorState extends State<_Advisor> {
         message: 'Пошта',
         child: HivePostbox(
           count: _mail,
-          height: 92,
+          height: 104,
           onTap: () => setState(() => _i = 0),
         ),
       ),
