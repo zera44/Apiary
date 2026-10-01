@@ -4,7 +4,15 @@ import 'theme.dart';
 
 /// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
 /// на всіх кроках.
-const kLessonBottom = 80.0;
+/// Пасічник спирається на «стійку» (немає кнопки «Редагувати»): низ малюнка —
+/// над нижньою панеллю дій.
+const kLessonBottom = 70.0;
+
+/// Пасічник спирається руками на кнопку «Редагувати» (вона: ліворуч 16,
+/// знизу 18, 150 × 50): руки трохи заходять на її верхній край, сам —
+/// посередині кнопки.
+const kLessonOnButtonBottom = 58.0;
+const kLessonOnButtonLeft = 31.0;
 const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
 
 /// Коли кнопки «Редагувати» немає (редагування, вибір шаблону, форма огляду)
@@ -37,7 +45,11 @@ class GuideBubble extends StatelessWidget {
       this.image = 'assets/guide/beekeeper.webp',
       this.below,
       this.imageHeight = 170,
-      this.gap = 70});
+      this.gap = 70,
+      this.imageLeft = 12});
+
+  /// Відступ пасічника від лівого краю.
+  final double imageLeft;
 
   /// Назва кнопки в тексті підказки: іншим кольором і жирним.
   static TextSpan highlight(String s) => TextSpan(
@@ -54,7 +66,7 @@ class GuideBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: EdgeInsets.only(left: imageLeft, right: 12),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Image.asset(image, height: imageHeight, filterQuality: FilterQuality.medium),
         const SizedBox(width: 4),

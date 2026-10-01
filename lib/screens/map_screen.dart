@@ -150,8 +150,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (msg == null) {
       return [
         Positioned(
-          left: 12,
-          bottom: kLessonBottom,
+          left: selectMode ? 12 : kLessonOnButtonLeft,
+          bottom: _lessonBottom,
           child: IgnorePointer(
             child: Image.asset(selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
                 height: selectMode ? kLessonLeaningHeight : 170,
@@ -168,10 +168,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         Positioned(
           left: 0,
           right: 0,
-          bottom: kLessonBottom,
+          bottom: _lessonBottom,
           child: GuideBubble(
             text: text,
             image: kLessonBeekeeper,
+            imageLeft: kLessonOnButtonLeft,
             below: Row(children: [
               Expanded(
                 child: PillButton(
@@ -202,13 +203,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       Positioned(
         left: 0,
         right: 0,
-        bottom: kLessonBottom,
+        bottom: _lessonBottom,
         child: onTap == null
             // дотики проходять крізь — до карти й кнопок
             ? IgnorePointer(
                 child: GuideBubble(
                     text: text,
                     image: selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
+                    imageLeft: selectMode ? 12 : kLessonOnButtonLeft,
                     imageHeight: selectMode ? kLessonLeaningHeight : 170))
             : GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -216,6 +218,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: GuideBubble(
                   text: text,
                   image: kLessonBeekeeper,
+                  imageLeft: kLessonOnButtonLeft,
                   below: Text('Торкнись, щоб продовжити',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
@@ -223,6 +226,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ),
     ];
   }
+
+  /// Є кнопка «Редагувати» — пасічник спирається на неї; немає (редагування)
+  /// — на свою «стійку» над панеллю дій.
+  double get _lessonBottom => selectMode ? kLessonBottom : kLessonOnButtonBottom;
 
   /// Що каже пасічник на поточному кроці уроку (і що робить тап по хмарці),
   /// або null — мовчить.
