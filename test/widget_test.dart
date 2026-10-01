@@ -547,6 +547,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('інвентаризація списком: записуються лише розбіжності', (tester) async {
+    final (sugar, frames) = (await tester.runAsync(() async {
+      final a = await repo.addStockItem('Цукор', 'кг');
+      await repo.receiveStock(a, 5, total: 150);
+      final b = await repo.addStockItem('Рамки', 'шт');
+      await repo.receiveStock(b, 10, total: 300);
+      return (a, b);
+    }))!;
+    await tester.pumpWidget(wrap(StockScreen(repo: repo, initialTab: StockOp.inventory)));
+    await settle(tester);
+    await tester.tap(find.text('Списком'));
+    await settle(tester);
+    expect(find.text('За обліком: 5 кг'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, '5'), '4');
+    await tester.tap(find.text('Зберегти інвентаризацію'));
+    await settle(tester);
+    await settle(tester);
+    expect((await tester.runAsync(() => repo.getStockItem(sugar)))!.quantity, 4);
+    expect((await tester.runAsync(() => repo.getStockItem(frames)))!.quantity, 10);
+    final moves = (await tester.runAsync(() => repo.stockMoves(frames)))!;
+    expect(moves.where((m) => m['kind'] == 'inv'), isEmpty); // збіглось — без запису
+  });
+
+  testWidgets('нова номенклатура одразу з приходом', (tester) async {
+    await tester.pumpWidget(wrap(StockScreen(repo: repo)));
+    await settle(tester);
+    await tester.tap(find.text('Додати номенклатуру'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Назва'), 'Вощина');
+    await tester.tap(find.text('кг'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Кількість'), '3');
+    await tester.enterText(find.widgetWithText(TextField, 'Вартість'), '900');
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    await settle(tester);
+    final item = (await tester.runAsync(() => repo.listStockItems()))!.firstWhere((i) => i.name == 'Вощина');
+    expect(item.quantity, 3);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';

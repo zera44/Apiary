@@ -123,6 +123,97 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
       });
 
+  /// Інвентаризація списком (усі позиції на одному екрані) чи по одній.
+  bool _invList = false;
+  final Map<String, TextEditingController> _actual = {};
+
+  @override
+  void dispose() {
+    for (final c in _actual.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  TextEditingController _actualFor(StockItem it) => _actual.putIfAbsent(
+      it.id, () => TextEditingController(text: formatAmount(it.quantity ?? 0)));
+
+  /// «Зберегти інвентаризацію»: записуються лише позиції, де фактична
+  /// кількість відрізняється від облікової.
+  Future<void> _saveInventoryList() => _guard(() async {
+        final list = items ?? const <StockItem>[];
+        for (final it in list) {
+          final c = _actual[it.id];
+          if (c == null) continue;
+          final v = parseAmount(c.text);
+          if (v == null) {
+            if (mounted) {
+              await showInfo(context, '«${it.name}»: фактична кількість — число, не менше 0',
+                  title: 'Не збережено');
+            }
+            return;
+          }
+        }
+        var changed = 0;
+        for (final it in list) {
+          final v = parseAmount(_actual[it.id]?.text ?? '');
+          if (v == null || (v - (it.quantity ?? 0)).abs() < 1e-9) continue;
+          await repo.inventoryStock(it.id, v);
+          changed++;
+        }
+        for (final c in _actual.values) {
+          c.dispose();
+        }
+        _actual.clear();
+        await _reload();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(changed == 0
+                  ? 'Розбіжностей немає — усе збігається з обліком'
+                  : 'Інвентаризацію збережено: змінено позицій — $changed')));
+        }
+      });
+
+  Widget _inventoryList(List<StockItem> list) => ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: list.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (_, i) {
+          final it = list[i];
+          return ListCard(
+            height: 64,
+            child: Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text(it.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('За обліком: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                ]),
+              ),
+              SizedBox(
+                width: 110,
+                child: TextField(
+                  controller: _actualFor(it),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.end,
+                  style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(isDense: true, labelText: 'Фактично', suffixText: it.unit),
+                ),
+              ),
+            ]),
+          );
+        },
+      );
+
+  Widget _modeChip(String text, bool list) => ChoiceChip(
+        label: Text(text),
+        selected: _invList == list,
+        onSelected: (_) => setState(() => _invList = list),
+      );
+
   Widget _tab(String text, StockOp op) => Expanded(
         child: PillButton(
           text: text,
@@ -161,6 +252,15 @@ class _StockScreenState extends State<StockScreen> {
                 _tab('Інвентаризація', StockOp.inventory),
               ]),
             ),
+            // інвентаризація: по одній позиції чи всім списком
+            if (_op == StockOp.inventory)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+                child: Wrap(spacing: 8, children: [
+                  _modeChip('По одному', false),
+                  _modeChip('Списком', true),
+                ]),
+              ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
@@ -175,7 +275,9 @@ class _StockScreenState extends State<StockScreen> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: AppColors.textMuted)),
                           ))
-                      : GridView.builder(
+                      : (_op == StockOp.inventory && _invList)
+                          ? _inventoryList(list)
+                          : GridView.builder(
                           padding: const EdgeInsets.all(12),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 170,
@@ -187,6 +289,18 @@ class _StockScreenState extends State<StockScreen> {
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),
             ),
+            if (_op == StockOp.inventory && _invList && (list?.isNotEmpty ?? false))
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: PillButton(
+                  text: 'Зберегти інвентаризацію',
+                  bg: AppColors.accent,
+                  height: 48,
+                  radius: 16,
+                  width: double.infinity,
+                  onPressed: _saveInventoryList,
+                ),
+              ),
             if (_op == StockOp.receive)
               Padding(
                 padding: const EdgeInsets.all(12),
