@@ -10,6 +10,7 @@ import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/icons.dart';
 import '../ui/first_hints.dart';
+import '../ui/hive_postbox.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
@@ -283,7 +284,7 @@ class _HoneycombPainter extends CustomPainter {
   bool shouldRepaint(_HoneycombPainter old) => old.color != color;
 }
 
-/// Пасічник і ведмедик-порадники: спершу важливе (прострочені огляди, що докупити) —
+/// Пасічник-порадник і вулик-поштомат: спершу важливе (прострочені огляди, що докупити) —
 /// натискання веде туди; далі — поради. Натискання на пораду — наступна.
 class _Advisor extends StatefulWidget {
   final Repository repo;
@@ -293,36 +294,13 @@ class _Advisor extends StatefulWidget {
 }
 
 class _AdvisorState extends State<_Advisor> {
-  static const _beekeeper = 'assets/guide/beekeeper.webp';
-  static const _bear = 'assets/guide/bear.webp';
-  static const _bearLaptop = 'assets/guide/bear_bust_laptop.webp';
-  static const _bearAbacus = 'assets/guide/bear_bust_abacus.webp';
-  static const _bearStung = 'assets/guide/bear_bust_honey_frame.webp';
-
-  /// Поради по черзі: то пасічник, то ведмедик (з ноутбуком — про застосунок).
-  static const _tips = <({String text, bool bear, String bearImage})>[
-    (text: 'Утримайте вулик на карті — одразу відкриється огляд.', bear: false, bearImage: _bear),
-    (
-      text: '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
-      bear: true,
-      bearImage: _bearLaptop
-    ),
-    (
-      text: 'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
-      bear: false,
-      bearImage: _bear
-    ),
-    (
-      text: 'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
-      bear: true,
-      bearImage: _bearAbacus
-    ),
-    (text: 'Звіт по пасіці в Excel — у меню ☰ → «Історія».', bear: true, bearImage: _bearLaptop),
-    (
-      text: 'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
-      bear: false,
-      bearImage: _bear
-    ),
+  static const _tips = [
+    'Утримайте вулик на карті — одразу відкриється огляд.',
+    '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
+    'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
+    'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
+    'Звіт по пасіці в Excel — у меню ☰ → «Історія».',
+    'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
   ];
 
   List<({VisitTarget t, DateTime at})> _due = const [];
@@ -371,42 +349,29 @@ class _AdvisorState extends State<_Advisor> {
     AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
   }
 
-  /// Повідомлення по черзі: важливе — з дією, далі поради. [bear] — хто
-  /// говорить (ведмедик праворуч чи пасічник ліворуч), [bearImage] — у якій
-  /// позі ведмедик (вжалений — давно не оглядали, з рахівницею — склад…).
-  List<({String text, VoidCallback? action, bool bear, String bearImage})> get _messages => [
-        if (_due.isNotEmpty)
-          (
-            text: 'Сьогодні оглянути: ${_due.length}',
-            action: _openFirstDue,
-            bear: true,
-            bearImage: _bearStung
-          ),
+  /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
+  /// вулику-поштоматі, далі поради пасічника.
+  List<({String text, VoidCallback? action})> get _messages => [
+        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _openFirstDue),
         if (_low.isNotEmpty)
           (
             text: 'Час докупити: ${_low.join(', ')}',
             action: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
-            bear: true,
-            bearImage: _bearAbacus
           ),
-        for (final t in _tips) (text: t.text, action: null, bear: t.bear, bearImage: t.bearImage),
+        for (final t in _tips) (text: t, action: null),
       ];
+
+  int get _mail => (_due.isNotEmpty ? 1 : 0) + (_low.isNotEmpty ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
     final list = _messages;
     final m = list[_i % list.length];
     final action = m.action;
-    // хто не говорить — трохи пригашений
-    Widget character(String image, bool speaking) => AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: speaking ? 1 : 0.45,
-          child: Image.asset(image, height: 96, width: 66, fit: BoxFit.contain,
-              filterQuality: FilterQuality.medium),
-        );
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      character(_beekeeper, !m.bear),
+      Image.asset('assets/guide/beekeeper.webp',
+          height: 100, width: 72, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
       const SizedBox(width: 4),
       Expanded(
         child: GestureDetector(
@@ -417,12 +382,12 @@ class _AdvisorState extends State<_Advisor> {
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
-              // «хвостик» — гострий кут з боку того, хто говорить
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(m.bear ? 16 : 3),
-                bottomRight: Radius.circular(m.bear ? 3 : 16),
+              // гострий кут — до пасічника (говорить він)
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(3),
+                bottomRight: Radius.circular(16),
               ),
               border: Border.all(
                   color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
@@ -457,9 +422,15 @@ class _AdvisorState extends State<_Advisor> {
         ),
       ),
       const SizedBox(width: 4),
-      AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: KeyedSubtree(key: ValueKey(m.bearImage), child: character(m.bearImage, m.bear)),
+      // вулик-поштомат: значок — скільки важливих повідомлень; натиснули —
+      // пасічник показує першу «пошту»
+      Tooltip(
+        message: 'Пошта',
+        child: HivePostbox(
+          count: _mail,
+          height: 92,
+          onTap: () => setState(() => _i = 0),
+        ),
       ),
     ]);
   }
