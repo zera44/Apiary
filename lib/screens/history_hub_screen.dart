@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/stock_format.dart';
+import '../ui/apiary_report.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
 import '../ui/theme.dart';
@@ -16,7 +17,10 @@ class HistoryHubScreen extends StatefulWidget {
 
   /// true — одразу відкрити вкладку «Склад».
   final bool stock;
-  const HistoryHubScreen({super.key, required this.repo, this.stock = false});
+
+  /// Пасіка, з карти якої відкрито: «Звіт по пасіці (Excel)» — для неї.
+  final Apiary? apiary;
+  const HistoryHubScreen({super.key, required this.repo, this.stock = false, this.apiary});
   @override
   State<HistoryHubScreen> createState() => _HistoryHubScreenState();
 }
@@ -69,6 +73,18 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
                 _tab('Склад', true),
               ]),
             ),
+            if (!_stock && widget.apiary != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                child: PillButton(
+                  text: 'Звіт по пасіці (Excel)',
+                  bg: AppColors.roundBtn,
+                  fg: AppColors.text,
+                  width: double.infinity,
+                  height: 40,
+                  onPressed: () => showApiaryReport(context, repo, widget.apiary!),
+                ),
+              ),
             Expanded(child: _stock ? _stockList() : _paramList()),
           ]),
           const Positioned.fill(child: ScreenFrame()),

@@ -75,6 +75,17 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
+  /// Меню ☰ уже відкрите: «QR-код» → [action] (Сканувати / Генерувати / Прив'язати підряд).
+  Future<void> qrMenu(WidgetTester tester, String action) async {
+    await tester.ensureVisible(find.text('QR-код'));
+    await tester.tap(find.text('QR-код'));
+    await settle(tester);
+    await tester.ensureVisible(find.text(action));
+    await settle(tester);
+    await tester.tap(find.text(action));
+    await settle(tester);
+  }
+
   /// Екран входу «Увійти через Google» → головний екран «Почати» → «Мої пасіки».
   Future<void> toApiaries(WidgetTester tester) async {
     await tester.tap(find.text('Увійти через Google'));
@@ -479,10 +490,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await tester.ensureVisible(find.text('Прив\'язати наліпки підряд'));
-    await settle(tester);
-    await tester.tap(find.text('Прив\'язати наліпки підряд'));
-    await settle(tester);
+    await qrMenu(tester, 'Прив\'язати підряд');
     // у тестах камери немає — код вводиться вручну
     await tester.enterText(find.byType(TextField), 'https://pasika.example/h/1');
     await tester.tap(find.text('Зберегти'));
@@ -760,7 +768,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('нова пасіка «Пасіка 1»: створення -> карта -> «Головна» -> «Почати» -> плитка в списку', (tester) async {
+  testWidgets('нова пасіка «Пасіка 1»: створення -> карта -> назад на головний -> «Почати» -> плитка в списку', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
@@ -770,11 +778,11 @@ void main() {
     }
     // одразу карта нової пасіки з типовою назвою
     expect(find.text('Пасіка 1'), findsWidgets); // шапка відкритої карти
-    await tester.tap(find.byTooltip('Меню'));
-    await settle(tester);
-    await tester.tap(find.text('Головна'));
-    for (var i = 0; i < 3; i++) {
+    // «Головної» в меню немає — головний екран кнопкою «назад»
+    for (var i = 0; i < 3 && find.byType(HomeScreen).evaluate().isEmpty; i++) {
+      await tester.binding.handlePopRoute();
       await settle(tester);
+      await tester.pump(const Duration(seconds: 1));
     }
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget); // «Головна» — головний екран
@@ -928,8 +936,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await tester.tap(find.text('Сканувати QR вулика'));
-    await settle(tester);
+    await qrMenu(tester, 'Сканувати');
     await tester.enterText(find.byType(TextField), 'https://pasika.example/h/7');
     await tester.tap(find.text('Зберегти'));
     for (var i = 0; i < 4; i++) {
@@ -953,8 +960,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await tester.tap(find.text('Сканувати QR вулика'));
-    await settle(tester);
+    await qrMenu(tester, 'Сканувати');
     await tester.enterText(find.byType(TextField), 'невідомий');
     await tester.tap(find.text('Зберегти'));
     for (var i = 0; i < 3; i++) {
@@ -1031,10 +1037,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await tester.ensureVisible(find.text('Генерувати QR-коди'));
-    await settle(tester);
-    await tester.tap(find.text('Генерувати QR-коди'));
-    await settle(tester);
+    await qrMenu(tester, 'Генерувати');
     await settle(tester);
     expect(find.text('Для якої пасіки?'), findsNothing);
     expect(find.text('QR-коди: Тестова пасіка'), findsOneWidget);
@@ -1339,7 +1342,9 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await tester.ensureVisible(find.text('Звіт по пасіці (Excel)'));
+    await tester.tap(find.text('Історія')); // звіт — усередині «Історії»
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text('Звіт по пасіці (Excel)'));
     await settle(tester);
     expect(find.text('Поділитися'), findsOneWidget);

@@ -13,14 +13,14 @@ import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
 import '../screens/whats_new_screen.dart';
 import '../services/autostart.dart';
-import 'apiary_report.dart';
 import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
 
-/// Меню навігації (три смужки на карті пасіки): Головна / Шаблони /
-/// Характеристики / Склад / Історія / QR-коди / Зворотний зв'язок. Є лише на карті — зі списку пасік не
-/// відкривається.
+/// Меню навігації (три смужки на карті пасіки): Мої пасіки / Характеристики /
+/// Шаблони / Склад / Історія (і звіт Excel) / QR-код (сканувати, генерувати,
+/// прив'язати підряд) / Що нового / Зворотний зв'язок. Головний екран — кнопкою
+/// «назад». Є лише на карті.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
 
@@ -58,35 +58,42 @@ class AppDrawer extends StatelessWidget {
             child: Text('Меню навігації',
                 style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
           ),
-          _item(context, 'beehive', 'Головна', () {
-            nav.pop(); // закрити меню
-            nav.popUntil((r) => r.isFirst);
-          }),
           _item(context, 'beehive', 'Мої пасіки', () {
             nav.pop(); // закрити меню
             nav.popUntil((r) => r.isFirst);
             nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
           }),
-          _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           _item(context, 'history', 'Характеристики',
               () => _open(nav, ParametersScreen.catalog(repo: repo))),
+          _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
-          _item(context, 'history', 'Історія', () => _open(nav, HistoryHubScreen(repo: repo))),
-          _item(context, 'history', 'Звіт по пасіці (Excel)', () {
-            nav.pop(); // закрити меню
-            showApiaryReport(context, repo, currentApiary);
-          }),
-          _item(context, 'qr', 'Сканувати QR вулика', () {
-            nav.pop();
-            openHiveByQr(nav, repo);
-          }),
-          _item(context, 'qr', 'Генерувати QR-коди',
-              () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
-          if (onBindQrRow != null)
-            _item(context, 'qr', 'Прив\'язати наліпки підряд', () {
-              nav.pop(); // закрити меню
-              onBindQrRow!();
-            }),
+          // «Звіт по пасіці (Excel)» — усередині «Історії»
+          _item(context, 'history', 'Історія',
+              () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary))),
+          // QR — одним пунктом; натиснули — розкрились дії
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              leading: AppIcon('qr', color: AppColors.text, size: 30),
+              title: Text('QR-код', style: TextStyle(color: AppColors.text, fontSize: 16)),
+              iconColor: AppColors.text,
+              collapsedIconColor: AppColors.textMuted,
+              childrenPadding: const EdgeInsets.only(left: 40),
+              children: [
+                _item(context, 'qr', 'Сканувати', () {
+                  nav.pop();
+                  openHiveByQr(nav, repo);
+                }),
+                _item(context, 'qr', 'Генерувати',
+                    () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
+                if (onBindQrRow != null)
+                  _item(context, 'qr', 'Прив\'язати підряд', () {
+                    nav.pop(); // закрити меню
+                    onBindQrRow!();
+                  }),
+              ],
+            ),
+          ),
           _item(context, 'history', 'Що нового', () {
             nav.pop(); // закрити меню
             WhatsNewScreen.open(nav);
