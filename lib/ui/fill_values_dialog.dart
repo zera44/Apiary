@@ -507,6 +507,9 @@ class _FillDialogState extends State<_FillDialog> {
   Widget build(BuildContext context) {
     final dialog = _dialog();
     if (_lesson == null) return dialog;
+    // урок: відкрита клавіатура — уся висота формі (інакше комірки не видно),
+    // підказка повернеться, щойно клавіатуру сховають
+    if (MediaQuery.viewInsetsOf(context).bottom > 0) return dialog;
     // урок: форма вище, унизу — пасічник або ведмежа-помічник (на тому ж місці)
     final line = _lessonLine;
     return Stack(children: [
