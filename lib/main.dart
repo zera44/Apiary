@@ -69,7 +69,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
-      home: widget.auth.user == null
+      // (поки вхід у збірці не налаштовано — одразу головний екран)
+      home: widget.auth.user == null && widget.auth.configured
           ? SplashScreen(repo: widget.repo, auth: widget.auth)
           : HomeScreen(repo: widget.repo, auth: widget.auth),
     );

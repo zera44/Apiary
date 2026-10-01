@@ -242,6 +242,14 @@ void main() {
     expect(find.text('Увійти через Google'), findsOneWidget);
   });
 
+  testWidgets('вхід не налаштовано в збірці — одразу головний екран', (tester) async {
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(configured: false)));
+    await settle(tester);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Увійти через Google'), findsNothing);
+    expect(find.text('Вийти'), findsNothing);
+  });
+
   testWidgets('вже увійшов — одразу головний екран, без заставки', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
@@ -916,7 +924,9 @@ void main() {
 class FakeAuth implements AuthService {
   Object? fail;
   AppUser? _user;
-  FakeAuth({bool signedIn = false, this.fail}) {
+  @override
+  final bool configured;
+  FakeAuth({bool signedIn = false, this.fail, this.configured = true}) {
     if (signedIn) _user = _pasichnyk;
   }
   static const _pasichnyk = AppUser(id: '1', email: 'pasichnyk@example.com', name: 'Пасічник');

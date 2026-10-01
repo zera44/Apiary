@@ -37,6 +37,10 @@ class SignInCancelled implements Exception {
 abstract class AuthService {
   AppUser? get user;
 
+  /// Чи можна в цій збірці увійти (задано ідентифікатори Google). Якщо ні —
+  /// застосунок працює без входу (тестові збірки до налаштування Google).
+  bool get configured;
+
   /// Інтерактивний вхід. Кидає [SignInCancelled], якщо користувач
   /// передумав, або інший виняток, якщо вхід не вдався.
   Future<AppUser> signIn();
@@ -70,6 +74,11 @@ class GoogleAuthService implements AuthService {
 
   @override
   AppUser? get user => _user;
+
+  @override
+  bool get configured => Platform.isWindows || Platform.isLinux || Platform.isMacOS
+      ? desktopClientId.isNotEmpty
+      : serverClientId.isNotEmpty;
 
   /// Відкрити сервіс і відновити збереженого користувача.
   static Future<GoogleAuthService> open() async {
