@@ -318,6 +318,9 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Тестова пасіка'), findsOneWidget);
+    // сканування — на головному екрані, у списку пасік його немає
+    expect(find.descendant(of: find.byType(ApiaryListScreen), matching: find.text('Сканувати QR-код')),
+        findsNothing);
     await tester.tap(find
         .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
         .first);
