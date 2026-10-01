@@ -185,6 +185,13 @@ class AppIcons {
   static List<(String, String)> get pickable =>
       [for (final e in _set.entries) if (e.pickable) (e.id, e.label)];
 
+  /// Іконки для вибору лише однієї категорії ('objects' — вулики,
+  /// 'obstacles' — перешкоди).
+  static List<(String, String)> pickableIn(String category) => [
+        for (final e in _set.entries)
+          if (e.pickable && e.category == category) (e.id, e.label)
+      ];
+
   /// Варіанти перешкоди: (id, назва) — у порядку реєстру.
   static List<(String, String)> get obstacleVariants =>
       [for (final e in _set.entries) if (e.variantLabel != null) (e.id, e.variantLabel!)];

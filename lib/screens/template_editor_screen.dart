@@ -471,7 +471,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   }
 
   Future<void> _panelIcon() async {
-    final r = await pickIcon(context, withReset: true);
+    // обрано одного типу — лише його іконки; різне — обидві плитки
+    final types = {for (final p in _selectedCells) cells[p]!.type};
+    final r = await pickIcon(context,
+        withReset: true, elType: types.length == 1 ? types.first : null);
     if (r == null) return;
     _applyToSelected((v) => v.copyWith(icon: r.$1));
   }

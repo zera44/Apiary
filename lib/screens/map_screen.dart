@@ -783,7 +783,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelIcon() async {
     final el = panelElement;
     if (el == null) return;
-    final r = await pickIcon(context);
+    final r = await pickIcon(context, elType: el.type); // лише іконки свого типу
     if (r == null) return;
     // лише цей об'єкт (усі його злиті клітинки), а не вся група: інші вулики
     // й перешкоди шаблону зберігають свій вигляд

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../icons/app_icons.dart';
 import 'icons.dart';
 import 'theme.dart';
 
@@ -449,39 +450,76 @@ Future<String?> showTextPrompt(BuildContext context,
 }
 
 /// Діалог-сітка для вибору іконки. [withReset] — кнопка "Типова".
+/// [elType] — тип об'єкта: 'hive' — лише іконки вуликів, 'obstacle' — лише
+/// перешкод; null (обрано різне) — дві плитки: «Вулики» і «Перешкоди».
 /// Повертає ('', null) для скидання, (key, key) для вибору, null — скасовано.
-Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false}) {
+Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false, String? elType}) {
+  Widget grid(BuildContext ctx, List<(String, String)> icons) =>
+      Wrap(spacing: 10, runSpacing: 10, children: [
+        for (final (key, label) in icons)
+          CircleIconButton(
+            icon: key,
+            bg: AppColors.roundBtn,
+            iconColor: AppColors.text,
+            size: 52,
+            tooltip: label,
+            onPressed: () => Navigator.pop(ctx, (key,)),
+          ),
+      ]);
+  // плитка-розділ: заголовок і сітка іконок у рамці
+  Widget tile(BuildContext ctx, String title, List<(String, String)> icons) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title,
+              style: TextStyle(
+                  color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          grid(ctx, icons),
+        ]),
+      );
+  final hives = AppIcons.pickableIn('objects');
+  final obstacles = AppIcons.pickableIn('obstacles');
   return showDialog<(String?,)>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Обрати іконку'),
+      title: Text(switch (elType) {
+        'hive' => 'Іконка вулика',
+        'obstacle' => 'Іконка перешкоди',
+        _ => 'Обрати іконку',
+      }),
       content: SizedBox(
         width: 300,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (withReset) ...[
-            PillButton(
-              text: 'Типова',
-              bg: AppColors.roundBtn,
-              fg: AppColors.text,
-              height: 36,
-              width: double.infinity,
-              fontSize: 12,
-              onPressed: () => Navigator.pop(ctx, (null,)),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Wrap(spacing: 10, runSpacing: 10, children: [
-            for (final (key, label) in objectIconChoices)
-              CircleIconButton(
-                icon: key,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (withReset) ...[
+              PillButton(
+                text: 'Типова',
                 bg: AppColors.roundBtn,
-                iconColor: AppColors.text,
-                size: 52,
-                tooltip: label,
-                onPressed: () => Navigator.pop(ctx, (key,)),
+                fg: AppColors.text,
+                height: 36,
+                width: double.infinity,
+                fontSize: 12,
+                onPressed: () => Navigator.pop(ctx, (null,)),
               ),
+              const SizedBox(height: 12),
+            ],
+            if (elType == 'hive')
+              grid(ctx, hives)
+            else if (elType == 'obstacle')
+              grid(ctx, obstacles)
+            else ...[
+              tile(ctx, 'Вулики', hives),
+              const SizedBox(height: 10),
+              tile(ctx, 'Перешкоди', obstacles),
+            ],
           ]),
-        ]),
+        ),
       ),
     ),
   );

@@ -881,6 +881,35 @@ void main() {
     expect(result?.values, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 
+  testWidgets('вибір іконки: вулику — лише вулики, перешкоді — лише перешкоди, різне — дві плитки',
+      (tester) async {
+    Future<void> open(String? type) async {
+      await tester.pumpWidget(wrap(Builder(
+        builder: (ctx) => Center(
+          child: ElevatedButton(
+              onPressed: () => pickIcon(ctx, elType: type), child: const Text('іконка')),
+        ),
+      )));
+      await tester.tap(find.text('іконка'));
+      await settle(tester);
+    }
+
+    await open('hive');
+    expect(find.byTooltip('Вулик'), findsOneWidget);
+    expect(find.byTooltip('Гора'), findsNothing);
+    await tester.tapAt(const Offset(5, 5));
+    await settle(tester);
+    await open('obstacle');
+    expect(find.byTooltip('Гора'), findsOneWidget);
+    expect(find.byTooltip('Вулик'), findsNothing);
+    await tester.tapAt(const Offset(5, 5));
+    await settle(tester);
+    await open(null);
+    expect(find.text('Вулики'), findsOneWidget);
+    expect(find.text('Перешкоди'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('«Заповнити»: «Так / Ні» кнопками, «Список» — випадаючим списком', (tester) async {
     const yn = Parameter(id: 'b', name: 'Є розплід', dataType: DataTypes.bool_);
     const ch = Parameter(
