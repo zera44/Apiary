@@ -14,6 +14,7 @@ import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
 import '../ui/first_hints.dart';
+import '../ui/guide_bubble.dart';
 import '../ui/fill_values_dialog.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
@@ -61,13 +62,24 @@ class MapScreen extends StatefulWidget {
 
   /// Куди веде «Зберегти й далі».
   final NextHive next;
+
+  /// Урок «Базові поняття» (пісочниця): пасічник веде крок за кроком,
+  /// звичайні підказки першого запуску не показуються.
+  final bool tutorial;
   const MapScreen(
       {super.key,
       required this.repo,
       required this.apiary,
       this.focusElementId,
       this.openFill = false,
-      this.next = NextHive.order});
+      this.next = NextHive.order,
+      this.tutorial = false});
+
+  /// Урок: на карті ще немає вуликів.
+  static final tutorialNoHives = <InlineSpan>[
+    const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові через '),
+    GuideBubble.highlight('«Редагувати»'),
+  ];
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
@@ -151,7 +163,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
     }
-    if (mounted) await Hints.show(context, repo, Hints.map);
+    if (mounted && !widget.tutorial) await Hints.show(context, repo, Hints.map);
     final focusId = widget.focusElementId;
     if (focusId != null && mounted) {
       final el = elements.where((e) => e.id == focusId).firstOrNull;
@@ -666,7 +678,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (!mounted) return;
     setState(() => panelOpen = true);
     _revealBesidePanel(el);
-    await Hints.show(context, repo, Hints.panel);
+    if (!widget.tutorial) await Hints.show(context, repo, Hints.panel);
   }
 
   /// Панель «Характеристики» праворуч не повинна закривати обраний об'єкт:
@@ -821,7 +833,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           duration: const Duration(milliseconds: 1200));
       return;
     }
-    await Hints.show(context, repo, Hints.fill);
+    if (!widget.tutorial) await Hints.show(context, repo, Hints.fill);
     if (!mounted) return;
     var cur = el;
     ({Apiary apiary, String elementId})? away; // наступний — на іншій пасіці
@@ -1315,6 +1327,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // розміщення шаблону завершує те саме «Готово», що й редагування
             if (selectMode) Positioned(left: 0, right: 0, bottom: 0, child: _actionBar()),
             if (!selectMode) ..._fab(),
+            // урок: вуликів ще немає — пасічник підказує «Редагувати»
+            // (над кнопкою, не перекриває її; дотики проходять крізь)
+            if (widget.tutorial && !selectMode && !elements.any((e) => e.isHive))
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 80,
+                child: IgnorePointer(
+                  child: GuideBubble(
+                    text: MapScreen.tutorialNoHives,
+                    image: 'assets/guide/beekeeper_nohive.webp',
+                  ),
+                ),
+              ),
             // панель "Характеристики"
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
@@ -1413,7 +1439,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// повернути, видалити; «Готово» — вийти).
   Future<void> _editAndAdd() async {
     _enterEdit();
-    await Hints.show(context, repo, Hints.edit);
+    if (!widget.tutorial) await Hints.show(context, repo, Hints.edit);
     if (!mounted) return;
     await _onAddObject();
   }

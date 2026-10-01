@@ -678,6 +678,30 @@ void main() {
     expect(find.text('Базові поняття'), findsOneWidget);
   });
 
+  testWidgets('навчання: на порожній карті пасічник підказує «Редагувати»', (tester) async {
+    await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
+      final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+      await r.init();
+      return r;
+    })));
+    await settle(tester);
+    await tester.tap(find.text('Базові поняття'));
+    await settle(tester);
+    await settle(tester);
+    await tester.tap(find.text('+  Створити карту'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.textContaining('вуликів то нема'), findsOneWidget);
+    expect(find.textContaining('«Редагувати»'), findsOneWidget);
+    // підказка не заважає натиснути саму кнопку
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    expect(find.text('Оберіть шаблон'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('заставка -> список пасік -> карта', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);

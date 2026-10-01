@@ -64,7 +64,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   Future<void> _open(Apiary a) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => MapScreen(repo: widget.repo, apiary: a),
+      builder: (_) => MapScreen(repo: widget.repo, apiary: a, tutorial: widget.tutorial),
     ));
     await _reload();
   }
