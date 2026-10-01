@@ -53,6 +53,13 @@ jobs:
       - name: Показати помилку
         if: failure()
         run: python3 tool/ci_error_report.py build.log
+      # назви ВСІХ тестів, що впали (у звіті вище вміщується лише кілька)
+      - name: Які тести впали
+        if: failure()
+        shell: bash
+        run: |
+          grep -E '\[E\]\s*$' build.log | sed -E 's/^[0-9:]+ \+[0-9]+( ~[0-9]+)? -[0-9]+: //; s/ \[E\]\s*$//' \
+            | sort -u | head -20 | while IFS= read -r l; do echo "::error title=TEST::$l"; done || true
       - name: Бенчмарк швидкості
         shell: bash
         run: |

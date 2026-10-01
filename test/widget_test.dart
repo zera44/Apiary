@@ -77,6 +77,8 @@ void main() {
   }
 
   setUp(() async {
+    // вікно як у телефона (висота головного екрана з усіма кнопками)
+    await TestWidgetsFlutterBinding.instance.setSurfaceSize(const Size(800, 1400));
     final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
     repo = Repository(db);
     await repo.init();
