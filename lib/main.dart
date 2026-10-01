@@ -47,6 +47,10 @@ Future<void> _start() async {
   runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));
 }
 
+/// Чи можна одразу на головний екран: увійшли, обрали «без входу», або вхід
+/// у цій збірці не налаштовано.
+bool canUseApp(AuthService auth) => auth.user != null || auth.guest || !auth.configured;
+
 class ApiaryApp extends StatefulWidget {
   final Repository repo;
   final AuthService auth;
@@ -84,7 +88,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
     final nav = _nav.currentState;
     if (nav == null) return; // ще не побудовано — спрацює після першого кадру
     _reminders.value = null;
-    if (widget.auth.configured && widget.auth.user == null) return;
+    if (!canUseApp(widget.auth)) return;
     final el = await widget.repo.getElement(id);
     final apiaryId = el?.apiaryId;
     if (el == null || el.deleted || apiaryId == null) return;
@@ -102,7 +106,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
       theme: buildAppTheme(),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
       // (поки вхід у збірці не налаштовано — одразу головний екран)
-      home: widget.auth.user == null && widget.auth.configured
+      home: !canUseApp(widget.auth)
           ? SplashScreen(repo: widget.repo, auth: widget.auth)
           : HomeScreen(repo: widget.repo, auth: widget.auth),
     );

@@ -20,10 +20,30 @@ class HomeScreen extends StatelessWidget {
   final AuthService auth;
   const HomeScreen({super.key, required this.repo, required this.auth});
 
+  /// Гість входить пізніше: дані на пристрої лишаються, головний екран
+  /// оновлюється (пошта й «Вийти»).
+  Future<void> _signIn(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await auth.signIn();
+      if (!context.mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => HomeScreen(repo: repo, auth: auth),
+      ));
+    } on SignInCancelled {
+      // передумали
+    } on StateError catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Не вдалося увійти. Перевірте інтернет і спробуйте ще раз.')));
+    }
+  }
+
   Future<void> _signOut(BuildContext context) async {
     final ok = await showConfirm(context,
         title: 'Вийти?',
-        text: 'Дані пасік лишаються на цьому пристрої. Щоб продовжити, треба буде знову увійти.',
+        text: 'Дані пасік лишаються на цьому пристрої. Далі — знову увійти або продовжити без входу.',
         confirmText: 'Вийти');
     if (!ok || !context.mounted) return;
     await auth.signOut();
@@ -91,6 +111,16 @@ class HomeScreen extends StatelessWidget {
                     TextButton(
                       onPressed: () => _signOut(context),
                       child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
+                    ),
+                  ] else if (auth.configured) ...[
+                    // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
+                    const SizedBox(height: 18),
+                    Text('Дані лише на цьому пристрої',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                    TextButton(
+                      onPressed: () => _signIn(context),
+                      child: Text('Увійти через Google для синхронізації',
+                          style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ]),

@@ -7,9 +7,10 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'home_screen.dart';
 
-/// Заставка = екран входу: іконка, назва й «Увійти через Google». Вхід
-/// обов'язковий; хто вже увійшов, цей екран не бачить — застосунок одразу
-/// відкриває головний екран.
+/// Заставка = екран входу: іконка, назва, «Увійти через Google» і
+/// «Продовжити без входу» (дані лише на цьому пристрої; увійти й
+/// синхронізуватись можна пізніше з головного екрана). Хто вже обрав,
+/// цей екран не бачить — застосунок одразу відкриває головний екран.
 class SplashScreen extends StatefulWidget {
   final Repository repo;
   final AuthService auth;
@@ -48,6 +49,15 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
+  Future<void> _guest() async {
+    if (_busy) return;
+    await widget.auth.continueAsGuest();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => HomeScreen(repo: widget.repo, auth: widget.auth),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,8 +92,20 @@ class _SplashScreenState extends State<SplashScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.danger, fontSize: 13)),
                   ],
+                  const SizedBox(height: 12),
+                  PillButton(
+                    text: 'Продовжити без входу',
+                    bg: AppColors.darkBtn,
+                    fg: AppColors.text,
+                    width: 260,
+                    height: 48,
+                    radius: 18,
+                    fontSize: 15,
+                    onPressed: _busy ? null : _guest,
+                  ),
                   const SizedBox(height: 14),
-                  Text('Вхід потрібен один раз — далі застосунок працює й без інтернету.',
+                  Text('Без входу дані зберігаються лише на цьому пристрої. Увійти й '
+                      'синхронізувати їх можна пізніше на головному екрані — нічого не загубиться.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],

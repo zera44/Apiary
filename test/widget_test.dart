@@ -303,6 +303,45 @@ void main() {
     expect(find.text('Увійти через Google'), findsOneWidget);
   });
 
+  testWidgets('без входу: гість працює, а пізніше входить для синхронізації', (tester) async {
+    final auth = FakeAuth();
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: auth));
+    await settle(tester);
+    await tester.tap(find.text('Продовжити без входу'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(auth.guest, isTrue);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Дані лише на цьому пристрої'), findsOneWidget);
+    // пасіки доступні й без входу
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Тестова пасіка'), findsOneWidget);
+    await tester.tap(find
+        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
+        .first);
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    // пізніше — вхід через Google; дані лишаються
+    await tester.tap(find.text('Увійти через Google для синхронізації'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(auth.user, isNotNull);
+    expect(auth.guest, isFalse);
+    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
+  });
+
+  testWidgets('гість після перезапуску — одразу головний екран', (tester) async {
+    final auth = FakeAuth()..fail = null;
+    await auth.continueAsGuest();
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: auth));
+    await settle(tester);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Продовжити без входу'), findsNothing);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';
@@ -977,6 +1016,16 @@ class FakeAuth implements AuthService {
     return _user = _pasichnyk;
   }
 
+  bool _guest = false;
   @override
-  Future<void> signOut() async => _user = null;
+  bool get guest => _user == null && _guest;
+
+  @override
+  Future<void> continueAsGuest() async => _guest = true;
+
+  @override
+  Future<void> signOut() async {
+    _user = null;
+    _guest = false;
+  }
 }

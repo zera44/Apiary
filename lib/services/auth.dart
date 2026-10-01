@@ -32,10 +32,18 @@ class SignInCancelled implements Exception {
   const SignInCancelled();
 }
 
-/// Вхід у застосунок (обов'язковий). Після першого входу користувач
-/// запам'ятовується на пристрої, тож далі застосунок працює й офлайн.
+/// Вхід у застосунок. Обов'язковий вибір на першому екрані: увійти через
+/// Google або «Продовжити без входу» (гість — дані лише на цьому пристрої;
+/// увійти й синхронізуватись можна пізніше, дані при цьому лишаються).
+/// Вибір запам'ятовується, тож далі застосунок працює й офлайн.
 abstract class AuthService {
   AppUser? get user;
+
+  /// Обрано «Продовжити без входу» (і ще не входили).
+  bool get guest;
+
+  /// Запам'ятати «Продовжити без входу».
+  Future<void> continueAsGuest();
 
   /// Чи можна в цій збірці увійти (задано ідентифікатори Google). Якщо ні —
   /// застосунок працює без входу (тестові збірки до налаштування Google).
@@ -68,12 +76,28 @@ class GoogleAuthService implements AuthService {
 
   final File _store;
   AppUser? _user;
+  bool _guest = false;
   bool _googleReady = false;
 
   GoogleAuthService._(this._store);
 
   @override
   AppUser? get user => _user;
+
+  @override
+  bool get guest => _user == null && _guest;
+
+  @override
+  Future<void> continueAsGuest() async {
+    _guest = true;
+    await _write({'guest': true});
+  }
+
+  Future<void> _write(Map<String, Object?> json) async {
+    final tmp = File('${_store.path}.tmp');
+    await tmp.writeAsString(jsonEncode(json), flush: true);
+    await tmp.rename(_store.path);
+  }
 
   @override
   bool get configured => Platform.isWindows || Platform.isLinux || Platform.isMacOS
@@ -85,7 +109,11 @@ class GoogleAuthService implements AuthService {
     final dir = await getApplicationSupportDirectory();
     final s = GoogleAuthService._(File(p.join(dir.path, 'account.json')));
     try {
-      if (s._store.existsSync()) s._user = AppUser.fromJson(jsonDecode(s._store.readAsStringSync()));
+      if (s._store.existsSync()) {
+        final j = jsonDecode(s._store.readAsStringSync());
+        s._user = AppUser.fromJson(j);
+        s._guest = s._user == null && j is Map && j['guest'] == true;
+      }
     } catch (_) {
       s._user = null; // пошкоджений файл — просто увійти ще раз
     }
@@ -98,15 +126,15 @@ class GoogleAuthService implements AuthService {
         ? await _desktopSignIn()
         : await _mobileSignIn();
     _user = u;
-    final tmp = File('${_store.path}.tmp');
-    await tmp.writeAsString(jsonEncode(u.toJson()), flush: true);
-    await tmp.rename(_store.path);
+    _guest = false;
+    await _write(u.toJson());
     return u;
   }
 
   @override
   Future<void> signOut() async {
     _user = null;
+    _guest = false;
     try {
       if (_store.existsSync()) await _store.delete();
     } catch (_) {}
