@@ -361,6 +361,17 @@ void main() {
         'zvit_Пасіка_1_20261001_0905.xlsx');
   });
 
+  test('тип «Так / Ні» і «Список»: варіанти зберігаються, перетворення значень', () async {
+    final id = await repo.addParameter('Сила', dataType: DataTypes.choice, options: ['А', 'Б']);
+    expect((await repo.getParameter(id))!.options, ['А', 'Б']);
+    await repo.updateParameter(id, {'options': Parameter.encodeOptions(['А', 'Б', 'В'])});
+    expect((await repo.getParameter(id))!.options, ['А', 'Б', 'В']);
+    expect(convertValue('так', DataTypes.bool_), 'Так');
+    expect(convertValue('0', DataTypes.bool_), 'Ні');
+    expect(convertValue('може', DataTypes.bool_), isNull);
+    expect(convertValue('будь-що', DataTypes.choice), 'будь-що');
+  });
+
   test('безпека: чужа назва таблиці відхиляється навіть у release', () async {
     expect(() => repo.unsynced('sqlite_master'), throwsArgumentError);
     expect(() => repo.markSynced('x; DROP TABLE elements', {'id': '1'}), throwsArgumentError);

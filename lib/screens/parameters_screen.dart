@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
+import '../ui/type_picker.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
 
@@ -143,6 +144,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final nameCtrl = TextEditingController(text: param?.name ?? presetName ?? '');
     final unitCtrl = TextEditingController(text: param?.unit ?? presetUnit ?? '');
     var type = param?.dataType ?? DataTypes.text;
+    var options = [...?param?.options];
+    final optionCtrl = TextEditingController();
+    String? formError;
     // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
     final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
     if (!mounted) return null;
@@ -182,25 +186,32 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   const SizedBox(height: 10),
                   Text('Тип даних', style: muted),
                   const SizedBox(height: 6),
-                  GridView.count(
-                    crossAxisCount: 3,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 6,
-                    crossAxisSpacing: 6,
-                    childAspectRatio: 2.4,
-                    children: [
-                      for (final (key, label) in DataTypes.all)
-                        PillButton(
-                          text: label,
-                          bg: key == type ? AppColors.accent : AppColors.typeBtn,
-                          fontSize: 11,
-                          radius: 12,
-                          // тип змінюється, поки немає записів
-                          onPressed: typeLocked ? null : () => setD(() => type = key),
-                        ),
-                    ],
+                  DataTypePicker(
+                    value: type,
+                    // тип змінюється, поки немає записів
+                    onChanged: typeLocked ? null : (t) => setD(() => type = t),
                   ),
+                  // «Список»: які варіанти обиратимуть під час огляду
+                  if (type == DataTypes.choice) ...[
+                    const SizedBox(height: 12),
+                    Text('Варіанти списку', style: muted),
+                    const SizedBox(height: 6),
+                    OptionsEditor(
+                      options: options,
+                      controller: optionCtrl,
+                      onChanged: (o) => setD(() {
+                        options = o;
+                        formError = null;
+                      }),
+                    ),
+                  ],
+                  if (formError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(formError!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
+                    ),
                   const SizedBox(height: 6),
                   Text(
                     isBase
@@ -243,6 +254,19 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   bg: AppColors.accent,
                   onPressed: () {
                     if (nameCtrl.text.trim().isEmpty) return;
+                    if (type == DataTypes.choice) {
+                      // недописаний варіант у полі — теж додаємо
+                      final pending = optionCtrl.text.trim();
+                      if (pending.isNotEmpty &&
+                          !options.any((o) => o.toLowerCase() == pending.toLowerCase())) {
+                        options = [...options, pending];
+                        optionCtrl.clear();
+                      }
+                      if (options.length < 2) {
+                        setD(() => formError = 'Додайте щонайменше два варіанти');
+                        return;
+                      }
+                    }
                     Navigator.pop(ctx, 'save');
                   },
                 ),
@@ -269,9 +293,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
         if (!isBase) 'name': name,
         if (!typeLocked && type != param!.dataType) 'data_type': type,
         'unit': unit.isEmpty ? null : unit,
+        if (type == DataTypes.choice) 'options': Parameter.encodeOptions(options),
       });
     } else {
-      created = await repo.addParameter(name, unit: unit.isEmpty ? null : unit, dataType: type);
+      created = await repo.addParameter(name,
+          unit: unit.isEmpty ? null : unit,
+          dataType: type,
+          options: type == DataTypes.choice ? options : const []);
       // новостворений параметр одразу позначаємо обраним
       if (!widget.catalog) selected.add(created);
     }

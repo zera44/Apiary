@@ -116,6 +116,8 @@ class AppDatabase {
     // НОВЕ: стабільний ключ "Базової характеристики". Раніше вони
     // шукались за назвою, тож перейменування створювало дубль.
     await _ensureColumn(db, 'parameters', 'base_key', 'TEXT');
+    // варіанти для типу «Список» (JSON-масив)
+    await _ensureColumn(db, 'parameters', 'options', 'TEXT');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS element_parameters (

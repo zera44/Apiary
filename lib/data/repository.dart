@@ -1051,13 +1051,15 @@ class Repository {
   // Каталог параметрів
   // ---------------------------------------------------------------------
 
-  Future<String> addParameter(String name, {String? unit, String dataType = DataTypes.text}) async {
+  Future<String> addParameter(String name,
+      {String? unit, String dataType = DataTypes.text, List<String> options = const []}) async {
     final id = newId();
     await db.insert('parameters', {
       'id': id,
       'name': name,
       'unit': unit,
       'data_type': dataType,
+      if (options.isNotEmpty) 'options': Parameter.encodeOptions(options),
       'updated_at': now(),
       'synced': 0,
     });

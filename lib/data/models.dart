@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 // Моделі даних застосунку "Моя пасіка".
 //
 // Схема таблиць навмисно збігається зі старою Python-версією (db.py), тож
@@ -172,12 +174,21 @@ class DataTypes {
   static const float_ = 'float';
   static const date = 'date';
   static const color = 'color';
+  static const bool_ = 'bool';
+
+  /// Вибір зі списку значень, які задають у параметрі ([Parameter.options]).
+  static const choice = 'choice';
+
+  static const yes = 'Так';
+  static const no = 'Ні';
 
   static const all = <(String, String)>[
     (text, 'Текст'),
-    (int_, 'Число ціле'),
-    (float_, 'Число з плаваючою'),
+    (int_, 'Ціле число'),
+    (float_, 'Дробове число'),
     (date, 'Дата'),
+    (bool_, 'Так / Ні'),
+    (choice, 'Список'),
     (color, 'Колір'),
   ];
 
@@ -201,10 +212,14 @@ class Parameter {
   final bool deleted;
   final double updatedAt;
 
+  /// Для типу «Список» — варіанти, з яких обирають під час огляду.
+  final List<String> options;
+
   const Parameter({
     required this.id,
     required this.name,
     this.unit,
+    this.options = const [],
     this.dataType = DataTypes.text,
     this.isBase = false,
     this.baseType,
@@ -223,7 +238,20 @@ class Parameter {
         baseKey: m['base_key'] as String?,
         deleted: ((m['deleted'] as num?) ?? 0) != 0,
         updatedAt: ((m['updated_at'] as num?) ?? 0).toDouble(),
+        options: decodeOptions(m['options'] as String?),
       );
+
+  /// Варіанти списку зберігаються JSON-масивом рядків.
+  static List<String> decodeOptions(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final v = jsonDecode(raw);
+      if (v is List) return [for (final e in v) if (e is String && e.trim().isNotEmpty) e.trim()];
+    } catch (_) {}
+    return const [];
+  }
+
+  static String encodeOptions(List<String> options) => jsonEncode(options);
 
   String get nameWithUnit =>
       (unit != null && unit!.isNotEmpty) ? '$name ($unit)' : name;

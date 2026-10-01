@@ -881,6 +881,58 @@ void main() {
     expect(result?.values, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 
+  testWidgets('«Заповнити»: «Так / Ні» кнопками, «Список» — випадаючим списком', (tester) async {
+    const yn = Parameter(id: 'b', name: 'Є розплід', dataType: DataTypes.bool_);
+    const ch = Parameter(
+        id: 'c', name: 'Сила сім\'ї', dataType: DataTypes.choice, options: ['Слабка', 'Сильна']);
+    FillResult? result;
+    await tester.pumpWidget(wrap(Builder(
+      builder: (ctx) => Center(
+        child: ElevatedButton(
+          onPressed: () async => result =
+              await showFillValuesDialog(ctx, params: const [yn, ch], latest: const {}),
+          child: const Text('відкрити'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('відкрити'));
+    await settle(tester);
+    await tester.tap(find.text('Так'));
+    await settle(tester);
+    await tester.tap(find.text('Обрати'));
+    await settle(tester);
+    await tester.tap(find.text('Сильна').last);
+    await settle(tester);
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester);
+    expect(result?.values, {'b': 'Так', 'c': 'Сильна'});
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('новий параметр «Список»: варіанти задаються в самій формі', (tester) async {
+    await tester.pumpWidget(wrap(ParametersScreen.catalog(repo: repo)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Новий параметр'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
+    await tester.tap(find.text('Список'));
+    await settle(tester);
+    expect(find.text('Варіанти списку'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'Слабка');
+    await tester.tap(find.byTooltip('Додати варіант'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).last, 'Сильна'); // недописаний — теж збережеться
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    final p = (await tester.runAsync(() => repo.listParameters()))!
+        .firstWhere((p) => p.name == 'Сила сім\'ї');
+    expect(p.dataType, DataTypes.choice);
+    expect(p.options, ['Слабка', 'Сильна']);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('«Заповнити»: старе значення не того типу не блокує збереження інших полів',
       (tester) async {
     const n = Parameter(id: 'n', name: 'Рамки', dataType: DataTypes.int_);

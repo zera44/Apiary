@@ -136,7 +136,8 @@ class _FillDialogState extends State<_FillDialog> {
     super.initState();
     for (final p in widget.params) {
       final cur = widget.latest[p.id] ?? '';
-      if (p.dataType == DataTypes.date || p.dataType == DataTypes.color) {
+      if (const {DataTypes.date, DataTypes.color, DataTypes.bool_, DataTypes.choice}
+          .contains(p.dataType)) {
         _picked[p.id] = cur;
       } else {
         _text[p.id] = TextEditingController(text: cur);
@@ -319,6 +320,47 @@ class _FillDialogState extends State<_FillDialog> {
               Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
             ]),
           ),
+        );
+      case DataTypes.bool_:
+        // «Так» / «Ні» — повторний тап знімає вибір
+        final cur = _picked[p.id] ?? '';
+        Widget opt(String v) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: PillButton(
+                  text: v,
+                  bg: cur == v ? AppColors.accent : AppColors.typeBtn,
+                  fg: cur == v ? Colors.white : AppColors.text,
+                  height: 34,
+                  radius: 10,
+                  fontSize: 14,
+                  onPressed: () => setState(() => _picked[p.id] = cur == v ? '' : v),
+                ),
+              ),
+            );
+        return Row(children: [opt(DataTypes.yes), opt(DataTypes.no)]);
+      case DataTypes.choice:
+        final cur = _picked[p.id] ?? '';
+        // старе значення, якого вже немає серед варіантів, — теж показуємо
+        final items = [...p.options, if (cur.isNotEmpty && !p.options.contains(cur)) cur];
+        return DropdownButton<String>(
+          value: cur.isEmpty ? null : cur,
+          isExpanded: true,
+          isDense: true,
+          underline: const SizedBox.shrink(),
+          dropdownColor: AppColors.popupBg,
+          hint: Text('Обрати', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          items: [
+            DropdownMenuItem<String>(
+                value: '', child: Text('—', style: TextStyle(color: AppColors.textMuted))),
+            for (final o in items)
+              DropdownMenuItem<String>(
+                  value: o,
+                  child: Text(o,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: AppColors.text, fontSize: 15))),
+          ],
+          onChanged: (v) => setState(() => _picked[p.id] = v ?? ''),
         );
       case DataTypes.color:
         final colorLabel = _picked[p.id] ?? '';

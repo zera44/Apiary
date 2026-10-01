@@ -33,7 +33,14 @@ String? convertValue(String? value, String toType) {
         if (label.toLowerCase() == v.toLowerCase()) return label;
       }
       return null;
+    case DataTypes.bool_:
+      const yes = {'так', 'т', 'yes', 'y', 'true', '1', '+'};
+      const no = {'ні', 'н', 'no', 'n', 'false', '0', '-'};
+      final l = v.toLowerCase();
+      if (yes.contains(l)) return DataTypes.yes;
+      if (no.contains(l)) return DataTypes.no;
+      return null;
     default:
-      return v;
+      return v; // текст і «Список» — будь-яке значення як є
   }
 }
