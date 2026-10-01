@@ -85,6 +85,14 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
+/// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
+/// на всіх кроках.
+const kLessonBottom = 80.0;
+const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
+
+/// Урок: панель вулика закінчується над пасічником і його хмаркою.
+const kLessonPanelBottom = 290.0;
+
 /// Кроки уроку «Базові поняття» на карті.
 enum _Lesson { place, congrats, openHive, inspect }
 
@@ -133,78 +141,88 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// Підказка пасічника для поточного кроку уроку.
   List<Widget> _lessonOverlay() {
     if (!widget.tutorial) return const [];
-    Widget bottom(List<InlineSpan> text, {String? image, VoidCallback? onTap}) => Positioned(
-          left: 0,
-          right: 0,
-          bottom: 80,
-          child: onTap == null
-              // дотики проходять крізь — до карти й кнопок
-              ? IgnorePointer(child: GuideBubble(text: text, image: image ?? _beekeeperImg))
-              : GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onTap,
-                  child: GuideBubble(
-                    text: text,
-                    image: image ?? _beekeeperImg,
-                    below: Text('Торкнись, щоб продовжити',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                  ),
+    // поки відкрите вікно «Оберіть шаблон» — пасічник у ньому, на тому ж місці
+    if (selectMode && pendingTemplate == null) return const [];
+    final msg = _lessonMessage();
+    // пасічник увесь урок стоїть на одному місці — ліворуч над «Редагувати»;
+    // хмарка — лише коли є що сказати
+    if (msg == null) {
+      return [
+        Positioned(
+          left: 12,
+          bottom: kLessonBottom,
+          child: IgnorePointer(
+            child: Image.asset(kLessonBeekeeper,
+                height: 170, filterQuality: FilterQuality.medium),
+          ),
+        ),
+      ];
+    }
+    final (text, onTap) = msg;
+    return [
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: kLessonBottom,
+        child: onTap == null
+            // дотики проходять крізь — до карти й кнопок
+            ? IgnorePointer(child: GuideBubble(text: text, image: kLessonBeekeeper))
+            : GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: GuideBubble(
+                  text: text,
+                  image: kLessonBeekeeper,
+                  below: Text('Торкнись, щоб продовжити',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
-        );
+              ),
+      ),
+    ];
+  }
+
+  /// Що каже пасічник на поточному кроці уроку (і що робить тап по хмарці),
+  /// або null — мовчить.
+  (List<InlineSpan>, VoidCallback?)? _lessonMessage() {
     final hasHive = elements.any((e) => e.isHive);
     if (selectMode) {
-      if (pendingTemplate == null) return const []; // вибір шаблону — своя підказка
       if (!_lessonPlaced) {
-        return [bottom(const [TextSpan(text: 'Натисни на карту в будь-якому місці')])];
+        return (const [TextSpan(text: 'Натисни на карту в будь-якому місці')], null);
       }
-      return [
-        bottom([
-          const TextSpan(text: 'Підтверди вибір — натисни '),
-          GuideBubble.highlight('«Готово»'),
-        ])
-      ];
+      return (
+        [const TextSpan(text: 'Підтверди вибір — натисни '), GuideBubble.highlight('«Готово»')],
+        null
+      );
     }
     switch (_lesson) {
       case _Lesson.place:
-        if (hasHive) return const [];
-        return [bottom(MapScreen.tutorialNoHives, image: 'assets/guide/beekeeper_nohive.webp')];
+        return hasHive ? null : (MapScreen.tutorialNoHives, null);
       case _Lesson.congrats:
-        return [
-          bottom(const [TextSpan(text: 'З легким стартом, друже! Це тобі не рамки тягати.')],
-              onTap: () => setState(() => _lesson = _Lesson.openHive))
-        ];
+        return (
+          const [TextSpan(text: 'З легким стартом, друже! Це тобі не рамки тягати.')],
+          () => setState(() => _lesson = _Lesson.openHive)
+        );
       case _Lesson.openHive:
-        if (panelOpen) return const [];
-        return [
-          bottom([
+        if (panelOpen) return null;
+        return (
+          [
             const TextSpan(text: 'Не час відпочивати, натисни на '),
             GuideBubble.highlight('«$_lessonHive»'),
-          ])
-        ];
+          ],
+          null
+        );
       case _Lesson.inspect:
-        if (!panelOpen) return const [];
-        // панель праворуч — підказка згори, компактна, щоб не закривати «Оглянути»
-        return [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 56,
-            child: IgnorePointer(
-              child: GuideBubble(
-                imageHeight: 110,
-                gap: 30,
-                text: [
-                  const TextSpan(text: 'Це короткі замітки про твій вулик. '),
-                  GuideBubble.task('Проведи огляд по ньому'),
-                ],
-              ),
-            ),
-          ),
-        ];
+        if (!panelOpen) return null;
+        return (
+          [
+            const TextSpan(text: 'Це короткі замітки про твій вулик. '),
+            GuideBubble.task('Проведи огляд по ньому'),
+          ],
+          null
+        );
     }
   }
 
-  static const _beekeeperImg = 'assets/guide/beekeeper.webp';
   String? selectedId;
   String? selectedGroupId;
   // щойно поставлений шаблон: поки його не відпустили, усі його вулики й
@@ -643,13 +661,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
     return Stack(children: [
       // вікно вибору — вище, щоб пасічник унизу його не закривав
-      Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 250), child: dialog)),
+      Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 300), child: dialog)),
+      // те саме місце, що й на карті (карта — у SafeArea, вікно — на весь екран)
       Positioned(
         left: 0,
         right: 0,
-        bottom: 12,
+        bottom: kLessonBottom + MediaQuery.of(context).padding.bottom,
         child: IgnorePointer(child: Material(type: MaterialType.transparency,
-            child: GuideBubble(text: spans))),
+            child: GuideBubble(text: spans, image: kLessonBeekeeper))),
       ),
     ]);
   }
@@ -1484,7 +1503,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               duration: const Duration(milliseconds: 220),
               curve: panelOpen ? Curves.easeOutCubic : Curves.easeInCubic,
               top: 52,
-              bottom: 12,
+              // урок: панель закінчується над пасічником (він увесь урок унизу)
+              bottom: widget.tutorial ? kLessonPanelBottom : 12,
               right: panelOpen ? 0 : -(CharacteristicsPanel.width + 12),
               child: panelData == null
                   ? const SizedBox(width: CharacteristicsPanel.width)

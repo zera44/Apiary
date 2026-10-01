@@ -599,23 +599,48 @@ Future<void> deleteWithUndo(
   }
 }
 
-/// Урок: медовий ободок навколо кнопки, яку треба натиснути.
-class HoneyRing extends StatelessWidget {
+/// Урок: медовий ободок навколо кнопки, яку треба натиснути. Щойно ободок
+/// з'являється, кнопку прокручує в поле зору (якщо вона у списку, що гортається).
+class HoneyRing extends StatefulWidget {
   final bool on;
   final Widget child;
   final double radius;
   const HoneyRing({super.key, required this.on, required this.child, this.radius = 999});
   @override
+  State<HoneyRing> createState() => _HoneyRingState();
+}
+
+class _HoneyRingState extends State<HoneyRing> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.on) _reveal();
+  }
+
+  @override
+  void didUpdateWidget(HoneyRing old) {
+    super.didUpdateWidget(old);
+    if (widget.on && !old.on) _reveal();
+  }
+
+  void _reveal() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Scrollable.ensureVisible(context,
+              alignment: 0.5, duration: const Duration(milliseconds: 250));
+        }
+      });
+
+  @override
   Widget build(BuildContext context) {
-    if (!on) return child;
+    if (!widget.on) return widget.child;
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius + 3),
+        borderRadius: BorderRadius.circular(widget.radius + 3),
         border: Border.all(color: AppColors.create, width: 3),
         boxShadow: [BoxShadow(color: AppColors.create.withValues(alpha: 0.5), blurRadius: 12)],
       ),
-      child: child,
+      child: widget.child,
     );
   }
 }
