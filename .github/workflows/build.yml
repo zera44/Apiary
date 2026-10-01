@@ -156,7 +156,7 @@ jobs:
             echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
           fi
           unset KEYSTORE_B64 KEYSTORE_PASSWORD
-          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID="$GOOGLE_DESKTOP_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET="$GOOGLE_DESKTOP_CLIENT_SECRET" 2>&1 | tee build.log
+          flutter build apk --release --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID="$GOOGLE_DESKTOP_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET="$GOOGLE_DESKTOP_CLIENT_SECRET" 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -183,6 +183,32 @@ jobs:
             fi
           done
           echo "::notice title=ПІДПИС::APK підписано ключем «$EXPECTED_CERT»"
+      # Запобіжник «Програму не встановлено»: новий APK має ставитись ПОВЕРХ
+      # опублікованого (той самий ключ підпису і не менший versionCode) —
+      # інакше в людей оновлення не встановиться, а видалення стирає дані.
+      - name: Чи встановиться поверх попередньої версії
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eo pipefail
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          new=build/app/outputs/flutter-apk/app-release.apk
+          prev=""
+          for name in apiary.apk apiary-arm64.apk; do
+            if gh release download latest -p "$name" -O prev.apk 2>/dev/null; then prev=prev.apk; break; fi
+          done
+          if [ -z "$prev" ]; then echo "::notice title=ОНОВЛЕННЯ::попереднього APK немає — пропускаю"; exit 0; fi
+          cert() { "$bt/apksigner" verify --print-certs "$1" | grep 'certificate SHA-256 digest' | grep -vi stamp | awk '{print $NF}' | sort -u; }
+          code() { "$bt/aapt2" dump badging "$1" | sed -nE "s/.*versionCode='([0-9]+)'.*/\1/p" | head -1; }
+          if [ "$(cert "$new")" != "$(cert "$prev")" ]; then
+            echo "::error title=ОНОВЛЕННЯ::інший ключ підпису, ніж в опублікованій версії — у людей буде «Програму не встановлено»"; exit 1
+          fi
+          if [ "$(code "$new")" -lt "$(code "$prev")" ]; then
+            echo "::error title=ОНОВЛЕННЯ::versionCode $(code "$new") менший за опублікований $(code "$prev") — підніміть номер після «+» у pubspec.yaml"; exit 1
+          fi
+          echo "::notice title=ОНОВЛЕННЯ::ставиться поверх опублікованої версії (versionCode $(code "$prev") → $(code "$new"))"
       - name: Розмір APK (звіт)
         shell: bash
         run: |
@@ -191,9 +217,9 @@ jobs:
           out = []
           for f in sorted(glob.glob('build/app/outputs/flutter-apk/*.apk')):
               out.append(f'{os.path.basename(f)} = {os.path.getsize(f)}')
-          z = zipfile.ZipFile('build/app/outputs/flutter-apk/app-arm64-v8a-release.apk')
+          z = zipfile.ZipFile('build/app/outputs/flutter-apk/app-release.apk')
           items = sorted(z.infolist(), key=lambda i: -i.compress_size)[:14]
-          out.append('arm64 top entries (compressed):')
+          out.append('top entries (compressed):')
           for i in items:
               out.append(f'  {i.compress_size:>9} {i.filename}')
           print('::notice title=APKSIZE::' + '%0A'.join(out))
@@ -285,13 +311,11 @@ jobs:
           path: dist
       - name: Підготувати файли
         run: |
-          mv dist/apiary-apk/app-arm64-v8a-release.apk apiary-arm64.apk
-          mv dist/apiary-apk/app-armeabi-v7a-release.apk apiary-arm32.apk
-          mv dist/apiary-apk/app-x86_64-release.apk apiary-x86_64.apk
+          mv dist/apiary-apk/app-release.apk apiary.apk
           (cd dist/apiary-windows && zip -qr9 ../../apiary-windows.zip .)
-          sha256sum apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip > SHA256SUMS.txt
+          sha256sum apiary.apk apiary-windows.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
-          ls -la apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip
+          ls -la apiary.apk apiary-windows.zip
       - name: Тестовий пре-реліз гілки
         if: github.ref != 'refs/heads/main'
         env:
@@ -300,7 +324,7 @@ jobs:
           TAG: test-${{ github.ref_name }}
         run: |
           gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
+          gh release create "$TAG" apiary.apk apiary-windows.zip SHA256SUMS.txt \
             --target "${{ github.sha }}" --prerelease \
             --title "Тестова збірка гілки ${{ github.ref_name }}" \
             --notes "$(cat notes.md)
@@ -313,15 +337,13 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
+          gh release create latest apiary.apk apiary-windows.zip SHA256SUMS.txt \
             --target "${{ github.sha }}" \
             --title "Моя пасіка — остання збірка" \
             --notes "$(cat notes.md)
 
           Автоматична збірка з коміту ${GITHUB_SHA::7}.
-          - apiary-arm64.apk — для більшості сучасних Android-телефонів
-          - apiary-arm32.apk — для старих/бюджетних Android-телефонів
-          - apiary-x86_64.apk — для Android на процесорі x86 (рідко)
+          - apiary.apk — для будь-якого Android-телефона (Android 7 і новіші)
           - apiary-windows.zip — розпакувати й запустити apiary.exe
           - SHA256SUMS.txt — контрольні суми файлів"
       # окремий постійний реліз для кожної версії з pubspec (v0.3.5 тощо):
@@ -336,7 +358,7 @@ jobs:
           if gh release view "v$V" >/dev/null 2>&1; then
             echo "v$V уже є — пропускаю"
           else
-            gh release create "v$V" apiary-arm64.apk apiary-arm32.apk apiary-x86_64.apk apiary-windows.zip SHA256SUMS.txt \
+            gh release create "v$V" apiary.apk apiary-windows.zip SHA256SUMS.txt \
               --target "${{ github.sha }}" \
               --title "Vulyk $V" \
               --notes-file notes.md
