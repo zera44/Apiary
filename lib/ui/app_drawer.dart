@@ -17,10 +17,10 @@ import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
 
-/// Меню навігації (три смужки на карті пасіки): Мої пасіки / Характеристики /
-/// Шаблони / Склад / Історія (і звіт Excel) / QR-код (сканувати, генерувати,
-/// прив'язати підряд) / Що нового / Зворотний зв'язок. Головний екран — кнопкою
-/// «назад». Є лише на карті.
+/// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
+/// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
+/// Налаштування ▾ (характеристики, шаблони) / Зворотний зв'язок / Що нового.
+/// Головний екран — кнопкою «назад». Є лише на карті.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
 
@@ -63,45 +63,39 @@ class AppDrawer extends StatelessWidget {
             nav.popUntil((r) => r.isFirst);
             nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
           }),
-          _item(context, 'history', 'Характеристики',
-              () => _open(nav, ParametersScreen.catalog(repo: repo))),
-          _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _item(context, 'history', 'Історія',
               () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary))),
           // QR — одним пунктом; натиснули — розкрились дії
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              leading: AppIcon('qr', color: AppColors.text, size: 30),
-              title: Text('QR-код', style: TextStyle(color: AppColors.text, fontSize: 16)),
-              iconColor: AppColors.text,
-              collapsedIconColor: AppColors.textMuted,
-              childrenPadding: const EdgeInsets.only(left: 40),
-              children: [
-                _item(context, 'qr', 'Сканувати', () {
-                  nav.pop();
-                  openHiveByQr(nav, repo);
-                }),
-                _item(context, 'qr', 'Генерувати',
-                    () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
-                if (onBindQrRow != null)
-                  _item(context, 'qr', 'Прив\'язати підряд', () {
-                    nav.pop(); // закрити меню
-                    onBindQrRow!();
-                  }),
-              ],
-            ),
-          ),
-          _item(context, 'history', 'Що нового', () {
-            nav.pop(); // закрити меню
-            WhatsNewScreen.open(nav);
-          }),
+          _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
+            _item(context, 'qr', 'Сканувати', () {
+              nav.pop();
+              openHiveByQr(nav, repo);
+            }),
+            _item(context, 'qr', 'Генерувати',
+                () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
+            if (onBindQrRow != null)
+              _item(context, 'qr', 'Прив\'язати підряд', () {
+                nav.pop(); // закрити меню
+                onBindQrRow!();
+              }),
+          ]),
+          // разове налаштування — рідко, тому згорнуто
+          _group(context, Icon(Icons.tune, color: AppColors.text, size: 28), 'Налаштування', [
+            _item(context, '', 'Характеристики',
+                () => _open(nav, ParametersScreen.catalog(repo: repo)),
+                iconData: Icons.list_alt),
+            _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
+          ]),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           }),
+          _item(context, '', 'Що нового', () {
+            nav.pop(); // закрити меню
+            WhatsNewScreen.open(nav);
+          }, iconData: Icons.new_releases_outlined),
           ])),
           if (Autostart.supported) const _AutostartTile(),
         ]),
@@ -142,9 +136,26 @@ class AppDrawer extends StatelessWidget {
     ));
   }
 
-  Widget _item(BuildContext context, String icon, String text, VoidCallback onTap) {
+  /// Пункт, що розгортається (QR-код, Налаштування).
+  Widget _group(BuildContext context, Widget leading, String title, List<Widget> children) =>
+      Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: leading,
+          title: Text(title, style: TextStyle(color: AppColors.text, fontSize: 16)),
+          iconColor: AppColors.text,
+          collapsedIconColor: AppColors.textMuted,
+          childrenPadding: const EdgeInsets.only(left: 40),
+          children: children,
+        ),
+      );
+
+  Widget _item(BuildContext context, String icon, String text, VoidCallback onTap,
+      {IconData? iconData}) {
     return ListTile(
-      leading: AppIcon(icon, color: AppColors.text, size: 30),
+      leading: iconData != null
+          ? Icon(iconData, color: AppColors.text, size: 28)
+          : AppIcon(icon, color: AppColors.text, size: 30),
       title: Text(text, style: TextStyle(color: AppColors.text, fontSize: 16)),
       onTap: onTap,
     );

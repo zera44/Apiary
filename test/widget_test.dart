@@ -760,6 +760,10 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
+    await tester.tap(find.text('Налаштування')); // характеристики й шаблони — тут
+    await settle(tester);
+    await tester.ensureVisible(find.text('Характеристики'));
+    await settle(tester);
     await tester.tap(find.text('Характеристики'));
     await settle(tester);
     await settle(tester);
