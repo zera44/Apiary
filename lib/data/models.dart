@@ -289,3 +289,38 @@ class ParameterRecord {
     this.entityLabel = '',
   });
 }
+
+/// Вулик (або група-вулик) у «Звіті по пасіці».
+class ReportHive {
+  final EntityRef ref;
+  final String label;
+  const ReportHive({required this.ref, required this.label});
+}
+
+/// Один запис історії у «Звіті по пасіці».
+class ReportRecord {
+  final String hive;
+  final String parameterId;
+  final String? value;
+  final double createdAt;
+  const ReportRecord({
+    required this.hive,
+    required this.parameterId,
+    required this.value,
+    required this.createdAt,
+  });
+}
+
+/// Дані «Звіту по пасіці»: вулики × параметри + історія.
+class ApiaryReport {
+  final List<ReportHive> hives;
+  final List<Parameter> parameters;
+  final Map<EntityRef, Map<String, String?>> latest;
+  final List<ReportRecord> history;
+  const ApiaryReport({
+    required this.hives,
+    required this.parameters,
+    required this.latest,
+    required this.history,
+  });
+}

@@ -1500,6 +1500,84 @@ class Repository {
     return result;
   }
 
+  /// Дані для «Звіту по пасіці» (P14): вулики пасіки в порядку обходу
+  /// (згори вниз, зліва направо), параметри-колонки (у порядку прив'язки,
+  /// далі — ті, що мають записи, але вже відв'язані), останні значення й
+  /// уся історія записів (найновіші першими).
+  Future<ApiaryReport> apiaryReport(String apiaryId) async {
+    final els = await listElements(apiaryId);
+    final reps = <String, MapElement>{};
+    final members = <String, List<MapElement>>{};
+    for (final e in els.where((e) => e.isHive)) {
+      final k = e.groupId != null ? 'g:${e.groupId}' : 'e:${e.id}';
+      (members[k] ??= []).add(e);
+      final r = reps[k];
+      if (r == null || e.y > r.y || (e.y == r.y && e.x < r.x)) reps[k] = e;
+    }
+    final keys = reps.keys.toList()
+      ..sort((a, b) {
+        final x = reps[a]!, y = reps[b]!;
+        return x.y != y.y ? y.y.compareTo(x.y) : x.x.compareTo(y.x);
+      });
+
+    final hives = <ReportHive>[];
+    final paramIds = <String>[];
+    var n = 0;
+    for (final k in keys) {
+      n++;
+      final rep = reps[k]!;
+      final ref = rep.groupId != null ? EntityRef.group(rep.groupId!) : EntityRef.element(rep.id);
+      String? label;
+      for (final m in members[k]!) {
+        if (m.label != null && m.label!.trim().isNotEmpty) {
+          label = m.label!.trim();
+          break;
+        }
+      }
+      hives.add(ReportHive(ref: ref, label: label ?? 'Вулик $n'));
+      for (final id in await attachedParameterIds(ref, elType: 'hive')) {
+        if (!paramIds.contains(id)) paramIds.add(id);
+      }
+    }
+
+    final latest = <EntityRef, Map<String, String?>>{};
+    final history = <ReportRecord>[];
+    for (final h in hives) {
+      final (w, args) = _ownerWhere(h.ref);
+      final rows = await db.rawQuery(
+        'SELECT parameter_id, value, created_at FROM parameter_records WHERE $w ORDER BY created_at ASC',
+        args,
+      );
+      final last = <String, String?>{};
+      for (final r in rows) {
+        final pid = r['parameter_id'] as String;
+        last[pid] = r['value'] as String?;
+        if (!paramIds.contains(pid)) paramIds.add(pid);
+        history.add(ReportRecord(
+          hive: h.label,
+          parameterId: pid,
+          value: r['value'] as String?,
+          createdAt: ((r['created_at'] as num?) ?? 0).toDouble(),
+        ));
+      }
+      latest[h.ref] = last;
+    }
+    history.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final params = <Parameter>[];
+    for (final id in paramIds) {
+      final p = await getParameter(id);
+      if (p != null && !p.deleted) params.add(p);
+    }
+    final known = {for (final p in params) p.id};
+    return ApiaryReport(
+      hives: hives,
+      parameters: params,
+      latest: latest,
+      history: [for (final r in history) if (known.contains(r.parameterId)) r],
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Для синхронізації
   // ---------------------------------------------------------------------

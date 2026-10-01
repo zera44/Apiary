@@ -333,6 +333,34 @@ void main() {
     expect(Excel.decodeBytes(bytes).tables['Дата']!.maxRows, 2);
   });
 
+  test('P14: звіт по пасіці — вулики × параметри та історія', () async {
+    final a = await repo.addElement(apiaryId, 0, 5, label: 'Перший');
+    await repo.addElement(apiaryId, 1, 0); // без назви → «Вулик 2»
+    await repo.addElement(apiaryId, 3, 3, type: 'obstacle'); // не вулик
+    final w = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.int_);
+    await repo.setAttachedParameters([w], EntityRef.element(a));
+    await repo.addParameterRecord(w, '10', EntityRef.element(a));
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await repo.addParameterRecord(w, '12', EntityRef.element(a));
+
+    final report = await repo.apiaryReport(apiaryId);
+    expect(report.hives.map((h) => h.label), ['Перший', 'Вулик 2']);
+    expect(report.parameters.map((p) => p.id), contains(w));
+    expect(report.latest[EntityRef.element(a)]![w], '12');
+    expect(report.history.where((r) => r.parameterId == w).map((r) => r.value), ['12', '10']);
+
+    final book = Excel.decodeBytes(buildApiaryWorkbook(report));
+    final last = book.tables['Останні значення']!;
+    expect(last.maxRows, 3); // заголовок + 2 вулики
+    final col = report.parameters.indexWhere((p) => p.id == w) + 1;
+    expect((last.cell(CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 1)).value
+            as IntCellValue)
+        .value, 12);
+    expect(book.tables['Історія']!.maxRows, 1 + report.history.length);
+    expect(apiaryReportFileName('Пасіка 1', DateTime(2026, 10, 1, 9, 5)),
+        'zvit_Пасіка_1_20261001_0905.xlsx');
+  });
+
   test('безпека: чужа назва таблиці відхиляється навіть у release', () async {
     expect(() => repo.unsynced('sqlite_master'), throwsArgumentError);
     expect(() => repo.markSynced('x; DROP TABLE elements', {'id': '1'}), throwsArgumentError);

@@ -12,6 +12,7 @@ import '../screens/qr_scan_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
 import '../services/autostart.dart';
+import 'apiary_report.dart';
 import 'common.dart';
 import 'icons.dart';
 import 'theme.dart';
@@ -70,6 +71,10 @@ class AppDrawer extends StatelessWidget {
               () => _open(nav, ParametersScreen.catalog(repo: repo))),
           _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
           _item(context, 'history', 'Історія', () => _open(nav, HistoryHubScreen(repo: repo))),
+          _item(context, 'history', 'Звіт по пасіці (Excel)', () {
+            nav.pop(); // закрити меню
+            showApiaryReport(context, repo, currentApiary);
+          }),
           _item(context, 'qr', 'Сканувати QR вулика', () {
             nav.pop();
             openHiveByQr(nav, repo);

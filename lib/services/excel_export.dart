@@ -5,6 +5,7 @@ import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/models.dart';
 import '../ui/date_picker.dart';
@@ -57,6 +58,151 @@ Future<String> exportHistoryToExcel({
       return 'Не вдалось зберегти файл:\n$e';
     }
   }
+}
+
+const _xlsxMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/// «Звіт по пасіці» (P14) одним файлом: зберегти у вибрану теку.
+Future<String> saveApiaryReport(ApiaryReport report, String apiaryName) async {
+  final Uint8List bytes;
+  try {
+    bytes = buildApiaryWorkbook(report);
+  } catch (e) {
+    return 'Не вдалось сформувати файл:\n$e';
+  }
+  final fileName = apiaryReportFileName(apiaryName, DateTime.now());
+  try {
+    final uri = await FilePicker.saveFile(
+      fileName: fileName,
+      bytes: bytes,
+      mimeType: _xlsxMime,
+      dialogTitle: 'Зберегти звіт',
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx'],
+    );
+    if (uri == null) return 'Збереження скасовано.';
+    if (uri.scheme == 'file') {
+      final f = File(uri.toFilePath());
+      if (!await f.exists() || await f.length() == 0) {
+        await f.writeAsBytes(bytes, flush: true);
+      }
+      return 'Збережено:\n${f.path}';
+    }
+    return 'Збережено.';
+  } catch (_) {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final f = File(p.join(dir.path, fileName));
+      await f.writeAsBytes(bytes, flush: true);
+      return 'Не вдалось відкрити діалог збереження — файл збережено тут:\n${f.path}';
+    } catch (e) {
+      return 'Не вдалось зберегти файл:\n$e';
+    }
+  }
+}
+
+/// «Звіт по пасіці»: одразу поділитися (месенджер, пошта, диск…).
+/// Повертає текст помилки або null.
+Future<String?> shareApiaryReport(ApiaryReport report, String apiaryName) async {
+  try {
+    final bytes = buildApiaryWorkbook(report);
+    final fileName = apiaryReportFileName(apiaryName, DateTime.now());
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(bytes, mimeType: _xlsxMime, name: fileName)],
+      fileNameOverrides: [fileName],
+      subject: 'Звіт по пасіці «$apiaryName»',
+    ));
+    return null;
+  } catch (e) {
+    return 'Не вдалось поділитися файлом:\n$e';
+  }
+}
+
+String apiaryReportFileName(String apiaryName, DateTime now) {
+  final safe = apiaryName
+      .replaceAll(RegExp(r'[^\p{L}\p{N}_-]+', unicode: true), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  String two(int v) => v.toString().padLeft(2, '0');
+  final stamp = '${now.year}${two(now.month)}${two(now.day)}_${two(now.hour)}${two(now.minute)}';
+  return 'zvit_${safe.isEmpty ? 'pasika' : safe}_$stamp.xlsx';
+}
+
+/// Книга «Звіту по пасіці»: аркуш «Останні значення» (рядки — вулики,
+/// колонки — параметри) і аркуш «Історія» (дата, вулик, параметр, значення).
+Uint8List buildApiaryWorkbook(ApiaryReport report) {
+  final excel = Excel.createExcel();
+  final defaultName = excel.getDefaultSheet() ?? 'Sheet1';
+  const lastName = 'Останні значення';
+  const histName = 'Історія';
+  excel.rename(defaultName, lastName);
+  final bold = CellStyle(bold: true);
+  final dateStyle = CellStyle(numberFormat: NumFormat.custom(formatCode: 'dd.mm.yyyy'));
+  final dateTimeStyle = CellStyle(numberFormat: NumFormat.custom(formatCode: 'dd.mm.yyyy hh:mm'));
+  final byId = {for (final p in report.parameters) p.id: p};
+
+  final last = excel[lastName];
+  last.appendRow([
+    TextCellValue('Вулик'),
+    for (final p in report.parameters) TextCellValue(p.nameWithUnit),
+  ]);
+  for (var c = 0; c <= report.parameters.length; c++) {
+    last.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).cellStyle = bold;
+  }
+  for (final h in report.hives) {
+    final values = report.latest[h.ref] ?? const <String, String?>{};
+    final cells = [
+      for (final p in report.parameters) historyValueCell(values[p.id], p.dataType),
+    ];
+    last.appendRow([TextCellValue(h.label), ...cells]);
+    final row = last.maxRows - 1;
+    for (var i = 0; i < cells.length; i++) {
+      if (cells[i] is DateCellValue) {
+        last.cell(CellIndex.indexByColumnRow(columnIndex: i + 1, rowIndex: row)).cellStyle =
+            dateStyle;
+      }
+    }
+  }
+  last.setColumnWidth(0, 22);
+  for (var c = 1; c <= report.parameters.length; c++) {
+    last.setColumnWidth(c, 18);
+  }
+
+  final hist = excel[histName];
+  hist.appendRow([
+    TextCellValue('Дата й час'),
+    TextCellValue('Вулик'),
+    TextCellValue('Параметр'),
+    TextCellValue('Значення'),
+  ]);
+  for (var c = 0; c < 4; c++) {
+    hist.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).cellStyle = bold;
+  }
+  for (final r in report.history) {
+    final p = byId[r.parameterId];
+    if (p == null) continue;
+    final at = DateTime.fromMicrosecondsSinceEpoch((r.createdAt * 1e6).round());
+    final value = historyValueCell(r.value, p.dataType);
+    hist.appendRow([
+      DateTimeCellValue(
+          year: at.year, month: at.month, day: at.day, hour: at.hour, minute: at.minute),
+      TextCellValue(r.hive),
+      TextCellValue(p.nameWithUnit),
+      value,
+    ]);
+    final row = hist.maxRows - 1;
+    hist.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row)).cellStyle = dateTimeStyle;
+    if (value is DateCellValue) {
+      hist.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row)).cellStyle = dateStyle;
+    }
+  }
+  hist.setColumnWidth(0, 18);
+  hist.setColumnWidth(1, 22);
+  hist.setColumnWidth(2, 24);
+  hist.setColumnWidth(3, 18);
+
+  final data = excel.encode();
+  if (data == null) throw StateError('encode() повернув null');
+  return Uint8List.fromList(data);
 }
 
 /// Сама книга Excel (окремо — щоб можна було перевірити тестом).

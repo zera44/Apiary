@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/merge_layout.dart';
+import '../ui/apiary_report.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
@@ -120,6 +121,15 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
             const SizedBox(height: 8),
             Text('Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Заповнити».',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              icon: Icon(Icons.table_chart_outlined, color: AppColors.accent),
+              label: Text('Звіт по пасіці (Excel)', style: TextStyle(color: AppColors.accent)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                showApiaryReport(context, widget.repo, a);
+              },
+            ),
           ]),
           actions: [
             Row(children: [
