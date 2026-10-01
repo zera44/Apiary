@@ -741,9 +741,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       builder: (ctx) => _withTutorialGuide(
           templates,
           AlertDialog(
+        // ширше за звичайне вікно — щоб плитки шаблонів стали по 3 в ряд
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: const Text('Оберіть шаблон'),
         content: SizedBox(
-          width: 320,
+          width: 274,
           child: templates.isEmpty
               ? Column(mainAxisSize: MainAxisSize.min, children: [
                   Text('Ще немає жодного шаблону.',
@@ -760,11 +762,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               // плитки — ті самі, що в списку «Шаблони» (мініатюра й розмір)
               // (Wrap, а не GridView: вікно міряє вміст, а сітка цього не вміє)
               : SingleChildScrollView(
-                  child: Wrap(spacing: 12, runSpacing: 12, children: [
+                  // по 3 в ряд (вікно ширше за звичайне — див. insetPadding)
+                  child: Wrap(spacing: 8, runSpacing: 10, children: [
                     for (final t in templates)
                       SizedBox(
-                        width: 140,
-                        height: 165,
+                        width: 86,
+                        height: 106,
                         child: TemplateTile(
                           template: t,
                           onTap: () => Navigator.pop(ctx, t),
