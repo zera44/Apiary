@@ -1090,11 +1090,11 @@ void main() {
     await settle(tester);
     await tester.tapAt(const Offset(12, 300)); // закрити вибір шаблону — лишаємось у редагуванні
     await settle(tester);
-    expect(find.byTooltip('Повернути'), findsOneWidget); // лише внизу
+    expect(find.byTooltip('Повернути'), findsNothing); // унизу «Повернути» немає
     // вулик (0,0): камера по центру (1,0), клітинка 34
     await tester.tapAt(tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-17, -17));
     await settle(tester);
-    expect(find.byTooltip('Повернути'), findsNWidgets(2)); // внизу + над об'єктом
+    expect(find.byTooltip('Повернути'), findsOneWidget); // лише над обраним об'єктом
     expect(find.byTooltip('Видалити'), findsNWidgets(2));
     expect(find.byType(CharacteristicsPanel), findsNothing); // інформація не відкривається
     expect(tester.takeException(), isNull);

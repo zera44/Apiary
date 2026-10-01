@@ -1344,12 +1344,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               onPressed: _onAddObject),
           const SizedBox(width: 16),
           CircleIconButton(
-              icon: 'rotate',
-              bg: AppColors.darkBtn,
-              tooltip: 'Повернути',
-              onPressed: enabled ? _onRotate : null),
-          const SizedBox(width: 16),
-          CircleIconButton(
               icon: 'back_arrow',
               bg: AppColors.darkBtn,
               tooltip: 'Крок назад',
