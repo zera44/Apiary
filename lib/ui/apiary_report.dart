@@ -43,7 +43,7 @@ Future<void> showApiaryReport(BuildContext context, Repository repo, Apiary apia
   final report = await repo.apiaryReport(apiary.id);
   if (!context.mounted) return;
   if (report.hives.isEmpty) {
-    await showInfo(context, 'На цій пасіці ще немає вуликів — звіт порожній.');
+    await showInfo(context, 'На цій пасіці ще немає вуликів - звіт порожній.');
     return;
   }
   if (choice == 'share') {

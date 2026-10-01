@@ -59,7 +59,8 @@ def collect() -> list[dict]:
                 'v': vcache.setdefault(sha, released_in(sha, current)),
                 't': 'feat' if kind == 'Нове' else 'fix',
                 'w': max(1, min(5, int(weight or 1))),
-                'text': text,
+                # у застосунку — звичайний дефіс замість довгого тире
+                'text': text.replace('—', '-'),
             })
     # той самий текст пізніше — лишаємо найновіший запис
     seen: dict = {}

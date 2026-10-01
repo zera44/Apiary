@@ -61,7 +61,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     var title = 'Історія: ${widget.parameter.nameWithUnit}';
-    if (scopeName != null) title += ' — $scopeName';
+    if (scopeName != null) title += ' - $scopeName';
     final list = rows;
     return Scaffold(
       body: SafeArea(
@@ -77,8 +77,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             padding: const EdgeInsets.all(24),
                             child: Text(
                               'Ще немає жодного запису для цього параметра'
-                              '${scoped ? " у цього об'єкта" : ''}.\n'
-                              'Записи з\'являються після кнопки «Оглянути» на карті.',
+                              '${scoped ? " у цього об'єкта" : ''}.\n'"                              'Записи з\'являються після кнопки «Оглянути» на карті.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),
@@ -137,7 +136,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 140),
           child: Text(
-            (r.value == null || r.value!.isEmpty) ? '—' : r.value!,
+            (r.value == null || r.value!.isEmpty) ? '-' : r.value!,
             textAlign: TextAlign.right,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

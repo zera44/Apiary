@@ -217,7 +217,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     isBase
                         ? 'Тип даних Базової характеристики змінити не можна'
                         : typeLocked
-                            ? 'Записи вже є, тож тип даних змінити не можна. Щоб змінити тип — '
+                            ? 'Записи вже є, тож тип даних змінити не можна. Щоб змінити тип - '
                                 'створіть новий параметр і перенесіть у нього історію.'
                             : 'Тип даних можна змінити, поки немає жодного запису.',
                     textAlign: TextAlign.center,
@@ -364,7 +364,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         'З «${from.nameWithUnit}» у «${to.nameWithUnit}» ($typeName) буде перенесено '
         '${preview.movable} запис(ів) історії з тими самими датами й об\'єктами.');
     if (preview.skipped > 0) {
-      text.write('\n\n${preview.skipped} запис(ів) не підходять до типу «$typeName» — вони '
+      text.write('\n\n${preview.skipped} запис(ів) не підходять до типу «$typeName» - вони '
           'лишаться в «${from.name}».');
     }
     text.write('\n\nДе був «${from.name}», там з\'явиться «${to.name}».');
@@ -419,7 +419,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     if (p.isBase) {
       await showInfo(
         context,
-        '«${p.name}» — Базова характеристика, обов\'язкова для усього класу об\'єктів. '
+        '«${p.name}» - Базова характеристика, обов\'язкова для усього класу об\'єктів. '
         'Її не можна видалити.',
         title: 'Не можна видалити',
       );

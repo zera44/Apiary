@@ -50,7 +50,7 @@ void main() {
   });
 
   group('mergeLayout', () {
-    test('прямокутник 2×2 — одна фігура, одна іконка по центру', () {
+    test('прямокутник 2×2 - одна фігура, одна іконка по центру', () {
       final items = [
         const MergeItem('a', 0, 0, 'k'),
         const MergeItem('b', 1, 0, 'k'),
@@ -97,7 +97,7 @@ void main() {
       expect(CellValue.parse('obstacle').effectiveVariant, 'mountain');
     });
 
-    test('без перевизначень серіалізується рядком, з ними — словником', () {
+    test('без перевизначень серіалізується рядком, з ними - словником', () {
       expect(const CellValue(type: 'hive').toJson(), 'hive');
       const v = CellValue(type: 'obstacle', variant: 'lake', color: '#F2B705', parameters: ['p1']);
       final json = v.toJson() as Map;
@@ -144,7 +144,7 @@ void main() {
       expect(t, [DateTime(2026, 10, 3, 9), DateTime(2026, 10, 5, 9), DateTime(2026, 10, 7, 9)]);
     });
 
-    test('обійшов 3.10 — наступне нагадування 5.10', () {
+    test('обійшов 3.10 - наступне нагадування 5.10', () {
       final t = reminderTimes(
           lastVisit: DateTime(2026, 10, 3), periodDays: 2, now: DateTime(2026, 10, 3, 12));
       expect(t.first, DateTime(2026, 10, 5, 9));
@@ -156,7 +156,7 @@ void main() {
       expect(t, [DateTime(2026, 10, 11, 9), DateTime(2026, 10, 13, 9), DateTime(2026, 10, 15, 9)]);
     });
 
-    test('нульовий/від\'ємний/завеликий період — без нагадувань', () {
+    test('нульовий/від\'ємний/завеликий період - без нагадувань', () {
       for (final p in [0, -1, 100000]) {
         expect(reminderTimes(lastVisit: DateTime(2026, 10, 1), periodDays: p, now: DateTime(2026, 10, 1)),
             isEmpty);
@@ -179,7 +179,7 @@ void main() {
       expect(reminderBody('Лежак 1'), 'Ти давно не заглядав у вулик Лежак 1. Перевір його');
     });
 
-    test('без періоду або без дати відліку — нічого; дата відліку з моменту задання періоду', () {
+    test('без періоду або без дати відліку - нічого; дата відліку з моменту задання періоду', () {
       final now = DateTime(2026, 10, 1, 10);
       expect(planReminders([target(period: null)], now: now), isEmpty);
       expect(planReminders([target(last: null)], now: now), isEmpty);
@@ -213,7 +213,7 @@ void main() {
   });
 
   group('безпека', () {
-    test('синхронізація лише через https (http — тільки локальний сервер розробки)', () {
+    test('синхронізація лише через https (http - тільки локальний сервер розробки)', () {
       expect(SyncService.serverBase('https://api.example.com/v1/').toString(),
           'https://api.example.com/v1');
       expect(SyncService.serverBase('http://api.example.com'), isNull);
@@ -234,7 +234,7 @@ void main() {
       expect(FeedbackService.endpoint(''), isNull);
     });
 
-    test('без адреси форми — «не налаштовано», запит не йде', () async {
+    test('без адреси форми - «не налаштовано», запит не йде', () async {
       var calls = 0;
       final client = MockClient((_) async {
         calls++;
@@ -261,7 +261,7 @@ void main() {
       expect(body['_subject'], FeedbackService.subject);
     });
 
-    test('помилка сервісу чи мережі — «не надіслано»', () async {
+    test('помилка сервісу чи мережі - «не надіслано»', () async {
       final bad = MockClient((_) async => http.Response('{"error":"x"}', 422));
       expect(await FeedbackService.send('a', client: bad, formUrl: 'https://formspree.io/f/abc'),
           FeedbackResult.failed);

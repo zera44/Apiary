@@ -314,7 +314,7 @@ void main() {
         'istoriya_Мітка_матки_20260928_100507.xlsx');
   });
 
-  test('Excel: числа й дати — клітинками потрібного типу', () {
+  test('Excel: числа й дати - клітинками потрібного типу', () {
     expect(historyValueCell('7', DataTypes.int_), isA<IntCellValue>());
     final f = historyValueCell('12,5', DataTypes.float_);
     expect(f, isA<DoubleCellValue>());
@@ -333,7 +333,7 @@ void main() {
     expect(Excel.decodeBytes(bytes).tables['Дата']!.maxRows, 2);
   });
 
-  test('P14: звіт по пасіці — вулики × параметри та історія', () async {
+  test('P14: звіт по пасіці - вулики × параметри та історія', () async {
     final a = await repo.addElement(apiaryId, 0, 5, label: 'Перший');
     await repo.addElement(apiaryId, 1, 0); // без назви → «Вулик 2»
     await repo.addElement(apiaryId, 3, 3, type: 'obstacle'); // не вулик
@@ -471,7 +471,7 @@ void main() {
       expect(await repo.findByQr('https://x/h/1'), isNull);
     });
 
-    test('один код — один вулик; один вулик — один код', () async {
+    test('один код - один вулик; один вулик - один код', () async {
       final a = await repo.addElement(apiaryId, 0, 0);
       final b = await repo.addElement(apiaryId, 1, 0);
       await repo.linkQr('K1', EntityRef.element(a));
@@ -498,7 +498,7 @@ void main() {
     });
   });
 
-  test('номер нової групи — найбільший + 1 (без повторів після видалення чи перейменування)',
+  test('номер нової групи - найбільший + 1 (без повторів після видалення чи перейменування)',
       () async {
     final g1 = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
     await repo.addGroup(apiaryId, {'0,0': 'hive'}, 2, 0, groupLabel: 'Лежак 2');
@@ -546,7 +546,7 @@ void main() {
     expect((await repo.getGroupElements(more.single)).single.label, 'Т 3');
   });
 
-  test('склад: прихід і вибуття — окремі записи, залишок рахується', () async {
+  test('склад: прихід і вибуття - окремі записи, залишок рахується', () async {
     final id = await repo.addStockItem(' Цукор ', 'кг');
     var it = (await repo.listStockItems()).single;
     expect(it.name, 'Цукор');
@@ -727,7 +727,7 @@ void main() {
   });
 
   group('генерація QR-кодів застосунку', () {
-    test('кожен вулик — свій код і номер; повторна генерація вимикає старі', () async {
+    test('кожен вулик - свій код і номер; повторна генерація вимикає старі', () async {
       final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0,
           groupLabel: 'Лежак 1');
       final single = await repo.addElement(apiaryId, 5, 5);

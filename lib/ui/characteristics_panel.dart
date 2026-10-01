@@ -92,7 +92,7 @@ class CharacteristicsPanel extends StatelessWidget {
         ? 'Вулик'
         : () {
             final v = obstacleVariantLabel(data.variant);
-            return v.isEmpty ? 'Перешкода' : 'Перешкода — $v';
+            return v.isEmpty ? 'Перешкода' : 'Перешкода - $v';
           }();
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold);
 
@@ -162,7 +162,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 Text('Значення', style: muted),
                 const SizedBox(height: 6),
                 if (data.params.isEmpty)
-                  Text('—', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
+                  Text('-', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
                 else
                   _paramTable(),
                 const SizedBox(height: 18),
@@ -280,7 +280,7 @@ class CharacteristicsPanel extends StatelessWidget {
         );
       }
     }
-    return Text((value == null || value.isEmpty) ? '—' : value,
+    return Text((value == null || value.isEmpty) ? '-' : value,
                     style: TextStyle(
                         color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
                         fontSize: 14,

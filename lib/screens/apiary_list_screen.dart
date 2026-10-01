@@ -18,7 +18,11 @@ class ApiaryListScreen extends StatefulWidget {
   /// Урок «Базові поняття» (режим навчання): [repo] — пісочниця; поки
   /// пасік немає, пасічник підказує створити карту; «назад» — до уроків.
   final bool tutorial;
-  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false});
+
+  /// Урок: що робити наприкінці (див. [MapScreen.onLessonDone]).
+  final Future<void> Function(bool magic, String apiaryId)? onLessonDone;
+  const ApiaryListScreen(
+      {super.key, required this.repo, this.tutorial = false, this.onLessonDone});
 
   /// Перша підказка уроку «Базові поняття».
   static final tutorialHello = <InlineSpan>[
@@ -64,7 +68,11 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
 
   Future<void> _open(Apiary a) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => MapScreen(repo: widget.repo, apiary: a, tutorial: widget.tutorial),
+      builder: (_) => MapScreen(
+          repo: widget.repo,
+          apiary: a,
+          tutorial: widget.tutorial,
+          onLessonDone: widget.onLessonDone),
     ));
     await _reload();
   }
@@ -115,7 +123,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
               keyboardType: TextInputType.number,
               style: TextStyle(color: AppColors.text),
               decoration: const InputDecoration(
-                  labelText: 'Обходити кожні … днів', hintText: 'порожньо — без нагадувань'),
+                  labelText: 'Обходити кожні … днів', hintText: 'порожньо - без нагадувань'),
               onSubmitted: (_) => save(),
             ),
             const SizedBox(height: 8),

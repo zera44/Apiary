@@ -105,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text('Без входу дані зберігаються лише на цьому пристрої. Увійти й '
-                      'синхронізувати їх можна пізніше на головному екрані — нічого не загубиться.',
+                      'синхронізувати їх можна пізніше на головному екрані - нічого не загубиться.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],

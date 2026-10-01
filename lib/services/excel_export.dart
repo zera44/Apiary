@@ -53,7 +53,7 @@ Future<String> exportHistoryToExcel({
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження — файл збережено тут:\n${f.path}';
+      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
     } catch (e) {
       return 'Не вдалось зберегти файл:\n$e';
     }
@@ -94,7 +94,7 @@ Future<String> saveApiaryReport(ApiaryReport report, String apiaryName) async {
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження — файл збережено тут:\n${f.path}';
+      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
     } catch (e) {
       return 'Не вдалось зберегти файл:\n$e';
     }
@@ -233,7 +233,7 @@ Uint8List buildHistoryWorkbook({
     final value = historyValueCell(r.value, parameter.dataType);
     final at = DateTime.fromMicrosecondsSinceEpoch((r.createdAt * 1e6).round());
     sheet.appendRow([
-      TextCellValue(r.entityLabel.isEmpty ? '—' : r.entityLabel),
+      TextCellValue(r.entityLabel.isEmpty ? '-' : r.entityLabel),
       value,
       DateTimeCellValue(
           year: at.year, month: at.month, day: at.day, hour: at.hour, minute: at.minute),

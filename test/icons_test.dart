@@ -44,7 +44,7 @@ void main() {
       }
     });
 
-    test('списки вибору: іконки об\'єкта й варіанти перешкоди — з реєстру', () {
+    test('списки вибору: іконки об\'єкта й варіанти перешкоди - з реєстру', () {
       expect([for (final (k, _) in AppIcons.pickable) k],
           ['beehive', 'hexagon', 'mountain', 'river', 'lake', 'trees', 'houses', 'fence', 'road']);
       expect([for (final (k, _) in AppIcons.obstacleVariants) k],
@@ -73,7 +73,7 @@ void main() {
       }
     });
 
-    testWidgets('іконка справді малюється, невідома — ні', (tester) async {
+    testWidgets('іконка справді малюється, невідома - ні', (tester) async {
       Future<int> inkPixels(String name) async {
         return (await tester.runAsync(() async {
           final rec = ui.PictureRecorder();
@@ -111,13 +111,13 @@ void main() {
       expect(tight.right, closeTo(2.5, 0.001));
     });
 
-    test('некоректні дані контуру — FormatException', () {
+    test('некоректні дані контуру - FormatException', () {
       expect(() => parseSvgPathData('L1 1'), throwsFormatException);
       expect(() => parseSvgPathData('M1'), throwsFormatException);
       expect(() => parseSvgPathData('M0 0 A1 1 0 2 1 5 5'), throwsFormatException);
     });
 
-    test('заливка/лінія: за замовчуванням лінія; fill без stroke — лише заливка', () {
+    test('заливка/лінія: за замовчуванням лінія; fill без stroke - лише заливка', () {
       const head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">';
       var i = parseSvgIcon('$head<path d="M1 1L5 5"/></svg>');
       expect(i.shapes.single.stroke, isTrue);
@@ -138,7 +138,7 @@ void main() {
       expect(i.shapes.length, 4);
     });
 
-    test('непідтримуване — попередження; зіпсований файл — помилка', () {
+    test('непідтримуване - попередження; зіпсований файл - помилка', () {
       final warnings = <String>[];
       parseSvgIcon(
           '<svg viewBox="0 0 24 24"><path d="M1 1L5 5" stroke="#000" transform="rotate(5)"/>'

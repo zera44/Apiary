@@ -202,7 +202,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                     child: CapsuleLabel(
                       elements.isEmpty
                           ? 'На цій пасіці ще немає вуликів'
-                          : 'Зелений ободок — код уже є ($withCode з $hives) · тапайте вулики',
+                          : 'Зелений ободок - код уже є ($withCode з $hives) · тапайте вулики',
                     ),
                   ),
                 ),

@@ -5,6 +5,7 @@ import '../data/models.dart';
 import '../logic/stock_format.dart';
 import 'common.dart';
 import 'date_picker.dart';
+import 'guide_bubble.dart';
 import 'icons.dart';
 import 'theme.dart';
 
@@ -25,16 +26,32 @@ Future<FillResult?> showFillValuesDialog(
   List<StockItem> stock = const [],
   String? title,
   Future<FillPage?> Function(FillResult result)? onNext,
+  FillLesson? lesson,
 }) {
   return showDialog<FillResult>(
     context: context,
     barrierDismissible: false,
     builder: (_) => _FillHost(
       first: FillPage(params: params, latest: latest, stock: stock, title: title),
-      offerNext: offerNext,
+      offerNext: lesson == null && offerNext,
       onNext: onNext,
+      lesson: lesson,
     ),
   );
+}
+
+/// Урок «Базові поняття» у формі огляду: які комірки заповнити і чим.
+class FillLesson {
+  final String periodParamId;
+  final String periodValue;
+  final String colorParamId;
+  final String colorValue;
+  const FillLesson({
+    required this.periodParamId,
+    required this.colorParamId,
+    this.periodValue = '3',
+    this.colorValue = 'Білий',
+  });
 }
 
 /// Вміст форми для одного вулика (для «Зберегти й далі» — наступного).
@@ -53,7 +70,8 @@ class _FillHost extends StatefulWidget {
   final FillPage first;
   final bool offerNext;
   final Future<FillPage?> Function(FillResult result)? onNext;
-  const _FillHost({required this.first, required this.offerNext, this.onNext});
+  final FillLesson? lesson;
+  const _FillHost({required this.first, required this.offerNext, this.onNext, this.lesson});
   @override
   State<_FillHost> createState() => _FillHostState();
 }
@@ -71,6 +89,7 @@ class _FillHostState extends State<_FillHost> {
       params: _page.params,
       latest: _page.latest,
       offerNext: widget.offerNext,
+      lesson: widget.lesson,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
       onNext: onNext == null
           ? null
@@ -108,8 +127,10 @@ class _FillDialog extends StatefulWidget {
   final bool offerNext;
   final List<StockItem> stock;
   final Future<void> Function(FillResult result)? onNext;
+  final FillLesson? lesson;
   const _FillDialog(
       {super.key,
+      this.lesson,
       this.title,
       required this.params,
       required this.latest,
@@ -159,8 +180,76 @@ class _FillDialogState extends State<_FillDialog> {
 
   bool _saving = false;
 
+  // ---- урок «Базові поняття»: кроки в самій формі ----
+  // 0–1 пасічник пояснює; 2 — з'являється ведмежа; 3 — «матка біла»;
+  // 4 — «через 3 дні»; 5 — «Збережи»
+  int _step = 0;
+  FillLesson? get _lesson => widget.lesson;
+
+  bool _ring(int step) => _lesson != null && _step == step;
+
+  /// Кроки 3 і 4 йдуть далі самі, щойно в комірці потрібне значення.
+  void _lessonCheck() {
+    final l = _lesson;
+    if (l == null) return;
+    if (_step == 3 && (_picked[l.colorParamId] ?? '') == l.colorValue) {
+      setState(() => _step = 4);
+    }
+    if (_step == 4 && (_text[l.periodParamId]?.text.trim() ?? '') == l.periodValue) {
+      setState(() => _step = 5);
+    }
+  }
+
+  ({List<InlineSpan> text, bool bear, bool tapNext}) get _lessonLine {
+    final l = _lesson!;
+    return switch (_step) {
+      0 => (
+          text: [
+            const TextSpan(
+                text: 'Це параметри вулика. Зараз тут тільки обов\'язкові, але ти зможеш '),
+            GuideBubble.highlight('додати нові згодом'),
+            const TextSpan(text: '.'),
+          ],
+          bear: false,
+          tapNext: true
+        ),
+      1 => (
+          text: const [
+            TextSpan(text: 'Мій помічник перевірив вулик за тебе, тож запиши дані в комірки.')
+          ],
+          bear: false,
+          tapNext: true
+        ),
+      2 => (text: const [TextSpan(text: 'Грр...')], bear: true, tapNext: true),
+      3 => (
+          text: [
+            const TextSpan(text: 'В тебе матка '),
+            GuideBubble.task(l.colorValue.toLowerCase()),
+            const TextSpan(text: '.'),
+          ],
+          bear: true,
+          tapNext: false
+        ),
+      4 => (
+          text: [
+            const TextSpan(text: 'Заглянеш сам через '),
+            GuideBubble.task('${l.periodValue} дні'),
+            const TextSpan(text: '.'),
+          ],
+          bear: true,
+          tapNext: false
+        ),
+      _ => (
+          text: const [TextSpan(text: 'Збережи, бо я більше туди не полізу.')],
+          bear: true,
+          tapNext: false
+        ),
+    };
+  }
+
   Future<void> _save({bool next = false}) async {
     if (_saving) return;
+    if (_lesson != null && _step < 5) return; // урок: спершу заповнити комірки
     ({String itemId, double amount})? feed;
     final fid = _feedItem;
     if (fid != null) {
@@ -243,7 +332,13 @@ class _FillDialogState extends State<_FillDialog> {
       columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
-        for (final p in widget.params) row(p.nameWithUnit, _field(p)),
+        for (final p in widget.params)
+          row(
+              p.nameWithUnit,
+              HoneyRing(
+                  on: _ring(4) && p.id == _lesson!.periodParamId,
+                  radius: 8,
+                  child: _field(p))),
         if (widget.stock.isNotEmpty)
           row(
             'Підгодівля зі складу',
@@ -294,7 +389,7 @@ class _FillDialogState extends State<_FillDialog> {
     enabledBorder: InputBorder.none,
     focusedBorder: InputBorder.none,
     contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-    hintText: '—',
+    hintText: '-',
   );
 
   Widget _field(Parameter p) {
@@ -352,7 +447,7 @@ class _FillDialogState extends State<_FillDialog> {
           hint: Text('Обрати', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
           items: [
             DropdownMenuItem<String>(
-                value: '', child: Text('—', style: TextStyle(color: AppColors.textMuted))),
+                value: '', child: Text('-', style: TextStyle(color: AppColors.textMuted))),
             for (final o in items)
               DropdownMenuItem<String>(
                   value: o,
@@ -366,20 +461,26 @@ class _FillDialogState extends State<_FillDialog> {
         final colorLabel = _picked[p.id] ?? '';
         return Wrap(spacing: 4, runSpacing: 4, children: [
           for (final (label, c) in queenTagChoices)
-            ColorTagSwatch(
+            HoneyRing(
+              on: _ring(3) && label == _lesson!.colorValue && p.id == _lesson!.colorParamId,
+              child: ColorTagSwatch(
               fill: c,
               size: 28,
               selected: colorLabel == label,
               tooltip: label,
               // повторний тап по обраному кольору — зняти вибір
-              onTap: () => setState(() => _picked[p.id] = colorLabel == label ? '' : label),
-            ),
+              onTap: () {
+                setState(() => _picked[p.id] = colorLabel == label ? '' : label);
+                _lessonCheck();
+              },
+            )),
         ]);
       default:
         return TextField(
           controller: _text[p.id],
           style: TextStyle(color: AppColors.text, fontSize: 15),
           decoration: _cellInput,
+          onChanged: (_) => _lessonCheck(),
           keyboardType: p.dataType == DataTypes.int_
               ? const TextInputType.numberWithOptions(signed: true)
               : p.dataType == DataTypes.float_
@@ -396,6 +497,39 @@ class _FillDialogState extends State<_FillDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dialog = _dialog();
+    if (_lesson == null) return dialog;
+    // урок: форма вище, унизу — пасічник або ведмежа-помічник
+    final line = _lessonLine;
+    final bubble = GuideBubble(
+      text: line.text,
+      image: line.bear ? kLessonBear : kLessonBeekeeperLeaning,
+      imageHeight: line.bear ? 150 : kLessonLeaningHeight,
+      below: line.tapNext
+          ? Text('Торкнись, щоб продовжити',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+          : null,
+    );
+    return Stack(children: [
+      Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 270), child: dialog)),
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: kLessonBottom + MediaQuery.of(context).padding.bottom,
+        child: Material(
+          type: MaterialType.transparency,
+          child: line.tapNext
+              ? GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _step++),
+                  child: bubble)
+              : IgnorePointer(child: bubble),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _dialog() {
     return AlertDialog(
       // назва вулика — видно, що «Зберегти й далі» перейшло до наступного
       title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -434,8 +568,14 @@ class _FillDialogState extends State<_FillDialog> {
             ),
             const SizedBox(width: 8),
             Expanded(
-                child: PillButton(
-                    text: 'Зберегти', bg: AppColors.accent, onPressed: _saving ? null : _save)),
+                child: HoneyRing(
+                    on: _ring(5),
+                    radius: 14,
+                    child: PillButton(
+                        text: 'Зберегти',
+                        bg: AppColors.accent,
+                        // урок: зберегти — лише коли комірки заповнено
+                        onPressed: _saving || (_lesson != null && _step < 5) ? null : _save))),
           ]),
           if (widget.offerNext) ...[
             const SizedBox(height: 8),

@@ -617,15 +617,15 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     if (addingMode) {
       final what = mode == 'hive'
           ? 'Вулик'
-          : 'Перешкода — ${obstacleVariantLabel(obstacleVariant)}';
+          : 'Перешкода - ${obstacleVariantLabel(obstacleVariant)}';
       return 'Додаємо: $what   ·   торкніться клітинки, щоб прибрати';
     }
     if (moveMode) {
       return _selectedCells.isNotEmpty
-          ? 'Перетягніть, щоб перемістити · над ним — поворот і видалення'
+          ? 'Перетягніть, щоб перемістити · над ним - поворот і видалення'
           : 'Переміщення: торкніться екземпляра й тягніть';
     }
-    if (_selectedCells.isNotEmpty) return 'Інформація про екземпляр — справа';
+    if (_selectedCells.isNotEmpty) return 'Інформація про екземпляр - справа';
     return 'Торкніться екземпляра, щоб побачити інформацію';
   }
 

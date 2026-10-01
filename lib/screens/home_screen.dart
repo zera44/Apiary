@@ -62,7 +62,7 @@ class HomeScreen extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     final ok = await showConfirm(context,
         title: 'Вийти?',
-        text: 'Дані пасік лишаються на цьому пристрої. Далі — знову увійти або продовжити без входу.',
+        text: 'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.',
         confirmText: 'Вийти');
     if (!ok || !context.mounted) return;
     await auth.signOut();
@@ -126,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                         _Tile(
                             icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
                             label: 'Навчання',
-                            onTap: () => push(const TutorialScreen())),
+                            onTap: () => push(TutorialScreen(realRepo: repo))),
                         _Tile(
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
@@ -295,12 +295,13 @@ class _Advisor extends StatefulWidget {
 
 class _AdvisorState extends State<_Advisor> {
   static const _tips = [
-    'Утримайте вулик на карті — одразу відкриється огляд.',
+    'Утримайте вулик на карті - одразу відкриється огляд.',
     '«Зберегти й далі» веде до наступного вулика без зайвих натискань.',
-    'Наклейте QR-наліпки — і вулик відкриється з камери за секунду.',
-    'Задайте мінімальний залишок на складі — я нагадаю, коли час докупити.',
-    'Звіт по пасіці в Excel — у меню ☰ → «Історія».',
-    'Періодичність обходу задається одна на всю пасіку — у її налаштуваннях.',
+    'Наклейте QR-наліпки - і вулик відкриється з камери за секунду.',
+    'Задайте мінімальний залишок на складі - я нагадаю, коли час докупити.',
+    'Звіт по пасіці в Excel - у меню ☰ → «Історія».',
+    'Періодичність обходу задається одна на всю пасіку - у її налаштуваннях.',
+    'Якщо для вулика треба інший час обходу - змініть у його **налаштуваннях**.',
   ];
 
   List<({VisitTarget t, DateTime at})> _due = const [];
@@ -393,7 +394,17 @@ class _AdvisorState extends State<_Advisor> {
                   color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(m.text,
+              Text.rich(
+                  // **слово** — медовим напівжирним
+                  TextSpan(children: [
+                    for (final (i, part) in m.text.split('**').indexed)
+                      i.isOdd
+                          ? TextSpan(
+                              text: part,
+                              style: TextStyle(
+                                  color: AppColors.create, fontWeight: FontWeight.w600))
+                          : TextSpan(text: part),
+                  ]),
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -404,7 +415,7 @@ class _AdvisorState extends State<_Advisor> {
               const SizedBox(height: 4),
               Row(children: [
                 Expanded(
-                  child: Text(action != null ? 'Натисніть — перейти' : 'Натисніть — далі',
+                  child: Text(action != null ? 'Натисніть - перейти' : 'Натисніть - далі',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                 ),
                 // наступне повідомлення, навіть коли це — з дією

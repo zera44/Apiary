@@ -114,6 +114,97 @@ class Repository {
     return addApiary('Пасіка $n');
   }
 
+  /// Перенести пасіку з іншої бази (з пісочниці уроку — у справжню): карта,
+  /// прив'язані параметри й записи. Базові характеристики зіставляються за
+  /// ключем, решта — за назвою й типом (бракує — створюється). Нова пасіка
+  /// дістає назву «Пасіка N» (перша вільна). Повертає її id.
+  Future<String> importApiaryFrom(Repository src, String srcApiaryId) async {
+    final apiaryId = await addApiaryQuick();
+    final srcApiary = await src.getApiary(srcApiaryId);
+    if (srcApiary?.visitPeriod != null) {
+      await updateApiary(apiaryId, visitPeriod: (srcApiary!.visitPeriod,));
+    }
+    final paramMap = <String, String?>{};
+    Future<String?> mapParam(String srcId) async {
+      if (paramMap.containsKey(srcId)) return paramMap[srcId];
+      final p = await src.getParameter(srcId);
+      String? id;
+      if (p != null) {
+        if (p.isBase && p.baseType != null && p.baseKey != null) {
+          id = await baseParameterId(p.baseType!, p.baseKey!);
+        } else {
+          for (final d in await listParameters()) {
+            if (d.name == p.name && d.dataType == p.dataType) {
+              id = d.id;
+              break;
+            }
+          }
+          id ??= await addParameter(p.name,
+              unit: p.unit, dataType: p.dataType, options: p.options);
+        }
+      }
+      return paramMap[srcId] = id;
+    }
+
+    final t = now();
+    final elRows = await src.db.query('elements',
+        where: 'apiary_id = ? AND deleted = 0', whereArgs: [srcApiaryId]);
+    final elIds = <String, String>{};
+    final groupIds = <String, String>{};
+    for (final r in elRows) {
+      elIds[r['id'] as String] = newId();
+      final g = r['group_id'] as String?;
+      if (g != null) groupIds.putIfAbsent(g, newId);
+    }
+    // власник (вулик чи група) у новій базі; null — не з цієї пасіки
+    Map<String, Object?>? owner(Map<String, Object?> r) {
+      final g = r['group_id'] as String?;
+      final e = r['element_id'] as String?;
+      if (g != null && groupIds.containsKey(g)) return {'group_id': groupIds[g], 'element_id': null};
+      if (e != null && elIds.containsKey(e)) return {'group_id': null, 'element_id': elIds[e]};
+      return null;
+    }
+
+    final bindings = <Map<String, Object?>>[];
+    for (final r in await src.db.query('element_parameters', where: 'deleted = 0')) {
+      final o = owner(r);
+      final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
+      if (o != null && pid != null) {
+        bindings.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'updated_at': t, 'synced': 0});
+      }
+    }
+    final records = <Map<String, Object?>>[];
+    for (final r in await src.db.query('parameter_records')) {
+      final o = owner(r);
+      final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
+      if (o != null && pid != null) {
+        records.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'synced': 0});
+      }
+    }
+    await db.transaction((txn) async {
+      for (final r in elRows) {
+        final g = r['group_id'] as String?;
+        await txn.insert('elements', {
+          ...r,
+          'id': elIds[r['id']],
+          'group_id': g == null ? null : groupIds[g],
+          'apiary_id': apiaryId,
+          'updated_at': t,
+          'synced': 0,
+        });
+      }
+      for (final b in bindings) {
+        await txn.insert('element_parameters', b);
+      }
+      for (final r in records) {
+        await txn.insert('parameter_records', r);
+      }
+    });
+    mapChanges.value++;
+    remindersChanged.value++;
+    return apiaryId;
+  }
+
   Future<String> addApiary(String name, {double? lat, double? lon}) async {
     final id = newId();
     await db.insert('apiaries', {

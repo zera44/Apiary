@@ -206,7 +206,7 @@ SvgIconData parseSvgIcon(String svg, {void Function(String message)? onWarning})
     final st = stack.last.apply(a);
     final path = _shapePath(name, a);
     if (path == null) {
-      warn('<$name> без потрібних атрибутів — пропущено');
+      warn('<$name> без потрібних атрибутів - пропущено');
       continue;
     }
     var fill = _on(st.fill);

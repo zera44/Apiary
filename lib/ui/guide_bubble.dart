@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
+/// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
+/// на всіх кроках.
+const kLessonBottom = 80.0;
+const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
+
+/// Коли кнопки «Редагувати» немає (редагування, вибір шаблону, форма огляду)
+/// — пасічник спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
+const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
+const kLessonLeaningHeight = 192.0;
+
+/// Помічник-ведмедик (покусаний, з рамкою) — урок, форма огляду.
+const kLessonBear = 'assets/guide/bear_helper.webp';
+
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
 /// assets/guide) зліва і «хмарка» з текстом справа.
 class GuideBubble extends StatelessWidget {

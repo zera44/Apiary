@@ -88,7 +88,7 @@ IconSet buildIconSet(String manifestJson, String? Function(String file) readFile
       continue;
     }
     if (cats.isNotEmpty && !cats.contains(category)) {
-      problems.add('icons.json: "$id" — невідома категорія "$category"');
+      problems.add('icons.json: "$id" - невідома категорія "$category"');
     }
     final variant = raw['variantLabel'];
     final entry = AppIconEntry(

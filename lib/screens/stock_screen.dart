@@ -162,7 +162,7 @@ class _StockScreenState extends State<StockScreen> {
           final v = parseAmount(c.text);
           if (v == null) {
             if (mounted) {
-              await showInfo(context, '«${it.name}»: фактична кількість — число, не менше 0',
+              await showInfo(context, '«${it.name}»: фактична кількість - число, не менше 0',
                   title: 'Не збережено');
             }
             return;
@@ -183,8 +183,8 @@ class _StockScreenState extends State<StockScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(changed == 0
-                  ? 'Розбіжностей немає — усе збігається з обліком'
-                  : 'Інвентаризацію збережено: змінено позицій — $changed')));
+                  ? 'Розбіжностей немає - усе збігається з обліком'
+                  : 'Інвентаризацію збережено: змінено позицій - $changed')));
         }
       });
 
@@ -336,7 +336,7 @@ class _StockScreenState extends State<StockScreen> {
 
   /// Плитка: назва, фото (тап — змінити), залишок і кнопка дії вкладки.
   Widget _tile(StockItem it) {
-    final qty = it.quantity == null ? '—' : '${formatAmount(it.quantity!)} ${it.unit}';
+    final qty = it.quantity == null ? '-' : '${formatAmount(it.quantity!)} ${it.unit}';
     final (text, color) = switch (_op) {
       StockOp.receive => ('Прихід', AppColors.addObject),
       StockOp.writeOff => ('Списати', AppColors.danger),
@@ -530,7 +530,7 @@ class _ItemDialogState extends State<_ItemDialog> {
     final minText = _min.text.trim();
     final min = minText.isEmpty ? null : parseAmount(minText);
     if (minText.isNotEmpty && min == null) {
-      setState(() => _error = 'Мінімальний залишок — число, не менше 0');
+      setState(() => _error = 'Мінімальний залишок - число, не менше 0');
       return;
     }
     // нова номенклатура: одразу прихід (якщо вказали кількість)
@@ -539,7 +539,7 @@ class _ItemDialogState extends State<_ItemDialog> {
       final a = parseAmount(_recvAmount.text);
       final t = parseAmount(_recvTotal.text);
       if (a == null || a <= 0) {
-        setState(() => _error = 'Прихід: кількість — число більше 0');
+        setState(() => _error = 'Прихід: кількість - число більше 0');
         return;
       }
       if (t == null) {
@@ -607,7 +607,7 @@ class _ItemDialogState extends State<_ItemDialog> {
               style: TextStyle(color: AppColors.text),
               decoration: InputDecoration(
                 labelText: 'Мінімальний залишок',
-                helperText: 'Дійде до нього — «час докупити»',
+                helperText: 'Дійде до нього - «час докупити»',
                 suffixText: _unitValue.isEmpty ? null : _unitValue,
               ),
               onChanged: (_) => setState(() => _error = null),

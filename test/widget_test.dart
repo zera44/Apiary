@@ -133,7 +133,7 @@ void main() {
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
     expect(find.text('Цукор'), findsOneWidget);
-    expect(find.text('—'), findsOneWidget);
+    expect(find.text('-'), findsOneWidget);
 
     // вибуття: поки приходу не було — нічого списувати
     await tester.tap(find.text('Вибуття'));
@@ -231,7 +231,7 @@ void main() {
     expect((await repo.getStockItem(id))!.quantity, 7);
   });
 
-  testWidgets('вхід → головний екран → мої пасіки; «назад» — на головний; «Вийти»', (tester) async {
+  testWidgets('вхід → головний екран → мої пасіки; «назад» - на головний; «Вийти»', (tester) async {
     final auth = FakeAuth();
     await pumpApp(tester, ApiaryApp(repo: repo, auth: auth));
     await settle(tester);
@@ -292,7 +292,7 @@ void main() {
     expect(find.text('Увійти через Google'), findsOneWidget);
   });
 
-  testWidgets('вхід не налаштовано в збірці — одразу головний екран', (tester) async {
+  testWidgets('вхід не налаштовано в збірці - одразу головний екран', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(configured: false)));
     await settle(tester);
     expect(find.byType(HomeScreen), findsOneWidget);
@@ -300,14 +300,14 @@ void main() {
     expect(find.text('Вийти'), findsNothing);
   });
 
-  testWidgets('вже увійшов — одразу головний екран, без заставки', (tester) async {
+  testWidgets('вже увійшов - одразу головний екран, без заставки', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.text('Увійти через Google'), findsNothing);
   });
 
-  testWidgets('вхід скасовано — лишаємось на заставці без помилки; збій — пояснення', (tester) async {
+  testWidgets('вхід скасовано - лишаємось на заставці без помилки; збій - пояснення', (tester) async {
     final auth = FakeAuth(fail: const SignInCancelled());
     await pumpApp(tester, ApiaryApp(repo: repo, auth: auth));
     await settle(tester);
@@ -341,7 +341,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('нагадування без входу — нічого не відкриває', (tester) async {
+  testWidgets('нагадування без входу - нічого не відкриває', (tester) async {
     final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
         .firstWhere((e) => e.isHive);
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
@@ -387,7 +387,7 @@ void main() {
     expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
   });
 
-  testWidgets('гість після перезапуску — одразу головний екран', (tester) async {
+  testWidgets('гість після перезапуску - одразу головний екран', (tester) async {
     final auth = FakeAuth()..fail = null;
     await auth.continueAsGuest();
     await pumpApp(tester, ApiaryApp(repo: repo, auth: auth));
@@ -396,7 +396,7 @@ void main() {
     expect(find.text('Продовжити без входу'), findsNothing);
   });
 
-  testWidgets('карта: довгий дотик до вулика — одразу редагування й перетягування', (tester) async {
+  testWidgets('карта: довгий дотик до вулика - одразу редагування й перетягування', (tester) async {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
@@ -413,7 +413,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('панель: «Оглянуто, змін немає» — дата огляду сьогодні', (tester) async {
+  testWidgets('панель: «Оглянуто, змін немає» - дата огляду сьогодні', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
@@ -431,7 +431,7 @@ void main() {
     expect(latest[visitId], Repository.formatVisitDate(DateTime.now()));
   });
 
-  testWidgets('форма: «Зберегти й далі» з карти — наступний вулик одразу з формою', (tester) async {
+  testWidgets('форма: «Зберегти й далі» з карти - наступний вулик одразу з формою', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     // другий вулик нижче лежака — наступний за порядком (зверху вниз)
@@ -483,7 +483,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: «Прив\'язати наліпки підряд» — вулики без коду по черзі', (tester) async {
+  testWidgets('меню: «Прив\'язати наліпки підряд» - вулики без коду по черзі', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
@@ -535,7 +535,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('головний: «Час докупити» — номенклатура на мінімальному залишку', (tester) async {
+  testWidgets('головний: «Час докупити» - номенклатура на мінімальному залишку', (tester) async {
     await tester.runAsync(() async {
       final id = await repo.addStockItem('Рамки', 'шт');
       await repo.receiveStock(id, 3, total: 90);
@@ -604,7 +604,7 @@ void main() {
     expect(item.quantity, 3);
   });
 
-  testWidgets('параметри: «Для всіх вуликів пасіки» — однаковий набір усім', (tester) async {
+  testWidgets('параметри: «Для всіх вуликів пасіки» - однаковий набір усім', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final other = (await tester.runAsync(
@@ -653,7 +653,7 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
-  testWidgets('навчання: «Базові поняття» — порожні «Мої пасіки» з підказкою пасічника',
+  testWidgets('навчання: «Базові поняття» - порожні «Мої пасіки» з підказкою пасічника',
       (tester) async {
     await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
       final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
@@ -678,7 +678,7 @@ void main() {
     expect(find.text('Базові поняття'), findsOneWidget);
   });
 
-  testWidgets('навчання: карта — «Редагувати», шаблон, вулик, «Готово», свій вулик, «Оглянути»', (tester) async {
+  testWidgets('навчання: карта - «Редагувати», шаблон, вулик, «Готово», свій вулик, «Оглянути»', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(wrap(TutorialScreen(openSandbox: () async {
@@ -750,6 +750,90 @@ void main() {
     await tester.binding.handlePopRoute();
     await settle(tester);
     expect(find.byType(ApiaryListScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('навчання: огляд з ведмежам і «Я сам собі маг пасіки» - пасіка стає справжньою',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(wrap(TutorialScreen(
+      realRepo: repo,
+      openSandbox: () async {
+        final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+        await r.prepareLikeFreshInstall();
+        return r;
+      },
+    )));
+    await settle(tester);
+    await tester.tap(find.text('Базові поняття'));
+    await settle(tester);
+    await settle(tester);
+    await tester.tap(find.text('+  Створити карту'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.text('Редагувати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Вулик (1×1)'));
+    await settle(tester);
+    final spot = tester.getCenter(find.byType(InfiniteGrid)) - const Offset(150, 150);
+    await tester.tapAt(spot);
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.byTooltip('Готово'));
+    await settle(tester);
+    await tester.tap(find.textContaining('З легким стартом'));
+    await settle(tester);
+    await tester.tapAt(spot);
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.text('Оглянути'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    // у формі: пояснення, ведмежа, комірки по черзі
+    expect(find.textContaining('Це параметри вулика'), findsOneWidget);
+    await tester.tap(find.textContaining('Це параметри вулика'));
+    await settle(tester);
+    expect(find.textContaining('Мій помічник'), findsOneWidget);
+    await tester.tap(find.textContaining('Мій помічник'));
+    await settle(tester);
+    expect(find.text('Грр...'), findsOneWidget);
+    await tester.tap(find.text('Грр...'));
+    await settle(tester);
+    expect(find.textContaining('В тебе матка'), findsOneWidget);
+    await tester.tap(find.byTooltip('Білий'));
+    await settle(tester);
+    expect(find.textContaining('Заглянеш сам через'), findsOneWidget);
+    await tester.enterText(
+        find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)).first, '3');
+    await settle(tester);
+    expect(find.textContaining('Збережи, бо я більше'), findsOneWidget);
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.textContaining('навчу магії'), findsOneWidget);
+    await tester.tap(find.text('Я сам собі маг пасіки'));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    await tester.pump(const Duration(seconds: 1));
+    // справжня база: нова пасіка з вуликом і записами огляду
+    final apiaries = (await tester.runAsync(() => repo.listApiaries()))!;
+    expect(apiaries.length, 2);
+    final moved = apiaries.firstWhere((a) => a.id != apiaryId);
+    final els = (await tester.runAsync(() => repo.listElements(moved.id)))!;
+    expect(els.where((e) => e.isHive), isNotEmpty);
+    final period = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_period')))!;
+    final hive = els.firstWhere((e) => e.isHive);
+    final latest = (await tester.runAsync(() => repo.latestParameterValues(hive.entity)))!;
+    expect(latest[period], '3');
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
     expect(tester.takeException(), isNull);
   });
 
@@ -829,7 +913,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: Характеристики — каталог без вибору й без «Зберегти»', (tester) async {
+  testWidgets('меню: Характеристики - каталог без вибору й без «Зберегти»', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
@@ -956,7 +1040,7 @@ void main() {
     expect(result?.values, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
   });
 
-  testWidgets('вибір іконки: вулику — лише вулики, перешкоді — лише перешкоди, різне — дві плитки',
+  testWidgets('вибір іконки: вулику - лише вулики, перешкоді - лише перешкоди, різне - дві плитки',
       (tester) async {
     Future<void> open(String? type) async {
       await tester.pumpWidget(wrap(Builder(
@@ -985,7 +1069,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Оглянути»: «Так / Ні» кнопками, «Список» — випадаючим списком', (tester) async {
+  testWidgets('«Оглянути»: «Так / Ні» кнопками, «Список» - випадаючим списком', (tester) async {
     const yn = Parameter(id: 'b', name: 'Є розплід', dataType: DataTypes.bool_);
     const ch = Parameter(
         id: 'c', name: 'Сила сім\'ї', dataType: DataTypes.choice, options: ['Слабка', 'Сильна']);
@@ -1114,7 +1198,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: невідомий QR-код — пояснення, як прив\'язати', (tester) async {
+  testWidgets('меню: невідомий QR-код - пояснення, як прив\'язати', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
@@ -1249,7 +1333,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('у списку пасік меню немає — лише на карті', (tester) async {
+  testWidgets('у списку пасік меню немає - лише на карті', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
@@ -1259,7 +1343,7 @@ void main() {
     expect(find.byTooltip('Меню'), findsOneWidget);
   });
 
-  testWidgets('редагування карти: без «Перейменувати»; немає шаблонів — «Створити шаблон» відкриває новий шаблон',
+  testWidgets('редагування карти: без «Перейменувати»; немає шаблонів - «Створити шаблон» відкриває новий шаблон',
       (tester) async {
     await tester.runAsync(() => repo.deleteTemplate(templateId)); // шаблонів немає
     final id = (await tester.runAsync(() => repo.addApiary('Пасіка')))!;
@@ -1305,7 +1389,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('редактор шаблону: тап — інформація, режим переміщення — тягнути й кнопки',
+  testWidgets('редактор шаблону: тап - інформація, режим переміщення - тягнути й кнопки',
       (tester) async {
     await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo, templateId: templateId)));
     await settle(tester);
@@ -1338,7 +1422,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('редагування карти: над обраним об\'єктом — «Повернути» й «Видалити»', (tester) async {
+  testWidgets('редагування карти: над обраним об\'єктом - «Повернути» й «Видалити»', (tester) async {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
@@ -1411,7 +1495,7 @@ void main() {
       expect(find.byType(FeedbackScreen), findsNothing);
     });
 
-    testWidgets('не вдалося — текст лишається, можна скопіювати', (tester) async {
+    testWidgets('не вдалося - текст лишається, можна скопіювати', (tester) async {
       await tester.pumpWidget(host((_) async => FeedbackResult.failed));
       await tester.tap(find.text('відкрити'));
       await tester.pumpAndSettle();
@@ -1427,7 +1511,7 @@ void main() {
     });
   });
 
-  testWidgets('карта: «Редагувати» одразу пропонує шаблони; «Шаблони» — лише в меню', (tester) async {
+  testWidgets('карта: «Редагувати» одразу пропонує шаблони; «Шаблони» - лише в меню', (tester) async {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
@@ -1454,7 +1538,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('P19: підказка першого запуску — один раз, «Зрозуміло»', (tester) async {
+  testWidgets('P19: підказка першого запуску - один раз, «Зрозуміло»', (tester) async {
     Hints.enabled = true;
     Hints.resetSession();
     addTearDown(() => Hints.enabled = false);
@@ -1480,7 +1564,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Що нового»: після оновлення один раз, на новому встановленні — ні', (tester) async {
+  testWidgets('«Що нового»: після оновлення один раз, на новому встановленні - ні', (tester) async {
     WhatsNewScreen.enabled = true;
     addTearDown(() => WhatsNewScreen.enabled = false);
     // у setUp уже є пасіка — це оновлення, а не нове встановлення

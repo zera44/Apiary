@@ -151,7 +151,7 @@ Future<String> saveLabelsPdf(Uint8List bytes, String fileName) async {
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження — файл збережено тут:\n${f.path}';
+      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
     } catch (e) {
       return 'Не вдалось зберегти файл:\n$e';
     }

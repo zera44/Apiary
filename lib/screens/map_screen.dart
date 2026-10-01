@@ -67,6 +67,10 @@ class MapScreen extends StatefulWidget {
   /// Урок «Базові поняття» (пісочниця): пасічник веде крок за кроком,
   /// звичайні підказки першого запуску не показуються.
   final bool tutorial;
+
+  /// Кінець уроку: [magic] — «Хочу» (наступний урок), інакше «Я сам собі маг
+  /// пасіки» (перенести пасіку [apiaryId] з пісочниці у справжні).
+  final Future<void> Function(bool magic, String apiaryId)? onLessonDone;
   const MapScreen(
       {super.key,
       required this.repo,
@@ -74,7 +78,8 @@ class MapScreen extends StatefulWidget {
       this.focusElementId,
       this.openFill = false,
       this.next = NextHive.order,
-      this.tutorial = false});
+      this.tutorial = false,
+      this.onLessonDone});
 
   /// Урок: на карті ще немає вуликів.
   static final tutorialNoHives = <InlineSpan>[
@@ -85,21 +90,12 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-/// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
-/// на всіх кроках.
-const kLessonBottom = 80.0;
-const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
-
-/// Коли кнопки «Редагувати» немає (редагування, вибір шаблону) — пасічник
-/// спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
-const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
-const kLessonLeaningHeight = 192.0;
 
 /// Урок: панель вулика закінчується над пасічником і його хмаркою.
 const kLessonPanelBottom = 290.0;
 
 /// Кроки уроку «Базові поняття» на карті.
-enum _Lesson { place, congrats, openHive, inspect }
+enum _Lesson { place, congrats, openHive, inspect, magic }
 
 class _Undo {
   final List<MapElement>? restore;
@@ -165,6 +161,43 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ];
     }
     final (text, onTap) = msg;
+    if (_lesson == _Lesson.magic && !selectMode) {
+      // фінал уроку: дві відповіді під хмаркою
+      final done = widget.onLessonDone;
+      return [
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: kLessonBottom,
+          child: GuideBubble(
+            text: text,
+            image: kLessonBeekeeper,
+            below: Row(children: [
+              Expanded(
+                child: PillButton(
+                  text: 'Хочу',
+                  bg: AppColors.accent,
+                  height: 40,
+                  onPressed: done == null ? null : () => done(true, widget.apiary.id),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                flex: 2,
+                child: PillButton(
+                  text: 'Я сам собі маг пасіки',
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 40,
+                  fontSize: 12,
+                  onPressed: done == null ? null : () => done(false, widget.apiary.id),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ];
+    }
     return [
       Positioned(
         left: 0,
@@ -200,7 +233,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return (const [TextSpan(text: 'Натисни на карту в будь-якому місці')], null);
       }
       return (
-        [const TextSpan(text: 'Підтверди вибір — натисни '), GuideBubble.highlight('«Готово»')],
+        [const TextSpan(text: 'Підтверди вибір - натисни '), GuideBubble.highlight('«Готово»')],
         null
       );
     }
@@ -218,6 +251,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           [
             const TextSpan(text: 'Не час відпочивати, натисни на '),
             GuideBubble.highlight('«$_lessonHive»'),
+          ],
+          null
+        );
+      case _Lesson.magic:
+        return (
+          [
+            const TextSpan(text: 'Молодець! Вулик додав, обхід зробив. '),
+            GuideBubble.task('Хочеш, я тебе навчу магії?'),
           ],
           null
         );
@@ -550,7 +591,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String get _statusText {
     if (!selectMode) return '';
     if (pendingTemplate != null) {
-      return 'Тапай — ставити «${pendingTemplate!.name}», тягни — перемістити';
+      return 'Тапай - ставити «${pendingTemplate!.name}», тягни - перемістити';
     }
     if (selectedGroupId != null) {
       final sel = selection;
@@ -1004,6 +1045,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (!mounted) return;
     var cur = el;
     ({Apiary apiary, String elementId})? away; // наступний — на іншій пасіці
+    // урок: у формі пасічник і ведмежа ведуть по комірках
+    FillLesson? lesson;
+    if (widget.tutorial && _lesson == _Lesson.inspect && el.isHive) {
+      final period = await repo.baseParameterId(el.type, 'visit_period');
+      final mark = await repo.baseParameterId(el.type, 'queen_mark');
+      if (period != null && mark != null) {
+        lesson = FillLesson(periodParamId: period, colorParamId: mark);
+      }
+      if (!mounted) return;
+    }
     final result = await showFillValuesDialog(
       context,
       params: first.params,
@@ -1011,6 +1062,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       stock: first.stock,
       title: first.title,
       offerNext: el.isHive,
+      lesson: lesson,
       // «Зберегти й далі»: зберегти, показати наступний вулик на карті й
       // підставити його дані в ту саму форму (вікно не закривається)
       onNext: (r) async {
@@ -1028,6 +1080,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       },
     );
     if (result != null) await _saveFill(cur, result);
+    // урок: огляд зроблено — пасічник хвалить і пропонує «магію»
+    if (result != null && lesson != null && mounted) {
+      setState(() {
+        _lesson = _Lesson.magic;
+        panelOpen = false;
+      });
+    }
     final a = away;
     if (a != null && mounted) {
       AppDrawer.openHive(Navigator.of(context), repo, a.apiary, a.elementId,

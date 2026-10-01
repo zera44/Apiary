@@ -89,7 +89,7 @@ class AppDrawer extends StatelessWidget {
             _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           ]),
           _item(context, '', 'Навчання',
-              () => _open(nav, const TutorialScreen()),
+              () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню

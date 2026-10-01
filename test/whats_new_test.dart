@@ -5,7 +5,7 @@ void main() {
   NewsEntry feat(int n, String t, {int w = 1, String v = '0.3.0'}) =>
       NewsEntry(n: n, version: v, isFix: false, weight: w, text: t);
 
-  test('«Що нового»: найважчі першими, одразу 20%, решта й виправлення — у «Ще»', () {
+  test('«Що нового»: найважчі першими, одразу 20%, решта й виправлення - у «Ще»', () {
     final r = Release.fromEntries([
       for (var i = 1; i <= 8; i++) feat(i, 'ф$i'),
       feat(9, 'головна', w: 3),

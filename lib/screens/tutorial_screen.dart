@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
+import 'map_screen.dart';
 
 /// Відкриває порожню «пісочницю» для уроку (див. [AppDatabase.openSandbox]).
 typedef SandboxOpener = Future<Repository> Function();
@@ -24,7 +25,10 @@ Future<Repository> openSandboxRepository() async {
 class TutorialScreen extends StatefulWidget {
   /// Підміняється в тестах.
   final SandboxOpener openSandbox;
-  const TutorialScreen({super.key, this.openSandbox = openSandboxRepository});
+
+  /// Справжня база: «Я сам собі маг пасіки» переносить у неї пасіку з уроку.
+  final Repository? realRepo;
+  const TutorialScreen({super.key, this.openSandbox = openSandboxRepository, this.realRepo});
 
   @override
   State<TutorialScreen> createState() => _TutorialScreenState();
@@ -43,8 +47,36 @@ class _TutorialScreenState extends State<TutorialScreen> {
       sandbox = await widget.openSandbox();
       if (!mounted) return;
       final repo = sandbox;
-      await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ApiaryListScreen(repo: repo, tutorial: true),
+      final nav = Navigator.of(context);
+      final lessonsRoute = ModalRoute.of(context);
+      await nav.push(MaterialPageRoute(
+        builder: (_) => ApiaryListScreen(
+          repo: repo,
+          tutorial: true,
+          onLessonDone: (magic, apiaryId) async {
+            if (magic) {
+              // урок 2 ще готується — назад до плиток уроків
+              nav.popUntil((r) => r == lessonsRoute);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Урок «Магія пасіки» вже в майстерні - зовсім скоро!')));
+              }
+              return;
+            }
+            // «Я сам собі маг пасіки»: пасіка з уроку стає справжньою, далі —
+            // справжня карта (пасічник уже не веде)
+            final real = widget.realRepo;
+            if (real == null) {
+              nav.popUntil((r) => r == lessonsRoute);
+              return;
+            }
+            final id = await real.importApiaryFrom(repo, apiaryId);
+            final a = await real.getApiary(id);
+            if (a == null || !nav.mounted) return;
+            nav.popUntil((r) => r.isFirst);
+            nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: real, apiary: a)));
+          },
+        ),
       ));
     } finally {
       await sandbox?.db.close();
