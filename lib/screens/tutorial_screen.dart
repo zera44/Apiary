@@ -65,7 +65,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 children: [
                   _LessonTile(
                     title: 'Базові поняття',
-                    image: 'assets/guide/beekeeper.png',
+                    image: 'assets/guide/beekeeper.webp',
                     onTap: _opening ? null : _basics,
                   ),
                 ],

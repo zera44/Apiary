@@ -1,7 +1,8 @@
 Малюнки пасічника для режиму навчання (автор — власник застосунку).
 
-- beekeeper.pdf — на повний зріст, махає рукою (→ assets/guide/beekeeper.png)
-- beekeeper_bust.pdf — по пояс, руки на рамці (→ assets/guide/beekeeper_bust.png)
+- beekeeper.pdf — на повний зріст, махає рукою (→ assets/guide/beekeeper.webp)
+- beekeeper_honey_frame.pdf — по пояс, тримає рамку з медом (→ assets/guide/beekeeper_honey_frame.webp)
+- beekeeper_bust.pdf — по пояс, руки на рамці (у застосунку поки не використовується)
 
-PNG зроблено з PDF: прозорий фон, обрізано по краях.
-- beekeeper_honey_frame.pdf — по пояс, тримає рамку з медом (→ assets/guide/beekeeper_honey_frame.png)
+Зроблено з PDF: прозорий фон, обрізано по краях; у застосунку — WebP без
+втрат (удвічі менше за PNG, вигляд той самий).

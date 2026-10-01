@@ -13,7 +13,7 @@ class GuideBubble extends StatelessWidget {
   /// «Пропустити».
   final Widget? below;
   const GuideBubble(
-      {super.key, required this.text, this.image = 'assets/guide/beekeeper.png', this.below});
+      {super.key, required this.text, this.image = 'assets/guide/beekeeper.webp', this.below});
 
   /// Назва кнопки в тексті підказки: іншим кольором і жирним.
   static TextSpan highlight(String s) => TextSpan(

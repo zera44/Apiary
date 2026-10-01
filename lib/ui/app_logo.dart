@@ -18,7 +18,7 @@ class AppLogo extends StatelessWidget {
         color: const Color(0xFFFBE9C4),
         borderRadius: BorderRadius.circular(38 * k),
       ),
-      child: Image.asset('assets/guide/beekeeper_honey_frame.png',
+      child: Image.asset('assets/guide/beekeeper_honey_frame.webp',
           filterQuality: FilterQuality.medium),
     );
   }
