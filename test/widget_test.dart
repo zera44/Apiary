@@ -21,6 +21,9 @@ import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/screens/tutorial_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
+import 'package:apiary/ui/first_hints.dart';
+import 'package:apiary/screens/whats_new_screen.dart';
+import 'package:apiary/data/whats_new.dart';
 import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
@@ -44,6 +47,9 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     sqfliteFfiInit();
     await AppIcons.load(); // SVG-іконки з assets/icons
+    // підказки першого запуску й «Що нового» мають свої тести (вмикаються там)
+    Hints.enabled = false;
+    WhatsNewScreen.enabled = false;
   });
 
   Future<void> settle(WidgetTester tester) async {
@@ -1275,6 +1281,61 @@ void main() {
     await settle(tester);
     expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає
     expect(find.byTooltip('Готово'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('P19: підказка першого запуску — один раз, «Зрозуміло»', (tester) async {
+    Hints.enabled = true;
+    Hints.resetSession();
+    addTearDown(() => Hints.enabled = false);
+    await repo.setMeta('whats_new_seen', kReleases.first.version);
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    expect(find.text('Зрозуміло'), findsOneWidget);
+    await tester.tap(find.text('Зрозуміло'));
+    await settle(tester);
+    expect(find.text('Зрозуміло'), findsNothing);
+    expect(await repo.getMeta('hint:home'), '1');
+    // склад — своя підказка; «Пропустити всі» вимикає решту
+    await tester.tap(find.text('Склад'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Пропустити всі підказки'), findsOneWidget);
+    await tester.tap(find.text('Пропустити всі підказки'));
+    await settle(tester);
+    expect(await repo.getMeta('hints_off'), '1');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Що нового»: після оновлення один раз, на новому встановленні — ні', (tester) async {
+    WhatsNewScreen.enabled = true;
+    addTearDown(() => WhatsNewScreen.enabled = false);
+    // у setUp уже є пасіка — це оновлення, а не нове встановлення
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(WhatsNewScreen), findsOneWidget);
+    expect(find.text(kReleases.first.headline), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('До роботи'), 300);
+    await tester.tap(find.text('До роботи'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(WhatsNewScreen), findsNothing);
+    expect(await repo.getMeta('whats_new_seen'), kReleases.first.version);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('P14: «Звіт по пасіці» у меню карти й у налаштуваннях пасіки', (tester) async {
+    final a = (await repo.listApiaries()).first;
+    await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.ensureVisible(find.text('Звіт по пасіці (Excel)'));
+    await tester.tap(find.text('Звіт по пасіці (Excel)'));
+    await settle(tester);
+    expect(find.text('Поділитися'), findsOneWidget);
+    expect(find.text('Зберегти у файл'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -5,7 +5,9 @@ import '../logic/visit_reminders.dart';
 import '../services/auth.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
+import '../data/whats_new.dart';
 import '../ui/common.dart';
+import '../ui/first_hints.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
@@ -13,6 +15,7 @@ import 'map_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
 import 'tutorial_screen.dart';
+import 'whats_new_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
@@ -121,6 +124,12 @@ class HomeScreen extends StatelessWidget {
                       builder: (_) => const FeedbackScreen(),
                     ));
                   }, fg: AppColors.text),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => WhatsNewScreen(release: kReleases.first),
+                    )),
+                    child: Text('Що нового', style: TextStyle(color: AppColors.textMuted)),
+                  ),
                   if (user != null) ...[
                     const SizedBox(height: 18),
                     Text(user.email,
@@ -144,10 +153,36 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             const Positioned.fill(child: ScreenFrame()),
+            _StartupPrompts(repo: repo),
           ]),
         ),
     );
   }
+}
+
+/// Після запуску: «Що нового» (раз після оновлення), далі — підказка
+/// першого запуску для головного екрана.
+class _StartupPrompts extends StatefulWidget {
+  final Repository repo;
+  const _StartupPrompts({required this.repo});
+  @override
+  State<_StartupPrompts> createState() => _StartupPromptsState();
+}
+
+class _StartupPromptsState extends State<_StartupPrompts> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await WhatsNewScreen.maybeShow(context, widget.repo);
+      if (!mounted) return;
+      await Hints.show(context, widget.repo, Hints.home);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 /// «Сьогодні оглянути: N» — вулики, у яких настав час огляду (за

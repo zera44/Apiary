@@ -9,6 +9,7 @@ import '../data/repository.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
 import '../ui/common.dart';
+import '../ui/first_hints.dart';
 import '../ui/date_picker.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
@@ -43,6 +44,9 @@ class _StockScreenState extends State<StockScreen> {
   void initState() {
     super.initState();
     _reload();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Hints.show(context, repo, Hints.stock);
+    });
   }
 
   Future<void> _reload() async {

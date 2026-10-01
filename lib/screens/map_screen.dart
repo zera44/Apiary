@@ -13,6 +13,7 @@ import '../services/reminders.dart';
 import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
+import '../ui/first_hints.dart';
 import '../ui/fill_values_dialog.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
@@ -150,6 +151,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
     }
+    if (mounted) await Hints.show(context, repo, Hints.map);
     final focusId = widget.focusElementId;
     if (focusId != null && mounted) {
       final el = elements.where((e) => e.id == focusId).firstOrNull;
@@ -661,6 +663,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (!mounted) return;
     setState(() => panelOpen = true);
     _revealBesidePanel(el);
+    await Hints.show(context, repo, Hints.panel);
   }
 
   /// Панель «Характеристики» праворуч не повинна закривати обраний об'єкт:
@@ -819,6 +822,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final latest = await repo.latestParameterValues(entity);
     if (!mounted) return;
     final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
+    if (!mounted) return;
+    await Hints.show(context, repo, Hints.fill);
     if (!mounted) return;
     final result = await showFillValuesDialog(context,
         params: params, latest: latest, offerNext: el.isHive, stock: stock);
@@ -1361,6 +1366,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// повернути, видалити; «Готово» — вийти).
   Future<void> _editAndAdd() async {
     _enterEdit();
+    await Hints.show(context, repo, Hints.edit);
+    if (!mounted) return;
     await _onAddObject();
   }
 

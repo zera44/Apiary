@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../data/whats_new.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_screen.dart';
 import '../screens/history_hub_screen.dart';
@@ -11,6 +12,7 @@ import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
+import '../screens/whats_new_screen.dart';
 import '../services/autostart.dart';
 import 'apiary_report.dart';
 import 'common.dart';
@@ -86,6 +88,10 @@ class AppDrawer extends StatelessWidget {
               nav.pop(); // закрити меню
               onBindQrRow!();
             }),
+          _item(context, 'history', 'Що нового', () {
+            nav.pop(); // закрити меню
+            nav.push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: kReleases.first)));
+          }),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
