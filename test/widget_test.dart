@@ -511,7 +511,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Цукор (є 5 кг)').last);
     await settle(tester);
-    await tester.enterText(find.widgetWithText(TextField, 'Скільки'), '2');
+    await tester.enterText(find.byType(TextField).last, '2'); // рядок «Скільки, кг»
     await tester.tap(find.text('Зберегти'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
@@ -855,7 +855,7 @@ void main() {
     // спорожнюємо текстове поле
     await tester.enterText(find.byType(TextField).first, '');
     // очищаємо дату через календар
-    await tester.tap(find.text('Обрати дату'));
+    await tester.tap(find.text('01.02.2026')); // клітинка дати відкриває календар
     await settle(tester);
     await tester.tap(find.text('Очистити'));
     await settle(tester);

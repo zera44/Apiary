@@ -140,75 +140,112 @@ class _FillDialogState extends State<_FillDialog> {
     Navigator.pop(context, FillResult(out, next: next, feed: feed));
   }
 
-  /// Підгодівля: обрана номенклатура списується зі складу після збереження.
-  List<Widget> _feedSection() {
-    final it = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
-    return [
-      Text('Підгодівля зі складу',
-          style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
-      Text('Списується зі складу після збереження',
-          style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-      const SizedBox(height: 6),
-      DropdownButton<String?>(
-        value: _feedItem,
-        isExpanded: true,
-        dropdownColor: AppColors.popupBg,
-        hint: Text('Не списувати', style: TextStyle(color: AppColors.textMuted)),
-        items: [
-          DropdownMenuItem<String?>(
-              value: null, child: Text('Не списувати', style: TextStyle(color: AppColors.text))),
-          for (final s in widget.stock)
-            DropdownMenuItem<String?>(
-              value: s.id,
-              child: Text('${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
-                  style: TextStyle(color: AppColors.text)),
+  /// Значення — таблицею, як на панелі вулика: зліва параметр, справа
+  /// поле. Сітка медова; підгодівля зі складу — останніми рядками.
+  Widget _table() {
+    final grid = AppColors.hive.withValues(alpha: 0.55);
+    TableRow row(String name, Widget value) => TableRow(children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Text(name,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13.5, height: 1.25)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: value,
+          ),
+        ]);
+    final feed = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
+    return Table(
+      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+      columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        for (final p in widget.params) row(p.nameWithUnit, _field(p)),
+        if (widget.stock.isNotEmpty)
+          row(
+            'Підгодівля зі складу',
+            DropdownButton<String?>(
+              value: _feedItem,
+              isExpanded: true,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              dropdownColor: AppColors.popupBg,
+              hint: Text('Не списувати', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+              items: [
+                DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Не списувати', style: TextStyle(color: AppColors.text))),
+                for (final s in widget.stock)
+                  DropdownMenuItem<String?>(
+                    value: s.id,
+                    child: Text('${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.text)),
+                  ),
+              ],
+              onChanged: (v) => setState(() {
+                _feedItem = v;
+                _error = null;
+              }),
             ),
-        ],
-        onChanged: (v) => setState(() {
-          _feedItem = v;
-          _error = null;
-        }),
-      ),
-      if (it != null)
-        TextField(
-          controller: _feedAmount,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: TextStyle(color: AppColors.text),
-          decoration: InputDecoration(labelText: 'Скільки', suffixText: it.unit),
-          onChanged: (_) => setState(() => _error = null),
-        ),
-      const SizedBox(height: 14),
-    ];
+          ),
+        if (feed != null)
+          row(
+            'Скільки, ${feed.unit}',
+            TextField(
+              controller: _feedAmount,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(color: AppColors.text, fontSize: 15),
+              decoration: _cellInput,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
+      ],
+    );
   }
+
+  static const _cellInput = InputDecoration(
+    isDense: true,
+    filled: false,
+    border: InputBorder.none,
+    enabledBorder: InputBorder.none,
+    focusedBorder: InputBorder.none,
+    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+    hintText: '—',
+  );
 
   Widget _field(Parameter p) {
     switch (p.dataType) {
       case DataTypes.date:
         final dateText = _picked[p.id] ?? '';
-        return Row(children: [
-          Expanded(
-            child: Text(dateText.isEmpty ? 'Не обрано' : dateText,
-                style: TextStyle(color: AppColors.text, fontSize: 14)),
+        // уся клітинка — кнопка календаря
+        return InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: () async {
+            final r = await showAppDatePicker(context, dateText);
+            if (r != null) setState(() => _picked[p.id] = r);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+            child: Row(children: [
+              Expanded(
+                child: Text(dateText.isEmpty ? 'Обрати дату' : dateText,
+                    style: TextStyle(
+                        color: dateText.isEmpty ? AppColors.textMuted : AppColors.text,
+                        fontSize: 15)),
+              ),
+              Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+            ]),
           ),
-          PillButton(
-            text: 'Обрати дату',
-            bg: AppColors.roundBtn,
-            fg: AppColors.text,
-            fontSize: 12,
-            width: 124,
-            height: 38,
-            onPressed: () async {
-              final r = await showAppDatePicker(context, dateText);
-              if (r != null) setState(() => _picked[p.id] = r);
-            },
-          ),
-        ]);
+        );
       case DataTypes.color:
         final colorLabel = _picked[p.id] ?? '';
-        return Wrap(spacing: 8, children: [
+        return Wrap(spacing: 4, runSpacing: 4, children: [
           for (final (label, c) in queenTagChoices)
             ColorTagSwatch(
               fill: c,
+              size: 28,
               selected: colorLabel == label,
               tooltip: label,
               // повторний тап по обраному кольору — зняти вибір
@@ -218,7 +255,8 @@ class _FillDialogState extends State<_FillDialog> {
       default:
         return TextField(
           controller: _text[p.id],
-          style: TextStyle(color: AppColors.text),
+          style: TextStyle(color: AppColors.text, fontSize: 15),
+          decoration: _cellInput,
           keyboardType: p.dataType == DataTypes.int_
               ? const TextInputType.numberWithOptions(signed: true)
               : p.dataType == DataTypes.float_
@@ -243,18 +281,7 @@ class _FillDialogState extends State<_FillDialog> {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final p in widget.params) ...[
-              Text(p.nameWithUnit,
-                  style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
-              Text(DataTypes.label(p.dataType),
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-              const SizedBox(height: 6),
-              _field(p),
-              const SizedBox(height: 14),
-            ],
-            if (widget.stock.isNotEmpty) ..._feedSection(),
-          ],
+          children: [_table()],
         )),
       ),
       actions: [

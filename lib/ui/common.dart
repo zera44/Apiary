@@ -300,14 +300,16 @@ class ColorTagSwatch extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   final String? tooltip;
-  const ColorTagSwatch({super.key, this.fill, this.selected = false, this.onTap, this.tooltip});
+  final double size;
+  const ColorTagSwatch(
+      {super.key, this.fill, this.selected = false, this.onTap, this.tooltip, this.size = 38});
 
   @override
   Widget build(BuildContext context) {
     final swatch = GestureDetector(
       onTap: onTap,
       child: SizedBox.square(
-        dimension: 38,
+        dimension: size,
         child: CustomPaint(painter: _SwatchPainter(fill, selected)),
       ),
     );
