@@ -15,20 +15,46 @@ class WhatsNewScreen extends StatelessWidget {
   /// Вимикач для тестів.
   static bool enabled = true;
 
-  /// Показати один раз після оновлення. Нове встановлення — нічого не
-  /// показує (новачку допоможуть підказки), лише запам'ятовує версію.
+  /// Показати один раз після оновлення — усе нове з останнього перегляду
+  /// (навіть якщо кілька оновлень пропустили). Нове встановлення — нічого
+  /// не показує (новачку допоможуть підказки), лише запам'ятовує.
   static Future<void> maybeShow(BuildContext context, Repository repo) async {
-    if (!enabled || kReleases.isEmpty) return;
-    final current = kReleases.first;
-    final seen = await repo.getMeta('whats_new_seen');
-    if (seen == current.version) return;
-    await repo.setMeta('whats_new_seen', current.version);
+    if (!enabled) return;
+    final news = await loadNews();
+    if (news.isEmpty) return;
+    final last = news.map((e) => e.n).reduce((a, b) => a > b ? a : b);
+    var seen = int.tryParse(await repo.getMeta('whats_new_seen_n') ?? '');
+    if (seen == null) {
+      // 0.3.0 запам'ятовувала версію, а не номер запису
+      final oldVersion = await repo.getMeta('whats_new_seen');
+      if (oldVersion != null) {
+        seen = 0;
+        for (final e in news) {
+          if (compareVersions(e.version, oldVersion) <= 0 && e.n > seen!) seen = e.n;
+        }
+      }
+    }
+    await repo.setMeta('whats_new_seen_n', '$last');
     if (seen == null && (await repo.listApiaries()).isEmpty) return; // нове встановлення
+    final release = Release.fromEntries(news.where((e) => e.n > (seen ?? 0)));
+    if (release.isEmpty) return;
     // досвідчений пасічник знає головний екран — без підказки про нього
     await repo.setMeta('hint:${Hints.home}', '1');
     if (!context.mounted) return;
     await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: current)));
+        .push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: release)));
+  }
+
+  /// З меню чи головного екрана: зміни поточної (найновішої) версії.
+  static Future<void> open(NavigatorState nav) async {
+    final news = await loadNews();
+    var v = '';
+    for (final e in news) {
+      if (compareVersions(e.version, v) > 0) v = e.version;
+    }
+    final release = Release.fromEntries(news.where((e) => e.version == v));
+    if (!nav.mounted) return;
+    await nav.push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: release)));
   }
 
   @override
@@ -67,7 +93,7 @@ class WhatsNewScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
                     children: [
-                      Text('Що нового · ${release.version}',
+                      Text(release.version.isEmpty ? 'Що нового' : 'Що нового · ${release.version}',
                           style: TextStyle(
                               color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 14),

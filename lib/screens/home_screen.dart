@@ -5,7 +5,6 @@ import '../logic/visit_reminders.dart';
 import '../services/auth.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
-import '../data/whats_new.dart';
 import '../ui/common.dart';
 import '../ui/first_hints.dart';
 import '../ui/theme.dart';
@@ -125,9 +124,7 @@ class HomeScreen extends StatelessWidget {
                     ));
                   }, fg: AppColors.text),
                   TextButton(
-                    onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => WhatsNewScreen(release: kReleases.first),
-                    )),
+                    onPressed: () => WhatsNewScreen.open(Navigator.of(context)),
                     child: Text('Що нового', style: TextStyle(color: AppColors.textMuted)),
                   ),
                   if (user != null) ...[

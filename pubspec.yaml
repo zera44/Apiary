@@ -59,3 +59,5 @@ flutter:
     - assets/icons/ui/
     # малюнки для режиму навчання (оригінали — design/guide/*.pdf)
     - assets/guide/
+    # «Що нового» — генерується з історії git (tool/whats_new.py)
+    - assets/whats_new.json

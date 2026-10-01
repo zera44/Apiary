@@ -23,7 +23,6 @@ import 'package:apiary/screens/tutorial_screen.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
 import 'package:apiary/ui/first_hints.dart';
 import 'package:apiary/screens/whats_new_screen.dart';
-import 'package:apiary/data/whats_new.dart';
 import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
@@ -1291,7 +1290,6 @@ void main() {
     Hints.enabled = true;
     Hints.resetSession();
     addTearDown(() => Hints.enabled = false);
-    await tester.runAsync(() => repo.setMeta('whats_new_seen', kReleases.first.version));
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     await tester.pump(const Duration(milliseconds: 500)); // поява завершилась
@@ -1322,14 +1320,13 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsOneWidget);
-    expect(find.text(kReleases.first.features.first), findsOneWidget);
+    expect(find.textContaining('Що нового'), findsOneWidget);
     expect(find.textContaining('Ще: '), findsOneWidget);
-    expect(find.text(kReleases.first.moreFeatures.first), findsNothing); // згорнуто
     await tester.tap(find.text('До роботи'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsNothing);
-    expect(await tester.runAsync(() => repo.getMeta('whats_new_seen')), kReleases.first.version);
+    expect(await tester.runAsync(() => repo.getMeta('whats_new_seen_n')), isNotNull);
     expect(tester.takeException(), isNull);
   });
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../data/whats_new.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_screen.dart';
 import '../screens/history_hub_screen.dart';
@@ -90,7 +89,7 @@ class AppDrawer extends StatelessWidget {
             }),
           _item(context, 'history', 'Що нового', () {
             nav.pop(); // закрити меню
-            nav.push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: kReleases.first)));
+            WhatsNewScreen.open(nav);
           }),
           _item(context, 'pencil', "Зворотний зв'язок", () {
             nav.pop(); // закрити меню
