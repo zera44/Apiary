@@ -824,4 +824,20 @@ void main() {
     expect(after.where((t) => t.name == 'Вулик'), isEmpty);
     expect(after.where((t) => t.id == lying.id).length, 1);
   });
+
+  test('швидке створення пасіки: «Пасіка N» з наступним номером', () async {
+    final a = await repo.getApiary(await repo.addApiaryQuick());
+    final b = await repo.getApiary(await repo.addApiaryQuick());
+    expect(b!.name, 'Пасіка ${int.parse(a!.name.split(' ').last) + 1}');
+  });
+
+  test('«Почати»: остання відкрита пасіка, інакше єдина', () async {
+    final all = await repo.listApiaries();
+    expect((await repo.startApiary())?.id, all.length == 1 ? all.first.id : null);
+    final id = await repo.addApiary('Друга');
+    await repo.setMeta('last_apiary', id);
+    expect((await repo.startApiary())!.name, 'Друга');
+    await repo.deleteApiary(id);
+    expect((await repo.startApiary())?.id, all.length == 1 ? all.first.id : null);
+  });
 }

@@ -53,6 +53,13 @@ void main() {
     }
   }
 
+  /// З карти пасіки — назад (до списку пасік).
+  Future<void> backFromMap(WidgetTester tester) async {
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+  }
+
   /// Екран входу «Увійти через Google» → головний екран «Почати» → «Мої пасіки».
   Future<void> toApiaries(WidgetTester tester) async {
     await tester.tap(find.text('Увійти через Google'));
@@ -61,6 +68,12 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
+    // «Почати» відкриває останню/єдину пасіку поверх списку — назад до списку
+    if (find.byType(MapScreen).evaluate().isNotEmpty) {
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+    }
   }
 
   setUp(() async {
@@ -215,6 +228,9 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
+    // єдина пасіка — одразу її карта; «назад» — до списку
+    expect(find.byType(MapScreen), findsOneWidget);
+    await backFromMap(tester);
     expect(find.text('Мої пасіки'), findsOneWidget);
     // «назад» із моїх пасік — на головний екран
     await tester.tap(find
@@ -317,6 +333,8 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(MapScreen), findsOneWidget);
+    await backFromMap(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
     // сканування — на головному екрані, у списку пасік його немає
     expect(find.descendant(of: find.byType(ApiaryListScreen), matching: find.text('Сканувати QR-код')),
@@ -488,18 +506,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('нова пасіка: створення -> карта -> «Головна» -> «Почати» -> плитка в списку', (tester) async {
+  testWidgets('нова пасіка «Пасіка 1»: створення -> карта -> «Головна» -> «Почати» -> плитка в списку', (tester) async {
     await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.text('+  Створити карту'));
-    await settle(tester);
-    await tester.enterText(find.byType(TextField), 'Нова пасіка');
-    await tester.tap(find.text('OK'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
-    expect(find.text('Нова пасіка'), findsWidgets); // шапка відкритої карти
+    // одразу карта нової пасіки з типовою назвою
+    expect(find.text('Пасіка 1'), findsWidgets); // шапка відкритої карти
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     await tester.tap(find.text('Головна'));
@@ -511,7 +527,10 @@ void main() {
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Нова пасіка'), findsOneWidget); // плитка у списку
+    // «Почати» — остання відкрита пасіка; «назад» — список
+    expect(find.byType(MapScreen), findsOneWidget);
+    await backFromMap(tester);
+    expect(find.text('Пасіка 1'), findsOneWidget); // плитка у списку
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -845,7 +864,11 @@ void main() {
     expect(after.length, 3, reason: 'перетягування не повинне ставити новий об\'єкт');
     final moved = {for (final e in after) e.id: (e.x, e.y)};
     expect(before.any((e) => moved[e.id] != (e.x, e.y)), isTrue);
-    expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    // одне «Готово» завершує і розміщення, і редагування
+    await tester.tap(find.byTooltip('Готово'));
+    await settle(tester);
+    expect(find.byTooltip('Готово'), findsNothing);
+    expect(find.text('Редагувати'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -993,7 +1016,8 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Лежак (2×2)'));
     await settle(tester);
-    expect(find.byTooltip('Завершити розміщення'), findsOneWidget);
+    expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає
+    expect(find.byTooltip('Готово'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

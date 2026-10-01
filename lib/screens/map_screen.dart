@@ -113,6 +113,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _init() async {
+    // «Почати» на головному екрані відкриватиме цю пасіку
+    unawaited(repo.setMeta('last_apiary', widget.apiary.id));
     await _reload();
     if (elements.isNotEmpty) {
       var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
@@ -898,8 +900,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final status = _warning ?? _statusText;
     final isWarn = _warning != null;
-    final placing = selectMode && pendingTemplate != null;
-
     return Scaffold(
       drawer: AppDrawer(repo: repo, currentApiary: widget.apiary, onReturn: _afterExternalChange),
       // свайп від лівого краю конфліктував би з панорамуванням карти —
@@ -995,18 +995,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     onPressed: () => grid.zoomBy(-4)),
               ]),
             ),
-            // завершити розміщення шаблону
-            if (placing)
-              Positioned(
-                left: 14,
-                top: box.maxHeight / 2 - 23,
-                child: CircleIconButton(
-                  icon: 'close',
-                  bg: AppColors.danger,
-                  tooltip: 'Завершити розміщення',
-                  onPressed: () => setState(() => pendingTemplate = null),
-                ),
-              ),
+            // розміщення шаблону завершує те саме «Готово», що й редагування
             if (selectMode) Positioned(left: 0, right: 0, bottom: 0, child: _actionBar()),
             if (!selectMode) ..._fab(),
             // панель "Характеристики"

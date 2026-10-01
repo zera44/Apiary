@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
@@ -51,6 +52,11 @@ class AppDrawer extends StatelessWidget {
           _item(context, 'beehive', 'Головна', () {
             nav.pop(); // закрити меню
             nav.popUntil((r) => r.isFirst);
+          }),
+          _item(context, 'beehive', 'Мої пасіки', () {
+            nav.pop(); // закрити меню
+            nav.popUntil((r) => r.isFirst);
+            nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
           }),
           _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
           _item(context, 'history', 'Характеристики',

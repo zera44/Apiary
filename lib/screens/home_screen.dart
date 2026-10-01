@@ -15,6 +15,14 @@ import 'tutorial_screen.dart';
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
 /// «Інвентаризація» (склад), «Пройти навчання». Внизу — хто увійшов і
 /// «Вийти» (назад на екран входу).
+/// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта поверх
+/// списку пасік; інакше — список.
+Future<void> openStart(NavigatorState nav, Repository repo) async {
+  final a = await repo.startApiary();
+  if (!nav.mounted) return;
+  await nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo, openFirst: a)));
+}
+
 class HomeScreen extends StatelessWidget {
   final Repository repo;
   final AuthService auth;
@@ -86,11 +94,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text('Моя пасіка', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
                   const SizedBox(height: 40),
-                  button('Почати', AppColors.accent, () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => ApiaryListScreen(repo: repo),
-                    ));
-                  }),
+                  button('Почати', AppColors.accent, () => openStart(Navigator.of(context), repo)),
                   button('Сканувати QR-код', AppColors.darkBtn,
                       () => AppDrawer.openHiveByQr(Navigator.of(context), repo),
                       fg: AppColors.text),

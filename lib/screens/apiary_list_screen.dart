@@ -8,7 +8,6 @@ import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
-import 'new_apiary_screen.dart';
 
 /// Список пасік застосунку: тап відкриває карту, "+" — створює нову.
 class ApiaryListScreen extends StatefulWidget {
@@ -17,7 +16,11 @@ class ApiaryListScreen extends StatefulWidget {
   /// Урок «Базові поняття» (режим навчання): [repo] — пісочниця; поки
   /// пасік немає, пасічник підказує створити карту; «назад» — до уроків.
   final bool tutorial;
-  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false});
+
+  /// Одразу відкрити карту цієї пасіки поверх списку («Почати» на головному
+  /// екрані): «назад» з карти — до списку.
+  final Apiary? openFirst;
+  const ApiaryListScreen({super.key, required this.repo, this.tutorial = false, this.openFirst});
 
   /// Перша підказка уроку «Базові поняття».
   static final tutorialHello = <InlineSpan>[
@@ -39,6 +42,12 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     super.initState();
     widget.repo.mapChanges.addListener(_reload);
     _reload();
+    final first = widget.openFirst;
+    if (first != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _open(first);
+      });
+    }
   }
 
   @override
@@ -68,13 +77,21 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     await _reload();
   }
 
+  bool _creating = false;
+
+  /// «+ Створити карту»: одразу пасіка «Пасіка N» і її карта (без окремого
+  /// екрана назви; перейменувати — олівцем на плитці).
   Future<void> _create() async {
-    final created = await Navigator.of(context).push<Apiary>(MaterialPageRoute(
-      builder: (_) => NewApiaryScreen(repo: widget.repo),
-    ));
-    await _reload();
-    // нова пасіка одразу відкривається; _open оновить список після повернення
-    if (created != null && mounted) await _open(created);
+    if (_creating) return;
+    _creating = true;
+    try {
+      final id = await widget.repo.addApiaryQuick();
+      final created = await widget.repo.getApiary(id);
+      await _reload();
+      if (created != null && mounted) await _open(created);
+    } finally {
+      _creating = false;
+    }
   }
 
   Future<void> _rename(Apiary a) async {

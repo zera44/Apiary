@@ -89,6 +89,19 @@ class Repository {
         'UPDATE elements SET apiary_id = ? WHERE apiary_id IS NULL', [apiaryId]);
   }
 
+  /// Нова пасіка з типовою назвою «Пасіка N» (N — наступний вільний номер);
+  /// назву змінюють пізніше в «Мої пасіки». Повертає id.
+  Future<String> addApiaryQuick() async {
+    final names = [for (final a in await listApiaries()) a.name];
+    var n = 1;
+    final re = RegExp(r'^Пасіка (\d+)$');
+    for (final name in names) {
+      final m = re.firstMatch(name.trim());
+      if (m != null) n = n > int.parse(m.group(1)!) + 1 ? n : int.parse(m.group(1)!) + 1;
+    }
+    return addApiary('Пасіка $n');
+  }
+
   Future<String> addApiary(String name, {double? lat, double? lon}) async {
     final id = newId();
     await db.insert('apiaries', {
@@ -912,6 +925,33 @@ class Repository {
   // ---------------------------------------------------------------------
   // Шаблони
   // ---------------------------------------------------------------------
+
+  /// Службова позначка застосунку (таблиця app_meta, не синхронізується).
+  Future<String?> getMeta(String key) async {
+    final r = await db.query('app_meta', where: 'key = ?', whereArgs: [key]);
+    return r.isEmpty ? null : r.first['value'] as String?;
+  }
+
+  Future<void> setMeta(String key, String? value) async {
+    if (value == null) {
+      await db.delete('app_meta', where: 'key = ?', whereArgs: [key]);
+    } else {
+      await db.insert('app_meta', {'key': key, 'value': value},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+  }
+
+  /// Пасіка, яку відкривати кнопкою «Почати»: остання відкрита, а якщо її
+  /// немає (видалили / ще не відкривали) — єдина пасіка. null — показати список.
+  Future<Apiary?> startApiary() async {
+    final last = await getMeta('last_apiary');
+    if (last != null) {
+      final a = await getApiary(last);
+      if (a != null && !a.deleted) return a;
+    }
+    final all = await listApiaries();
+    return all.length == 1 ? all.first : null;
+  }
 
   /// Типові шаблони «Вулик» (1×1) і «Лежак» (2×1): щоб поставити перший
   /// вулик, не треба спершу малювати шаблон. Додаються ОДИН раз на базу —
