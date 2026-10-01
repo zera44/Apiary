@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../logic/visit_reminders.dart';
 import '../services/auth.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
@@ -8,6 +9,7 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
+import 'map_screen.dart' show NextHive;
 import 'splash_screen.dart';
 import 'stock_screen.dart';
 import 'tutorial_screen.dart';
@@ -94,7 +96,9 @@ class HomeScreen extends StatelessWidget {
                           color: AppColors.text, fontSize: 30, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
                   Text('Моя пасіка', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 28),
+                  _DueToday(repo: repo),
+                  const SizedBox(height: 12),
                   button('Почати', AppColors.accent, () => openStart(Navigator.of(context), repo)),
                   button('Сканувати QR-код', AppColors.darkBtn,
                       () => AppDrawer.openHiveByQr(Navigator.of(context), repo),
@@ -139,6 +143,76 @@ class HomeScreen extends StatelessWidget {
             const Positioned.fill(child: ScreenFrame()),
           ]),
         ),
+    );
+  }
+}
+
+/// «Сьогодні оглянути: N» — вулики, у яких настав час огляду (за
+/// періодичністю обходу). Тап — найдавніший із них одразу з формою; далі
+/// «Зберегти й далі» веде до наступного простроченого.
+class _DueToday extends StatefulWidget {
+  final Repository repo;
+  const _DueToday({required this.repo});
+  @override
+  State<_DueToday> createState() => _DueTodayState();
+}
+
+class _DueTodayState extends State<_DueToday> {
+  List<({VisitTarget t, DateTime at})> _due = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.repo.remindersChanged.addListener(_load);
+    widget.repo.mapChanges.addListener(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    widget.repo.remindersChanged.removeListener(_load);
+    widget.repo.mapChanges.removeListener(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final now = DateTime.now();
+    final due = [
+      for (final t in await widget.repo.visitTargets())
+        if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
+    ]..sort((a, b) => a.at.compareTo(b.at));
+    if (mounted) setState(() => _due = due);
+  }
+
+  Future<void> _openFirst() async {
+    final nav = Navigator.of(context);
+    final el = await widget.repo.getElement(_due.first.t.elementId);
+    final aid = el?.apiaryId;
+    if (el == null || aid == null) return;
+    final a = await widget.repo.getApiary(aid);
+    if (a == null || !nav.mounted) return;
+    AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_due.isEmpty) return const SizedBox.shrink();
+    return Material(
+      color: AppColors.danger.withValues(alpha: 0.18),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: _openFirst,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text('Сьогодні оглянути: ${_due.length}',
+                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 10),
+            Text('Почати →', style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ),
     );
   }
 }

@@ -118,6 +118,9 @@ class SceneCell {
   final bool outlined;
   final Merge outlineOpen;
 
+  /// Колір ободка: зелений (є QR-код) чи червоний (прострочений огляд).
+  final Color outlineColor;
+
   /// Та сама клітинка з іншим тимчасовим зсувом (для перетягування без
   /// повторного обчислення злиття).
   SceneCell withShift(Offset s) => SceneCell(
@@ -136,6 +139,7 @@ class SceneCell {
         shift: s,
         outlined: outlined,
         outlineOpen: outlineOpen,
+        outlineColor: outlineColor,
       );
 
   const SceneCell({
@@ -154,6 +158,7 @@ class SceneCell {
     this.shift = Offset.zero,
     this.outlined = false,
     this.outlineOpen = Merge.none,
+    this.outlineColor = AppColors.qrLinked,
   });
 }
 
@@ -164,6 +169,7 @@ List<SceneCell> buildScene<K extends Object>({
   required Set<K> selected,
   Map<K, Offset> shifts = const {},
   Set<K> outlined = const {},
+  Color outlineColor = AppColors.qrLinked,
 }) {
   final res = mergeLayout(items);
   final selKeys = <(int, int, String)>{
@@ -203,6 +209,7 @@ List<SceneCell> buildScene<K extends Object>({
       shift: shifts[it.id] ?? Offset.zero,
       outlined: isOut,
       outlineOpen: isOut ? openAmong(it, m, outKeys) : Merge.none,
+      outlineColor: outlineColor,
     ));
   }
   return out;
@@ -254,6 +261,7 @@ class InfiniteGrid extends StatefulWidget {
     this.onPressMove,
     this.onPressUp,
     this.onTap,
+    this.onLongPress,
   });
 
   /// Поріг, після якого рух — це панорамування, а не тап (запас на
@@ -557,7 +565,7 @@ class _ScenePainter extends CustomPainter {
       final center = r.center + Offset(c.iconOffset.$1 * cs, -c.iconOffset.$2 * cs);
       drawCellIcon(canvas, center, cs, c.type, c.variant, c.icon);
     }
-    // 2б) зелений ободок (напр., вулик уже має QR-код)
+    // 2б) ободок: зелений — у вулика є QR-код, червоний — прострочений огляд
     if (cells.any((c) => c.outlined)) {
       final ring = Paint()
         ..color = AppColors.qrLinked
@@ -566,6 +574,7 @@ class _ScenePainter extends CustomPainter {
       for (var i = 0; i < vis.length; i++) {
         final c = vis[i];
         if (!c.outlined) continue;
+        ring.color = c.outlineColor;
         final b = bodyRect(rects[i], c.merge).deflate(2.5);
         final o = c.outlineOpen;
         if (!o.any) {

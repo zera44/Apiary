@@ -8,6 +8,7 @@ import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
 import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
+import '../logic/visit_reminders.dart';
 import '../services/reminders.dart';
 import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
@@ -29,6 +30,21 @@ import 'template_editor_screen.dart';
 ///    із шаблону, повернути, перейменувати, крок назад, видалити, готово.
 ///  * Поза режимом редагування тап по об'єкту відкриває панель
 ///    "Характеристики".
+/// Куди веде «Зберегти й далі» у формі вулика (обхід ланцюжком).
+enum NextHive {
+  /// наступний вулик на карті за розташуванням (зверху вниз, зліва направо)
+  order,
+
+  /// знову камера — наступна наліпка
+  qr,
+
+  /// наступний вулик із простроченим оглядом (з нагадування чи «Сьогодні оглянути»)
+  overdue,
+}
+
+/// Ключ власника значень: група вуликів чи окремий вулик (як у VisitTarget).
+String ownerKeyOf(MapElement e) => e.groupId != null ? 'g:${e.groupId}' : 'e:${e.id}';
+
 class MapScreen extends StatefulWidget {
   final Repository repo;
   final Apiary apiary;
@@ -41,8 +57,16 @@ class MapScreen extends StatefulWidget {
   /// вулика (після сканування QR чи натискання на нагадування — людина
   /// прийшла саме заповнити).
   final bool openFill;
+
+  /// Куди веде «Зберегти й далі».
+  final NextHive next;
   const MapScreen(
-      {super.key, required this.repo, required this.apiary, this.focusElementId, this.openFill = false});
+      {super.key,
+      required this.repo,
+      required this.apiary,
+      this.focusElementId,
+      this.openFill = false,
+      this.next = NextHive.order});
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
@@ -150,10 +174,32 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Future<void> _reload() async {
     final els = await repo.listElements(widget.apiary.id);
+    final overdue = await _loadOverdue();
     if (!mounted) return;
     setState(() {
       elements = els;
+      _overdue = overdue;
       _blocked = false;
+    });
+  }
+
+  /// Вулики (ключі власників) із простроченим оглядом — червоний ободок.
+  Set<String> _overdue = const {};
+
+  Future<Set<String>> _loadOverdue() async {
+    final now = DateTime.now();
+    return {
+      for (final t in await repo.visitTargets())
+        if (dueReminder(t, now: now) != null) t.key
+    };
+  }
+
+  Future<void> _refreshOverdue() async {
+    final o = await _loadOverdue();
+    if (!mounted) return;
+    setState(() {
+      _overdue = o;
+      _sceneBase = null; // перебудувати сцену з новими ободками
     });
   }
 
@@ -737,8 +783,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     final latest = await repo.latestParameterValues(entity);
     if (!mounted) return;
-    final values = await showFillValuesDialog(context, params: params, latest: latest);
-    if (values == null) return;
+    final result = await showFillValuesDialog(context,
+        params: params, latest: latest, offerNext: el.isHive);
+    if (result == null) return;
+    final values = result.values;
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
     }
@@ -752,6 +800,89 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
+    await _refreshOverdue();
+    if (result.next && mounted) await _goNext(el);
+  }
+
+  /// «Оглянуто, змін немає»: лише дата огляду = сьогодні, без форми.
+  Future<void> _panelVisited() async {
+    final el = panelElement;
+    if (el == null || !el.isHive) return;
+    await repo.markVisited(el.entity, elType: el.type);
+    unawaited(ReminderService.instance.reschedule());
+    await _refreshPanel();
+    await _refreshOverdue();
+    _showWarning('Огляд відмічено: сьогодні', duration: const Duration(milliseconds: 1200));
+  }
+
+  /// Показати вулик на цій карті й одразу відкрити його форму.
+  Future<void> _focusAndFill(MapElement el) async {
+    grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
+    await _loadPanel(el);
+    if (!mounted) return;
+    setState(() => panelOpen = true);
+    await _panelFill();
+  }
+
+  /// «Зберегти й далі»: наступний вулик за [MapScreen.next].
+  Future<void> _goNext(MapElement cur) async {
+    final nav = Navigator.of(context);
+    switch (widget.next) {
+      case NextHive.order:
+        // один представник на вулик/групу: верхня-ліва клітинка
+        final reps = <String, MapElement>{};
+        for (final e in elements.where((e) => e.isHive)) {
+          final k = ownerKeyOf(e);
+          final r = reps[k];
+          if (r == null || e.y > r.y || (e.y == r.y && e.x < r.x)) reps[k] = e;
+        }
+        final list = reps.values.toList()
+          ..sort((a, b) => a.y != b.y ? b.y.compareTo(a.y) : a.x.compareTo(b.x));
+        final i = list.indexWhere((e) => ownerKeyOf(e) == ownerKeyOf(cur));
+        if (i < 0 || i + 1 >= list.length) {
+          _showWarning('Це останній вулик на карті', duration: const Duration(milliseconds: 1500));
+          return;
+        }
+        await _focusAndFill(list[i + 1]);
+      case NextHive.qr:
+        final code = await scanQrCode(context, title: 'Наступний вулик');
+        if (code == null || !mounted) return;
+        final found = await repo.findByQr(code);
+        if (!mounted) return;
+        if (found == null) {
+          await showInfo(context, 'Цей QR-код ще не прив\'язаний до жодного вулика.\n\nКод: $code',
+              title: 'Вулик не знайдено');
+          return;
+        }
+        if (found.apiary.id == widget.apiary.id) {
+          final el = elements.where((e) => e.id == found.element.id).firstOrNull ?? found.element;
+          await _focusAndFill(el);
+        } else {
+          AppDrawer.openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
+        }
+      case NextHive.overdue:
+        final now = DateTime.now();
+        final due = [
+          for (final t in await repo.visitTargets())
+            if (t.key != ownerKeyOf(cur))
+              if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
+        ]..sort((a, b) => a.at.compareTo(b.at));
+        if (!mounted) return;
+        if (due.isEmpty) {
+          await showInfo(context, 'Прострочених оглядів більше немає.', title: 'Готово');
+          return;
+        }
+        final el = await repo.getElement(due.first.t.elementId);
+        final aid = el?.apiaryId;
+        if (el == null || aid == null || !mounted) return;
+        if (aid == widget.apiary.id) {
+          await _focusAndFill(elements.where((e) => e.id == el.id).firstOrNull ?? el);
+        } else {
+          final a = await repo.getApiary(aid);
+          if (a == null || !mounted) return;
+          AppDrawer.openHive(nav, repo, a, el.id, fill: true, next: NextHive.overdue);
+        }
+    }
   }
 
   Future<void> _panelHistory(String parameterId) async {
@@ -901,7 +1032,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       for (final e in elements)
         e.id: (type: e.type, variant: e.variant, icon: e.icon, color: e.color)
     };
-    return buildScene<String>(items: items, look: look, selected: sel);
+    return buildScene<String>(
+      items: items,
+      look: look,
+      selected: sel,
+      // червоний ободок — давно не оглядали (час огляду настав)
+      outlined: {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) e.id},
+      outlineColor: AppColors.danger,
+    );
   }
 
   @override
@@ -1025,6 +1163,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onColor: () => _panelGuard(_panelColor),
                       onEditParams: () => _panelGuard(_panelEditParams),
                       onFill: () => _panelGuard(_panelFill),
+                      onVisited: (panelElement?.isHive ?? false)
+                          ? () => _panelGuard(_panelVisited)
+                          : null,
                       onHistory: (id) => _panelGuard(() => _panelHistory(id)),
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) ? _panelQr : null,

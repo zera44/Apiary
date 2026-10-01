@@ -364,6 +364,90 @@ void main() {
     expect(find.text('Продовжити без входу'), findsNothing);
   });
 
+  testWidgets('карта: довгий дотик до вулика — одразу редагування й перетягування', (tester) async {
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.byTooltip('Готово'), findsNothing);
+    // вулик (0,0): камера по центру (1,0), клітинка 34
+    final g = await tester.startGesture(tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-17, -17));
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byTooltip('Готово'), findsOneWidget); // режим редагування
+    expect(find.text('Оберіть шаблон'), findsNothing); // без вибору шаблону
+    await g.moveBy(const Offset(0, 120));
+    await tester.pump();
+    await g.up();
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('панель: «Оглянуто, змін немає» — дата огляду сьогодні', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a, focusElementId: hive.id)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.text('Оглянуто, змін немає'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    final visitId = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_start')))!;
+    final latest = (await tester.runAsync(() => repo.latestParameterValues(EntityRef.group(groupId))))!;
+    expect(latest[visitId], Repository.formatVisitDate(DateTime.now()));
+  });
+
+  testWidgets('форма: «Зберегти й далі» з карти — наступний вулик одразу з формою', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    // другий вулик нижче лежака — наступний за порядком (зверху вниз)
+    await tester.runAsync(() => repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, -4, groupLabel: 'Вулик 2'));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
+        .firstWhere((e) => e.isHive && e.groupId == groupId);
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a, focusElementId: hive.id, openFill: true)));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Зберегти й далі →'));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    // відкрилась форма наступного вулика
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
+    expect(find.text('Вулик 2'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('головний: «Сьогодні оглянути: N» веде до простроченого вулика з формою', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() async {
+      final period = (await repo.baseParameterId('hive', 'visit_period'))!;
+      final start = (await repo.baseParameterId('hive', 'visit_start'))!;
+      await repo.addParameterRecord(period, '7', EntityRef.group(groupId));
+      await repo.addParameterRecord(start, '01.01.2020', EntityRef.group(groupId));
+    });
+    await tester.pumpWidget(ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Сьогодні оглянути: 1'), findsOneWidget);
+    await tester.tap(find.text('Сьогодні оглянути: 1'));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    expect(find.text('Зберегти й далі →'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';

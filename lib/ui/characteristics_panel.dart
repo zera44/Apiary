@@ -60,6 +60,9 @@ class CharacteristicsPanel extends StatelessWidget {
   final VoidCallback? onIcon;
   final VoidCallback? onColor;
   final VoidCallback? onEditParams;
+
+  /// «Оглянуто, змін немає» — лише дата огляду (для вуликів).
+  final VoidCallback? onVisited;
   final VoidCallback? onFill;
   final void Function(String parameterId)? onHistory;
   final VoidCallback? onQr;
@@ -72,6 +75,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onIcon,
     this.onColor,
     this.onEditParams,
+    this.onVisited,
     this.onFill,
     this.onHistory,
     this.onQr,
@@ -182,6 +186,17 @@ class CharacteristicsPanel extends StatelessWidget {
                     fontSize: 13,
                     onPressed: onFill,
                   ),
+                  if (onVisited != null) ...[
+                    const SizedBox(height: 8),
+                    PillButton(
+                      text: 'Оглянуто, змін немає',
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      height: 38,
+                      fontSize: 13,
+                      onPressed: onVisited,
+                    ),
+                  ],
                   if (onQr != null) ...[
                     const SizedBox(height: 14),
                     Text('QR-код', style: muted),

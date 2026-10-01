@@ -101,17 +101,17 @@ class AppDrawer extends StatelessWidget {
       );
       return;
     }
-    openHive(nav, repo, found.apiary, found.element.id, fill: true);
+    openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
   }
 
   /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
   /// [fill] — одразу форма «Заповнити».
   static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
-      {bool fill = false}) {
+      {bool fill = false, NextHive next = NextHive.order}) {
     nav.popUntil((r) => r.isFirst);
     nav.push(MaterialPageRoute(
-      builder: (_) =>
-          MapScreen(repo: repo, apiary: apiary, focusElementId: elementId, openFill: fill),
+      builder: (_) => MapScreen(
+          repo: repo, apiary: apiary, focusElementId: elementId, openFill: fill, next: next),
     ));
   }
 

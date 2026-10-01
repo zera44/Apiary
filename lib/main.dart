@@ -7,6 +7,7 @@ import 'data/repository.dart';
 import 'data/sync_service.dart';
 import 'icons/app_icons.dart';
 import 'screens/home_screen.dart';
+import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/autostart.dart';
@@ -94,7 +95,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
     if (el == null || el.deleted || apiaryId == null) return;
     final apiary = await widget.repo.getApiary(apiaryId);
     if (apiary == null || apiary.deleted || !nav.mounted) return;
-    AppDrawer.openHive(nav, widget.repo, apiary, id, fill: true);
+    AppDrawer.openHive(nav, widget.repo, apiary, id, fill: true, next: NextHive.overdue);
   }
 
   @override

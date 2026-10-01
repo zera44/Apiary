@@ -12,22 +12,32 @@ import 'theme.dart';
 /// фіксовані зразки. Повертає {parameter_id: нове значення} лише для
 /// змінених полів (порожній рядок — значення прибрали), або null, якщо
 /// скасовано.
-Future<Map<String, String>?> showFillValuesDialog(
+Future<FillResult?> showFillValuesDialog(
   BuildContext context, {
   required List<Parameter> params,
   required Map<String, String?> latest,
+  bool offerNext = false,
 }) {
-  return showDialog<Map<String, String>>(
+  return showDialog<FillResult>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _FillDialog(params: params, latest: latest),
+    builder: (_) => _FillDialog(params: params, latest: latest, offerNext: offerNext),
   );
+}
+
+/// Результат форми: змінені значення й чи натиснули «Зберегти й далі»
+/// (обхід ланцюжком — одразу наступний вулик).
+class FillResult {
+  final Map<String, String> values;
+  final bool next;
+  const FillResult(this.values, {this.next = false});
 }
 
 class _FillDialog extends StatefulWidget {
   final List<Parameter> params;
   final Map<String, String?> latest;
-  const _FillDialog({required this.params, required this.latest});
+  final bool offerNext;
+  const _FillDialog({required this.params, required this.latest, this.offerNext = false});
   @override
   State<_FillDialog> createState() => _FillDialogState();
 }
@@ -64,7 +74,7 @@ class _FillDialogState extends State<_FillDialog> {
     super.dispose();
   }
 
-  void _save() {
+  void _save({bool next = false}) {
     final out = <String, String>{};
     for (final p in widget.params) {
       final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
@@ -96,7 +106,7 @@ class _FillDialogState extends State<_FillDialog> {
       }
       if (v != (widget.latest[p.id] ?? '')) out[p.id] = v;
     }
-    Navigator.pop(context, out);
+    Navigator.pop(context, FillResult(out, next: next));
   }
 
   Widget _field(Parameter p) {
@@ -195,6 +205,16 @@ class _FillDialogState extends State<_FillDialog> {
             const SizedBox(width: 8),
             Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: _save)),
           ]),
+          if (widget.offerNext) ...[
+            const SizedBox(height: 8),
+            // обхід ланцюжком: зберегти й одразу наступний вулик
+            PillButton(
+              text: 'Зберегти й далі →',
+              bg: AppColors.create,
+              width: double.infinity,
+              onPressed: () => _save(next: true),
+            ),
+          ],
         ]),
       ],
     );
