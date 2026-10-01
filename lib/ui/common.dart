@@ -546,6 +546,9 @@ Future<void> deleteWithUndo(
   final ctrl = messenger.showSnackBar(SnackBar(
     content: Text(message),
     duration: const Duration(seconds: 5),
+    // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
+    // завершитись само через 5 с
+    persist: false,
     action: SnackBarAction(label: 'Відмінити', onPressed: () {}),
   ));
   final reason = await ctrl.closed;

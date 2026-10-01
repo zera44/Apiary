@@ -630,6 +630,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       messenger.showSnackBar(SnackBar(
         content: Text(isGroup ? "Групу об'єктів видалено" : "Об'єкт видалено"),
         duration: const Duration(seconds: 5),
+        // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
+        // завершитись само через 5 с
+        persist: false,
         action: SnackBarAction(
           label: 'Відмінити',
           onPressed: () {

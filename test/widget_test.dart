@@ -1288,22 +1288,26 @@ void main() {
     Hints.enabled = true;
     Hints.resetSession();
     addTearDown(() => Hints.enabled = false);
-    await repo.setMeta('whats_new_seen', kReleases.first.version);
+    await tester.runAsync(() => repo.setMeta('whats_new_seen', kReleases.first.version));
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
+    await tester.pump(const Duration(milliseconds: 500)); // поява завершилась
     expect(find.text('Зрозуміло'), findsOneWidget);
     await tester.tap(find.text('Зрозуміло'));
+    await tester.pump(const Duration(milliseconds: 500));
     await settle(tester);
     expect(find.text('Зрозуміло'), findsNothing);
-    expect(await repo.getMeta('hint:home'), '1');
+    expect(await tester.runAsync(() => repo.getMeta('hint:home')), '1');
     // склад — своя підказка; «Пропустити всі» вимикає решту
     await tester.tap(find.text('Склад'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Пропустити всі підказки'), findsOneWidget);
     await tester.tap(find.text('Пропустити всі підказки'));
-    await settle(tester);
-    expect(await repo.getMeta('hints_off'), '1');
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(await tester.runAsync(() => repo.getMeta('hints_off')), '1');
     expect(tester.takeException(), isNull);
   });
 
@@ -1321,12 +1325,12 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsNothing);
-    expect(await repo.getMeta('whats_new_seen'), kReleases.first.version);
+    expect(await tester.runAsync(() => repo.getMeta('whats_new_seen')), kReleases.first.version);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('P14: «Звіт по пасіці» у меню карти й у налаштуваннях пасіки', (tester) async {
-    final a = (await repo.listApiaries()).first;
+    final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
