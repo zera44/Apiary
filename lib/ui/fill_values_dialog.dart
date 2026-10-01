@@ -499,32 +499,19 @@ class _FillDialogState extends State<_FillDialog> {
   Widget build(BuildContext context) {
     final dialog = _dialog();
     if (_lesson == null) return dialog;
-    // урок: форма вище, унизу — пасічник або ведмежа-помічник
+    // урок: форма вище, унизу — пасічник або ведмежа-помічник (на тому ж місці)
     final line = _lessonLine;
-    final bubble = GuideBubble(
-      text: line.text,
-      image: line.bear ? kLessonBear : kLessonBeekeeperLeaning,
-      imageHeight: line.bear ? 150 : kLessonLeaningHeight,
-      below: line.tapNext
-          ? Text('Торкнись, щоб продовжити',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12))
-          : null,
-    );
     return Stack(children: [
       Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 270), child: dialog)),
-      Positioned(
-        left: 0,
-        right: 0,
-        bottom: kLessonBottom + MediaQuery.of(context).padding.bottom,
-        child: Material(
-          type: MaterialType.transparency,
-          child: line.tapNext
-              ? GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _step++),
-                  child: bubble)
-              : IgnorePointer(child: bubble),
-        ),
+      ...lessonScene(
+        pose: line.bear ? LessonPose.bear : LessonPose.leaning,
+        text: line.text,
+        onTap: line.tapNext ? () => setState(() => _step++) : null,
+        below: line.tapNext
+            ? Text('Торкнись, щоб продовжити',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+            : null,
+        bottomInset: MediaQuery.of(context).padding.bottom,
       ),
     ]);
   }

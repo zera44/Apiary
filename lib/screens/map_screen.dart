@@ -131,6 +131,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---- урок «Базові поняття» ----
   _Lesson _lesson = _Lesson.place;
   bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
+  bool _lessonFormOpen = false; // відкрита форма огляду (у ній свій пасічник)
   String _lessonHive = 'Вулик';
 
   /// Підтвердити розміщення: «Готово» в медовому ободку.
@@ -142,94 +143,55 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// Підказка пасічника для поточного кроку уроку.
   List<Widget> _lessonOverlay() {
     if (!widget.tutorial) return const [];
-    // поки відкрите вікно «Оберіть шаблон» — пасічник у ньому, на тому ж місці
+    // поки відкрите вікно «Оберіть шаблон» чи форма огляду — пасічник у ньому,
+    // на тому ж місці (а не двоє одночасно)
     if (selectMode && pendingTemplate == null) return const [];
+    if (_lessonFormOpen) return const [];
+    // кнопка «Редагувати» є — спирається на неї; немає — на свою «стійку»
+    final pose = selectMode ? LessonPose.leaning : LessonPose.onButton;
     final msg = _lessonMessage();
-    // пасічник увесь урок стоїть на одному місці — ліворуч над «Редагувати»;
-    // хмарка — лише коли є що сказати
-    if (msg == null) {
-      return [
-        Positioned(
-          left: selectMode ? 12 : kLessonOnButtonLeft,
-          bottom: _lessonBottom,
-          child: IgnorePointer(
-            child: Image.asset(selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
-                height: selectMode ? kLessonLeaningHeight : 170,
-                filterQuality: FilterQuality.medium),
-          ),
-        ),
-      ];
-    }
+    if (msg == null) return lessonScene(pose: pose);
     final (text, onTap) = msg;
     if (_lesson == _Lesson.magic && !selectMode) {
       // фінал уроку: дві відповіді під хмаркою
       final done = widget.onLessonDone;
-      return [
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: _lessonBottom,
-          child: GuideBubble(
-            text: text,
-            image: kLessonBeekeeper,
-            imageLeft: kLessonOnButtonLeft,
-            below: Row(children: [
-              Expanded(
-                child: PillButton(
-                  text: 'Хочу',
-                  bg: AppColors.accent,
-                  height: 40,
-                  onPressed: done == null ? null : () => done(true, widget.apiary.id),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 2,
-                child: PillButton(
-                  text: 'Я сам собі маг пасіки',
-                  bg: AppColors.darkBtn,
-                  fg: AppColors.text,
-                  height: 40,
-                  fontSize: 12,
-                  onPressed: done == null ? null : () => done(false, widget.apiary.id),
-                ),
-              ),
-            ]),
+      return lessonScene(
+        pose: pose,
+        text: text,
+        below: Row(children: [
+          Expanded(
+            child: PillButton(
+              text: 'Хочу',
+              bg: AppColors.accent,
+              height: 40,
+              onPressed: done == null ? null : () => done(true, widget.apiary.id),
+            ),
           ),
-        ),
-      ];
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 2,
+            child: PillButton(
+              text: 'Я сам собі маг пасіки',
+              bg: AppColors.darkBtn,
+              fg: AppColors.text,
+              height: 40,
+              fontSize: 11,
+              onPressed: done == null ? null : () => done(false, widget.apiary.id),
+            ),
+          ),
+        ]),
+      );
     }
-    return [
-      Positioned(
-        left: 0,
-        right: 0,
-        bottom: _lessonBottom,
-        child: onTap == null
-            // дотики проходять крізь — до карти й кнопок
-            ? IgnorePointer(
-                child: GuideBubble(
-                    text: text,
-                    image: selectMode ? kLessonBeekeeperLeaning : kLessonBeekeeper,
-                    imageLeft: selectMode ? 12 : kLessonOnButtonLeft,
-                    imageHeight: selectMode ? kLessonLeaningHeight : 170))
-            : GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTap,
-                child: GuideBubble(
-                  text: text,
-                  image: kLessonBeekeeper,
-                  imageLeft: kLessonOnButtonLeft,
-                  below: Text('Торкнись, щоб продовжити',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                ),
-              ),
-      ),
-    ];
+    return lessonScene(
+      pose: pose,
+      text: text,
+      onTap: onTap,
+      below: onTap == null
+          ? null
+          : Text('Торкнись, щоб продовжити',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+    );
   }
-
-  /// Є кнопка «Редагувати» — пасічник спирається на неї; немає (редагування)
-  /// — на свою «стійку» над панеллю дій.
-  double get _lessonBottom => selectMode ? kLessonBottom : kLessonOnButtonBottom;
 
   /// Що каже пасічник на поточному кроці уроку (і що робить тап по хмарці),
   /// або null — мовчить.
@@ -722,14 +684,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // вікно вибору — вище, щоб пасічник унизу його не закривав
       Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 300), child: dialog)),
       // те саме місце, що й на карті (карта — у SafeArea, вікно — на весь екран)
-      Positioned(
-        left: 0,
-        right: 0,
-        bottom: kLessonBottom + MediaQuery.of(context).padding.bottom,
-        child: IgnorePointer(child: Material(type: MaterialType.transparency,
-            child: GuideBubble(
-                text: spans, image: kLessonBeekeeperLeaning, imageHeight: kLessonLeaningHeight))),
-      ),
+      ...lessonScene(
+          pose: LessonPose.leaning,
+          text: spans,
+          bottomInset: MediaQuery.of(context).padding.bottom),
     ]);
   }
 
@@ -1066,6 +1024,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       if (!mounted) return;
     }
+    if (lesson != null) setState(() => _lessonFormOpen = true);
     final result = await showFillValuesDialog(
       context,
       params: first.params,
@@ -1090,6 +1049,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return _fillPage(here);
       },
     );
+    if (lesson != null && mounted) setState(() => _lessonFormOpen = false);
     if (result != null) await _saveFill(cur, result);
     // урок: огляд зроблено — пасічник хвалить і пропонує «магію»
     if (result != null && lesson != null && mounted) {
@@ -1409,12 +1369,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   List<SceneCell>? _sceneBase;
   Set<String> _sceneSel = const {};
 
+  String? _scenePanelKey;
+
+  /// Урок: вулик, чию панель відкрили, — обведений.
+  Set<String>? get _lessonOutlined {
+    final el = panelElement;
+    if (!widget.tutorial || !panelOpen || el == null || !el.isHive) return null;
+    return {for (final e in mergedObjectOf(el, elements)) e.id};
+  }
+
+  String? get _lessonPanelKey =>
+      widget.tutorial && panelOpen ? panelElement?.id : null;
+
   List<SceneCell> _scene() {
     if (_sceneBase == null ||
         !identical(_sceneEls, elements) ||
         _sceneSelId != selectedId ||
         _sceneSelGid != selectedGroupId ||
-        !identical(_scenePlaced, _placedGids)) {
+        !identical(_scenePlaced, _placedGids) ||
+        _scenePanelKey != _lessonPanelKey) {
+      _scenePanelKey = _lessonPanelKey;
       _sceneSel = {for (final e in selection) e.id};
       _sceneBase = _buildBaseScene(_sceneSel);
       _sceneEls = elements;
@@ -1451,9 +1425,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       items: items,
       look: look,
       selected: sel,
-      // червоний ободок — давно не оглядали (час огляду настав)
-      outlined: {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) e.id},
-      outlineColor: AppColors.danger,
+      // урок: відкритий вулик обведено медовим; інакше червоний ободок —
+      // давно не оглядали (час огляду настав)
+      outlined: _lessonOutlined ??
+          {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) e.id},
+      outlineColor: _lessonOutlined != null ? AppColors.create : AppColors.danger,
     );
   }
 
@@ -1695,6 +1671,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: FittedBox(
         fit: BoxFit.scaleDown,
+        // урок: кнопки праворуч — ліворуч стоїть пасічник зі «стійкою»
+        alignment: widget.tutorial ? Alignment.centerRight : Alignment.center,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           CircleIconButton(
               icon: 'plus_circle',
