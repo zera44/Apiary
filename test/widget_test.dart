@@ -1320,7 +1320,7 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsOneWidget);
-    expect(find.textContaining('Що нового'), findsOneWidget);
+    expect(find.textContaining('Що нового ·'), findsOneWidget);
     expect(find.textContaining('Ще: '), findsOneWidget);
     await tester.tap(find.text('До роботи'));
     await settle(tester);
