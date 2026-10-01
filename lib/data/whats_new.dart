@@ -10,7 +10,11 @@ class KaizenItem {
 
   /// Вид втрати (муда), яку прибрали.
   final String muda;
-  const KaizenItem(this.title, this.before, this.after, this.muda);
+
+  /// Головне оновлення (≈20% змін, що дають основний виграш, — за Парето):
+  /// показується одразу; решта — у гортальній стрічці нижче.
+  final bool key;
+  const KaizenItem(this.title, this.before, this.after, this.muda, {this.key = false});
 }
 
 class KaizenGroup {
@@ -27,6 +31,9 @@ class Release {
   final String headlineNote;
   final List<KaizenGroup> groups;
   const Release(this.version, this.headline, this.headlineNote, this.groups);
+
+  List<KaizenItem> get keyItems => [for (final g in groups) ...g.items.where((i) => i.key)];
+  List<KaizenItem> get otherItems => [for (final g in groups) ...g.items.where((i) => !i.key)];
 }
 
 /// Види втрат (муда) — мовою пасічника.
@@ -48,11 +55,11 @@ const kReleases = <Release>[
     [
       KaizenGroup('Щоденний обхід', [
         KaizenItem('«Зберегти й далі» відкриває наступний вулик', '30 вуликів: 90 натискань',
-            '31 натискання', Muda.motion),
+            '31 натискання', Muda.motion, key: true),
         KaizenItem('Наліпка QR одразу відкриває огляд', '3 натискання', '2', Muda.overprocessing),
         KaizenItem('«Оглянуто, змін немає» на панелі вулика', '2 натискання', '1', Muda.overprocessing),
         KaizenItem('«Сьогодні оглянути: N» на головному, прострочені — червоним на карті',
-            'шукати на карті', 'видно одразу', Muda.search),
+            'шукати на карті', 'видно одразу', Muda.search, key: true),
         KaizenItem('Нагадування веде просто до вулика з формою', '≈6 натискань і пошук', '2',
             Muda.search),
         KaizenItem('«Почати» відкриває останню пасіку', '2 натискання', '1', Muda.motion),
@@ -68,7 +75,7 @@ const kReleases = <Release>[
       ]),
       KaizenGroup('Налаштування й облік', [
         KaizenItem('Періодичність обходу — одна на всю пасіку', '30 вуликів × 4 натискання',
-            'одне налаштування', Muda.rework),
+            'одне налаштування', Muda.rework, key: true),
         KaizenItem('Наліпки QR прив\'язуються підряд', '30 вуликів: 60 натискань', '1 + скани',
             Muda.search),
         KaizenItem('Друк наліпок просто із застосунку', 'зберегти PDF і шукати', '«Друк»',

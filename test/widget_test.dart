@@ -1323,7 +1323,8 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsOneWidget);
     expect(find.text(kReleases.first.headline), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('До роботи'), 300);
+    expect(find.text('ГОЛОВНЕ'), findsOneWidget);
+    expect(find.textContaining('гортайте'), findsOneWidget);
     await tester.tap(find.text('До роботи'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));

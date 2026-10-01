@@ -7,9 +7,9 @@ import '../ui/first_hints.dart';
 import '../ui/theme.dart';
 import 'feedback_screen.dart';
 
-/// «Що нового» як дошка кайдзен: головна цифра оновлення, далі картки
-/// «яку втрату прибрали — як було → як стало». Внизу — запрошення
-/// подати свою ідею (у Toyota покращення пропонують ті, хто робить роботу).
+/// «Що нового» за Парето: одразу — 20% головних змін (дають основний
+/// виграш), решта — у стрічці, яку гортають пальцем. Усе на одному екрані:
+/// закрити — одне натискання «До роботи».
 class WhatsNewScreen extends StatelessWidget {
   final Release release;
   const WhatsNewScreen({super.key, required this.release});
@@ -35,39 +35,57 @@ class WhatsNewScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final others = release.otherItems;
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                children: [
-                  Text('Що нового · ${release.version}',
-                      style: TextStyle(
-                          color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text('Кайдзен — маленькі кроки щодня. Ось які зайві дії ми прибрали.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-                  const SizedBox(height: 18),
-                  _headline(),
-                  for (final g in release.groups) ...[
-                    const SizedBox(height: 22),
-                    Text(g.title.toUpperCase(),
-                        style: TextStyle(
-                            color: AppColors.create,
-                            fontSize: 13,
-                            letterSpacing: 1.2,
-                            fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    for (final it in g.items) _KaizenCard(item: it),
-                  ],
-                  const SizedBox(height: 22),
-                  _suggest(context),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: PillButton(
+              // усе на одному екрані: головне, стрічка «ще», «До роботи» —
+              // без прокрутки; решту гортають пальцем (не натисканнями)
+              child: Column(children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    children: [
+                      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                        Expanded(
+                          child: Text('Що нового · ${release.version}',
+                              style: TextStyle(
+                                  color: AppColors.text,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                        Text(release.headline,
+                            style: TextStyle(
+                                color: AppColors.addObject,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900)),
+                      ]),
+                      const SizedBox(height: 2),
+                      Text('${release.headline} ${release.headlineNote}',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                      const SizedBox(height: 14),
+                      Text('ГОЛОВНЕ',
+                          style: TextStyle(
+                              color: AppColors.create,
+                              fontSize: 12,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      for (final it in release.keyItems) _KaizenCard(item: it),
+                      if (others.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _MoreStrip(items: others),
+                      ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    PillButton(
                       text: 'До роботи',
                       bg: AppColors.accent,
                       width: 220,
@@ -76,9 +94,15 @@ class WhatsNewScreen extends StatelessWidget {
                       fontSize: 16,
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                  ),
-                ],
-              ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context)
+                          .push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
+                      child: Text('Бачите зайвий крок? Запропонуйте покращення',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                    ),
+                  ]),
+                ),
+              ]),
             ),
           ),
           const Positioned.fill(child: IgnorePointer(child: ScreenFrame())),
@@ -86,92 +110,100 @@ class WhatsNewScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _headline() => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.addObject.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.addObject.withValues(alpha: 0.6)),
-        ),
-        child: Row(children: [
-          Text(release.headline,
-              style: TextStyle(color: AppColors.text, fontSize: 40, fontWeight: FontWeight.w900)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(release.headlineNote,
-                style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.3)),
-          ),
-        ]),
-      );
+/// Решта змін — стрічка, яку гортають убік (без натискань). Сусідня
+/// картка визирає з краю — видно, що є що гортати.
+class _MoreStrip extends StatefulWidget {
+  final List<KaizenItem> items;
+  const _MoreStrip({required this.items});
+  @override
+  State<_MoreStrip> createState() => _MoreStripState();
+}
 
-  Widget _suggest(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.popupBg,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Наступний кайдзен — ваш',
-              style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          Text('Помітили зайвий крок, пошук чи повтор? Напишіть — приберемо в наступному оновленні.',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13.5, height: 1.3)),
-          const SizedBox(height: 6),
-          TextButton(
-            onPressed: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const FeedbackScreen())),
-            child: Text('Запропонувати покращення →',
-                style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w700)),
+class _MoreStripState extends State<_MoreStrip> {
+  final _ctrl = PageController(viewportFraction: 0.86);
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.items.length;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Text('ЩЕ $n ПОКРАЩЕНЬ',
+            style: TextStyle(
+                color: AppColors.create,
+                fontSize: 12,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w800)),
+        const Spacer(),
+        Text('${_page + 1} / $n  гортайте →',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+      ]),
+      const SizedBox(height: 6),
+      SizedBox(
+        height: 104,
+        child: PageView.builder(
+          controller: _ctrl,
+          padEnds: false,
+          itemCount: n,
+          onPageChanged: (i) => setState(() => _page = i),
+          itemBuilder: (_, i) => Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _KaizenCard(item: widget.items[i], compact: true),
           ),
-        ]),
-      );
+        ),
+      ),
+    ]);
+  }
 }
 
 class _KaizenCard extends StatelessWidget {
   final KaizenItem item;
-  const _KaizenCard({required this.item});
+  final bool compact;
+  const _KaizenCard({required this.item, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      margin: EdgeInsets.only(bottom: compact ? 0 : 8),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
+        border: Border.all(color: AppColors.hive.withValues(alpha: compact ? 0.25 : 0.45)),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(item.title,
-            style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 6,
+      child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(item.before,
-                style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13.5,
-                    decoration: TextDecoration.lineThrough)),
-            Text('→', style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-            Text(item.after,
-                style: TextStyle(
-                    color: AppColors.addObject, fontSize: 14, fontWeight: FontWeight.w800)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.danger.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text('прибрано: ${item.muda.toLowerCase()}',
-                  style: TextStyle(color: AppColors.text, fontSize: 12)),
+            Text(item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.text, fontSize: 14.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                    text: item.before,
+                    style: TextStyle(
+                        color: AppColors.textMuted, decoration: TextDecoration.lineThrough)),
+                const TextSpan(text: '  →  '),
+                TextSpan(
+                    text: item.after,
+                    style: TextStyle(color: AppColors.addObject, fontWeight: FontWeight.w800)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
-          ],
-        ),
-      ]),
+          ]),
     );
   }
 }
