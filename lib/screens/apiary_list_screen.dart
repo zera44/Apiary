@@ -8,6 +8,7 @@ import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
 import 'map_screen.dart';
+import 'qr_generate_screen.dart';
 
 /// Список пасік застосунку: тап відкриває карту, "+" — створює нову.
 class ApiaryListScreen extends StatefulWidget {
@@ -258,6 +259,23 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                           tooltip: 'Налаштування пасіки',
                           onPressed: () => _rename(a)),
                     ),
+                    // QR-наліпки цієї пасіки — без відкриття карти
+                    if (!widget.tutorial)
+                      Positioned(
+                        left: 3,
+                        bottom: 3,
+                        child: CircleIconButton(
+                            icon: 'qr',
+                            bg: AppColors.darkBtn,
+                            size: 28,
+                            tooltip: 'QR-наліпки',
+                            onPressed: () async {
+                              await Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => QrGenerateScreen(repo: widget.repo, apiary: a),
+                              ));
+                              await _reload();
+                            }),
+                      ),
                   ]),
                 ),
               ),
