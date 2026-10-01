@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Вулик-поштомат на головному екрані (малюнок автора —
 /// design/guide/hive_mailbox.pdf: бджола приносить лист, прапорець піднято).
-/// Коли є важливі повідомлення (прострочені огляди, час докупити) — яскравий
-/// і з червоним значком кількості; коли пошти немає — пригашений.
+/// Коли є важливі повідомлення (прострочені огляди, час докупити) — бджола
+/// з листом і прапорцем + червоний значок кількості; пошти немає — порожній
+/// вулик (hive_mailbox_empty.pdf). Обидва малюнки в одному кадрі.
 class HivePostbox extends StatelessWidget {
   final int count;
   final double height;
@@ -24,11 +25,15 @@ class HivePostbox extends StatelessWidget {
           width: w,
           child: Stack(clipBehavior: Clip.none, children: [
             Positioned.fill(
-              child: AnimatedOpacity(
+              child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                opacity: count > 0 ? 1 : 0.55,
-                child: Image.asset('assets/guide/hive_mailbox.webp',
-                    fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+                child: Image.asset(
+                    count > 0
+                        ? 'assets/guide/hive_mailbox.webp'
+                        : 'assets/guide/hive_mailbox_empty.webp',
+                    key: ValueKey(count > 0),
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.medium),
               ),
             ),
             if (count > 0)
