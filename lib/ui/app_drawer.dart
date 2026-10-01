@@ -11,7 +11,6 @@ import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
-import '../screens/whats_new_screen.dart';
 import '../services/autostart.dart';
 import 'common.dart';
 import 'icons.dart';
@@ -19,8 +18,8 @@ import 'theme.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
-/// Налаштування ▾ (характеристики, шаблони) / Зворотний зв'язок / Що нового.
-/// Головний екран — кнопкою «назад». Є лише на карті.
+/// Налаштування ▾ (характеристики, шаблони) / Зворотний зв'язок. «Що нового» —
+/// лише на головному екрані, туди — кнопкою «назад». Є лише на карті.
 class AppDrawer extends StatelessWidget {
   final Repository repo;
 
@@ -92,10 +91,6 @@ class AppDrawer extends StatelessWidget {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           }),
-          _item(context, '', 'Що нового', () {
-            nav.pop(); // закрити меню
-            WhatsNewScreen.open(nav);
-          }, iconData: Icons.new_releases_outlined),
           ])),
           if (Autostart.supported) const _AutostartTile(),
         ]),
