@@ -632,15 +632,27 @@ class _HoneyRingState extends State<HoneyRing> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.on) return widget.child;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(widget.radius + 3),
-        border: Border.all(color: AppColors.create, width: 3),
-        boxShadow: [BoxShadow(color: AppColors.create.withValues(alpha: 0.5), blurRadius: 12)],
-      ),
-      child: widget.child,
-    );
+    // ободок малюється ПОЗА кнопкою й нічого не зсуває (розмір той самий)
+    return Stack(clipBehavior: Clip.none, children: [
+      widget.child,
+      if (widget.on)
+        Positioned(
+          left: -5,
+          top: -5,
+          right: -5,
+          bottom: -5,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(widget.radius + 5),
+                border: Border.all(color: AppColors.create, width: 3),
+                boxShadow: [
+                  BoxShadow(color: AppColors.create.withValues(alpha: 0.5), blurRadius: 12)
+                ],
+              ),
+            ),
+          ),
+        ),
+    ]);
   }
 }

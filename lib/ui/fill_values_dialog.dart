@@ -224,7 +224,15 @@ class _FillDialogState extends State<_FillDialog> {
       3 => (
           text: [
             const TextSpan(text: 'В тебе матка '),
-            GuideBubble.task(l.colorValue.toLowerCase()),
+            // матка — вона: «біла», «жовта»…
+            GuideBubble.task(const {
+                  'Білий': 'біла',
+                  'Жовтий': 'жовта',
+                  'Червоний': 'червона',
+                  'Зелений': 'зелена',
+                  'Синій': 'синя',
+                }[l.colorValue] ??
+                l.colorValue.toLowerCase()),
             const TextSpan(text: '.'),
           ],
           bear: true,
