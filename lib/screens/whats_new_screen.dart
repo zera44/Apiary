@@ -6,7 +6,7 @@ import '../ui/common.dart';
 import '../ui/first_hints.dart';
 import '../ui/theme.dart';
 
-/// «Що нового»: перелік нових функцій, у «Ще» — виправлені помилки.
+/// «Що нового»: 20% найзначніших нових функцій, решта й виправлені помилки — у «Ще».
 /// Закрити — одне натискання «До роботи» (кнопка завжди на екрані).
 class WhatsNewScreen extends StatelessWidget {
   final Release release;
@@ -71,8 +71,8 @@ class WhatsNewScreen extends StatelessWidget {
                           style: TextStyle(
                               color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 14),
-                      for (final f in release.features) line(f),
-                      if (release.fixes.isNotEmpty)
+                      for (final f in release.topFeatures) line(f),
+                      if (release.moreFeatures.isNotEmpty || release.fixes.isNotEmpty)
                         Theme(
                           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                           child: ExpansionTile(
@@ -80,9 +80,24 @@ class WhatsNewScreen extends StatelessWidget {
                             childrenPadding: EdgeInsets.zero,
                             iconColor: AppColors.textMuted,
                             collapsedIconColor: AppColors.textMuted,
-                            title: Text('Ще: виправлені помилки (${release.fixes.length})',
+                            title: Text(
+                                'Ще: ${release.moreFeatures.length} змін і виправлення помилок',
                                 style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-                            children: [for (final f in release.fixes) line(f, muted: true)],
+                            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for (final f in release.moreFeatures) line(f, muted: true),
+                              if (release.fixes.isNotEmpty) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6, bottom: 8),
+                                  child: Text('Виправлено',
+                                      style: TextStyle(
+                                          color: AppColors.textMuted,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                for (final f in release.fixes) line(f, muted: true),
+                              ],
+                            ],
                           ),
                         ),
                     ],
