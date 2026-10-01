@@ -6,6 +6,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/logic/value_convert.dart';
+import 'package:apiary/logic/visit_reminders.dart';
 import 'package:apiary/services/excel_export.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
