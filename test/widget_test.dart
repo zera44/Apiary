@@ -536,6 +536,17 @@ void main() {
     expect(find.text('Час докупити'), findsOneWidget); // позначка на плитці
   });
 
+  testWidgets('вибір параметрів вулика: обрані вгорі з ручкою перетягування', (tester) async {
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    final chosen = (await tester.runAsync(() => repo.attachedParameterIds(hive.entity, elType: 'hive')))!;
+    // ручка — у кожного обраного (базові теж), у необраних — немає
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(chosen.length));
+    expect(find.byType(ReorderableListView), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('id_token Google → користувач', () {
     String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
     final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';

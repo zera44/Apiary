@@ -232,7 +232,7 @@ void main() {
     expect((els[0].y - els[1].y).abs(), 1);
   });
 
-  test('прив\'язка параметрів: порядок, базові не зберігаються окремо', () async {
+  test('прив\'язка параметрів: порядок зберігається разом із базовими', () async {
     final id = await repo.addElement(apiaryId, 0, 0);
     final e = EntityRef.element(id);
     final p1 = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
@@ -241,9 +241,11 @@ void main() {
     await repo.setAttachedParameters([p2, base.first, p1], e);
     final stored = await repo.db.rawQuery(
         'SELECT parameter_id FROM element_parameters WHERE deleted = 0 ORDER BY sort_order');
-    expect([for (final r in stored) r['parameter_id']], [p2, p1]);
+    // базова теж записана — щоб зберегти її місце в порядку
+    expect([for (final r in stored) r['parameter_id']], [p2, base.first, p1]);
     final shown = await repo.attachedParameterIds(e, elType: 'hive');
-    expect(shown, [...base, p2, p1]);
+    // незаписані базові — на початку, решта — у збереженому порядку
+    expect(shown, [...base.skip(1), p2, base.first, p1]);
   });
 
   test('ВИПРАВЛЕНО: видалений параметр не можна прив\'язати повторно', () async {

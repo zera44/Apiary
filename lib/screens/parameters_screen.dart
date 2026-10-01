@@ -416,12 +416,14 @@ class _ParametersScreenState extends State<ParametersScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted)),
                         )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (_, i) => _card(list[i]),
-                        ),
+                      : widget.catalog
+                          ? ListView.separated(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: list.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 10),
+                              itemBuilder: (_, i) => _card(list[i]),
+                            )
+                          : _orderList(list),
             ),
             if (!widget.catalog)
               Padding(
@@ -442,7 +444,40 @@ class _ParametersScreenState extends State<ParametersScreen> {
     );
   }
 
-  Widget _card(Parameter p) {
+  /// Вибір для вулика / шаблону: обрані — вгорі в їхньому порядку, їх можна
+  /// перетягувати за ручку (порядок показу на панелі; у шаблоні — для всіх
+  /// майбутніх екземплярів); нижче — решта каталогу.
+  Widget _orderList(List<Parameter> all) {
+    final byId = {for (final p in all) p.id: p};
+    final chosen = [for (final id in selected) if (byId[id] != null) byId[id]!];
+    final rest = [for (final p in all) if (!selected.contains(p.id)) p];
+    final items = [...chosen, ...rest];
+    return ReorderableListView.builder(
+      padding: const EdgeInsets.all(12),
+      buildDefaultDragHandles: false,
+      itemCount: items.length,
+      onReorder: (from, to) {
+        if (to > from) to -= 1;
+        if (from >= chosen.length) return; // необрані не впорядковуються
+        to = to.clamp(0, chosen.length - 1);
+        if (to == from) return;
+        setState(() {
+          final moved = chosen[from].id;
+          final ids = [for (final p in chosen) p.id]..removeAt(from);
+          ids.insert(to, moved);
+          // невідомі каталогу id (напр., ще не завантажені) — лишаються в кінці
+          selected = [...ids, ...selected.where((id) => !ids.contains(id))];
+        });
+      },
+      itemBuilder: (_, i) => Padding(
+        key: ValueKey(items[i].id),
+        padding: const EdgeInsets.only(bottom: 10),
+        child: _card(items[i], dragIndex: i < chosen.length ? i : null),
+      ),
+    );
+  }
+
+  Widget _card(Parameter p, {int? dragIndex}) {
     final locked = _lockedBase(p);
     var subtitle = DataTypes.label(p.dataType);
     if (p.unit != null && p.unit!.isNotEmpty) subtitle += ' · ${p.unit}';
@@ -450,6 +485,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
     return ListCard(
       height: 66,
       child: Row(children: [
+        // ручка перетягування — лише в обраних
+        if (dragIndex != null) ...[
+          ReorderableDragStartListener(
+            index: dragIndex,
+            child: Tooltip(
+              message: 'Перетягніть, щоб змінити порядок',
+              child: Icon(Icons.drag_indicator, color: AppColors.textMuted, size: 26),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
         if (!widget.catalog || p.isBase) ...[
         if (_pinned(p))
           const LockMark()

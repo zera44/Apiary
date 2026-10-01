@@ -494,13 +494,12 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       ),
     ));
     if (result == null) return;
-    // базові характеристики фізично не зберігаються — вони й так завжди є;
-    // ВИПРАВЛЕНО: id уже видаленого параметра теж прибираємо тут, щоб
-    // шаблон не носив посилання на нього назавжди (навіть попри те, що
-    // saveAttachedParameters і так відкине його при розміщенні на карті).
-    final base = await repo.allBaseParameterIds();
+    // порядок зі списку — для всіх майбутніх екземплярів шаблону; базові
+    // характеристики лишаються в ньому (так зберігається їхнє місце).
+    // id уже видаленого параметра прибираємо, щоб шаблон не носив
+    // посилання на нього назавжди.
     final dead = await repo.deletedParameterIds();
-    final ids = [for (final id in result) if (!base.contains(id) && !dead.contains(id)) id];
+    final ids = [for (final id in result) if (!dead.contains(id)) id];
     if (!mounted) return;
     // клітинки екземпляра не змінювались, поки був відкритий інший екран
     final still = [for (final p in targets) if (cells.containsKey(p)) p];

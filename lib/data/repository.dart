@@ -1120,8 +1120,8 @@ class Repository {
   }
 
   /// Повністю ЗАМІНИТИ набір прив'язаних параметрів (порядок має
-  /// значення). Базові характеристики сюди ніколи не записуються, і так
-  /// само ВИПРАВЛЕНО: id уже видалених (deleted=1) параметрів теж
+  /// значення; базові характеристики теж записуються — заради свого місця
+  /// в порядку). ВИПРАВЛЕНО: id уже видалених (deleted=1) параметрів
   /// відкидаються — інакше зі старого, ще не оновленого знімка (шаблон,
   /// панель вибору) могла відродитись "зомбі"-прив'язка до параметра,
   /// якого вже немає в каталозі.
@@ -1133,13 +1133,13 @@ class Repository {
   Future<void> setAttachedParameters(List<String> parameterIds, EntityRef e,
       {DatabaseExecutor? exec}) async {
     Future<void> run(DatabaseExecutor x) async {
-      final baseRows = await x.rawQuery('SELECT id FROM parameters WHERE is_base = 1');
-      final base = {for (final r in baseRows) r['id'] as String};
+      // базові характеристики теж записуються — лише щоб зберегти їхнє місце
+      // в порядку (вони й так є в усіх об'єктів свого типу)
       final deadRows = await x.rawQuery('SELECT id FROM parameters WHERE deleted = 1');
       final dead = {for (final r in deadRows) r['id'] as String};
       final ids = <String>[];
       for (final id in parameterIds) {
-        if (!base.contains(id) && !dead.contains(id) && !ids.contains(id)) ids.add(id);
+        if (!dead.contains(id) && !ids.contains(id)) ids.add(id);
       }
       final t = now();
       final (w, args) = _ownerWhere(e);
