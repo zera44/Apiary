@@ -58,7 +58,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          grep -E '\[E\]\s*$' build.log | sed -E 's/^[0-9:]+ \+[0-9]+( ~[0-9]+)? -[0-9]+: //; s/ \[E\]\s*$//' \
+          grep -E '^::group::❌' build.log | sed -E 's/^::group::❌ [^:]*: //; s/ \(failed\)$//' \
             | sort -u | head -20 | while IFS= read -r l; do echo "::error title=TEST::$l"; done || true
       - name: Бенчмарк швидкості
         shell: bash
