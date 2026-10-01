@@ -648,7 +648,32 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       return;
     }
     await _loadPanel(el);
-    if (mounted) setState(() => panelOpen = true);
+    if (!mounted) return;
+    setState(() => panelOpen = true);
+    _revealBesidePanel(el);
+  }
+
+  /// Панель «Характеристики» праворуч не повинна закривати обраний об'єкт:
+  /// якщо він під панеллю чи біля краю — зсунути карту, щоб він став
+  /// посередині вільної частини ліворуч від панелі.
+  void _revealBesidePanel(MapElement el) {
+    final view = grid.viewSize;
+    if (view.isEmpty) return;
+    Rect? r;
+    for (final c in mergedObjectOf(el, elements)) {
+      final cr = grid.cellRect(c.x, c.y);
+      r = r == null ? cr : r.expandToInclude(cr);
+    }
+    if (r == null) return;
+    const margin = 12.0;
+    final freeRight = view.width - CharacteristicsPanel.width - margin;
+    if (freeRight < 60) return; // вузьке вікно — місця ліворуч немає
+    const top = 60.0; // під назвою пасіки
+    final bottom = view.height - 90; // над кнопками внизу
+    var dx = 0.0, dy = 0.0;
+    if (r.right > freeRight || r.left < margin) dx = freeRight / 2 - r.center.dx;
+    if (r.top < top || r.bottom > bottom) dy = (top + bottom) / 2 - r.center.dy;
+    if (dx != 0 || dy != 0) grid.panBy(Offset(dx, dy));
   }
 
   Future<void> _loadPanel(MapElement el) async {
@@ -833,6 +858,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     await _loadPanel(el);
     if (!mounted) return;
     setState(() => panelOpen = true);
+    _revealBesidePanel(el);
     await _panelFill();
   }
 
