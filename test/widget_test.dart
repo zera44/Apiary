@@ -820,7 +820,10 @@ void main() {
     // видалили й не відмінили — повідомлення зникло, пасіку видалено з бази
     await tester.tap(find.byTooltip('Видалити'));
     await settle(tester);
-    await tester.pump(const Duration(seconds: 6));
+    // таймер повідомлення стартує після його появи — час іде кроками
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
