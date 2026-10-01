@@ -1322,9 +1322,8 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsOneWidget);
-    expect(find.text(kReleases.first.headline), findsOneWidget);
-    expect(find.text('ГОЛОВНЕ'), findsOneWidget);
-    expect(find.textContaining('гортайте'), findsOneWidget);
+    expect(find.text(kReleases.first.features.first), findsOneWidget);
+    expect(find.textContaining('Ще: виправлені помилки'), findsOneWidget);
     await tester.tap(find.text('До роботи'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
