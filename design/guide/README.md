@@ -36,3 +36,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_9_templates.pdf (→ assets/guide/beekeeper_templates.webp) — урок: пасічник із
   шаблонами, крок «Налаштування» в огляді меню навігації.
+
+- beekeeper_bust_17_professor.pdf (→ assets/guide/beekeeper_professor.webp) — урок: пасічник-
+  професор, крок «Навчання» в огляді меню навігації.
