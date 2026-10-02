@@ -857,6 +857,11 @@ void main() {
     expect(latest[period], '3');
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
+    // пасічник востаннє просить відкрити меню навігації
+    expect(find.textContaining('Напослідок покажу меню'), findsOneWidget);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    expect(find.textContaining('Напослідок покажу меню'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

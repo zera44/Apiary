@@ -18,6 +18,7 @@ const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
 const kLessonLeaningHeight = 192.0;
 
 /// Помічник-ведмедик (покусаний, з рамкою) — урок, форма огляду.
+const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
 const kLessonBear = 'assets/guide/bear_helper.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
@@ -127,7 +128,7 @@ class _BubblePainter extends CustomPainter {
 
 /// Хто стоїть в уроці: пасічник спирається на «Редагувати», на свою «стійку»
 /// (кнопки немає) чи замість нього — ведмежа-помічник.
-enum LessonPose { onButton, leaning, bear }
+enum LessonPose { onButton, leaning, pills, bear }
 
 /// Урок: персонаж на ОДНОМУ місці (не стрибає між кроками й вікнами) і хмарка
 /// праворуч від нього. Обидва малюнки пасічника — в одному масштабі, тож
@@ -146,6 +147,13 @@ List<Widget> lessonScene({
     // «стійка» нижче рук: малюнок вищий і ширший, руки — там само
     LessonPose.leaning => (
         kLessonBeekeeperLeaning,
+        kLessonLeaningHeight,
+        kLessonOnButtonLeft - 37.6,
+        base - 22.3
+      ),
+    // той самий кадр, що «стійка», але пасічник із бджолами-пігулками
+    LessonPose.pills => (
+        kLessonBeekeeperPills,
         kLessonLeaningHeight,
         kLessonOnButtonLeft - 37.6,
         base - 22.3

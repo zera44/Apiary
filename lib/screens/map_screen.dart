@@ -71,6 +71,10 @@ class MapScreen extends StatefulWidget {
   /// Кінець уроку: [magic] — «Хочу» (наступний урок), інакше «Я сам собі маг
   /// пасіки» (перенести пасіку [apiaryId] з пісочниці у справжні).
   final Future<void> Function(bool magic, String apiaryId)? onLessonDone;
+
+  /// Після «Я сам собі маг пасіки»: на справжній карті пасічник востаннє
+  /// просить відкрити меню навігації (кнопка в медовому ободку).
+  final bool menuTour;
   const MapScreen(
       {super.key,
       required this.repo,
@@ -79,6 +83,7 @@ class MapScreen extends StatefulWidget {
       this.openFill = false,
       this.next = NextHive.order,
       this.tutorial = false,
+      this.menuTour = false,
       this.onLessonDone});
 
   /// Урок: на карті ще немає вуликів.
@@ -95,7 +100,7 @@ class MapScreen extends StatefulWidget {
 const kLessonPanelBottom = 290.0;
 
 /// Кроки уроку «Базові поняття» на карті.
-enum _Lesson { place, congrats, openHive, inspect, magic }
+enum _Lesson { place, congrats, openHive, inspect, magic, menu, drawer }
 
 class _Undo {
   final List<MapElement>? restore;
@@ -131,6 +136,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---- урок «Базові поняття» ----
   _Lesson _lesson = _Lesson.place;
   bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
+  late bool _tourMenu = widget.menuTour; // пасічник просить відкрити меню
   bool _lessonFormOpen = false; // відкрита форма огляду (у ній свій пасічник)
   (int, int)? _lessonTarget; // куди перетягнути щойно поставлений вулик
   bool _lessonMoved = false; // перетягнули на підсвічену клітинку
@@ -143,6 +149,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final _fillKey = GlobalKey();
   final _actionBarKey = GlobalKey();
   final _zoomKey = GlobalKey();
+  final _menuKey = GlobalKey();
   final _panelBoxKey = GlobalKey();
   bool _inspectRead = false; // урок: перша хмарка про панель прочитана
   final _topKey = GlobalKey();
@@ -177,8 +184,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         // панель можна гортати вниз до «Оглянути»; решта кнопок у ній вимкнені
         if (!_inspectRead) return false; // спершу хмарка пасічника
         return inKey(_fillKey) || (panelOpen && inKey(_panelBoxKey));
+      case _Lesson.menu:
+        return inKey(_menuKey); // лише кнопка меню навігації
       case _Lesson.congrats:
       case _Lesson.magic:
+      case _Lesson.drawer:
         return false; // відповідь — у хмарці пасічника
     }
   }
@@ -230,7 +240,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (selectMode && pendingTemplate == null) return const [];
     if (_lessonFormOpen) return const [];
     // кнопка «Редагувати» є — спирається на неї; немає — на свою «стійку»
-    final pose = !selectMode && _lesson == _Lesson.place ? LessonPose.onButton : LessonPose.leaning;
+    final pose = !selectMode && _lesson == _Lesson.place
+        ? LessonPose.onButton
+        : (_lesson == _Lesson.magic || _lesson == _Lesson.menu) && !selectMode
+            ? LessonPose.pills // «навчу магії» - пасічник із бджолами-пігулками
+            : LessonPose.leaning;
     final msg = _lessonMessage();
     if (msg == null) return lessonScene(pose: pose);
     final (text, onTap) = msg;
@@ -246,7 +260,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               text: 'Хочу',
               bg: AppColors.accent,
               height: 40,
-              onPressed: done == null ? null : () => done(true, widget.apiary.id),
+              onPressed: () => setState(() => _lesson = _Lesson.menu),
             ),
           ),
           const SizedBox(width: 6),
@@ -314,6 +328,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ],
           null
         );
+      case _Lesson.menu:
+        return (
+          [
+            const TextSpan(text: 'Розкажу коротко, що ми маємо. '),
+            GuideBubble.highlight('Відкрий меню навігації'),
+          ],
+          null
+        );
+      case _Lesson.drawer:
+        return null;
       case _Lesson.magic:
         return (
           [
@@ -1588,7 +1612,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     return PopScope(
       canPop: !widget.tutorial,
       child: Scaffold(
-      drawer: widget.tutorial
+      drawer: widget.tutorial && _lesson != _Lesson.menu && _lesson != _Lesson.drawer
           ? null
           : AppDrawer(
               repo: repo,
@@ -1629,7 +1653,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Row(children: [
                     Builder(
-                      builder: (ctx) => widget.tutorial
+                      builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
+                          ? HoneyRing(
+                              key: _menuKey,
+                              on: true,
+                              child: CircleIconButton(
+                                icon: 'menu',
+                                bg: AppColors.roundBtn,
+                                iconColor: AppColors.text,
+                                size: 34,
+                                tooltip: 'Меню',
+                                onPressed: () {
+                                  setState(() => _lesson = _Lesson.drawer);
+                                  Scaffold.of(ctx).openDrawer();
+                                },
+                              ),
+                            )
+                          : widget.tutorial
                           ? CircleIconButton(
                               key: _backKey,
                               icon: 'back_arrow',
@@ -1639,13 +1679,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               tooltip: 'Назад',
                               onPressed: () => Navigator.of(ctx).pop(),
                             )
-                          : CircleIconButton(
-                              icon: 'menu',
-                              bg: AppColors.roundBtn,
-                              iconColor: AppColors.text,
-                              size: 34,
-                              tooltip: 'Меню',
-                              onPressed: () => Scaffold.of(ctx).openDrawer(),
+                          : HoneyRing(
+                              on: _tourMenu,
+                              child: CircleIconButton(
+                                icon: 'menu',
+                                bg: AppColors.roundBtn,
+                                iconColor: AppColors.text,
+                                size: 34,
+                                tooltip: 'Меню',
+                                onPressed: () {
+                                  if (_tourMenu) setState(() => _tourMenu = false);
+                                  Scaffold.of(ctx).openDrawer();
+                                },
+                              ),
                             ),
                     ),
                     const SizedBox(width: 10),
@@ -1749,6 +1795,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
+            // справжня карта після уроку: «Напослідок покажу меню навігації»
+            if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
+              ...lessonScene(pose: LessonPose.onButton, text: [
+                const TextSpan(text: 'Напослідок покажу меню навігації. '),
+                GuideBubble.highlight('Відкрий його'),
+              ]),
           ]);
         }),
       ),

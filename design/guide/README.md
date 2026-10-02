@@ -21,3 +21,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
   поняття»: порожня карта, «Додай нові через «Редагувати»».
 - beekeeper_bust_4_hands.pdf (→ assets/guide/beekeeper_hands.webp) — урок: пасічник спирається
   на «стійку», коли кнопки «Редагувати» немає (редагування, вибір шаблону).
+
+- beekeeper_bust_14_pills.pdf (→ assets/guide/beekeeper_pills.webp) — урок: «Хочеш, я тебе навчу
+  магії?» (пасічник із бджолами-пігулками).

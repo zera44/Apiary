@@ -83,7 +83,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
             final a = await real.getApiary(id);
             if (a == null || !nav.mounted) return;
             nav.popUntil((r) => r.isFirst);
-            nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: real, apiary: a)));
+            nav.push(MaterialPageRoute(
+                builder: (_) => MapScreen(repo: real, apiary: a, menuTour: true)));
           },
         ),
       ));
