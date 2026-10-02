@@ -145,17 +145,20 @@ class _AppDrawerState extends State<AppDrawer> {
           color: AppColors.popupBg,
           border: Border(top: BorderSide(color: AppColors.hive.withValues(alpha: 0.5)))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Image.asset(kLessonBeekeeperPills, height: 64, filterQuality: FilterQuality.medium),
-          const SizedBox(width: 8),
+        // пасічник стоїть руками на кнопці «Далі» - спирається на неї
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Image.asset(kLessonBeekeeperStung, height: 84, filterQuality: FilterQuality.medium),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text.rich(
-              TextSpan(children: text),
-              style: TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.3),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 22),
+              child: Text.rich(
+                TextSpan(children: text),
+                style: TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.3),
+              ),
             ),
           ),
         ]),
-        const SizedBox(height: 8),
         PillButton(
           text: last ? 'Зрозуміло' : 'Далі',
           bg: AppColors.accent,

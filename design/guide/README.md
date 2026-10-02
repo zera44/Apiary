@@ -24,3 +24,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_14_pills.pdf (→ assets/guide/beekeeper_pills.webp) — урок: «Хочеш, я тебе навчу
   магії?» (пасічник із бджолами-пігулками).
+
+- beekeeper_bust_13_stung_nohive.pdf (→ assets/guide/beekeeper_stung.webp) — урок: покусаний
+  пасічник по пояс, спирається на «Далі» в огляді меню навігації.
