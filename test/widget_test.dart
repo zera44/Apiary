@@ -20,6 +20,7 @@ import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/screens/tutorial_screen.dart';
+import 'package:apiary/ui/app_drawer.dart';
 import 'package:apiary/ui/fill_values_dialog.dart';
 import 'package:apiary/ui/first_hints.dart';
 import 'package:apiary/screens/whats_new_screen.dart';
@@ -862,6 +863,23 @@ void main() {
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     expect(find.textContaining('Напослідок покажу меню'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('навчання: пасічник проходить по пунктах меню навігації', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(AppDrawer(repo: repo, currentApiary: a, tour: true)));
+    await settle(tester);
+    expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
+    for (final t in ['рамки, корми, ліки', 'усі записи оглядів', 'наліпка на вулику',
+        'Характеристики» (що записуємо', 'повертайся сюди', 'щось не так чи є ідея']) {
+      await tester.tap(find.text('Далі'));
+      await settle(tester);
+      expect(find.textContaining(t), findsOneWidget);
+    }
+    expect(find.text('Зрозуміло'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
