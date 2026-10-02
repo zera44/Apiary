@@ -573,18 +573,36 @@ class _ItemDialogState extends State<_ItemDialog> {
     Navigator.pop(context, _ItemResult(name, _unitValue, _photo, min: min, receive: receive));
   }
 
-  Widget _chip(String label, String value) => ChoiceChip(
-        label: Text(label),
-        // компактні: з клавіатурою на екрані діалог і так невисокий
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        selected: _unit == value,
-        onSelected: (_) => setState(() {
+  /// Одиниця виміру - плитка, як тип даних параметра: обрана медова.
+  Widget _chip(String label, String value) {
+    final selected = _unit == value;
+    final fg = selected ? Colors.white : AppColors.text;
+    return Material(
+      color: selected ? AppColors.accent : AppColors.typeBtn,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => setState(() {
           _unit = value;
           _error = null;
         }),
-      );
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: selected ? AppColors.create : AppColors.hive.withValues(alpha: 0.25)),
+          ),
+          child: Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  color: fg, fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -610,10 +628,15 @@ class _ItemDialogState extends State<_ItemDialog> {
             const SizedBox(height: 14),
             Text('Одиниця виміру', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (final u in kStockUnits) _chip(u, u),
-              _chip('інша…', ''),
-            ]),
+            // плитки по три в ряд
+            LayoutBuilder(builder: (context, box) {
+              final w = (box.maxWidth - 16) / 3;
+              return Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final u in kStockUnits) SizedBox(width: w, height: 42, child: _chip(u, u)),
+                SizedBox(width: w, height: 42, child: _chip('інша…', '')),
+              ]);
+            }),
+            const SizedBox(height: 4),
             if (_unit == '')
               TextField(
                 controller: _custom,
