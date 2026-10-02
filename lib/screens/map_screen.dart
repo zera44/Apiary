@@ -68,8 +68,9 @@ class MapScreen extends StatefulWidget {
   /// звичайні підказки першого запуску не показуються.
   final bool tutorial;
 
-  /// Кінець уроку: [magic] — «Хочу» (наступний урок), інакше «Я сам собі маг
-  /// пасіки» (перенести пасіку [apiaryId] з пісочниці у справжні).
+  /// Кінець уроку: пасіка [apiaryId] з пісочниці переноситься у справжні.
+  /// [magic] — урок пройшов повний огляд меню («червона пігулка»), інакше
+  /// «синя пігулка» (меню ще покаже справжня карта).
   final Future<void> Function(bool magic, String apiaryId)? onLessonDone;
 
   /// Після «Я сам собі маг пасіки»: на справжній карті пасічник востаннє
@@ -315,7 +316,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.congrats:
         return (
           const [TextSpan(text: 'З легким стартом, друже!')],
-          // кінець уроку (після огляду меню): назад до плиток уроків
+          // кінець уроку (після огляду меню): справжня карта зі своїм вуликом
           () => widget.onLessonDone?.call(true, widget.apiary.id)
         );
       case _Lesson.openHive:

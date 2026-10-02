@@ -56,16 +56,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           tutorial: true,
           onLessonDone: (magic, apiaryId) async {
             if (finishing) return;
-            if (magic) {
-              // урок 2 ще готується — назад до плиток уроків
-              nav.popUntil((r) => r == lessonsRoute);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Урок «Магія пасіки» вже в майстерні - зовсім скоро!')));
-              }
-              return;
-            }
-            // «Я сам собі маг пасіки»: пасіка з уроку стає справжньою, далі —
+            // Кінець уроку: пасіка з уроку стає справжньою, далі —
             // справжня карта (пасічник уже не веде)
             final real = widget.realRepo;
             if (real == null) {
@@ -83,8 +74,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
             final a = await real.getApiary(id);
             if (a == null || !nav.mounted) return;
             nav.popUntil((r) => r.isFirst);
+            // «синя пігулка» (magic=false): пасічник ще покаже меню; після повного
+            // огляду меню (magic=true) - одразу справжня карта зі своїм вуликом
             nav.push(MaterialPageRoute(
-                builder: (_) => MapScreen(repo: real, apiary: a, menuTour: true)));
+                builder: (_) => MapScreen(repo: real, apiary: a, menuTour: !magic)));
           },
         ),
       ));
