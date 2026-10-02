@@ -184,7 +184,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return !panelOpen && onHive();
       case _Lesson.inspect:
         // панель можна гортати вниз до «Оглянути»; решта кнопок у ній вимкнені
-        if (!_inspectRead) return false; // спершу хмарка пасічника
+        // спершу хмарка пасічника, але панель гортати можна й тоді
+        if (!_inspectRead) return panelOpen && inKey(_panelBoxKey);
         return inKey(_fillKey) || (panelOpen && inKey(_panelBoxKey));
       case _Lesson.menu:
         return inKey(_menuKey); // лише кнопка меню навігації
@@ -1843,7 +1844,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onIcon: _lessonInspect ? () {} : () => _panelGuard(_panelIcon),
                       onColor: _lessonInspect ? () {} : () => _panelGuard(_panelColor),
                       onEditParams: _lessonInspect ? () {} : () => _panelGuard(_panelEditParams),
-                      onFill: () => _panelGuard(_panelFill),
+                      onFill: _lessonInspect && !_inspectRead ? () {} : () => _panelGuard(_panelFill),
                       onVisited: (panelElement?.isHive ?? false)
                           ? (_lessonInspect ? () {} : () => _panelGuard(_panelVisited))
                           : null,
