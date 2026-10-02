@@ -47,6 +47,9 @@ class GuideBubble extends StatelessWidget {
   /// «Пропустити».
   final Widget? below;
 
+  /// Над хмаркою, праворуч (напр., «завершити навчання», коли під нею кнопка).
+  final Widget? above;
+
   /// Висота пасічника (компактна підказка — менша).
   final double imageHeight;
 
@@ -57,6 +60,7 @@ class GuideBubble extends StatelessWidget {
       required this.text,
       this.image = 'assets/guide/beekeeper.webp',
       this.below,
+      this.above,
       this.imageHeight = 170,
       this.gap = 70,
       this.imageLeft = 12});
@@ -87,6 +91,7 @@ class GuideBubble extends StatelessWidget {
         ],
         Expanded(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (above != null) Align(alignment: Alignment.centerRight, child: above),
             CustomPaint(
               painter: _BubblePainter(fill: AppColors.popupBg, border: AppColors.create),
               child: Padding(
@@ -159,12 +164,16 @@ List<Widget> lessonScene({
   VoidCallback? onFinish,
 }) {
   final base = kLessonOnButtonBottom + bottomInset;
-  // «завершити навчання» — посиланням під хмаркою (під кнопкою, якщо вона є)
+  // «завершити навчання» — посиланням під хмаркою; якщо там уже кнопка
+  // («Продовжити», пігулки) — над хмаркою
   final finish = onFinish == null ? null : LessonFinishLink(onPressed: onFinish);
+  Widget? above;
   if (finish != null) {
-    below = below == null
-        ? finish
-        : Column(mainAxisSize: MainAxisSize.min, children: [below, finish]);
+    if (below == null) {
+      below = finish;
+    } else {
+      above = finish;
+    }
   }
   // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
   // не обрізались, а хмарка починалась після нього
@@ -196,7 +205,7 @@ List<Widget> lessonScene({
   };
   final bubble = text == null
       ? null
-      : GuideBubble(text: text, image: null, imageLeft: 0, below: below);
+      : GuideBubble(text: text, image: null, imageLeft: 0, below: below, above: above);
   return [
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
     if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.bear))
