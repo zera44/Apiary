@@ -79,6 +79,73 @@ class Repository {
   Future<void> prepareLikeFreshInstall() async {
     await init();
     await seedDefaultTemplates(); // «Вулик» і «Лежак» — один раз
+    await seedBeeFramesParameter();
+  }
+
+  /// Назва необов'язкової характеристики «скільки вуличок зайняли бджоли».
+  static const kBeeFramesName = 'Кількість вуличок з бджолами';
+
+  /// Необов'язкова характеристика [kBeeFramesName] (ціле число) — один раз на
+  /// базу додається до ВСІХ вуликів: у шаблони (кожна клітинка-вулик) і до
+  /// вже поставлених вуликів. Не базова: її можна прибрати з вулика чи
+  /// шаблону в «Параметрах», і вона більше не повернеться.
+  Future<void> seedBeeFramesParameter() async {
+    const key = 'param_bee_frames_v1';
+    if (await getMeta(key) != null) return;
+    String? pid;
+    for (final p in await listParameters()) {
+      if (p.name == kBeeFramesName && p.dataType == DataTypes.int_) {
+        pid = p.id;
+        break;
+      }
+    }
+    pid ??= await addParameter(kBeeFramesName, dataType: DataTypes.int_);
+    // шаблони: кожна клітинка-вулик отримує характеристику
+    for (final t in await listTemplates()) {
+      var changed = false;
+      final cells = <String, dynamic>{};
+      for (final e in t.cells.entries) {
+        final v = CellValue.parse(e.value);
+        if (v.isHive && !v.parameters.contains(pid)) {
+          cells[e.key] = v.copyWith(parameters: [...v.parameters, pid]).toJson();
+          changed = true;
+        } else {
+          cells[e.key] = e.value;
+        }
+      }
+      if (changed) await updateTemplate(t.id, cells: cells);
+    }
+    // уже поставлені вулики (групою чи окремою клітинкою)
+    final owners = <EntityRef>{};
+    for (final r in await db.rawQuery(
+        "SELECT id, group_id FROM elements WHERE deleted = 0 AND type = 'hive'")) {
+      final gid = r['group_id'] as String?;
+      owners.add(gid != null ? EntityRef.group(gid) : EntityRef.element(r['id'] as String));
+    }
+    final t = now();
+    for (final o in owners) {
+      final (w, args) = _ownerWhere(o);
+      final rows = await db.rawQuery(
+          'SELECT parameter_id, sort_order FROM element_parameters WHERE $w AND deleted = 0',
+          args);
+      if (rows.any((r) => r['parameter_id'] == pid)) continue;
+      var order = 0;
+      for (final r in rows) {
+        final so = ((r['sort_order'] as num?) ?? 0).toInt();
+        if (so >= order) order = so + 1;
+      }
+      await db.insert('element_parameters', {
+        'id': newId(),
+        'group_id': o.groupId,
+        'element_id': o.elementId,
+        'parameter_id': pid,
+        'updated_at': t,
+        'synced': 0,
+        'sort_order': order,
+        'deleted': 0,
+      });
+    }
+    await setMeta(key, '1');
   }
 
   // ---------------------------------------------------------------------
