@@ -157,16 +157,7 @@ class _AppDrawerState extends State<AppDrawer> {
         if (widget.tour && widget.onFinishTutorial != null)
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: widget.onFinishTutorial,
-              child: Text('завершити навчання',
-                  style: TextStyle(
-                      color: AppColors.create,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      decoration: TextDecoration.underline,
-                      decorationColor: AppColors.create)),
-            ),
+            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 150),
           ),
         // пасічник стоїть руками на кнопці «Далі» - спирається на неї
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [

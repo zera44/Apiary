@@ -205,7 +205,16 @@ List<Widget> lessonScene({
   };
   final bubble = text == null
       ? null
-      : GuideBubble(text: text, image: null, imageLeft: 0, below: below, above: above);
+      : GuideBubble(
+          text: text,
+          image: null,
+          imageLeft: 0,
+          below: below,
+          above: above,
+          // табличка «завершити навчання» вища за звичайну кнопку
+          gap: identical(below, finish)
+              ? LessonFinishLink.heightFor(LessonFinishLink.kSignWidth) + 4
+              : 70);
   return [
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
     if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.bear))
@@ -246,25 +255,52 @@ List<Widget> lessonScene({
   ];
 }
 
-/// «завершити навчання» під хмаркою пасічника: навчання необов'язкове.
+/// «завершити навчання» — дерев'яна табличка на мотузках (малюнок автора,
+/// assets/guide/sign_blank.webp; напис — текстом, щоб був чіткий).
+const kSignBlank = 'assets/guide/sign_blank.webp';
+
 class LessonFinishLink extends StatelessWidget {
   final VoidCallback onPressed;
-  const LessonFinishLink({super.key, required this.onPressed});
+  final double width;
+  const LessonFinishLink({super.key, required this.onPressed, this.width = kSignWidth});
+
+  /// Табличка 5:3; напис — на середній дошці.
+  static const kSignWidth = 180.0;
+  static double heightFor(double w) => w * 0.6;
 
   @override
-  Widget build(BuildContext context) => TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-            minimumSize: const Size(0, 28),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-        child: Text('завершити навчання',
-            style: TextStyle(
-                color: AppColors.create,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline,
-                decorationColor: AppColors.create)),
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'завершити навчання',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onPressed,
+          child: SizedBox(
+            width: width,
+            height: heightFor(width),
+            child: Stack(alignment: Alignment.center, children: [
+              Positioned.fill(
+                  child: Image.asset(kSignBlank, fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium)),
+              // середня дошка — трохи нижче центру малюнка
+              Align(
+                alignment: const Alignment(0, 0.16),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: width * 0.12),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('завершити навчання',
+                        style: TextStyle(
+                            color: const Color(0xFFFFF3DC),
+                            fontSize: width * 0.075,
+                            fontWeight: FontWeight.w800,
+                            shadows: const [Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))])),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
       );
 }
 
