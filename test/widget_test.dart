@@ -832,8 +832,21 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    expect(find.textContaining('Синя пігулка'), findsOneWidget);
-    await tester.tap(find.text('Синя'));
+    // одразу далі - огляд меню навігації, без вибору пігулок
+    expect(find.textContaining('Синя пігулка'), findsNothing);
+    expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.text('Далі'));
+      await settle(tester);
+    }
+    await tester.tap(find.text('Зрозуміло'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.textContaining('З легким стартом'), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
@@ -850,13 +863,8 @@ void main() {
     expect(latest[period], '3');
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
-    // пасічник востаннє просить відкрити меню навігації
-    expect(find.textContaining('Наостанок покажу меню'), findsOneWidget);
-    await tester.tap(find.byTooltip('Меню'));
-    await settle(tester);
+    // меню вже показали - більше пасічник не з'являється
     expect(find.textContaining('Наостанок покажу меню'), findsNothing);
-    // у меню - одна репліка пасічника про навчання
-    expect(find.textContaining('керувати своєю пасікою'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

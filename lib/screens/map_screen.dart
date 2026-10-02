@@ -1301,10 +1301,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       await _saveFill(cur, result);
       _fillSaved = true;
     }
-    // урок: огляд зроблено — пасічник хвалить і пропонує «магію»
+    // урок: огляд зроблено — одразу далі, до меню навігації
     if (result != null && lesson != null && mounted) {
       setState(() {
-        _lesson = _Lesson.magic;
+        _lesson = _Lesson.menu;
         panelOpen = false;
       });
     }
