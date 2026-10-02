@@ -527,7 +527,7 @@ class _FillDialogState extends State<_FillDialog> {
         onTap: line.tapNext ? () => setState(() => _step++) : null,
         below: line.tapNext
             ? Text('Торкнись, щоб продовжити',
-                style: TextStyle(color: AppColors.create, fontSize: 14, fontWeight: FontWeight.w700))
+                style: TextStyle(color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800))
             : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
       ),

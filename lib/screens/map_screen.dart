@@ -269,7 +269,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       below: onTap == null
           ? null
           : Text('Торкнись, щоб продовжити',
-              style: TextStyle(color: AppColors.create, fontSize: 14, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800)),
     );
   }
 
