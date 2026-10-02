@@ -1489,13 +1489,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   /// Урок: вулик, чию панель відкрили, — обведений.
   Set<String>? get _lessonOutlined {
+    if (!widget.tutorial) return null;
+    // «Натисни на свій вулик» — вулик уже обведено
+    if (!selectMode && !panelOpen && _lesson == _Lesson.openHive) {
+      return {for (final e in elements) if (e.isHive) e.id};
+    }
     final el = panelElement;
-    if (!widget.tutorial || !panelOpen || el == null || !el.isHive) return null;
+    if (!panelOpen || el == null || !el.isHive) return null;
     return {for (final e in mergedObjectOf(el, elements)) e.id};
   }
 
-  String? get _lessonPanelKey =>
-      widget.tutorial && panelOpen ? panelElement?.id : null;
+  String? get _lessonPanelKey => !widget.tutorial
+      ? null
+      : panelOpen
+          ? panelElement?.id
+          : (!selectMode && _lesson == _Lesson.openHive ? 'open-hive' : null);
 
   List<SceneCell> _scene() {
     if (_sceneBase == null ||
