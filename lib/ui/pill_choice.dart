@@ -84,7 +84,9 @@ List<InlineSpan> pillChoiceSpans(String lead,
 /// Пасічник «як Нео» при першому «Почати» - на тлі порожнього екрана «Мої
 /// пасіки»: true - червона (навчання), false - синя (без навчання), null -
 /// передумали («назад»).
-Future<bool?> showPillChoice(NavigatorState nav) {
+/// [onLearn] — екран навчання: червона пігулка ставить його на місце цієї
+/// сторінки миттєво (без мигання головного екрана між ними).
+Future<bool?> showPillChoice(NavigatorState nav, {WidgetBuilder? onLearn}) {
   return nav.push<bool>(MaterialPageRoute<bool>(
     builder: (ctx) => PopScope(
       canPop: false,
@@ -109,7 +111,14 @@ Future<bool?> showPillChoice(NavigatorState nav) {
                     child: PillChoice(
                         text: 'Червона',
                         color: kPillRed,
-                        onPressed: () => Navigator.of(ctx).pop(true))),
+                        onPressed: () => onLearn == null
+                            ? Navigator.of(ctx).pop(true)
+                            : Navigator.of(ctx).pushReplacement(
+                                PageRouteBuilder<void>(
+                                    transitionDuration: Duration.zero,
+                                    reverseTransitionDuration: Duration.zero,
+                                    pageBuilder: (c, _, __) => onLearn(c)),
+                                result: true))),
               ]),
             ),
           ]),

@@ -31,16 +31,14 @@ Future<void> openStart(NavigatorState nav, Repository repo) async {
   // (червона - навчання, синя - без нього); показується один раз
   if (await repo.getMeta('intro_done') == null && (await repo.listApiaries()).isEmpty) {
     if (!nav.mounted) return;
-    final learn = await showPillChoice(nav);
+    // червона: урок одразу стає на місце сторінки вибору (без проміжних екранів)
+    final learn = await showPillChoice(nav,
+        onLearn: (_) => TutorialScreen(realRepo: repo, autoStart: true));
     if (learn == null || !nav.mounted) return; // передумали - лишились на головному
     // червона: позначка ставиться лише в кінці навчання (TutorialScreen) —
     // вийшли посеред уроку, і наступне «Почати» знову пропонує вибір
     if (!learn) await repo.setMeta('intro_done', '1');
-    if (learn) {
-      await nav.push(MaterialPageRoute(
-          builder: (_) => TutorialScreen(realRepo: repo, autoStart: true)));
-      return;
-    }
+    if (learn) return; // урок уже відкрито замість сторінки вибору
   }
   final a = await repo.startApiary();
   if (!nav.mounted) return;

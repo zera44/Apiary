@@ -67,8 +67,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
       final nav = Navigator.of(context);
       final lessonsRoute = ModalRoute.of(context);
       var finishing = false; // подвійний тап по фіналу не імпортує пасіку двічі
-      await nav.push(MaterialPageRoute(
-        builder: (_) => ApiaryListScreen(
+      // одразу після вибору пігулки — без анімації переходу: екран «Мої пасіки»
+      // уроку стає на місце такого самого порожнього, нічого не смикається
+      Widget lessonPage(BuildContext _) => ApiaryListScreen(
           repo: repo,
           tutorial: true,
           onLessonDone: (magic, apiaryId) async {
@@ -98,8 +99,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
             nav.push(MaterialPageRoute(
                 builder: (_) => MapScreen(repo: real, apiary: a, menuTour: !magic)));
           },
-        ),
-      ));
+        );
+      await nav.push(widget.autoStart
+          ? PageRouteBuilder<void>(
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+              pageBuilder: (ctx, _, __) => lessonPage(ctx))
+          : MaterialPageRoute<void>(builder: lessonPage));
+      // вийшли з уроку, що почався з пігулки, — назад на головний, а не до плиток
+      if (widget.autoStart && mounted) nav.pop();
     } finally {
       await sandbox?.db.close();
       if (mounted) setState(() => _opening = false);
@@ -108,6 +116,20 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // після червоної пігулки: поки відкривається урок — той самий порожній
+    // екран «Мої пасіки», що й під пасічником із пігулками
+    if (widget.autoStart) {
+      return Scaffold(
+        body: SafeArea(
+          child: Stack(children: [
+            Column(children: [
+              TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
+            ]),
+            const Positioned.fill(child: ScreenFrame()),
+          ]),
+        ),
+      );
+    }
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
