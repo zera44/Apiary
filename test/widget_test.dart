@@ -423,7 +423,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    await tester.tap(find.text('Оглянуто, змін немає'));
+    await tester.tap(find.text('Змін немає'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }

@@ -184,30 +184,38 @@ class CharacteristicsPanel extends StatelessWidget {
                 ),
                 if (data.placed) ...[
                   const SizedBox(height: 10),
-                  HoneyRing(
-                    key: fillKey,
-                    on: highlightFill,
-                    radius: 16,
-                    child: PillButton(
-                      text: 'Оглянути',
-                      bg: AppColors.roundBtn,
-                      fg: AppColors.text,
-                      height: 38,
-                      fontSize: 13,
-                      onPressed: onFill,
+                  Row(children: [
+                    Expanded(
+                      child: HoneyRing(
+                        key: fillKey,
+                        on: highlightFill,
+                        radius: 16,
+                        child: PillButton(
+                          text: 'Оглянути',
+                          bg: AppColors.roundBtn,
+                          fg: AppColors.text,
+                          height: 38,
+                          fontSize: 13,
+                          width: double.infinity,
+                          onPressed: onFill,
+                        ),
+                      ),
                     ),
-                  ),
-                  if (onVisited != null) ...[
-                    const SizedBox(height: 8),
-                    PillButton(
-                      text: 'Оглянуто, змін немає',
-                      bg: AppColors.darkBtn,
-                      fg: AppColors.text,
-                      height: 38,
-                      fontSize: 13,
-                      onPressed: onVisited,
-                    ),
-                  ],
+                    if (onVisited != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: PillButton(
+                          text: 'Змін немає',
+                          bg: AppColors.darkBtn,
+                          fg: AppColors.text,
+                          height: 38,
+                          fontSize: 13,
+                          width: double.infinity,
+                          onPressed: onVisited,
+                        ),
+                      ),
+                    ],
+                  ]),
                   if (onQr != null) ...[
                     const SizedBox(height: 10),
                     PillButton(
