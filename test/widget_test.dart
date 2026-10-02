@@ -52,6 +52,12 @@ void main() {
     WhatsNewScreen.enabled = false;
   });
 
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
   /// Вибір шаблону: на порожній карті він відкривається сам, інакше — «+».
   Future<void> openTemplates(WidgetTester tester) async {
     if (find.text('Оберіть шаблон').evaluate().isNotEmpty ||
@@ -62,12 +68,6 @@ void main() {
     await settle(tester);
   }
 
-  Future<void> settle(WidgetTester tester) async {
-    for (var i = 0; i < 5; i++) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-      await tester.pump(const Duration(milliseconds: 50));
-    }
-  }
 
   /// Увесь застосунок у вікні як у телефона (головний екран з усіма
   /// кнопками вміщується без прокрутки).
