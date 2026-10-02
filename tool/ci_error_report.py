@@ -20,6 +20,19 @@ def main(path):
     except OSError as e:
         print(f"::error::Не вдалось прочитати {path}: {e}")
         return
+    # блоки впалих тестів: назва + початок помилки (довгі рядки обрізаємо)
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith('::group::❌'):
+            blk = []
+            j = i
+            while j < len(lines) and not lines[j].startswith('::endgroup::'):
+                blk.append(lines[j][:240])
+                j += 1
+            enc = "\n".join(blk[:22]).replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+            print(f"::error title=FAILED TEST::{enc}")
+            i = j
+        i += 1
     picked = []
     for i, line in enumerate(lines):
         if MARKERS.search(line):
