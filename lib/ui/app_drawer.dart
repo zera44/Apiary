@@ -133,9 +133,11 @@ class _AppDrawerState extends State<AppDrawer> {
   VoidCallback? get onBindQrRow => widget.onBindQrRow;
 
   /// Урок: пункт [i] підсвічено, натискання вимкнено.
-  Widget _t(int i, Widget child) =>
-      widget.tour
-          ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
+  Widget _t(int i, Widget child) => widget.tour
+      ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
+      // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
+      : widget.hint != null
+          ? HoneyRing(on: i == 5, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -150,7 +152,7 @@ class _AppDrawerState extends State<AppDrawer> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // пасічник стоїть руками на кнопці «Далі» - спирається на неї
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Image.asset(hint != null ? kLessonBeekeeperStung : (kDrawerTourImage[_step] ?? kLessonBeekeeperStung), height: 84, filterQuality: FilterQuality.medium),
+          Image.asset(hint != null ? kLessonBeekeeperProfessor : (kDrawerTourImage[_step] ?? kLessonBeekeeperStung), height: 84, filterQuality: FilterQuality.medium),
           const SizedBox(width: 10),
           Expanded(
             child: Padding(
