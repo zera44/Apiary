@@ -27,3 +27,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_13_stung_nohive.pdf (→ assets/guide/beekeeper_stung.webp) — урок: покусаний
   пасічник по пояс, спирається на «Далі» в огляді меню навігації.
+
+- beekeeper_bust_16_laptop.pdf (→ assets/guide/beekeeper_laptop.webp) — урок: пасічник за
+  ноутбуком, крок «Склад» в огляді меню навігації.

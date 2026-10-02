@@ -21,6 +21,8 @@ const kLessonLeaningHeight = 192.0;
 const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
 /// Покусаний пасічник по пояс - спирається на кнопку «Далі» в меню-огляді.
 const kLessonBeekeeperStung = 'assets/guide/beekeeper_stung.webp';
+/// Пасічник за ноутбуком - «Склад» в огляді меню.
+const kLessonBeekeeperLaptop = 'assets/guide/beekeeper_laptop.webp';
 const kLessonBear = 'assets/guide/bear_helper.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
