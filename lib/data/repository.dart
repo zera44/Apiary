@@ -988,6 +988,14 @@ class Repository {
   }
 
   /// Код, прив'язаний до об'єкта/групи, або null.
+  /// Номер наліпки для коду (null — невідомий).
+  Future<int?> qrNumberOf(String code) async {
+    final rows = await db.rawQuery(
+        'SELECT number FROM qr_codes WHERE code = ? ORDER BY deleted ASC, updated_at DESC LIMIT 1',
+        [code]);
+    return rows.isEmpty ? null : rows.first['number'] as int?;
+  }
+
   Future<String?> qrFor(EntityRef e) async {
     final (w, args) = _ownerWhere(e);
     final rows = await db.rawQuery(
