@@ -1618,7 +1618,7 @@ void main() {
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає
-    expect(find.byTooltip("Додати об'єкт"), findsOneWidget);
+    expect(find.byTooltip('Завершити додавання'), findsOneWidget); // «+» став «×»
     expect(tester.takeException(), isNull);
   });
 
