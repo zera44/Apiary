@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'mode_toggle.dart';
 import 'theme.dart';
 
 /// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
@@ -14,8 +15,9 @@ const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
 
 /// Коли кнопки «Редагувати» немає (редагування, вибір шаблону, форма огляду)
 /// — пасічник спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
-const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
-const kLessonLeaningHeight = 232.0;
+/// Пасічник по пояс, руки спираються на перемикач режимів унизу ліворуч.
+const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_on_toggle.webp';
+const kLessonLeaningHeight = 170.0;
 
 /// Помічник-ведмедик (покусаний, з рамкою) — урок, форма огляду.
 const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
@@ -152,6 +154,7 @@ List<Widget> lessonScene({
   Widget? below,
   VoidCallback? onTap,
   double bottomInset = 0,
+  bool? toggleEditing,
 }) {
   final base = kLessonOnButtonBottom + bottomInset;
   // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
@@ -160,11 +163,12 @@ List<Widget> lessonScene({
   final (img, h, left, bottom) = switch (pose) {
     LessonPose.onButton => (kLessonBeekeeper, 170.0, kLessonOnButtonLeft, base),
     // «стійка» нижче рук: малюнок вищий і ширший, руки — там само
+    // руки — на перемикачі режимів (унизу ліворуч)
     LessonPose.leaning => (
         kLessonBeekeeperLeaning,
         kLessonLeaningHeight,
-        8.0,
-        base - 22.3
+        kToggleLeft + (kToggleW - kLessonLeaningHeight * 500 / 709) / 2,
+        kToggleLessonBottom + kToggleH - 10 + bottomInset
       ),
     // той самий кадр, що «стійка», але пасічник із бджолами-пігулками
     LessonPose.pills => (
@@ -179,6 +183,13 @@ List<Widget> lessonScene({
       ? null
       : GuideBubble(text: text, image: null, imageLeft: 0, below: below);
   return [
+    // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
+    if (toggleEditing != null && pose == LessonPose.leaning)
+      Positioned(
+        left: kToggleLeft,
+        bottom: kToggleLessonBottom + bottomInset,
+        child: IgnorePointer(child: ModeToggle(editing: toggleEditing, decorative: true)),
+      ),
     Positioned(
       left: left,
       bottom: bottom,

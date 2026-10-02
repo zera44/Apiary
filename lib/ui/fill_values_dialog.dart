@@ -557,6 +557,7 @@ class _FillDialogState extends State<_FillDialog> {
                 onPressed: () => setState(() => _step = _step == 0 ? 2 : _step + 1))
             : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
+        toggleEditing: false,
       ),
     ]));
   }

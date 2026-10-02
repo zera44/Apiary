@@ -17,6 +17,7 @@ import '../ui/first_hints.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/fill_values_dialog.dart';
 import '../ui/grid_view.dart';
+import '../ui/mode_toggle.dart';
 import '../ui/pill_choice.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
@@ -92,7 +93,7 @@ class MapScreen extends StatefulWidget {
   static final tutorialNoHives = <InlineSpan>[
     const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим '),
     GuideBubble.highlight('«Редагування»'),
-    const TextSpan(text: ' унизу праворуч'),
+    const TextSpan(text: ' унизу ліворуч'),
   ];
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -280,7 +281,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ? LessonPose.pills // «навчу магії» - пасічник із бджолами-пігулками
             : LessonPose.leaning;
     final msg = _lessonMessage();
-    const up = 0.0;
+    // пасічник із пігулками стоїть над перемикачем (той — на його місці)
+    final up = pose == LessonPose.pills ? kToggleLessonBottom + kToggleH - 4 : 0.0;
     if (msg == null) return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up);
     final (text, onTap) = msg;
     if (_lesson == _Lesson.magic && !selectMode) {
@@ -900,7 +902,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ...lessonScene(
           pose: LessonPose.leaning,
           text: spans,
-          bottomInset: MediaQuery.of(context).padding.bottom),
+          bottomInset: MediaQuery.of(context).padding.bottom,
+          toggleEditing: true),
     ]);
   }
 
@@ -1857,13 +1860,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     onPressed: () => grid.zoomBy(-4)),
               ]),
             ),
-            // перемикач режимів: унизу праворуч (у редагуванні — над панеллю дій,
-            // коли відкрита панель «Характеристики» — лівіше від неї)
+            // перемикач режимів: унизу ліворуч (у редагуванні — над панеллю дій;
+            // в уроці — завжди на одному місці, на ньому спирається пасічник)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
-              right: panelOpen ? CharacteristicsPanel.width + 12 : 14,
-              bottom: selectMode ? 86 : 16,
+              left: kToggleLeft,
+              bottom: widget.tutorial ? kToggleLessonBottom : (selectMode ? 86 : 16),
               child: _modeToggle(),
             ),
             // розміщення шаблону завершує те саме «Готово», що й редагування
@@ -1994,80 +1997,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
-  /// Перемикач режимів унизу праворуч: «Робочий» (дивимось інформацію й проводимо
+  /// Перемикач режимів унизу ліворуч: «Робочий» (дивимось інформацію й проводимо
   /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
   /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
   Widget _modeToggle() {
-    const segW = 64.0, segH = 46.0, pad = 4.0;
-    Widget seg(String tip, IconData icon, bool on, VoidCallback? tap) => Tooltip(
-          message: tip,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: tap,
-            child: SizedBox(
-              width: segW,
-              height: segH,
-              child: Center(
-                child: AnimatedScale(
-                  scale: on ? 1.12 : 1,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(icon,
-                      size: 24, color: on ? Colors.white : AppColors.textMuted),
-                ),
-              ),
-            ),
-          ),
-        );
     return HoneyRing(
       on: widget.tutorial && !selectMode && _lesson == _Lesson.place,
       radius: 28,
-      child: Container(
+      child: ModeToggle(
         key: _editKey,
-        padding: const EdgeInsets.all(pad),
-        decoration: BoxDecoration(
-          color: AppColors.roundBtn,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
-          boxShadow: const [
-            BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
-          ],
-        ),
-        child: Stack(children: [
-          // рухомий «повзунок» під активним режимом
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            left: selectMode ? segW : 0,
-            top: 0,
-            width: segW,
-            height: segH,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color.lerp(AppColors.accent, Colors.white, 0.22)!,
-                    AppColors.accent,
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                      color: AppColors.accent.withValues(alpha: 0.55),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2)),
-                ],
-              ),
-            ),
-          ),
-          Row(mainAxisSize: MainAxisSize.min, children: [
-            seg('Робочий режим', Icons.visibility_outlined, !selectMode,
-                selectMode && !_busy && _drag == null ? _exitEdit : null),
-            seg('Редагування', Icons.edit_outlined, selectMode,
-                !selectMode && !_busy ? _editAndAdd : null),
-          ]),
-        ]),
+        editing: selectMode,
+        onWork: selectMode && !_busy && _drag == null ? _exitEdit : null,
+        onEdit: !selectMode && !_busy ? _editAndAdd : null,
       ),
     );
   }
@@ -2087,10 +2028,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     return Container(
       height: 70,
       color: AppColors.panel,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      // урок: ліворуч на панелі — перемикач режимів і пасічник на ньому
+      padding: EdgeInsets.fromLTRB(
+          widget.tutorial ? kToggleLeft + kToggleW + 12 : 12, 10, 12, 10),
       child: FittedBox(
         fit: BoxFit.scaleDown,
-        // урок: кнопки праворуч — ліворуч стоїть пасічник зі «стійкою»
+        // урок: кнопки праворуч — ліворуч стоїть пасічник на перемикачі
         alignment: widget.tutorial ? Alignment.centerRight : Alignment.center,
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           CircleIconButton(
