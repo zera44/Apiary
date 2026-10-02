@@ -190,10 +190,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     autofocus: !isEdit,
                     readOnly: isBase,
                     style: TextStyle(color: isBase ? AppColors.textMuted : AppColors.text),
-                    decoration: nameError
-                        ? InputDecoration(
-                            enabledBorder: redFieldBorder(), focusedBorder: redFieldBorder())
-                        : null,
+                    // decoration: null прибрав би заливку поля, тож завжди InputDecoration
+                    decoration: InputDecoration(
+                        enabledBorder: nameError ? redFieldBorder() : null,
+                        focusedBorder: nameError ? redFieldBorder() : null),
                     onChanged: (_) {
                       if (nameError) {
                         setD(() {
