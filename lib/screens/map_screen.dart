@@ -92,7 +92,7 @@ class MapScreen extends StatefulWidget {
   static final tutorialNoHives = <InlineSpan>[
     const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим '),
     GuideBubble.highlight('«Редагування»'),
-    const TextSpan(text: ' унизу ліворуч'),
+    const TextSpan(text: ' унизу праворуч'),
   ];
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -280,8 +280,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ? LessonPose.pills // «навчу магії» - пасічник із бджолами-пігулками
             : LessonPose.leaning;
     final msg = _lessonMessage();
-    // перемикач режимів унизу ліворуч - пасічник стоїть над ним
-    const up = 70.0;
+    const up = 0.0;
     if (msg == null) return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up);
     final (text, onTap) = msg;
     if (_lesson == _Lesson.magic && !selectMode) {
@@ -1858,15 +1857,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     onPressed: () => grid.zoomBy(-4)),
               ]),
             ),
-            // перемикач режимів: унизу ліворуч (у редагуванні — над панеллю дій)
-            if (!(widget.tutorial && selectMode))
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                left: 14,
-                bottom: selectMode ? 86 : 16,
-                child: _modeToggle(),
-              ),
+            // перемикач режимів: унизу праворуч (у редагуванні — над панеллю дій,
+            // коли відкрита панель «Характеристики» — лівіше від неї)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              right: panelOpen ? CharacteristicsPanel.width + 12 : 14,
+              bottom: selectMode ? 86 : 16,
+              child: _modeToggle(),
+            ),
             // розміщення шаблону завершує те саме «Готово», що й редагування
             if (selectMode)
               Positioned(
@@ -1995,7 +1994,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
-  /// Перемикач режимів унизу ліворуч: «Робочий» (дивимось інформацію й проводимо
+  /// Перемикач режимів унизу праворуч: «Робочий» (дивимось інформацію й проводимо
   /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
   /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
   Widget _modeToggle() {
