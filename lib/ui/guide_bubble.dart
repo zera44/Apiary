@@ -15,7 +15,7 @@ const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
 /// Коли кнопки «Редагувати» немає (редагування, вибір шаблону, форма огляду)
 /// — пасічник спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
 const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_hands.webp';
-const kLessonLeaningHeight = 192.0;
+const kLessonLeaningHeight = 232.0;
 
 /// Помічник-ведмедик (покусаний, з рамкою) — урок, форма огляду.
 const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
@@ -163,7 +163,7 @@ List<Widget> lessonScene({
     LessonPose.leaning => (
         kLessonBeekeeperLeaning,
         kLessonLeaningHeight,
-        kLessonOnButtonLeft - 37.6,
+        8.0,
         base - 22.3
       ),
     // той самий кадр, що «стійка», але пасічник із бджолами-пігулками
