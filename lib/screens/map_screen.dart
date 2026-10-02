@@ -291,17 +291,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         below: Row(children: [
           Expanded(
             child: PillChoice(
-              text: 'Червона',
-              color: kPillRed,
-              onPressed: () => setState(() => _lesson = _Lesson.menu),
+              text: 'Синя',
+              color: kPillBlue,
+              onPressed: done == null ? null : () => done(false, widget.apiary.id),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: PillChoice(
-              text: 'Синя',
-              color: kPillBlue,
-              onPressed: done == null ? null : () => done(false, widget.apiary.id),
+              text: 'Червона',
+              color: kPillRed,
+              onPressed: () => setState(() => _lesson = _Lesson.menu),
             ),
           ),
         ]),

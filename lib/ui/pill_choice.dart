@@ -97,15 +97,15 @@ Future<bool?> showPillChoice(NavigatorState nav) {
               below: Row(children: [
                 Expanded(
                     child: PillChoice(
-                        text: 'Червона',
-                        color: kPillRed,
-                        onPressed: () => Navigator.of(ctx).pop(true))),
-                const SizedBox(width: 8),
-                Expanded(
-                    child: PillChoice(
                         text: 'Синя',
                         color: kPillBlue,
                         onPressed: () => Navigator.of(ctx).pop(false))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: PillChoice(
+                        text: 'Червона',
+                        color: kPillRed,
+                        onPressed: () => Navigator.of(ctx).pop(true))),
               ]),
             ),
           ]),
