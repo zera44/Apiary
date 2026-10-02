@@ -52,6 +52,16 @@ void main() {
     WhatsNewScreen.enabled = false;
   });
 
+  /// Вибір шаблону: на порожній карті він відкривається сам, інакше — «+».
+  Future<void> openTemplates(WidgetTester tester) async {
+    if (find.text('Оберіть шаблон').evaluate().isNotEmpty ||
+        find.text('Ще немає жодного шаблону.').evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.tap(find.byTooltip("Додати об'єкт"));
+    await settle(tester);
+  }
+
   Future<void> settle(WidgetTester tester) async {
     for (var i = 0; i < 5; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
@@ -1422,6 +1432,7 @@ void main() {
     // «Редагувати» одразу пропонує шаблони
     await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
+    await openTemplates(tester); // на непорожній карті шаблон - кнопкою «+»
     expect(find.text('Ще немає жодного шаблону.'), findsOneWidget);
     await tester.tap(find.text('Створити шаблон'));
     await settle(tester);
@@ -1436,6 +1447,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Редагування')); // одразу вибір шаблону
     await settle(tester);
+    await openTemplates(tester); // на непорожній карті шаблон - кнопкою «+»
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     final center = tester.getCenter(find.byType(InfiniteGrid));
@@ -1497,6 +1509,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
+    await openTemplates(tester); // на непорожній карті шаблон - кнопкою «+»
     await tester.tapAt(const Offset(12, 300)); // закрити вибір шаблону — лишаємось у редагуванні
     await settle(tester);
     expect(find.byTooltip('Повернути'), findsNothing); // унизу «Повернути» немає
@@ -1588,6 +1601,7 @@ void main() {
     expect(find.text('Додати'), findsNothing);
     await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
+    await openTemplates(tester); // на непорожній карті шаблон - кнопкою «+»
     expect(find.text('Оберіть шаблон'), findsOneWidget);
     expect(find.byTooltip('Лежак (2×2)'), findsOneWidget);
     // закрили вибір, нічого не обравши — лишаємось у редагуванні
@@ -1600,6 +1614,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
+    await openTemplates(tester); // на непорожній карті шаблон - кнопкою «+»
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає

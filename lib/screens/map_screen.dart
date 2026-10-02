@@ -2028,14 +2028,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     );
   }
 
-  /// «Редагувати»: увійти в редагування й одразу запропонувати шаблон.
+  /// «Редагувати»: увійти в редагування; на порожній карті — одразу шаблон.
   /// Якщо шаблон не обрали — лишаємось у редагуванні (перемістити,
   /// повернути, видалити; перемикач — вийти).
   Future<void> _editAndAdd() async {
     _enterEdit();
     if (!widget.tutorial) await Hints.show(context, repo, Hints.edit);
     if (!mounted) return;
-    await _onAddObject();
+    // шаблон пропонується одразу лише на порожній карті; інакше — кнопкою «+»
+    if (elements.isEmpty) await _onAddObject();
   }
 
 }
