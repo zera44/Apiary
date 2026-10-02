@@ -136,6 +136,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---- урок «Базові поняття» ----
   _Lesson _lesson = _Lesson.place;
   bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
+  bool _menuHint = false; // меню відкрито після уроку: одна репліка пасічника
   late bool _tourMenu = widget.menuTour; // пасічник просить відкрити меню
   bool _lessonFormOpen = false; // відкрита форма огляду (у ній свій пасічник)
   (int, int)? _lessonTarget; // куди перетягнути щойно поставлений вулик
@@ -1616,6 +1617,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ? null
           : AppDrawer(
               tour: widget.tutorial,
+              hint: _menuHint
+                  ? [
+                      const TextSpan(
+                          text: 'Тут ти зможеш керувати своєю пасікою. Щоб дізнатися про всі '
+                              'функції - '),
+                      GuideBubble.highlight('пройди навчання'),
+                      const TextSpan(text: '.'),
+                    ]
+                  : null,
               repo: repo,
               currentApiary: widget.apiary,
               onReturn: _afterExternalChange,
@@ -1623,6 +1633,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // свайп від лівого краю конфліктував би з панорамуванням карти —
       // меню відкривається лише кнопкою
       drawerEnableOpenDragGesture: false,
+      onDrawerChanged: (open) {
+        if (!open && _menuHint) setState(() => _menuHint = false);
+      },
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           return Stack(children: [
@@ -1689,7 +1702,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 size: 34,
                                 tooltip: 'Меню',
                                 onPressed: () {
-                                  if (_tourMenu) setState(() => _tourMenu = false);
+                                  if (_tourMenu) {
+                                    setState(() {
+                                      _tourMenu = false;
+                                      _menuHint = true; // репліка пасічника в меню
+                                    });
+                                  }
                                   Scaffold.of(ctx).openDrawer();
                                 },
                               ),

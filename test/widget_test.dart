@@ -863,6 +863,8 @@ void main() {
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     expect(find.textContaining('Напослідок покажу меню'), findsNothing);
+    // у меню - одна репліка пасічника про навчання
+    expect(find.textContaining('керувати своєю пасікою'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

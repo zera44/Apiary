@@ -39,8 +39,12 @@ class AppDrawer extends StatefulWidget {
   /// Урок: пасічник по черзі розповідає про пункти меню (пункти не натискаються,
   /// кожен підсвічується медовим ободком).
   final bool tour;
+
+  /// Одна репліка пасічника внизу меню (після «Я сам собі маг пасіки»).
+  final List<InlineSpan>? hint;
   const AppDrawer(
       {super.key,
+      this.hint,
       required this.repo,
       required this.currentApiary,
       this.onReturn,
@@ -138,7 +142,9 @@ class _AppDrawerState extends State<AppDrawer> {
           : child;
 
   Widget _tourFooter() {
-    final last = _step == kDrawerTour.length - 1;
+    final hint = widget.hint;
+    final last = hint != null || _step == kDrawerTour.length - 1;
+    final text = hint ?? kDrawerTour[_step];
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
@@ -150,7 +156,7 @@ class _AppDrawerState extends State<AppDrawer> {
           const SizedBox(width: 8),
           Expanded(
             child: Text.rich(
-              TextSpan(children: kDrawerTour[_step]),
+              TextSpan(children: text),
               style: TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.3),
             ),
           ),
@@ -233,7 +239,7 @@ class _AppDrawerState extends State<AppDrawer> {
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           })),
           ])),
-          if (widget.tour) _tourFooter(),
+          if (widget.tour || widget.hint != null) _tourFooter(),
           if (Autostart.supported) const _AutostartTile(),
         ]),
       ),
