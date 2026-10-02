@@ -259,22 +259,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         text: text,
         below: Row(children: [
           Expanded(
-            child: PillButton(
-              text: 'Хочу',
-              bg: AppColors.accent,
-              height: 40,
+            child: _PillChoice(
+              text: 'Червона',
+              color: const Color(0xFFD64545),
               onPressed: () => setState(() => _lesson = _Lesson.menu),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           Expanded(
-            flex: 2,
-            child: PillButton(
-              text: 'Я сам собі маг пасіки',
-              bg: AppColors.darkBtn,
-              fg: AppColors.text,
-              height: 40,
-              fontSize: 11,
+            child: _PillChoice(
+              text: 'Синя',
+              color: const Color(0xFF3B6FD6),
               onPressed: done == null ? null : () => done(false, widget.apiary.id),
             ),
           ),
@@ -345,8 +340,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.magic:
         return (
           [
-            const TextSpan(text: 'Молодець! Вулик додав, обхід зробив. '),
-            GuideBubble.task('Хочеш, я тебе навчу магії?'),
+            const TextSpan(text: 'Вулик додав, обхід зробив. '),
+            TextSpan(
+                text: 'Синя пігулка',
+                style: TextStyle(color: Color(0xFF6F9BFF), fontWeight: FontWeight.w800)),
+            const TextSpan(text: ' - сам собі маг пасіки, '),
+            TextSpan(
+                text: 'червона',
+                style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w800)),
+            const TextSpan(text: ' - покажу, як глибока ця нора.'),
           ],
           null
         );
@@ -1983,6 +1985,61 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 onPressed: (_busy || _drag != null) ? null : _exitEdit),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+
+/// Кнопка-пігулка: капсула з двома півкулями кольору та бликом.
+class _PillChoice extends StatelessWidget {
+  final String text;
+  final Color color;
+  final VoidCallback? onPressed;
+  const _PillChoice({required this.text, required this.color, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    final light = Color.lerp(color, Colors.white, 0.35)!;
+    return Semantics(
+      button: true,
+      label: text,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.55), width: 2),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(alignment: Alignment.center, children: [
+              Row(children: [
+                Expanded(child: ColoredBox(color: color, child: const SizedBox.expand())),
+                Expanded(child: ColoredBox(color: light, child: const SizedBox.expand())),
+              ]),
+              Positioned(
+                top: 4,
+                left: 12,
+                right: 12,
+                height: 5,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              Text(text,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 3)])),
+            ]),
+          ),
+        ),
       ),
     );
   }

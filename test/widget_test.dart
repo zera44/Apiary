@@ -834,8 +834,8 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    expect(find.textContaining('навчу магії'), findsOneWidget);
-    await tester.tap(find.text('Я сам собі маг пасіки'));
+    expect(find.textContaining('Синя пігулка'), findsOneWidget);
+    await tester.tap(find.text('Синя'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
