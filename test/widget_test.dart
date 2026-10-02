@@ -892,6 +892,7 @@ void main() {
     expect(find.text('Червона'), findsOneWidget);
     await tester.tap(find.text('Синя'));
     await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
     expect(find.textContaining('Колего, пропоную'), findsNothing);
     expect(await tester.runAsync(() => fresh.getMeta('intro_done')), '1');
     expect(tester.takeException(), isNull);
