@@ -93,7 +93,7 @@ Future<bool?> showPillChoice(NavigatorState nav) {
             ]),
             ...lessonScene(
               pose: LessonPose.pills,
-              text: pillChoiceSpans('Здоров був, новачок. Укуси мене бджола. Пропоную тобі вибір. '),
+              text: pillChoiceSpans('Колего, пропоную тобі вибір. '),
               below: Row(children: [
                 Expanded(
                     child: PillChoice(
