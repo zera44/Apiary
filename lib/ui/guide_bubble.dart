@@ -25,6 +25,8 @@ const kLessonBeekeeperStung = 'assets/guide/beekeeper_stung.webp';
 const kLessonBeekeeperLaptop = 'assets/guide/beekeeper_laptop.webp';
 /// Пасічник із газетою - «Історія» в огляді меню.
 const kLessonBeekeeperNewspaper = 'assets/guide/beekeeper_newspaper.webp';
+/// Пасічник із шаблонами - «Налаштування» в огляді меню.
+const kLessonBeekeeperTemplates = 'assets/guide/beekeeper_templates.webp';
 const kLessonBear = 'assets/guide/bear_helper.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,

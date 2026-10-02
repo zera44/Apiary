@@ -33,3 +33,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_8_newspaper.pdf (→ assets/guide/beekeeper_newspaper.webp) — урок: пасічник із
   газетою, крок «Історія» в огляді меню навігації.
+
+- beekeeper_bust_9_templates.pdf (→ assets/guide/beekeeper_templates.webp) — урок: пасічник із
+  шаблонами, крок «Налаштування» в огляді меню навігації.
