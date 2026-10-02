@@ -195,7 +195,7 @@ class _FillDialogState extends State<_FillDialog> {
   bool _saving = false;
 
   // ---- урок «Базові поняття»: кроки в самій формі ----
-  // 0–1 пасічник пояснює; 2 — з'являється ведмежа; 3 — «матка біла»;
+  // 0 пасічник пояснює; (1 пропущено); 2 — з'являється ведмежа; 3 — «матка біла»;
   // 4 — «через 3 дні»; 5 — «Збережи»
   int _step = 0;
   FillLesson? get _lesson => widget.lesson;
@@ -234,7 +234,15 @@ class _FillDialogState extends State<_FillDialog> {
           bear: false,
           tapNext: true
         ),
-      2 => (text: const [TextSpan(text: 'Грр...')], bear: true, tapNext: true),
+      2 => (
+          text: [
+            const TextSpan(text: 'Грр... я перевірив твого вулика. '),
+            GuideBubble.task('Запиши результати'),
+            const TextSpan(text: '.'),
+          ],
+          bear: true,
+          tapNext: true
+        ),
       3 => (
           text: [
             const TextSpan(text: 'В тебе матка '),
@@ -538,7 +546,7 @@ class _FillDialogState extends State<_FillDialog> {
       if (!keyboard) ...lessonScene(
         pose: line.bear ? LessonPose.bear : LessonPose.leaning,
         text: line.text,
-        onTap: line.tapNext ? () => setState(() => _step++) : null,
+        onTap: line.tapNext ? () => setState(() => _step = _step == 0 ? 2 : _step + 1) : null,
         below: line.tapNext
             ? Text('Торкнись, щоб продовжити',
                 style: TextStyle(color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800))
