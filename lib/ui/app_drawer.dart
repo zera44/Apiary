@@ -91,8 +91,6 @@ class AppDrawer extends StatefulWidget {
 }
 
 /// Кроки екскурсії по меню: що розповідає пасічник про кожен пункт.
-/// Малюнок пасічника на кроці огляду (інші кроки - покусаний пасічник).
-const Map<int, String> kDrawerTourImage = {1: kLessonBeekeeperLaptop, 2: kLessonBeekeeperNewspaper, 3: kLessonBeekeeperLaptop, 4: kLessonBeekeeperTemplates, 5: kLessonBeekeeperProfessor, 6: kLessonBeekeeperMailbox};
 
 final List<List<InlineSpan>> kDrawerTour = [
   [
@@ -154,7 +152,7 @@ class _AppDrawerState extends State<AppDrawer> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // пасічник стоїть руками на кнопці «Далі» - спирається на неї
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Image.asset(hint != null ? kLessonBeekeeperProfessor : (kDrawerTourImage[_step] ?? kLessonBeekeeperStung), height: 84, filterQuality: FilterQuality.medium),
+          Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
           const SizedBox(width: 10),
           Expanded(
             child: Padding(
