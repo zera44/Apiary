@@ -136,6 +136,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---- урок «Базові поняття» ----
   _Lesson _lesson = _Lesson.place;
   bool _lessonPlaced = false; // у цьому редагуванні вже поставили шаблон
+  bool _fillSaved = false; // форму «Заповнити параметри» збережено
   bool _menuHint = false; // меню відкрито після уроку: одна репліка пасічника
   late bool _tourMenu = widget.menuTour; // пасічник просить відкрити меню
   bool _lessonFormOpen = false; // відкрита форма огляду (у ній свій пасічник)
@@ -420,8 +421,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final el = elements.where((e) => e.id == focusId).firstOrNull;
       if (el != null) {
         grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
-        await _onInfoRequest(el);
-        if (widget.openFill && el.isHive && mounted && panelElement != null) await _panelFill();
+        if (widget.openFill && el.isHive && mounted) {
+          // з сповіщення / QR: спершу лише форма «Заповнити параметри»,
+          // панель вулика з'являється після «Зберегти»
+          grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
+          await _loadPanel(el);
+          if (!mounted || panelElement == null) return;
+          await _panelFill();
+          if (mounted && _fillSaved && panelElement != null) {
+            await _loadPanel(panelElement!);
+            if (!mounted) return;
+            setState(() => panelOpen = true);
+            _revealBesidePanel(panelElement!);
+          }
+        } else {
+          await _onInfoRequest(el);
+        }
       }
     }
   }
@@ -1166,6 +1181,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelFill() async {
     final el = panelElement;
     if (el == null) return;
+    _fillSaved = false;
+    final panelWasOpen = panelOpen; // з сповіщення панель відкриється лише після «Зберегти»
     final first = await _fillPage(el);
     if (first == null || !mounted) return;
     if (first.params.isEmpty) {
@@ -1200,6 +1217,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // підставити його дані в ту саму форму (вікно не закривається)
       onNext: (r) async {
         await _saveFill(cur, r);
+        _fillSaved = true;
         final n = await _nextTarget(cur);
         if (n == null || !mounted) return null;
         final here = n.here;
@@ -1208,12 +1226,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return null;
         }
         cur = here;
-        await _showOnMap(here);
+        await _showOnMap(here, openPanel: panelWasOpen);
         return _fillPage(here);
       },
     );
     if (lesson != null && mounted) setState(() => _lessonFormOpen = false);
-    if (result != null) await _saveFill(cur, result);
+    if (result != null) {
+      await _saveFill(cur, result);
+      _fillSaved = true;
+    }
     // урок: огляд зроблено — пасічник хвалить і пропонує «магію»
     if (result != null && lesson != null && mounted) {
       setState(() {
@@ -1282,10 +1303,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   /// Показати вулик на цій карті: центр, панель поруч (без форми).
-  Future<void> _showOnMap(MapElement el) async {
+  Future<void> _showOnMap(MapElement el, {bool openPanel = true}) async {
     grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
     await _loadPanel(el);
-    if (!mounted) return;
+    if (!mounted || !openPanel) return;
     setState(() => panelOpen = true);
     _revealBesidePanel(el);
   }
