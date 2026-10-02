@@ -1756,56 +1756,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               child: IgnorePointer(
                 ignoring: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 10, 0),
                   child: Row(children: [
-                    Builder(
-                      builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
-                          ? HoneyRing(
-                              key: _menuKey,
-                              on: true,
-                              child: CircleIconButton(
-                                icon: 'menu',
-                                bg: AppColors.roundBtn,
-                                iconColor: AppColors.text,
-                                size: 34,
-                                tooltip: 'Меню',
-                                onPressed: () {
-                                  setState(() => _lesson = _Lesson.drawer);
-                                  Scaffold.of(ctx).openDrawer();
-                                },
-                              ),
-                            )
-                          : widget.tutorial
-                          ? CircleIconButton(
-                              key: _backKey,
-                              icon: 'back_arrow',
-                              bg: AppColors.roundBtn,
-                              iconColor: AppColors.text,
-                              size: 34,
-                              tooltip: 'Назад',
-                              onPressed: () => Navigator.of(ctx).pop(),
-                            )
-                          : HoneyRing(
-                              on: _tourMenu,
-                              child: CircleIconButton(
-                                icon: 'menu',
-                                bg: AppColors.roundBtn,
-                                iconColor: AppColors.text,
-                                size: 34,
-                                tooltip: 'Меню',
-                                onPressed: () {
-                                  if (_tourMenu) {
-                                    setState(() {
-                                      _tourMenu = false;
-                                      _menuHint = true; // репліка пасічника в меню
-                                    });
-                                  }
-                                  Scaffold.of(ctx).openDrawer();
-                                },
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 10),
                     // довга назва пасіки/статус більше не дають переповнення
                     // рядка: обидва стискаються з "…"
                     Expanded(
@@ -1831,6 +1783,58 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               ),
             ),
             const Positioned.fill(child: ScreenFrame()),
+            // меню навігації (в уроці — «Назад»): більша кнопка під назвою пасіки
+            Positioned(
+              top: 50,
+              left: 10,
+              child: Builder(
+                      builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
+                          ? HoneyRing(
+                              key: _menuKey,
+                              on: true,
+                              child: CircleIconButton(
+                                icon: 'menu',
+                                bg: AppColors.roundBtn,
+                                iconColor: AppColors.text,
+                                size: 48,
+                                tooltip: 'Меню',
+                                onPressed: () {
+                                  setState(() => _lesson = _Lesson.drawer);
+                                  Scaffold.of(ctx).openDrawer();
+                                },
+                              ),
+                            )
+                          : widget.tutorial
+                          ? CircleIconButton(
+                              key: _backKey,
+                              icon: 'back_arrow',
+                              bg: AppColors.roundBtn,
+                              iconColor: AppColors.text,
+                              size: 48,
+                              tooltip: 'Назад',
+                              onPressed: () => Navigator.of(ctx).pop(),
+                            )
+                          : HoneyRing(
+                              on: _tourMenu,
+                              child: CircleIconButton(
+                                icon: 'menu',
+                                bg: AppColors.roundBtn,
+                                iconColor: AppColors.text,
+                                size: 48,
+                                tooltip: 'Меню',
+                                onPressed: () {
+                                  if (_tourMenu) {
+                                    setState(() {
+                                      _tourMenu = false;
+                                      _menuHint = true; // репліка пасічника в меню
+                                    });
+                                  }
+                                  Scaffold.of(ctx).openDrawer();
+                                },
+                              ),
+                            ),
+                    ),
+            ),
             // зум
             Positioned(
               right: 14,
