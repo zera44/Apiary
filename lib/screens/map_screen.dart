@@ -143,6 +143,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final _fillKey = GlobalKey();
   final _actionBarKey = GlobalKey();
   final _zoomKey = GlobalKey();
+  final _panelBoxKey = GlobalKey();
   final _topKey = GlobalKey();
 
   /// Урок: що зараз можна натиснути (у координатах карти).
@@ -172,7 +173,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.openHive:
         return !panelOpen && onHive();
       case _Lesson.inspect:
-        return inKey(_fillKey);
+        // панель можна гортати вниз до «Оглянути»; решта кнопок у ній вимкнені
+        return inKey(_fillKey) || (panelOpen && inKey(_panelBoxKey));
       case _Lesson.congrats:
       case _Lesson.magic:
         return false; // відповідь — у хмарці пасічника
@@ -1690,6 +1692,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (!selectMode && (!widget.tutorial || _lesson == _Lesson.place)) ..._fab(),
             // панель "Характеристики"
             AnimatedPositioned(
+              key: _panelBoxKey,
               duration: const Duration(milliseconds: 220),
               curve: panelOpen ? Curves.easeOutCubic : Curves.easeInCubic,
               top: 52,
@@ -1700,19 +1703,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   ? const SizedBox(width: CharacteristicsPanel.width)
                   : CharacteristicsPanel(
                       data: panelData!,
-                      onClose: () => setState(() => panelOpen = false),
+                      onClose: _lessonInspect ? () {} : () => setState(() => panelOpen = false),
                       // подвійний тап не відкриває два вікна
-                      onRename: () => _panelGuard(_panelRename),
-                      onIcon: () => _panelGuard(_panelIcon),
-                      onColor: () => _panelGuard(_panelColor),
-                      onEditParams: () => _panelGuard(_panelEditParams),
+                      // (у кроці уроку «Оглянути» решта кнопок панелі вимкнена)
+                      onRename: _lessonInspect ? () {} : () => _panelGuard(_panelRename),
+                      onIcon: _lessonInspect ? () {} : () => _panelGuard(_panelIcon),
+                      onColor: _lessonInspect ? () {} : () => _panelGuard(_panelColor),
+                      onEditParams: _lessonInspect ? () {} : () => _panelGuard(_panelEditParams),
                       onFill: () => _panelGuard(_panelFill),
                       onVisited: (panelElement?.isHive ?? false)
-                          ? () => _panelGuard(_panelVisited)
+                          ? (_lessonInspect ? () {} : () => _panelGuard(_panelVisited))
                           : null,
-                      onHistory: (id) => _panelGuard(() => _panelHistory(id)),
+                      onHistory: (id) => _lessonInspect ? null : _panelGuard(() => _panelHistory(id)),
                       // QR-коди — лише для вуликів
-                      onQr: (panelElement?.isHive ?? false) ? _panelQr : null,
+                      onQr: (panelElement?.isHive ?? false)
+                          ? (_lessonInspect ? () {} : _panelQr)
+                          : null,
                       highlightFill: _lessonInspect,
                       fillKey: _fillKey,
                     ),
