@@ -90,7 +90,7 @@ class AppDrawer extends StatefulWidget {
 
 /// Кроки екскурсії по меню: що розповідає пасічник про кожен пункт.
 /// Малюнок пасічника на кроці огляду (інші кроки - покусаний пасічник).
-const Map<int, String> kDrawerTourImage = {1: kLessonBeekeeperLaptop, 2: kLessonBeekeeperNewspaper};
+const Map<int, String> kDrawerTourImage = {1: kLessonBeekeeperLaptop, 2: kLessonBeekeeperNewspaper, 3: kLessonBeekeeperLaptop};
 
 final List<List<InlineSpan>> kDrawerTour = [
   [
