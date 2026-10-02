@@ -142,6 +142,9 @@ List<Widget> lessonScene({
   double bottomInset = 0,
 }) {
   final base = kLessonOnButtonBottom + bottomInset;
+  // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
+  // не обрізались, а хмарка починалась після нього
+  final pills = pose == LessonPose.pills;
   final (img, h, left, bottom) = switch (pose) {
     LessonPose.onButton => (kLessonBeekeeper, 170.0, kLessonOnButtonLeft, base),
     // «стійка» нижче рук: малюнок вищий і ширший, руки — там само
@@ -154,9 +157,9 @@ List<Widget> lessonScene({
     // той самий кадр, що «стійка», але пасічник із бджолами-пігулками
     LessonPose.pills => (
         kLessonBeekeeperPills,
-        kLessonLeaningHeight,
-        kLessonOnButtonLeft - 37.6,
-        base - 22.3
+        150.0,
+        6.0,
+        base - 17.4
       ),
     LessonPose.bear => (kLessonBear, 150.0, 12.0, base),
   };
@@ -173,7 +176,7 @@ List<Widget> lessonScene({
     ),
     if (bubble != null)
       Positioned(
-        left: kLessonBubbleLeft,
+        left: pills ? 164.0 : kLessonBubbleLeft,
         right: 0,
         bottom: base,
         child: Material(
