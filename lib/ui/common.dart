@@ -70,8 +70,12 @@ class PillButton extends StatelessWidget {
   final double fontSize;
   final double? width;
 
+  /// Замість напису - зрозуміла іконка (напис стає підказкою).
+  final IconData? icon;
+
   const PillButton({
     super.key,
+    this.icon,
     required this.text,
     required this.bg,
     this.fg = Colors.white,
@@ -96,12 +100,14 @@ class PillButton extends StatelessWidget {
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
-              ),
+              child: icon != null
+                  ? Tooltip(message: text, child: Icon(icon, color: fg, size: 26))
+                  : Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
+                    ),
             ),
           ),
         ),

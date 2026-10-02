@@ -147,6 +147,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
         Row(children: [
           Expanded(
             child: PillButton(
+              icon: Icons.today,
               text: 'Сьогодні',
               bg: AppColors.roundBtn,
               fg: AppColors.text,
@@ -162,7 +163,8 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-                text: 'Очистити',
+                icon: Icons.backspace_outlined,
+              text: 'Очистити',
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 fontSize: 11,
@@ -171,7 +173,8 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-                text: 'Скасувати',
+                icon: Icons.close,
+              text: 'Скасувати',
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 fontSize: 11,
@@ -180,6 +183,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
+              icon: Icons.check,
               text: 'Обрати',
               bg: AppColors.accent,
               fontSize: 11,

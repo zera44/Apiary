@@ -1056,7 +1056,7 @@ void main() {
     // очищаємо дату через календар
     await tester.tap(find.text('01.02.2026')); // клітинка дати відкриває календар
     await settle(tester);
-    await tester.tap(find.text('Очистити'));
+    await tester.tap(find.byTooltip('Очистити'));
     await settle(tester);
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
