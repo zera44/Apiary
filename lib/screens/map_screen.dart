@@ -276,12 +276,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // на тому ж місці (а не двоє одночасно)
     if (selectMode && pendingTemplate == null) return const [];
     if (_lessonFormOpen) return const [];
-    final pose = (_lesson == _Lesson.magic || _lesson == _Lesson.menu) && !selectMode
-            ? LessonPose.pills // «навчу магії» - пасічник із бджолами-пігулками
-            : LessonPose.leaning;
+    // увесь урок пасічник спирається на перемикач режимів
+    const pose = LessonPose.leaning;
     final msg = _lessonMessage();
-    // пасічник із пігулками стоїть над перемикачем (той — на його місці)
-    final up = pose == LessonPose.pills ? kToggleLessonBottom + kToggleH - 4 : 0.0;
+    const up = 0.0;
     if (msg == null) return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up);
     final (text, onTap) = msg;
     if (_lesson == _Lesson.magic && !selectMode) {
