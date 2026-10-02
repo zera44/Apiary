@@ -1879,12 +1879,27 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 bottom: _toggleBottom + (kToggleH - 52) / 2,
                 child: KeyedSubtree(
                   key: _actionBarKey,
-                  child: CircleIconButton(
-                      icon: 'plus_circle',
-                      bg: AppColors.addObject,
-                      size: 52,
-                      tooltip: "Додати об'єкт",
-                      onPressed: _busy || _drag != null ? null : _onAddObject),
+                  // шаблон обрано — «+» стає «×»: завершити додавання (лишаємось у
+                  // редагуванні — вулики можна торкати й переміщувати)
+                  child: pendingTemplate != null
+                      ? CircleIconButton(
+                          icon: 'close',
+                          bg: AppColors.roundBtn,
+                          iconColor: AppColors.text,
+                          size: 52,
+                          tooltip: 'Завершити додавання',
+                          onPressed: _busy || _drag != null
+                              ? null
+                              : () => setState(() {
+                                    pendingTemplate = null;
+                                    _placedGids = const {};
+                                  }))
+                      : CircleIconButton(
+                          icon: 'plus_circle',
+                          bg: AppColors.addObject,
+                          size: 52,
+                          tooltip: "Додати об'єкт",
+                          onPressed: _busy || _drag != null ? null : _onAddObject),
                 ),
               ),
             // панель "Характеристики"
