@@ -514,12 +514,14 @@ class _FillDialogState extends State<_FillDialog> {
     if (_lesson == null) return dialog;
     // урок: відкрита клавіатура — уся висота формі (інакше комірки не видно),
     // підказка повернеться, щойно клавіатуру сховають
-    if (MediaQuery.viewInsetsOf(context).bottom > 0) return PopScope(canPop: false, child: dialog);
+    // (дерево віджетів те саме, інакше поле втрачає фокус і клавіатура блимає)
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     // урок: форма вище, унизу — пасічник або ведмежа-помічник (на тому ж місці)
     final line = _lessonLine;
     return PopScope(canPop: false, child: Stack(children: [
-      Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 270), child: dialog)),
-      ...lessonScene(
+      Positioned.fill(
+          child: Padding(padding: EdgeInsets.only(bottom: keyboard ? 0 : 270), child: dialog)),
+      if (!keyboard) ...lessonScene(
         pose: line.bear ? LessonPose.bear : LessonPose.leaning,
         text: line.text,
         onTap: line.tapNext ? () => setState(() => _step++) : null,
