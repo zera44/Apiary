@@ -39,3 +39,6 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_17_professor.pdf (→ assets/guide/beekeeper_professor.webp) — урок: пасічник-
   професор, крок «Навчання» в огляді меню навігації.
+
+- beekeeper_bust_18_mailbox_bee.pdf (→ assets/guide/beekeeper_mailbox_bee.webp) — урок: пасічник
+  із поштовою скринькою й бджолою, крок «Зворотний зв'язок» в огляді меню навігації.

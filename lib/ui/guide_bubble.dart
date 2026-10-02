@@ -29,6 +29,8 @@ const kLessonBeekeeperNewspaper = 'assets/guide/beekeeper_newspaper.webp';
 const kLessonBeekeeperTemplates = 'assets/guide/beekeeper_templates.webp';
 /// Пасічник-професор - «Навчання» в огляді меню.
 const kLessonBeekeeperProfessor = 'assets/guide/beekeeper_professor.webp';
+/// Пасічник із поштовою скринькою та бджолою - «Зворотний зв'язок» в огляді меню.
+const kLessonBeekeeperMailbox = 'assets/guide/beekeeper_mailbox_bee.webp';
 const kLessonBear = 'assets/guide/bear_helper.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
