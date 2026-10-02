@@ -33,7 +33,9 @@ Future<void> openStart(NavigatorState nav, Repository repo) async {
     if (!nav.mounted) return;
     final learn = await showPillChoice(nav);
     if (learn == null || !nav.mounted) return; // передумали - лишились на головному
-    await repo.setMeta('intro_done', '1');
+    // червона: позначка ставиться лише в кінці навчання (TutorialScreen) —
+    // вийшли посеред уроку, і наступне «Почати» знову пропонує вибір
+    if (!learn) await repo.setMeta('intro_done', '1');
     if (learn) {
       await nav.push(MaterialPageRoute(
           builder: (_) => TutorialScreen(realRepo: repo, autoStart: true)));

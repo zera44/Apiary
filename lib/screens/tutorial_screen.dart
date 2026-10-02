@@ -81,6 +81,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
               return;
             }
             finishing = true;
+            // початкове навчання пройдено — більше не пропонувати з нуля
+            await real.setMeta('intro_done', '1');
             final String id;
             try {
               id = await real.importApiaryFrom(repo, apiaryId);
