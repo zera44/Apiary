@@ -900,12 +900,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     return Stack(children: [
       // вікно вибору — вище, щоб пасічник унизу його не закривав
       Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 300), child: dialog)),
-      // те саме місце, що й на карті (карта — у SafeArea, вікно — на весь екран)
-      ...lessonScene(
-          pose: LessonPose.leaning,
-          text: spans,
-          bottomInset: MediaQuery.of(context).padding.bottom,
-          toggleEditing: true),
+      // те саме місце, що й на карті: і карта, і вікно (showDialog) — у SafeArea,
+      // тож системний відступ знизу вже врахований
+      ...lessonScene(pose: LessonPose.leaning, text: spans, toggleEditing: true),
     ]);
   }
 
