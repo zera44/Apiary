@@ -28,15 +28,29 @@ Future<FillResult?> showFillValuesDialog(
   Future<FillPage?> Function(FillResult result)? onNext,
   FillLesson? lesson,
 }) {
+  Widget host() => _FillHost(
+        first: FillPage(params: params, latest: latest, stock: stock, title: title),
+        offerNext: lesson == null && offerNext,
+        onNext: onNext,
+        lesson: lesson,
+      );
+  // урок: пасічник на карті зникає, а в формі з'являється на тому ж місці -
+  // без анімації, щоб він не блимав
+  if (lesson != null) {
+    return showGeneralDialog<FillResult>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      barrierLabel: '',
+      transitionDuration: Duration.zero,
+      pageBuilder: (_, __, ___) =>
+          Material(type: MaterialType.transparency, child: SafeArea(child: host())),
+    );
+  }
   return showDialog<FillResult>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _FillHost(
-      first: FillPage(params: params, latest: latest, stock: stock, title: title),
-      offerNext: lesson == null && offerNext,
-      onNext: onNext,
-      lesson: lesson,
-    ),
+    builder: (_) => host(),
   );
 }
 
