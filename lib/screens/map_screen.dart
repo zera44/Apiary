@@ -842,11 +842,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       SizedBox(
                         width: 86,
                         height: 106,
-                        child: TemplateTile(
-                          template: t,
-                          onTap: lessonPick != null && t.id != lessonPick.id
-                              ? null
-                              : () => Navigator.pop(ctx, t),
+                        // урок: потрібну плитку обведено медовим
+                        child: HoneyRing(
+                          on: lessonPick != null && t.id == lessonPick.id,
+                          radius: 20,
+                          child: TemplateTile(
+                            template: t,
+                            onTap: lessonPick != null && t.id != lessonPick.id
+                                ? null
+                                : () => Navigator.pop(ctx, t),
+                          ),
                         ),
                       ),
                   ]),
