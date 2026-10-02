@@ -878,10 +878,13 @@ void main() {
   });
 
   testWidgets('перший «Почати»: пасічник пропонує вибір, синя - без навчання', (tester) async {
-    final db = await tester.runAsync(
-        () => AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath));
-    final fresh = Repository(db!);
-    await tester.runAsync(fresh.init);
+    // окрема порожня база (setUp уже створив пасіку в основній)
+    final fresh = (await tester.runAsync(() async {
+      final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+      await r.init();
+      return r;
+    }))!;
+    addTearDown(() async => fresh.db.close());
     await pumpApp(tester, ApiaryApp(repo: fresh, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
