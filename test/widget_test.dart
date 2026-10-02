@@ -697,9 +697,9 @@ void main() {
     }
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.textContaining('вуликів то нема'), findsOneWidget);
-    expect(find.textContaining('«Редагувати»'), findsOneWidget);
+    expect(find.textContaining('«Редагування»'), findsOneWidget);
     // підказка не заважає натиснути саму кнопку
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
     // як після встановлення: готові шаблони вже є
@@ -738,8 +738,6 @@ void main() {
     expect(find.textContaining('З легким стартом'), findsNothing);
     expect(find.textContaining('Не час відпочивати'), findsOneWidget);
     expect(find.textContaining('«Вулик 1»'), findsOneWidget);
-    // «Редагувати» вже немає (на її місці пасічник із вуликом)
-    expect(find.text('Редагувати'), findsNothing);
     // натиснули на свій вулик — панель і завдання «Проведи огляд»
     await tester.tapAt(target);
     for (var i = 0; i < 3; i++) {
@@ -788,7 +786,7 @@ void main() {
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     await tester.tap(find.byTooltip('Вулик (1×1)'));
     await settle(tester);
@@ -1410,7 +1408,7 @@ void main() {
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
     // «Редагувати» одразу пропонує шаблони
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     expect(find.text('Ще немає жодного шаблону.'), findsOneWidget);
     await tester.tap(find.text('Створити шаблон'));
@@ -1424,7 +1422,7 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(id)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('Редагувати')); // одразу вибір шаблону
+    await tester.tap(find.byTooltip('Редагування')); // одразу вибір шаблону
     await settle(tester);
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
@@ -1444,7 +1442,7 @@ void main() {
     await tester.tap(find.byTooltip('Готово'));
     await settle(tester);
     expect(find.byTooltip('Готово'), findsNothing);
-    expect(find.text('Редагувати'), findsOneWidget);
+    expect(find.byTooltip('Редагування'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -1485,7 +1483,7 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     await tester.tapAt(const Offset(12, 300)); // закрити вибір шаблону — лишаємось у редагуванні
     await settle(tester);
@@ -1576,7 +1574,7 @@ void main() {
     await settle(tester);
     expect(find.text('Шаблони'), findsNothing);
     expect(find.text('Додати'), findsNothing);
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsOneWidget);
     expect(find.byTooltip('Лежак (2×2)'), findsOneWidget);
@@ -1588,7 +1586,7 @@ void main() {
     // «Готово» — назад до перегляду; знову «Редагувати» й обрали шаблон — розміщення
     await tester.tap(find.byTooltip('Готово'));
     await settle(tester);
-    await tester.tap(find.text('Редагувати'));
+    await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);

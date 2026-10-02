@@ -90,8 +90,9 @@ class MapScreen extends StatefulWidget {
 
   /// Урок: на карті ще немає вуликів.
   static final tutorialNoHives = <InlineSpan>[
-    const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові через '),
-    GuideBubble.highlight('«Редагувати»'),
+    const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим '),
+    GuideBubble.highlight('«Редагування»'),
+    const TextSpan(text: ' угорі'),
   ];
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -275,10 +276,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // на тому ж місці (а не двоє одночасно)
     if (selectMode && pendingTemplate == null) return const [];
     if (_lessonFormOpen) return const [];
-    // кнопка «Редагувати» є — спирається на неї; немає — на свою «стійку»
-    final pose = !selectMode && _lesson == _Lesson.place
-        ? LessonPose.onButton
-        : (_lesson == _Lesson.magic || _lesson == _Lesson.menu) && !selectMode
+    final pose = (_lesson == _Lesson.magic || _lesson == _Lesson.menu) && !selectMode
             ? LessonPose.pills // «навчу магії» - пасічник із бджолами-пігулками
             : LessonPose.leaning;
     final msg = _lessonMessage();
@@ -583,7 +581,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final match = _elementAt(p.cell);
     if (match == null) return false;
     // вибір і початок перетягування — одним дотиком
-    setState(() => _select(match));
+    setState(() {
+      _select(match);
+      panelOpen = false; // панель властивостей - лише для щойно обраного
+    });
     final sel = selection;
     final ids = {for (final e in sel) e.id};
     _drag = _Drag(
@@ -855,6 +856,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       selectMode = false;
+      panelOpen = false;
       pendingTemplate = null;
       selectedId = null;
       selectedGroupId = null;
@@ -1055,6 +1057,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---------------------------------------------------------------------
   // панель "Характеристики"
   // ---------------------------------------------------------------------
+
+  /// Режим редагування: панель властивостей (назва, значок, колір, параметри)
+  /// обраного об'єкта.
+  Future<void> _openProperties() async {
+    final el = selection.firstOrNull;
+    if (el == null || _busy) return;
+    await _loadPanel(el);
+    if (!mounted) return;
+    setState(() => panelOpen = true);
+  }
 
   Future<void> _onInfoRequest(MapElement? el) async {
     if (el == null) {
@@ -1799,6 +1811,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                     const SizedBox(width: 8),
+                    _modeToggle(),
+                    const SizedBox(width: 8),
                     Flexible(
                       flex: 3,
                       child: Align(
@@ -1846,9 +1860,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   right: 0,
                   bottom: 0,
                   child: KeyedSubtree(key: _actionBarKey, child: _actionBar())),
-            // урок: «Редагувати» є лише на кроці, де її треба натиснути; далі
-            // на її місці пасічник спирається на свій вулик
-            if (!selectMode && (!widget.tutorial || _lesson == _Lesson.place)) ..._fab(),
             // панель "Характеристики"
             AnimatedPositioned(
               key: _panelBoxKey,
@@ -1865,6 +1876,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onClose: _lessonInspect ? () {} : () => setState(() => panelOpen = false),
                       // подвійний тап не відкриває два вікна
                       // (у кроці уроку «Оглянути» решта кнопок панелі вимкнена)
+                      editable: selectMode,
+                      inspect: !selectMode,
                       onRename: _lessonInspect ? () {} : () => _panelGuard(_panelRename),
                       onIcon: _lessonInspect ? () {} : () => _panelGuard(_panelIcon),
                       onColor: _lessonInspect ? () {} : () => _panelGuard(_panelColor),
@@ -1873,9 +1886,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onVisited: (panelElement?.isHive ?? false)
                           ? (_lessonInspect ? () {} : () => _panelGuard(_panelVisited))
                           : null,
-                      onHistory: (id) => _lessonInspect ? null : _panelGuard(() => _panelHistory(id)),
+                      onHistory: selectMode
+                          ? null
+                          : (id) => _lessonInspect ? null : _panelGuard(() => _panelHistory(id)),
                       // QR-коди — лише для вуликів
-                      onQr: (panelElement?.isHive ?? false)
+                      onQr: (panelElement?.isHive ?? false) && !selectMode
                           ? (_lessonInspect ? () {} : _panelQr)
                           : null,
                       highlightFill: _lessonInspect && _inspectRead,
@@ -1932,12 +1947,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           const gap = kHintGap + kHintSize + 8;
           var top = r.top - gap - bs;
           if (top < 52) top = r.bottom + gap; // згори не вміщається — під об'єктом
-          final maxLeft = area.width - 2 * bs - 10;
-          final left = maxLeft <= 4 ? 4.0 : (r.center.dx - bs - 3).clamp(4.0, maxLeft).toDouble();
+          final maxLeft = area.width - 3 * bs - 22;
+          final left =
+              maxLeft <= 4 ? 4.0 : (r.center.dx - 1.5 * bs - 6).clamp(4.0, maxLeft).toDouble();
           return Positioned(
             left: left,
             top: top,
             child: Row(children: [
+              CircleIconButton(
+                  icon: 'pencil',
+                  bg: AppColors.accent,
+                  size: bs,
+                  tooltip: 'Властивості',
+                  onPressed: _openProperties),
+              const SizedBox(width: 6),
               CircleIconButton(
                   icon: 'rotate',
                   bg: AppColors.darkBtn,
@@ -1958,25 +1981,45 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
-  /// Кнопка зліва внизу (поза редагуванням): «Редагувати» — режим
-  /// редагування й одразу вибір шаблону, щоб додати вулик на карту.
-  /// Список шаблонів (створення, зміна) — лише в меню ☰ → «Шаблони».
-  List<Widget> _fab() => [
-        Positioned(
-          left: 16,
-          bottom: 18,
-          child: PillButton(
-            key: _editKey,
-            text: 'Редагувати',
-            bg: AppColors.accent,
-            width: 150,
-            height: 50,
-            radius: 25,
-            fontSize: 16,
-            onPressed: _busy ? null : _editAndAdd,
+  /// Перемикач режимів угорі: «Робочий» (дивимось інформацію й проводимо
+  /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
+  /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
+  Widget _modeToggle() {
+    Widget seg(String tip, IconData icon, bool on, VoidCallback? tap) => Tooltip(
+          message: tip,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child: Container(
+              width: 38,
+              height: 32,
+              decoration: BoxDecoration(
+                color: on ? AppColors.accent : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, size: 18, color: on ? Colors.white : AppColors.text),
+            ),
           ),
+        );
+    return HoneyRing(
+      on: widget.tutorial && !selectMode && _lesson == _Lesson.place,
+      radius: 18,
+      child: Container(
+        key: _editKey,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: AppColors.roundBtn,
+          borderRadius: BorderRadius.circular(18),
         ),
-      ];
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          seg('Робочий режим', Icons.visibility_outlined, !selectMode,
+              selectMode && !_busy && _drag == null ? _exitEdit : null),
+          seg('Редагування', Icons.edit_outlined, selectMode,
+              !selectMode && !_busy ? _editAndAdd : null),
+        ]),
+      ),
+    );
+  }
 
   /// «Редагувати»: увійти в редагування й одразу запропонувати шаблон.
   /// Якщо шаблон не обрали — лишаємось у редагуванні (перемістити,

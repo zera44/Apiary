@@ -78,6 +78,14 @@ class CharacteristicsPanel extends StatelessWidget {
   final void Function(String parameterId)? onHistory;
   final VoidCallback? onQr;
 
+  /// Можна міняти назву, значок і колір (режим редагування / редактор шаблону).
+  /// У робочому режимі панель лише показує інформацію.
+  final bool editable;
+
+  /// Показувати огляд: значення (історія по тапу), «Оглянути», «Змін немає»,
+  /// QR-код. У режимі редагування вони ховаються.
+  final bool inspect;
+
   const CharacteristicsPanel({
     super.key,
     required this.data,
@@ -92,6 +100,8 @@ class CharacteristicsPanel extends StatelessWidget {
     this.fillKey,
     this.onHistory,
     this.onQr,
+    this.editable = true,
+    this.inspect = true,
   });
 
   @override
@@ -122,18 +132,18 @@ class CharacteristicsPanel extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: GestureDetector(
-                    onTap: onIcon,
+                    onTap: editable ? onIcon : null,
                     child: SizedBox.square(
                       dimension: 72,
                       child: CustomPaint(
-                        painter: _IconBoxPainter(data.type, data.variant, data.icon, color),
+                        painter: _IconBoxPainter(data.type, data.variant, data.icon, color, editable),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: onRename,
+                  onTap: editable ? onRename : null,
                   child: Text(data.title,
                       style: TextStyle(
                           color: AppColors.text, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -144,7 +154,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 Text('Колір', style: muted),
                 const SizedBox(height: 6),
                 InkWell(
-                  onTap: onColor,
+                  onTap: editable ? onColor : null,
                   borderRadius: BorderRadius.circular(6),
                   child: Row(children: [
                     Container(
@@ -182,7 +192,7 @@ class CharacteristicsPanel extends StatelessWidget {
                   fontSize: 13,
                   onPressed: onEditParams,
                 ),
-                if (data.placed) ...[
+                if (data.placed && inspect) ...[
                   const SizedBox(height: 10),
                   Row(children: [
                     Expanded(
@@ -352,7 +362,8 @@ class _IconBoxPainter extends CustomPainter {
   final String type;
   final String? variant, icon;
   final Color color;
-  _IconBoxPainter(this.type, this.variant, this.icon, this.color);
+  final bool editable;
+  _IconBoxPainter(this.type, this.variant, this.icon, this.color, this.editable);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -360,6 +371,7 @@ class _IconBoxPainter extends CustomPainter {
     drawBody(canvas, r, Merge.none, color, radius: 8);
     paintAppIcon(canvas, iconNameFor(type, variant, icon), r.center, size.width, size.height,
         AppColors.iconMark);
+    if (!editable) return;
     // значок-підказка "олівець": іконку можна змінити
     const br = 11.0;
     final b = Offset(size.width - br * 0.7, size.height - br * 0.7);
@@ -369,5 +381,5 @@ class _IconBoxPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_IconBoxPainter o) =>
-      o.type != type || o.variant != variant || o.icon != icon || o.color != color;
+      o.type != type || o.variant != variant || o.icon != icon || o.color != color || o.editable != editable;
 }
