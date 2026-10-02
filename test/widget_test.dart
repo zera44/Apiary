@@ -668,7 +668,7 @@ void main() {
     expect(find.text('Мої пасіки'), findsOneWidget);
     // пісочниця: справжніх пасік не видно, замість порожнього тексту — підказка
     expect(find.text('Тестова пасіка'), findsNothing);
-    expect(find.textContaining('Колего, пропоную тобі вибір'), findsOneWidget);
+    expect(find.textContaining('Здоров був, новачок'), findsOneWidget);
     expect(find.textContaining('«Створити карту»'), findsOneWidget);
     expect(find.text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.'), findsNothing);
     // «назад» — до плиток уроків, а не на заставку
