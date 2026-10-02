@@ -775,6 +775,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (selectedGroupId != null && !elements.any((e) => e.groupId == selectedGroupId)) {
         selectedGroupId = null;
       }
+      // урок: крок повертається разом із дією (поставили/перемістили заново)
+      if (widget.tutorial && mounted) {
+        final t = _lessonTarget;
+        setState(() {
+          if (!elements.any((e) => e.isHive)) {
+            _lessonPlaced = false;
+            _lessonMoved = false;
+            _lessonTarget = null;
+          } else if (t != null && !elements.any((e) => e.isHive && e.x == t.$1 && e.y == t.$2)) {
+            _lessonMoved = false;
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1714,7 +1727,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               iconColor: AppColors.text,
                               size: 34,
                               tooltip: 'Назад',
-                              onPressed: () => Navigator.of(ctx).pop(),
+                              // у кроці з розміщенням «Назад» скасовує останню дію
+                              onPressed: () {
+                                if (selectMode && _lessonPlaced && undoStack.isNotEmpty) {
+                                  _onUndo();
+                                } else {
+                                  Navigator.of(ctx).pop();
+                                }
+                              },
                             )
                           : HoneyRing(
                               on: _tourMenu,
