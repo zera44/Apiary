@@ -28,7 +28,14 @@ class TutorialScreen extends StatefulWidget {
 
   /// Справжня база: «Я сам собі маг пасіки» переносить у неї пасіку з уроку.
   final Repository? realRepo;
-  const TutorialScreen({super.key, this.openSandbox = openSandboxRepository, this.realRepo});
+
+  /// Одразу почати урок «Базові поняття» (після червоної пігулки).
+  final bool autoStart;
+  const TutorialScreen(
+      {super.key,
+      this.openSandbox = openSandboxRepository,
+      this.realRepo,
+      this.autoStart = false});
 
   @override
   State<TutorialScreen> createState() => _TutorialScreenState();
@@ -36,6 +43,16 @@ class TutorialScreen extends StatefulWidget {
 
 class _TutorialScreenState extends State<TutorialScreen> {
   bool _opening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _basics();
+      });
+    }
+  }
 
   /// «Базові поняття»: починаємо з порожнього списку «Мої пасіки», де
   /// пасічник підказує створити першу карту.

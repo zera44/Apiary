@@ -189,6 +189,8 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                   cells: _scene(),
                   maskSelected: false,
                   showMoveHints: false, // тут нічого не переміщується
+                  selectColor: const Color(0xFF1E5E2E), // вибір для коду - темно-зелений
+                  selectWidth: 5,
                   onTap: _onTap,
                 ),
               ),

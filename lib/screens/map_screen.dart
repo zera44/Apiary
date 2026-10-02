@@ -17,6 +17,7 @@ import '../ui/first_hints.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/fill_values_dialog.dart';
 import '../ui/grid_view.dart';
+import '../ui/pill_choice.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
 import 'parameters_screen.dart';
@@ -291,17 +292,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         text: text,
         below: Row(children: [
           Expanded(
-            child: _PillChoice(
+            child: PillChoice(
               text: 'Червона',
-              color: const Color(0xFFD64545),
+              color: kPillRed,
               onPressed: () => setState(() => _lesson = _Lesson.menu),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: _PillChoice(
+            child: PillChoice(
               text: 'Синя',
-              color: const Color(0xFF3B6FD6),
+              color: kPillBlue,
               onPressed: done == null ? null : () => done(false, widget.apiary.id),
             ),
           ),
@@ -314,8 +315,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       onTap: onTap,
       below: onTap == null
           ? null
-          : Text('Торкнись, щоб продовжити',
-              style: TextStyle(color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800)),
+          : PillButton(
+              text: 'Продовжити',
+              bg: AppColors.accent,
+              height: 38,
+              fontSize: 13,
+              width: double.infinity,
+              onPressed: onTap),
     );
   }
 
@@ -372,19 +378,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.magic:
         return (
           [
-            const TextSpan(text: 'Вулик додав, обхід зробив. '),
-            TextSpan(
-                text: 'Синя пігулка',
-                style: TextStyle(color: Color(0xFF6F9BFF), fontWeight: FontWeight.w800)),
-            const TextSpan(text: ' - ти власник свого життя ('),
-            GuideBubble.task('завершити навчання'),
-            const TextSpan(text: '), '),
-            TextSpan(
-                text: 'червона',
-                style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w800)),
-            const TextSpan(text: ' - я покажу, як глибока ця нора ('),
-            GuideBubble.task('продовжити'),
-            const TextSpan(text: ').'),
+            ...pillChoiceSpans('Вулик додав, обхід зробив. '),
           ],
           null
         );
@@ -1895,6 +1889,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
+            // навчання необов'язкове: завершити можна в будь-який момент
+            if (widget.tutorial && !_lessonFormOpen)
+              Positioned(
+                top: 80,
+                right: 10,
+                child: PillButton(
+                  text: 'Завершити навчання',
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 30,
+                  fontSize: 11,
+                  onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+                ),
+              ),
             // справжня карта після уроку: «Наостанок покажу меню навігації»
             if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
               ...lessonScene(pose: LessonPose.onButton, text: [
@@ -2015,61 +2023,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 onPressed: (_busy || _drag != null) ? null : _exitEdit),
           ),
         ]),
-      ),
-    );
-  }
-}
-
-
-/// Кнопка-пігулка: капсула з двома півкулями кольору та бликом.
-class _PillChoice extends StatelessWidget {
-  final String text;
-  final Color color;
-  final VoidCallback? onPressed;
-  const _PillChoice({required this.text, required this.color, this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    final light = Color.lerp(color, Colors.white, 0.35)!;
-    return Semantics(
-      button: true,
-      label: text,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.55), width: 2),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
-            child: Stack(alignment: Alignment.center, children: [
-              Row(children: [
-                Expanded(child: ColoredBox(color: color, child: const SizedBox.expand())),
-                Expanded(child: ColoredBox(color: light, child: const SizedBox.expand())),
-              ]),
-              Positioned(
-                top: 4,
-                left: 12,
-                right: 12,
-                height: 5,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              Text(text,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      shadows: [Shadow(color: Colors.black54, blurRadius: 3)])),
-            ]),
-          ),
-        ),
       ),
     );
   }

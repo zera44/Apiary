@@ -548,8 +548,13 @@ class _FillDialogState extends State<_FillDialog> {
         text: line.text,
         onTap: line.tapNext ? () => setState(() => _step = _step == 0 ? 2 : _step + 1) : null,
         below: line.tapNext
-            ? Text('Торкнись, щоб продовжити',
-                style: TextStyle(color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800))
+            ? PillButton(
+                text: 'Продовжити',
+                bg: AppColors.accent,
+                height: 38,
+                fontSize: 13,
+                width: double.infinity,
+                onPressed: () => setState(() => _step = _step == 0 ? 2 : _step + 1))
             : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
       ),

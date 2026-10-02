@@ -879,6 +879,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('перший «Почати»: пасічник пропонує вибір, синя - без навчання', (tester) async {
+    final db = await tester.runAsync(
+        () => AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath));
+    final fresh = Repository(db!);
+    await tester.runAsync(fresh.init);
+    await pumpApp(tester, ApiaryApp(repo: fresh, auth: FakeAuth()));
+    await settle(tester);
+    await toApiaries(tester);
+    expect(find.textContaining('Здоров був, новачок'), findsOneWidget);
+    expect(find.text('Червона'), findsOneWidget);
+    await tester.tap(find.text('Синя'));
+    await settle(tester);
+    expect(find.textContaining('Здоров був'), findsNothing);
+    expect(await tester.runAsync(() => fresh.getMeta('intro_done')), '1');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('заставка -> список пасік -> карта', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);

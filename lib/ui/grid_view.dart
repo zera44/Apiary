@@ -240,6 +240,10 @@ class InfiniteGrid extends StatefulWidget {
   /// Стрілки-натяки "об'єкт можна перетягнути" біля обраного (вимикаються там,
   /// де нічого переміщувати не можна, наприклад у генераторі QR).
   final bool showMoveHints;
+
+  /// Колір і товщина рамки виділення (за замовчуванням - акцентний, 2.5).
+  final Color? selectColor;
+  final double selectWidth;
   final bool Function(GridPress p)? onPressDown;
   final void Function(Offset screenDelta)? onPressMove;
   final void Function(Offset screenDelta)? onPressUp;
@@ -257,6 +261,8 @@ class InfiniteGrid extends StatefulWidget {
     this.blocked = false,
     this.maskSelected = true,
     this.showMoveHints = true,
+    this.selectColor,
+    this.selectWidth = 2.5,
     this.onPressDown,
     this.onPressMove,
     this.onPressUp,
@@ -472,6 +478,8 @@ class _InfiniteGridState extends State<InfiniteGrid> {
               blocked: widget.blocked,
               maskSelected: widget.maskSelected,
               showMoveHints: widget.showMoveHints,
+              selectColor: widget.selectColor,
+              selectWidth: widget.selectWidth,
             ),
           ),
         ),
@@ -487,6 +495,8 @@ class _ScenePainter extends CustomPainter {
   final bool blocked;
   final bool maskSelected;
   final bool showMoveHints;
+  final Color? selectColor;
+  final double selectWidth;
 
   _ScenePainter({
     required this.camera,
@@ -495,6 +505,8 @@ class _ScenePainter extends CustomPainter {
     required this.blocked,
     required this.maskSelected,
     this.showMoveHints = true,
+    this.selectColor,
+    this.selectWidth = 2.5,
   });
 
   Rect _cellRect(SceneCell c) => Rect.fromLTWH(
@@ -600,11 +612,11 @@ class _ScenePainter extends CustomPainter {
     // 3) рамка виділення — одна по зовнішньому контуру обраної фігури
     final sel = cells.where((c) => c.selected).toList();
     if (sel.isEmpty) return;
-    final frameColor = blocked ? AppColors.danger : AppColors.accent;
+    final frameColor = blocked ? AppColors.danger : (selectColor ?? AppColors.accent);
     final frame = Paint()
       ..color = frameColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
+      ..strokeWidth = selectWidth;
     Rect? bounds;
     for (final c in sel) {
       final b = bodyRect(_cellRect(c), c.merge).inflate(2);
@@ -663,7 +675,9 @@ class _ScenePainter extends CustomPainter {
       !identical(old.cells, cells) ||
       old.blocked != blocked ||
       old.maskSelected != maskSelected ||
-      old.showMoveHints != showMoveHints;
+      old.showMoveHints != showMoveHints ||
+      old.selectColor != selectColor ||
+      old.selectWidth != selectWidth;
 }
 
 /// Лише для бенчмарків/тестів: painter сцени без віджета.

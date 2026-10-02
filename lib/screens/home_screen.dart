@@ -17,6 +17,7 @@ import 'feedback_screen.dart';
 import 'map_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
+import '../ui/pill_choice.dart';
 import 'tutorial_screen.dart';
 import 'whats_new_screen.dart';
 
@@ -27,6 +28,19 @@ import 'whats_new_screen.dart';
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
 /// на головний екран; список пасік — через меню ☰); інакше — список.
 Future<void> openStart(NavigatorState nav, Repository repo) async {
+  // перший «Почати» на щойно встановленому застосунку: пасічник пропонує вибір
+  // (червона - навчання, синя - без нього); показується один раз
+  if (await repo.getMeta('intro_done') == null && (await repo.listApiaries()).isEmpty) {
+    if (!nav.mounted) return;
+    final learn = await showPillChoice(nav.context);
+    await repo.setMeta('intro_done', '1');
+    if (!nav.mounted) return;
+    if (learn) {
+      await nav.push(MaterialPageRoute(
+          builder: (_) => TutorialScreen(realRepo: repo, autoStart: true)));
+      return;
+    }
+  }
   final a = await repo.startApiary();
   if (!nav.mounted) return;
   await nav.push(MaterialPageRoute(
