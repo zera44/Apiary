@@ -1058,6 +1058,39 @@ class Repository {
         [n]));
   }
 
+  /// Чому прив'язаний код нічого не відкриває (для вікна «Вулик не знайдено»):
+  /// null — коду в базі взагалі немає.
+  Future<String?> qrProblem(String code) async {
+    final c = normalizeQr(code);
+    final n = appQrNumber(c) ?? typedQrNumber(c);
+    final rows = await db.rawQuery(
+      'SELECT code, number, deleted, group_id, element_id FROM qr_codes '
+      'WHERE code = ? OR number = ? ORDER BY deleted ASC, updated_at DESC',
+      [c, n],
+    );
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final label = r['number'] != null ? '№ ${r['number']}' : 'цей код';
+    if ((r['deleted'] as num?) != 0) {
+      return '$label був прив\'язаний раніше, але зараз знятий (наліпку перевидано чи прив\'язку скасовано).';
+    }
+    final gid = r['group_id'] as String?;
+    final eid = r['element_id'] as String?;
+    MapElement? el;
+    if (gid != null) {
+      final els = await getGroupElements(gid);
+      el = els.where((e) => e.isHive).firstOrNull ?? els.firstOrNull;
+    } else if (eid != null) {
+      el = await getElement(eid);
+    }
+    if (el == null || el.deleted) return '$label прив\'язаний до вулика, якого вже видалено.';
+    if (el.archived) return '$label прив\'язаний до вулика в архіві.';
+    if (el.apiaryId == null) return '$label прив\'язаний до об\'єкта без пасіки.';
+    final a = await getApiary(el.apiaryId!);
+    if (a == null || a.deleted) return '$label прив\'язаний до вулика видаленої пасіки.';
+    return '$label прив\'язаний, але вулик не вдалося відкрити.';
+  }
+
   // ---------------------------------------------------------------------
   // Шаблони
   // ---------------------------------------------------------------------

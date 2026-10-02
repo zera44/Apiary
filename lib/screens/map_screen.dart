@@ -1410,7 +1410,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final found = await repo.findByQr(code);
         if (!mounted) return null;
         if (found == null) {
-          await showInfo(context, 'Цей QR-код ще не прив\'язаний до жодного вулика.\n\nКод: $code',
+          final why = await repo.qrProblem(code);
+          if (!mounted) return null;
+          await showInfo(
+              context, '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code',
               title: 'Вулик не знайдено');
           return null;
         }

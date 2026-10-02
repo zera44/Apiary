@@ -64,9 +64,11 @@ class AppDrawer extends StatefulWidget {
     final found = await repo.findByQr(code);
     if (!nav.mounted) return;
     if (found == null) {
+      final why = await repo.qrProblem(code);
+      if (!nav.mounted) return;
       await showInfo(
         nav.context,
-        'Цей QR-код ще не прив\'язаний до жодного вулика.\n\n'
+        '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\n'
         'Щоб прив\'язати: відкрийте пасіку, торкніться вулика й на панелі '
         '«Характеристики» натисніть «Прив\'язати QR-код».\n\nКод: $code',
         title: 'Вулик не знайдено',
