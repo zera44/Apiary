@@ -228,6 +228,37 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ),
     ];
   }
+  /// Урок «Натисни на свій вулик»: медове сяйво навколо вулика.
+  List<Widget> _lessonHiveGlow() {
+    if (!widget.tutorial || selectMode || panelOpen || _lesson != _Lesson.openHive) {
+      return const [];
+    }
+    final hive = elements.where((e) => e.isHive).firstOrNull;
+    if (hive == null) return const [];
+    final cells = mergedObjectOf(hive, elements);
+    return [
+      for (final c in cells)
+        AnimatedBuilder(
+          animation: grid,
+          builder: (context, _) => Positioned.fromRect(
+            key: ValueKey('lesson-hive-glow-${c.id}'),
+            rect: grid.cellRect(c.x, c.y).inflate(3),
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.create, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.create.withValues(alpha: 0.7), blurRadius: 14)
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
   String _lessonHive = 'Вулик';
 
   /// Підтвердити розміщення: «Готово» в медовому ободку.
@@ -1860,6 +1891,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // урок «Базові поняття»: підсвічена клітинка, «завіса» (поки урок
             // чекає дії, решта не натискається) і пасічник
             ..._lessonTargetCell(),
+            ..._lessonHiveGlow(),
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
