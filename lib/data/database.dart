@@ -193,7 +193,7 @@ class AppDatabase {
         updated_at REAL NOT NULL,
         synced INTEGER NOT NULL DEFAULT 0
       )''');
-    // kind: 'in' (прихід), 'out' (вибуття), 'inv' (інвентаризація, amount —
+    // kind: 'in' (прихід), 'out' (вибуття), 'inv' (переоблік, amount —
     // різниця зі знаком), 'cancel' (скасування запису); 'set'/'add' — старі записи
     // op_date — дата операції (не дата введення), price — ціна за одиницю
     // приходу, reason — причина списання

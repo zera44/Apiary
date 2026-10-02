@@ -183,7 +183,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   }
 }
 
-/// Історія однієї номенклатури: кожен прихід, списання, інвентаризація й
+/// Історія однієї номенклатури: кожен прихід, списання, переоблік й
 /// скасування, найновіші першими. Помилковий запис не видаляється, а
 /// скасовується (кнопка ×): він лишається в історії закресленим, а окремий
 /// запис «Скасування» повертає залишок.
@@ -326,7 +326,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                             padding: const EdgeInsets.all(24),
                             child: Text(
                               'Ще немає жодного запису.\nЗаписи з\'являються після приходу, '
-                              'списання чи інвентаризації на складі.',
+                              'списання чи переобліку на складі.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),

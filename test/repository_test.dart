@@ -582,7 +582,7 @@ void main() {
     expect(await repo.listStockItems(), isEmpty);
   });
 
-  test('склад: інвентаризація записує різницю, скасування повертає залишок', () async {
+  test('склад: переоблік записує різницю, скасування повертає залишок', () async {
     final id = await repo.addStockItem('Цукор', 'кг');
     await repo.receiveStock(id, 10, total: 300);
     // фактично 8 → нестача −2
@@ -607,7 +607,7 @@ void main() {
     // двічі не можна; скасування не скасовується
     await expectLater(repo.cancelStockMove(outId), throwsStateError);
     await expectLater(repo.cancelStockMove(moves.last['id'] as String), throwsStateError);
-    // скасувати інвентаризацію «+1» → 8
+    // скасувати переоблік «+1» → 8
     final invId = moves.lastWhere((m) => m['kind'] == 'inv')['id'] as String;
     expect(await repo.cancelStockMove(invId), 8);
     // прихід 10, з якого вже списали б більше залишку, — не скасовується

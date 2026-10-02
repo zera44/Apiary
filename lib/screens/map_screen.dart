@@ -1814,10 +1814,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
-            // справжня карта після уроку: «Напослідок покажу меню навігації»
+            // справжня карта після уроку: «Наостанок покажу меню навігації»
             if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
               ...lessonScene(pose: LessonPose.onButton, text: [
-                const TextSpan(text: 'Напослідок покажу меню навігації. '),
+                const TextSpan(text: 'Наостанок покажу меню навігації. '),
                 GuideBubble.highlight('Відкрий його'),
               ]),
           ]);

@@ -183,8 +183,8 @@ void main() {
     await settle(tester);
     expect(find.text('5,5 кг'), findsOneWidget);
 
-    // інвентаризація: фактично 5 → нестача 0,5
-    await tester.tap(find.widgetWithText(PillButton, 'Інвентаризація'));
+    // переоблік: фактично 5 → нестача 0,5
+    await tester.tap(find.widgetWithText(PillButton, 'Переоблік'));
     await settle(tester);
     await tester.tap(find.widgetWithText(PillButton, 'Перерахувати'));
     await settle(tester);
@@ -565,7 +565,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('інвентаризація списком: записуються лише розбіжності', (tester) async {
+  testWidgets('переоблік списком: записуються лише розбіжності', (tester) async {
     final (sugar, frames) = (await tester.runAsync(() async {
       final a = await repo.addStockItem('Цукор', 'кг');
       await repo.receiveStock(a, 5, total: 150);
@@ -579,7 +579,7 @@ void main() {
     await settle(tester);
     expect(find.text('За обліком: 5 кг'), findsOneWidget);
     await tester.enterText(find.widgetWithText(TextField, '5'), '4');
-    await tester.tap(find.text('Зберегти інвентаризацію'));
+    await tester.tap(find.text('Зберегти переоблік'));
     await settle(tester);
     await settle(tester);
     expect((await tester.runAsync(() => repo.getStockItem(sugar)))!.quantity, 4);
@@ -859,10 +859,10 @@ void main() {
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
     // пасічник востаннє просить відкрити меню навігації
-    expect(find.textContaining('Напослідок покажу меню'), findsOneWidget);
+    expect(find.textContaining('Наостанок покажу меню'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    expect(find.textContaining('Напослідок покажу меню'), findsNothing);
+    expect(find.textContaining('Наостанок покажу меню'), findsNothing);
     // у меню - одна репліка пасічника про навчання
     expect(find.textContaining('керувати своєю пасікою'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -875,8 +875,8 @@ void main() {
     await tester.pumpWidget(wrap(AppDrawer(repo: repo, currentApiary: a, tour: true)));
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
-    for (final t in ['рамки, корми, ліки', 'усі записи оглядів', 'наліпка на вулику',
-        'Характеристики» (що записуємо', 'повертайся сюди', 'щось не так чи є ідея']) {
+    for (final t in ['рамки, корми, ліки', 'зміни показників', 'час на вітер',
+        'тут є все: шаблони', 'спеціалізоване навчання', 'поділитись ідеєю']) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);

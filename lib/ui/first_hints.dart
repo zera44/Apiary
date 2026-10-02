@@ -61,7 +61,7 @@ class Hints {
       const TextSpan(text: 'Склад: '),
       GuideBubble.highlight('Прихід'),
       const TextSpan(text: ' - що купили, '),
-      GuideBubble.highlight('Інвентаризація'),
+      GuideBubble.highlight('Переоблік'),
       const TextSpan(text: ' - звірити залишки. Задайте мінімальний залишок, і застосунок підкаже, коли час докупити.'),
     ],
   };

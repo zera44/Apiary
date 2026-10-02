@@ -1761,7 +1761,7 @@ class Repository {
     return _stockMove(id, 'out', amount, -amount, date: date, reason: reason, comment: comment);
   }
 
-  /// Інвентаризація: [actual] — фактична кількість. Записується різниця
+  /// Переоблік: [actual] — фактична кількість. Записується різниця
   /// (amount зі знаком: − нестача, + надлишок), залишок = [actual].
   Future<double> inventoryStock(String id, double actual, {DateTime? date, String? comment}) {
     if (actual.isNaN || actual < 0) throw ArgumentError.value(actual, 'actual', 'не менше 0');

@@ -17,7 +17,7 @@ import '../ui/theme.dart';
 /// Склад: три вкладки.
 /// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
 /// «Додати номенклатуру». «Вибуття» — номенклатура із залишком, під
-/// кожною «Списати». «Інвентаризація» — «Перерахувати»: фактична кількість,
+/// кожною «Списати». «Переоблік» — «Перерахувати»: фактична кількість,
 /// різниця (нестача/надлишок) записується окремо.
 ///
 /// За правилами обліку нічого не перезаписується: кожна операція — окремий
@@ -133,7 +133,7 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
       });
 
-  /// Операція з номенклатурою: прихід, списання або інвентаризація.
+  /// Операція з номенклатурою: прихід, списання або переоблік.
   Future<void> _move(StockItem it, StockOp op) => _guard(() async {
         final m = await showDialog<_Move>(
           context: context,
@@ -155,7 +155,7 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
       });
 
-  /// Інвентаризація списком (усі позиції на одному екрані) чи по одній.
+  /// Переоблік списком (усі позиції на одному екрані) чи по одній.
   bool _invList = false;
   final Map<String, TextEditingController> _actual = {};
 
@@ -176,7 +176,7 @@ class _StockScreenState extends State<StockScreen> {
     return _actual.putIfAbsent(it.id, () => TextEditingController(text: base));
   }
 
-  /// «Зберегти інвентаризацію»: записуються лише позиції, де фактична
+  /// «Зберегти переоблік»: записуються лише позиції, де фактична
   /// кількість відрізняється від облікової.
   Future<void> _saveInventoryList() => _guard(() async {
         final list = items ?? const <StockItem>[];
@@ -206,7 +206,7 @@ class _StockScreenState extends State<StockScreen> {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(changed == 0
                   ? 'Розбіжностей немає - усе збігається з обліком'
-                  : 'Інвентаризацію збережено: змінено позицій - $changed')));
+                  : 'Переоблік збережено: змінено позицій - $changed')));
         }
       });
 
@@ -271,7 +271,7 @@ class _StockScreenState extends State<StockScreen> {
     final title = switch (_op) {
       StockOp.receive => 'Прихід номенклатури',
       StockOp.writeOff => 'Вибуття номенклатури',
-      StockOp.inventory => 'Інвентаризація',
+      StockOp.inventory => 'Переоблік',
     };
     return Scaffold(
       body: SafeArea(
@@ -285,10 +285,10 @@ class _StockScreenState extends State<StockScreen> {
                 const SizedBox(width: 6),
                 _tab('Вибуття', StockOp.writeOff),
                 const SizedBox(width: 6),
-                _tab('Інвентаризація', StockOp.inventory),
+                _tab('Переоблік', StockOp.inventory),
               ]),
             ),
-            // інвентаризація: по одній позиції чи всім списком
+            // переоблік: по одній позиції чи всім списком
             if (_op == StockOp.inventory)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
@@ -329,7 +329,7 @@ class _StockScreenState extends State<StockScreen> {
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: PillButton(
-                  text: 'Зберегти інвентаризацію',
+                  text: 'Зберегти переоблік',
                   bg: AppColors.accent,
                   height: 48,
                   radius: 16,
@@ -751,7 +751,7 @@ class _ItemDialogState extends State<_ItemDialog> {
   }
 }
 
-/// Результат діалогу операції. [amount] — кількість (для інвентаризації —
+/// Результат діалогу операції. [amount] — кількість (для переобліку —
 /// фактична кількість), [total] — загальна вартість приходу.
 class _Move {
   final double amount;
@@ -841,7 +841,7 @@ class _MoveDialogState extends State<_MoveDialog> {
     final (title, button, color) = switch (op) {
       StockOp.receive => ('Прихід', 'Зберегти', AppColors.accent),
       StockOp.writeOff => ('Списання', 'Списати', AppColors.danger),
-      StockOp.inventory => ('Інвентаризація', 'Зберегти', AppColors.accent),
+      StockOp.inventory => ('Переоблік', 'Зберегти', AppColors.accent),
     };
     final price = op == StockOp.receive ? _unitPrice : null;
     return AlertDialog(
