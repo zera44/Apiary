@@ -14,6 +14,7 @@ import '../screens/templates_screen.dart';
 import '../screens/tutorial_screen.dart';
 import '../services/autostart.dart';
 import 'common.dart';
+import 'guide_bubble.dart';
 import 'icons.dart';
 import 'theme.dart';
 
@@ -21,7 +22,7 @@ import 'theme.dart';
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
 /// Налаштування ▾ (характеристики, шаблони) / Навчання / Зворотний зв'язок. «Що нового» —
 /// лише на головному екрані, туди — кнопкою «назад». Є лише на карті.
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends StatefulWidget {
   final Repository repo;
 
   /// Пасіка, з карти якої відкрито меню (меню є лише на карті пасіки):
@@ -34,73 +35,20 @@ class AppDrawer extends StatelessWidget {
 
   /// «Прив'язати наліпки підряд» (робить сама карта).
   final VoidCallback? onBindQrRow;
-  const AppDrawer(
-      {super.key, required this.repo, required this.currentApiary, this.onReturn, this.onBindQrRow});
 
-  Future<void> _open(NavigatorState nav, Widget screen) async {
-    nav.pop(); // закрити меню
-    await nav.push(MaterialPageRoute(builder: (_) => screen));
-    await onReturn?.call();
-  }
+  /// Урок: пасічник по черзі розповідає про пункти меню (пункти не натискаються,
+  /// кожен підсвічується медовим ободком).
+  final bool tour;
+  const AppDrawer(
+      {super.key,
+      required this.repo,
+      required this.currentApiary,
+      this.onReturn,
+      this.onBindQrRow,
+      this.tour = false});
 
   @override
-  Widget build(BuildContext context) {
-    final nav = Navigator.of(context);
-    return Drawer(
-      backgroundColor: AppColors.card,
-      child: SafeArea(
-        // пункти прокручуються (на невисокому екрані всі вміщуються)
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-              child: ListView(padding: EdgeInsets.zero, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Text('Меню навігації',
-                style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
-          ),
-          _item(context, 'beehive', 'Мої пасіки', () {
-            nav.pop(); // закрити меню
-            nav.popUntil((r) => r.isFirst);
-            nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
-          }),
-          _item(context, 'box', 'Склад', () => _open(nav, StockScreen(repo: repo))),
-          // «Звіт по пасіці (Excel)» — усередині «Історії»
-          _item(context, 'history', 'Історія',
-              () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary))),
-          // QR — одним пунктом; натиснули — розкрились дії
-          _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
-            _item(context, 'qr', 'Сканувати', () {
-              nav.pop();
-              openHiveByQr(nav, repo);
-            }),
-            _item(context, 'qr', 'Генерувати',
-                () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
-            if (onBindQrRow != null)
-              _item(context, 'qr', 'Прив\'язати підряд', () {
-                nav.pop(); // закрити меню
-                onBindQrRow!();
-              }),
-          ]),
-          // разове налаштування — рідко, тому згорнуто
-          _group(context, Icon(Icons.tune, color: AppColors.text, size: 28), 'Налаштування', [
-            _item(context, '', 'Характеристики',
-                () => _open(nav, ParametersScreen.catalog(repo: repo)),
-                iconData: Icons.list_alt),
-            _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
-          ]),
-          _item(context, '', 'Навчання',
-              () => _open(nav, TutorialScreen(realRepo: repo)),
-              iconData: Icons.school_outlined),
-          _item(context, 'pencil', "Зворотний зв'язок", () {
-            nav.pop(); // закрити меню
-            nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
-          }),
-          ])),
-          if (Autostart.supported) const _AutostartTile(),
-        ]),
-      ),
-    );
-  }
+  State<AppDrawer> createState() => _AppDrawerState();
 
   /// Відсканувати код і відкрити карту пасіки з панеллю цього вулика й
   /// одразу формою «Оглянути».
@@ -133,6 +81,163 @@ class AppDrawer extends StatelessWidget {
       builder: (_) => MapScreen(
           repo: repo, apiary: apiary, focusElementId: elementId, openFill: fill, next: next),
     ));
+  }
+}
+
+/// Кроки екскурсії по меню: що розповідає пасічник про кожен пункт.
+final List<List<InlineSpan>> kDrawerTour = [
+  [
+    GuideBubble.highlight('Мої пасіки'),
+    const TextSpan(text: ' - усі твої пасіки в одному місці. Звідси заходиш на карту будь-якої.'),
+  ],
+  [
+    GuideBubble.highlight('Склад'),
+    const TextSpan(
+        text: ' - рамки, корми, ліки. Прихід, списання, інвентаризація; коли залишок '
+            'на мінімумі - підкажу докупити.'),
+  ],
+  [
+    GuideBubble.highlight('Історія'),
+    const TextSpan(
+        text: ' - усі записи оглядів і руху складу. Тут же звіт по пасіці в Excel - одним дотиком.'),
+  ],
+  [
+    GuideBubble.highlight('QR-код'),
+    const TextSpan(
+        text: ' - наліпка на вулику: скануєш і одразу потрапляєш на його огляд. '
+            'Нові наліпки генеруй і прив\'язуй підряд.'),
+  ],
+  [
+    GuideBubble.highlight('Налаштування'),
+    const TextSpan(
+        text: ' - тут «Характеристики» (що записуємо про вулик) і «Шаблони» (готові вулики '
+            'та перешкоди для карти).'),
+  ],
+  [
+    GuideBubble.highlight('Навчання'),
+    const TextSpan(text: ' - повертайся сюди, якщо захочеш повторити уроки.'),
+  ],
+  [
+    GuideBubble.highlight('Зворотний зв\'язок'),
+    const TextSpan(text: ' - щось не так чи є ідея? Напиши, я почую.'),
+  ],
+];
+
+class _AppDrawerState extends State<AppDrawer> {
+  int _step = 0;
+
+  Repository get repo => widget.repo;
+  Apiary get currentApiary => widget.currentApiary;
+  Future<void> Function()? get onReturn => widget.onReturn;
+  VoidCallback? get onBindQrRow => widget.onBindQrRow;
+
+  /// Урок: пункт [i] підсвічено, натискання вимкнено.
+  Widget _t(int i, Widget child) =>
+      widget.tour
+          ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
+          : child;
+
+  Widget _tourFooter() {
+    final last = _step == kDrawerTour.length - 1;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+          color: AppColors.popupBg,
+          border: Border(top: BorderSide(color: AppColors.hive.withValues(alpha: 0.5)))),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Image.asset(kLessonBeekeeperPills, height: 64, filterQuality: FilterQuality.medium),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: kDrawerTour[_step]),
+              style: TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.3),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        PillButton(
+          text: last ? 'Зрозуміло' : 'Далі',
+          bg: AppColors.accent,
+          height: 40,
+          width: double.infinity,
+          onPressed: () {
+            if (last) {
+              Navigator.of(context).pop(); // закрити меню
+            } else {
+              setState(() => _step++);
+            }
+          },
+        ),
+      ]),
+    );
+  }
+
+  Future<void> _open(NavigatorState nav, Widget screen) async {
+    nav.pop(); // закрити меню
+    await nav.push(MaterialPageRoute(builder: (_) => screen));
+    await onReturn?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nav = Navigator.of(context);
+    return Drawer(
+      backgroundColor: AppColors.card,
+      child: SafeArea(
+        // пункти прокручуються (на невисокому екрані всі вміщуються)
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+              child: ListView(padding: EdgeInsets.zero, children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Text('Меню навігації',
+                style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
+          ),
+          _t(0, _item(context, 'beehive', 'Мої пасіки', widget.tour ? () {} : () {
+            nav.pop(); // закрити меню
+            nav.popUntil((r) => r.isFirst);
+            nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
+          })),
+          _t(1, _item(context, 'box', 'Склад',
+              widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
+          // «Звіт по пасіці (Excel)» — усередині «Історії»
+          _t(2, _item(context, 'history', 'Історія',
+              widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
+          // QR — одним пунктом; натиснули — розкрились дії
+          _t(3, _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
+            _item(context, 'qr', 'Сканувати', () {
+              nav.pop();
+              AppDrawer.openHiveByQr(nav, repo);
+            }),
+            _item(context, 'qr', 'Генерувати',
+                () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
+            if (onBindQrRow != null)
+              _item(context, 'qr', 'Прив\'язати підряд', () {
+                nav.pop(); // закрити меню
+                onBindQrRow!();
+              }),
+          ])),
+          // разове налаштування — рідко, тому згорнуто
+          _t(4, _group(context, Icon(Icons.tune, color: AppColors.text, size: 28), 'Налаштування', [
+            _item(context, '', 'Характеристики',
+                () => _open(nav, ParametersScreen.catalog(repo: repo)),
+                iconData: Icons.list_alt),
+            _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
+          ])),
+          _t(5, _item(context, '', 'Навчання',
+              widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
+              iconData: Icons.school_outlined)),
+          _t(6, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
+            nav.pop(); // закрити меню
+            nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
+          })),
+          ])),
+          if (widget.tour) _tourFooter(),
+          if (Autostart.supported) const _AutostartTile(),
+        ]),
+      ),
+    );
   }
 
   /// Пункт, що розгортається (QR-код, Налаштування).

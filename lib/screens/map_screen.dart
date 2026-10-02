@@ -1615,6 +1615,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       drawer: widget.tutorial && _lesson != _Lesson.menu && _lesson != _Lesson.drawer
           ? null
           : AppDrawer(
+              tour: widget.tutorial,
               repo: repo,
               currentApiary: widget.apiary,
               onReturn: _afterExternalChange,
