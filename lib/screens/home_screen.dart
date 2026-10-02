@@ -32,7 +32,7 @@ Future<void> openStart(NavigatorState nav, Repository repo) async {
   // (червона - навчання, синя - без нього); показується один раз
   if (await repo.getMeta('intro_done') == null && (await repo.listApiaries()).isEmpty) {
     if (!nav.mounted) return;
-    final learn = await showPillChoice(nav.context);
+    final learn = await showPillChoice(nav);
     await repo.setMeta('intro_done', '1');
     if (!nav.mounted) return;
     if (learn) {

@@ -79,10 +79,9 @@ List<InlineSpan> pillChoiceSpans(String lead) => [
 
 /// Пасічник «як Нео» при першому «Почати»: true - червона (навчання),
 /// false - синя (без навчання).
-Future<bool> showPillChoice(BuildContext context) async {
-  final bottom = MediaQuery.of(context).padding.bottom;
-  final r = await showGeneralDialog<bool>(
-    context: context,
+Future<bool> showPillChoice(NavigatorState nav) async {
+  final bottom = MediaQuery.of(nav.context).padding.bottom;
+  final r = await nav.push<bool>(RawDialogRoute<bool>(
     barrierDismissible: false,
     barrierColor: Colors.black.withValues(alpha: 0.6),
     transitionDuration: Duration.zero,
@@ -112,6 +111,6 @@ Future<bool> showPillChoice(BuildContext context) async {
         ]),
       ),
     ),
-  );
+  ));
   return r ?? false;
 }
