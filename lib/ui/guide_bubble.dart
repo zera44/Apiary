@@ -23,6 +23,8 @@ const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
 const kLessonBeekeeperStung = 'assets/guide/beekeeper_stung.webp';
 /// Пасічник за ноутбуком - «Склад» в огляді меню.
 const kLessonBeekeeperLaptop = 'assets/guide/beekeeper_laptop.webp';
+/// Пасічник із газетою - «Історія» в огляді меню.
+const kLessonBeekeeperNewspaper = 'assets/guide/beekeeper_newspaper.webp';
 const kLessonBear = 'assets/guide/bear_helper.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
