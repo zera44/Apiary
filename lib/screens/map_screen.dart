@@ -2008,7 +2008,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
   /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
   /// Перемикач стоїть на одному місці в обох режимах.
-  double get _toggleBottom => widget.tutorial ? kToggleLessonBottom : 16;
+  double get _toggleBottom => widget.tutorial ? kToggleLessonBottom : 24;
 
   /// Перехід у робочий режим і є збереженням (окремого «Готово» немає).
   Widget _modeToggle() {
