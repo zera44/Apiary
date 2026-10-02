@@ -86,8 +86,15 @@ class OptionsEditor extends StatefulWidget {
   /// Поле «Додати варіант» — ззовні, щоб недописаний варіант не загубився
   /// при «Зберегти».
   final TextEditingController controller;
+
+  /// Червона рамка поля, коли «Зберегти» натиснули без варіантів.
+  final bool error;
   const OptionsEditor(
-      {super.key, required this.options, required this.onChanged, required this.controller});
+      {super.key,
+      required this.options,
+      required this.onChanged,
+      required this.controller,
+      this.error = false});
   @override
   State<OptionsEditor> createState() => _OptionsEditorState();
 }
@@ -134,8 +141,11 @@ class _OptionsEditorState extends State<OptionsEditor> {
             focusNode: _focus,
             style: TextStyle(color: AppColors.text),
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-                isDense: true, hintText: 'Додати варіант (наприклад, «Сильна»)'),
+            decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Додати варіант (наприклад, «Сильна»)',
+                enabledBorder: widget.error ? redFieldBorder() : null,
+                focusedBorder: widget.error ? redFieldBorder() : null),
             onSubmitted: (_) => _add(),
           ),
         ),
@@ -148,3 +158,9 @@ class _OptionsEditorState extends State<OptionsEditor> {
     ]);
   }
 }
+
+/// Червона рамка поля введення - «так не можна».
+OutlineInputBorder redFieldBorder() => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: AppColors.danger, width: 2.5),
+    );

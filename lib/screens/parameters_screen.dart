@@ -147,6 +147,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     var options = [...?param?.options];
     final optionCtrl = TextEditingController();
     String? formError;
+    var nameError = false;
+    var optionsError = false;
     // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
     final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
     if (!mounted) return null;
@@ -173,6 +175,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     autofocus: !isEdit,
                     readOnly: isBase,
                     style: TextStyle(color: isBase ? AppColors.textMuted : AppColors.text),
+                    decoration: nameError
+                        ? InputDecoration(
+                            enabledBorder: redFieldBorder(), focusedBorder: redFieldBorder())
+                        : null,
+                    onChanged: (_) {
+                      if (nameError) {
+                        setD(() {
+                          nameError = false;
+                          formError = null;
+                        });
+                      }
+                    },
                   ),
                   if (isBase)
                     Padding(
@@ -199,9 +213,11 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     OptionsEditor(
                       options: options,
                       controller: optionCtrl,
+                      error: optionsError,
                       onChanged: (o) => setD(() {
                         options = o;
                         formError = null;
+                        optionsError = false;
                       }),
                     ),
                   ],
@@ -253,7 +269,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   text: 'Зберегти',
                   bg: AppColors.accent,
                   onPressed: () {
-                    if (nameCtrl.text.trim().isEmpty) return;
+                    if (nameCtrl.text.trim().isEmpty) {
+                      setD(() {
+                        nameError = true;
+                        formError = 'Так не можна - вкажіть назву параметра';
+                      });
+                      return;
+                    }
                     if (type == DataTypes.choice) {
                       // недописаний варіант у полі — теж додаємо
                       final pending = optionCtrl.text.trim();
@@ -263,7 +285,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
                         optionCtrl.clear();
                       }
                       if (options.length < 2) {
-                        setD(() => formError = 'Додайте щонайменше два варіанти');
+                        setD(() {
+                          optionsError = true;
+                          formError = 'Так не можна - додайте щонайменше два варіанти';
+                        });
                         return;
                       }
                     }
