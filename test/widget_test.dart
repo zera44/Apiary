@@ -747,7 +747,10 @@ void main() {
       await settle(tester);
     }
     expect(find.textContaining('короткі замітки'), findsOneWidget);
-    expect(find.textContaining('Проведи огляд по ньому'), findsOneWidget);
+    // друга хмарка - після дотику; кнопка «Оглянути» тоді в медовому ободку
+    await tester.tap(find.textContaining('короткі замітки'));
+    await settle(tester);
+    expect(find.textContaining('проведи огляд вулика'), findsOneWidget);
     expect(find.text('Оглянути'), findsOneWidget);
 
     // з уроку не вийти системним «назад» і немає меню ☰ — лише «Назад» угорі
@@ -808,6 +811,8 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
+    await tester.tap(find.textContaining('короткі замітки'));
+    await settle(tester);
     await tester.tap(find.text('Оглянути'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);

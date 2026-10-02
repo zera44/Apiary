@@ -144,6 +144,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final _actionBarKey = GlobalKey();
   final _zoomKey = GlobalKey();
   final _panelBoxKey = GlobalKey();
+  bool _inspectRead = false; // урок: перша хмарка про панель прочитана
   final _topKey = GlobalKey();
 
   /// Урок: що зараз можна натиснути (у координатах карти).
@@ -174,6 +175,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return !panelOpen && onHive();
       case _Lesson.inspect:
         // панель можна гортати вниз до «Оглянути»; решта кнопок у ній вимкнені
+        if (!_inspectRead) return false; // спершу хмарка пасічника
         return inKey(_fillKey) || (panelOpen && inKey(_panelBoxKey));
       case _Lesson.congrats:
       case _Lesson.magic:
@@ -322,10 +324,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         );
       case _Lesson.inspect:
         if (!panelOpen) return null;
+        if (!_inspectRead) {
+          return (
+            const [TextSpan(text: 'Це короткі замітки про твій вулик.')],
+            () => setState(() => _inspectRead = true)
+          );
+        }
         return (
           [
-            const TextSpan(text: 'Це короткі замітки про твій вулик. '),
-            GuideBubble.task('Проведи огляд по ньому'),
+            const TextSpan(text: 'Прокрути донизу й '),
+            GuideBubble.task('проведи огляд вулика'),
           ],
           null
         );
@@ -975,7 +983,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     setState(() {
       panelOpen = true;
       // урок: відкрили свій вулик — тепер огляд
-      if (_lesson == _Lesson.openHive && el.isHive) _lesson = _Lesson.inspect;
+      if (_lesson == _Lesson.openHive && el.isHive) {
+        _lesson = _Lesson.inspect;
+        _inspectRead = false;
+      }
     });
     _revealBesidePanel(el);
     if (!widget.tutorial) await Hints.show(context, repo, Hints.panel);
@@ -1724,7 +1735,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onQr: (panelElement?.isHive ?? false)
                           ? (_lessonInspect ? () {} : _panelQr)
                           : null,
-                      highlightFill: _lessonInspect,
+                      highlightFill: _lessonInspect && _inspectRead,
                       fillKey: _fillKey,
                     ),
             ),
