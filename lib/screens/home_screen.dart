@@ -380,6 +380,8 @@ class _AdvisorState extends State<_Advisor> {
           onTap: action ?? () => setState(() => _i++),
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
+            // фіксована висота: довша репліка не розсуває екран
+            height: 116,
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -394,7 +396,10 @@ class _AdvisorState extends State<_Advisor> {
                   color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text.rich(
+              Expanded(
+                  child: Align(
+                alignment: Alignment.topLeft,
+                child: Text.rich(
                   // **слово** — медовим напівжирним
                   TextSpan(children: [
                     for (final (i, part) in m.text.split('**').indexed)
@@ -412,6 +417,7 @@ class _AdvisorState extends State<_Advisor> {
                       fontSize: action != null ? 15 : 13,
                       height: 1.3,
                       fontWeight: action != null ? FontWeight.w700 : FontWeight.w400)),
+              )),
               const SizedBox(height: 4),
               Row(children: [
                 Expanded(
