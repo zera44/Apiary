@@ -401,11 +401,11 @@ void main() {
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
     await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    expect(find.byTooltip('Готово'), findsNothing);
+    expect(find.byTooltip("Додати об'єкт"), findsNothing);
     // вулик (0,0): камера по центру (1,0), клітинка 34
     final g = await tester.startGesture(tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-17, -17));
     await tester.pump(const Duration(milliseconds: 700));
-    expect(find.byTooltip('Готово'), findsOneWidget); // режим редагування
+    expect(find.byTooltip("Додати об'єкт"), findsOneWidget); // режим редагування
     expect(find.text('Оберіть шаблон'), findsNothing); // без вибору шаблону
     await g.moveBy(const Offset(0, 120));
     await tester.pump();
@@ -721,7 +721,7 @@ void main() {
     // «геть не туди» — перетягнути на підсвічену клітинку
     expect(find.textContaining('геть не туди'), findsOneWidget);
     // поки не перетягнули — «Готово» не натискається (завіса уроку)
-    await tester.tap(find.byTooltip('Готово'), warnIfMissed: false);
+    await tester.tap(find.byTooltip('Робочий режим'), warnIfMissed: false);
     await settle(tester);
     expect(find.textContaining('геть не туди'), findsOneWidget);
     final target = tester.getCenter(find.byKey(const ValueKey('lesson-target')));
@@ -731,9 +731,9 @@ void main() {
     }
     // вулик стоїть — «Підтверди вибір», «Готово» в медовому ободку
     expect(find.textContaining('Підтверди вибір'), findsOneWidget);
-    expect(find.ancestor(of: find.byTooltip('Готово'), matching: find.byType(HoneyRing)),
+    expect(find.ancestor(of: find.byTooltip('Робочий режим'), matching: find.byType(HoneyRing)),
         findsOneWidget);
-    await tester.tap(find.byTooltip('Готово'));
+    await tester.tap(find.byTooltip('Робочий режим'));
     await settle(tester);
     expect(find.textContaining('З легким стартом'), findsNothing);
     expect(find.textContaining('Не час відпочивати'), findsOneWidget);
@@ -800,7 +800,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    await tester.tap(find.byTooltip('Готово'));
+    await tester.tap(find.byTooltip('Робочий режим'));
     await settle(tester);
     await tester.tapAt(target);
     for (var i = 0; i < 3; i++) {
@@ -1443,9 +1443,9 @@ void main() {
     final moved = {for (final e in after) e.id: (e.x, e.y)};
     expect(before.any((e) => moved[e.id] != (e.x, e.y)), isTrue);
     // одне «Готово» завершує і розміщення, і редагування
-    await tester.tap(find.byTooltip('Готово'));
+    await tester.tap(find.byTooltip('Робочий режим'));
     await settle(tester);
-    expect(find.byTooltip('Готово'), findsNothing);
+    expect(find.byTooltip("Додати об'єкт"), findsNothing);
     expect(find.byTooltip('Редагування'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -1496,7 +1496,7 @@ void main() {
     await tester.tapAt(tester.getCenter(find.byType(InfiniteGrid)) + const Offset(-17, -17));
     await settle(tester);
     expect(find.byTooltip('Повернути'), findsOneWidget); // лише над обраним об'єктом
-    expect(find.byTooltip('Видалити'), findsNWidgets(2));
+    expect(find.byTooltip('Видалити'), findsOneWidget);
     expect(find.byType(CharacteristicsPanel), findsNothing); // інформація не відкривається
     expect(tester.takeException(), isNull);
   });
@@ -1586,16 +1586,16 @@ void main() {
     await tester.tapAt(const Offset(12, 300));
     await settle(tester);
     expect(find.text('Оберіть шаблон'), findsNothing);
-    expect(find.byTooltip('Готово'), findsOneWidget);
+    expect(find.byTooltip("Додати об'єкт"), findsOneWidget);
     // «Готово» — назад до перегляду; знову «Редагувати» й обрали шаблон — розміщення
-    await tester.tap(find.byTooltip('Готово'));
+    await tester.tap(find.byTooltip('Робочий режим'));
     await settle(tester);
     await tester.tap(find.byTooltip('Редагування'));
     await settle(tester);
     await tester.tap(find.byTooltip('Лежак (2×2)'));
     await settle(tester);
     expect(find.byTooltip('Завершити розміщення'), findsNothing); // окремого виходу з розміщення немає
-    expect(find.byTooltip('Готово'), findsOneWidget);
+    expect(find.byTooltip("Додати об'єкт"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

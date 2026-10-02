@@ -26,17 +26,14 @@ class ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget seg(String tip, IconData icon, bool on, VoidCallback? tap) => decorative
-        ? _segBody(icon, on)
-        : Tooltip(
-          message: tip,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: tap,
-            child: _segBody(icon, on),
-          ),
-        );
-    return Container(
+    Widget seg(String tip, IconData icon, bool on) =>
+        decorative ? _segBody(icon, on) : Tooltip(message: tip, child: _segBody(icon, on));
+    // тап будь-де по перемикачу — інший режим
+    final tap = editing ? onWork : onEdit;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: decorative ? null : tap,
+      child: Container(
       padding: const EdgeInsets.all(kTogglePad),
       decoration: BoxDecoration(
         color: AppColors.roundBtn,
@@ -71,10 +68,11 @@ class ModeToggle extends StatelessWidget {
           ),
         ),
         Row(mainAxisSize: MainAxisSize.min, children: [
-          seg('Робочий режим', Icons.visibility_outlined, !editing, onWork),
-          seg('Редагування', Icons.edit_outlined, editing, onEdit),
+          seg('Робочий режим', Icons.visibility_outlined, !editing),
+          seg('Редагування', Icons.edit_outlined, editing),
         ]),
       ]),
+      ),
     );
   }
 

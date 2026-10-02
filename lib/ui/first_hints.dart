@@ -53,9 +53,9 @@ class Hints {
       const TextSpan(text: 'Режим редагування: оберіть шаблон і натисніть на вільну клітинку. '
           'Вулик можна перетягнути, повернути кнопкою над ним. Видалили помилково - '),
       GuideBubble.highlight('Відмінити'),
-      const TextSpan(text: ' внизу. '),
-      GuideBubble.highlight('Готово'),
-      const TextSpan(text: ' - вийти.'),
+      const TextSpan(text: ' внизу. Перемикач у '),
+      GuideBubble.highlight('Робочий режим'),
+      const TextSpan(text: ' - зберегти й вийти.'),
     ],
     stock: [
       const TextSpan(text: 'Склад: '),

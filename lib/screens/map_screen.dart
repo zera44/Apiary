@@ -151,7 +151,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final _gateKey = GlobalKey();
   final _backKey = GlobalKey();
   final _editKey = GlobalKey();
-  final _doneKey = GlobalKey();
   final _fillKey = GlobalKey();
   final _actionBarKey = GlobalKey();
   final _zoomKey = GlobalKey();
@@ -176,10 +175,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (pendingTemplate == null) return false; // вибір шаблону — у вікні
       if (!_lessonPlaced) {
         // будь-де на карті, але не кнопки
-        return !inKey(_actionBarKey) && !inKey(_zoomKey) && !inKey(_topKey);
+        return !inKey(_actionBarKey) && !inKey(_editKey) && !inKey(_zoomKey) && !inKey(_topKey);
       }
       if (!_lessonMoved) return onHive(); // лише тягнути свій вулик
-      return inKey(_doneKey);
+      return inKey(_editKey); // підтвердити — перемкнути в робочий режим
     }
     switch (_lesson) {
       case _Lesson.place:
@@ -264,7 +263,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String _lessonHive = 'Вулик';
 
-  /// Підтвердити розміщення: «Готово» в медовому ободку.
+  /// Підтвердити розміщення: перемикач у медовому ободку.
   bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced && _lessonMoved;
 
   /// Огляд: «Оглянути» на панелі в медовому ободку.
@@ -346,7 +345,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         );
       }
       return (
-        [const TextSpan(text: 'Підтверди вибір - натисни '), GuideBubble.highlight('«Готово»')],
+        [
+          const TextSpan(text: 'Підтверди вибір - перемкни в '),
+          GuideBubble.highlight('«Робочий режим»'),
+        ],
         null
       );
     }
@@ -1866,16 +1868,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               duration: const Duration(milliseconds: 220),
               curve: Curves.easeOut,
               left: kToggleLeft,
-              bottom: widget.tutorial ? kToggleLessonBottom : (selectMode ? 86 : 16),
+              bottom: _toggleBottom,
               child: _modeToggle(),
             ),
-            // розміщення шаблону завершує те саме «Готово», що й редагування
+            // редагування: «Додати» — поруч із перемикачем, під пальцем
             if (selectMode)
               Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: KeyedSubtree(key: _actionBarKey, child: _actionBar())),
+                left: kToggleLeft + kToggleW + 12,
+                bottom: _toggleBottom + (kToggleH - 52) / 2,
+                child: KeyedSubtree(
+                  key: _actionBarKey,
+                  child: CircleIconButton(
+                      icon: 'plus_circle',
+                      bg: AppColors.addObject,
+                      size: 52,
+                      tooltip: "Додати об'єкт",
+                      onPressed: _busy || _drag != null ? null : _onAddObject),
+                ),
+              ),
             // панель "Характеристики"
             AnimatedPositioned(
               key: _panelBoxKey,
@@ -2000,9 +2010,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// Перемикач режимів унизу ліворуч: «Робочий» (дивимось інформацію й проводимо
   /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
   /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
+  /// Перемикач стоїть на одному місці в обох режимах.
+  double get _toggleBottom => widget.tutorial ? kToggleLessonBottom : 16;
+
+  /// Перехід у робочий режим і є збереженням (окремого «Готово» немає).
   Widget _modeToggle() {
     return HoneyRing(
-      on: widget.tutorial && !selectMode && _lesson == _Lesson.place,
+      on: widget.tutorial && ((!selectMode && _lesson == _Lesson.place) || _lessonConfirm),
       radius: 28,
       child: ModeToggle(
         key: _editKey,
@@ -2015,7 +2029,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   /// «Редагувати»: увійти в редагування й одразу запропонувати шаблон.
   /// Якщо шаблон не обрали — лишаємось у редагуванні (перемістити,
-  /// повернути, видалити; «Готово» — вийти).
+  /// повернути, видалити; перемикач — вийти).
   Future<void> _editAndAdd() async {
     _enterEdit();
     if (!widget.tutorial) await Hints.show(context, repo, Hints.edit);
@@ -2023,44 +2037,4 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     await _onAddObject();
   }
 
-  Widget _actionBar() {
-    final enabled = hasSelection && !_busy && _drag == null;
-    return Container(
-      height: 70,
-      color: AppColors.panel,
-      // урок: ліворуч на панелі — перемикач режимів і пасічник на ньому
-      padding: EdgeInsets.fromLTRB(
-          widget.tutorial ? kToggleLeft + kToggleW + 12 : 12, 10, 12, 10),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        // урок: кнопки праворуч — ліворуч стоїть пасічник на перемикачі
-        alignment: widget.tutorial ? Alignment.centerRight : Alignment.center,
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          CircleIconButton(
-              icon: 'plus_circle',
-              bg: AppColors.addObject,
-              tooltip: "Додати об'єкт",
-              onPressed: _onAddObject),
-          const SizedBox(width: 16),
-          CircleIconButton(
-              icon: 'trash',
-              bg: AppColors.danger,
-              tooltip: 'Видалити',
-              onPressed: enabled ? _onDelete : null),
-          const SizedBox(width: 16),
-          HoneyRing(
-            on: _lessonConfirm,
-            child: CircleIconButton(
-                key: _doneKey,
-                icon: 'check',
-                bg: AppColors.accent,
-                tooltip: 'Готово',
-                // поки триває дія (розміщення, видалення…), вийти не можна: вона
-                // завершилась би вже поза редагуванням
-                onPressed: (_busy || _drag != null) ? null : _exitEdit),
-          ),
-        ]),
-      ),
-    );
-  }
 }
