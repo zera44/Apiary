@@ -483,6 +483,14 @@ void main() {
       expect(await repo.findByQr('K1'), isNull);
     });
 
+    test('код застосунку з іншим «хвостом», але тим самим номером - знаходить вулик', () async {
+      final a = await repo.addElement(apiaryId, 0, 0);
+      await repo.linkQr('MYAPIARY:H:3:aaaa1111', EntityRef.element(a));
+      expect((await repo.findByQr('MYAPIARY:H:3:aaaa1111'))!.element.id, a);
+      expect((await repo.findByQr('MYAPIARY:H:3:bbbb2222'))!.element.id, a);
+      expect(await repo.findByQr('MYAPIARY:H:4:bbbb2222'), isNull);
+    });
+
     test('видалений вулик чи пасіка не знаходяться за кодом', () async {
       final a = await repo.addElement(apiaryId, 0, 0);
       await repo.linkQr('K', EntityRef.element(a));

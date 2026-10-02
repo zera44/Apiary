@@ -1024,7 +1024,9 @@ class Repository {
             'ORDER BY updated_at DESC',
             [c],
           );
-    for (final l in links) {
+    Future<({MapElement element, Apiary apiary})?> resolve(
+        List<Map<String, Object?>> rows) async {
+    for (final l in rows) {
       final gid = l['group_id'] as String?;
       final eid = l['element_id'] as String?;
       MapElement? el;
@@ -1042,6 +1044,18 @@ class Repository {
       return (element: el, apiary: a);
     }
     return null;
+  }
+
+    final hit = await resolve(links);
+    if (hit != null) return hit;
+    // наліпка з тим самим номером, але іншим «хвостом» коду (перевидана чи
+    // роздрукована повторно) - шукаємо за номером
+    final n = appQrNumber(c);
+    if (n == null) return null;
+    return resolve(await db.rawQuery(
+        'SELECT group_id, element_id FROM qr_codes WHERE deleted = 0 AND number = ? '
+        'ORDER BY updated_at DESC',
+        [n]));
   }
 
   // ---------------------------------------------------------------------
