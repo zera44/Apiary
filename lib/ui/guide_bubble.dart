@@ -33,7 +33,8 @@ const kLessonBeekeeperTemplates = 'assets/guide/beekeeper_templates.webp';
 const kLessonBeekeeperProfessor = 'assets/guide/beekeeper_professor.webp';
 /// Пасічник із поштовою скринькою та бджолою - «Зворотний зв'язок» в огляді меню.
 const kLessonBeekeeperMailbox = 'assets/guide/beekeeper_mailbox_bee.webp';
-const kLessonBear = 'assets/guide/bear_helper.webp';
+/// Покусаний ведмедик по пояс - лапи на перемикачі режимів (як і пасічник).
+const kLessonBear = 'assets/guide/bear_on_toggle.webp';
 
 /// Підказка режиму навчання: пасічник-провідник (малюнок автора,
 /// assets/guide) зліва і «хмарка» з текстом справа.
@@ -177,14 +178,20 @@ List<Widget> lessonScene({
         6.0,
         base - 17.4
       ),
-    LessonPose.bear => (kLessonBear, 150.0, 12.0, base),
+    // та сама ширина, що й у пасічника: лапи — на перемикачі
+    LessonPose.bear => (
+        kLessonBear,
+        kLessonLeaningHeight * 500 / 709 * 676 / 500,
+        kToggleLeft + (kToggleW - kLessonLeaningHeight * 500 / 709) / 2,
+        kToggleLessonBottom + kToggleH - 10 + bottomInset
+      ),
   };
   final bubble = text == null
       ? null
       : GuideBubble(text: text, image: null, imageLeft: 0, below: below);
   return [
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
-    if (toggleEditing != null && pose == LessonPose.leaning)
+    if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.bear))
       Positioned(
         left: kToggleLeft,
         bottom: kToggleLessonBottom + bottomInset,
