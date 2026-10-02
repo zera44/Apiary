@@ -440,7 +440,14 @@ class _AdvisorState extends State<_Advisor> {
         child: HivePostbox(
           count: _mail,
           height: 104,
-          onTap: () => setState(() => _i = 0),
+          // «пошта» - одразу дія (відкрити вулик / склад); якщо зараз порада - показати пошту
+          onTap: () {
+            if (action != null) {
+              action();
+            } else {
+              setState(() => _i = _mail > 0 ? 0 : _i + 1);
+            }
+          },
         ),
       ),
     ]);
