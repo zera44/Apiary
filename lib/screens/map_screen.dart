@@ -344,11 +344,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             TextSpan(
                 text: 'Синя пігулка',
                 style: TextStyle(color: Color(0xFF6F9BFF), fontWeight: FontWeight.w800)),
-            const TextSpan(text: ' - сам собі маг пасіки, '),
+            const TextSpan(text: ' - ти власник свого життя ('),
+            GuideBubble.task('завершити навчання'),
+            const TextSpan(text: '), '),
             TextSpan(
                 text: 'червона',
                 style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w800)),
-            const TextSpan(text: ' - покажу, як глибока ця нора.'),
+            const TextSpan(text: ' - я покажу, як глибока ця нора ('),
+            GuideBubble.task('продовжити'),
+            const TextSpan(text: ').'),
           ],
           null
         );
