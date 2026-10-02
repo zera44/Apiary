@@ -1740,14 +1740,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               iconColor: AppColors.text,
                               size: 34,
                               tooltip: 'Назад',
-                              // у кроці з розміщенням «Назад» скасовує останню дію
-                              onPressed: () {
-                                if (selectMode && _lessonPlaced && undoStack.isNotEmpty) {
-                                  _onUndo();
-                                } else {
-                                  Navigator.of(ctx).pop();
-                                }
-                              },
+                              onPressed: () => Navigator.of(ctx).pop(),
                             )
                           : HoneyRing(
                               on: _tourMenu,
