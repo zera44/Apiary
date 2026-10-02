@@ -96,8 +96,7 @@ final List<List<InlineSpan>> kDrawerTour = [
   ],
   [
     GuideBubble.highlight('Склад'),
-    const TextSpan(
-        text: ' - рамки, корми, ліки. Прихід, списання, переоблік. А як ще керувати запасами?'),
+    const TextSpan(text: ' - рамки, корми, ліки. А як ще керувати запасами?'),
   ],
   [
     GuideBubble.highlight('Історія'),
