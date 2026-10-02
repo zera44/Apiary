@@ -1705,6 +1705,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ? null
           : AppDrawer(
               tour: widget.tutorial,
+              // навчання необов'язкове: завершити можна й посеред огляду меню
+              onFinishTutorial: widget.tutorial
+                  ? () => Navigator.of(context).popUntil((r) => r.isFirst)
+                  : null,
               hint: _menuHint
                   ? [
                       const TextSpan(

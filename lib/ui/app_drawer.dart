@@ -42,9 +42,13 @@ class AppDrawer extends StatefulWidget {
 
   /// Одна репліка пасічника внизу меню (після «Я сам собі маг пасіки»).
   final List<InlineSpan>? hint;
+
+  /// Урок: «завершити навчання» — посилання над реплікою пасічника.
+  final VoidCallback? onFinishTutorial;
   const AppDrawer(
       {super.key,
       this.hint,
+      this.onFinishTutorial,
       required this.repo,
       required this.currentApiary,
       this.onReturn,
@@ -150,6 +154,20 @@ class _AppDrawerState extends State<AppDrawer> {
           color: AppColors.popupBg,
           border: Border(top: BorderSide(color: AppColors.hive.withValues(alpha: 0.5)))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (widget.tour && widget.onFinishTutorial != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: widget.onFinishTutorial,
+              child: Text('завершити навчання',
+                  style: TextStyle(
+                      color: AppColors.create,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.create)),
+            ),
+          ),
         // пасічник стоїть руками на кнопці «Далі» - спирається на неї
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
