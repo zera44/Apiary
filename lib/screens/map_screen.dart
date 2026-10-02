@@ -269,6 +269,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// Огляд: «Оглянути» на панелі в медовому ободку.
   bool get _lessonInspect => widget.tutorial && _lesson == _Lesson.inspect && panelOpen;
 
+  /// Навчання необов'язкове: «завершити навчання» під хмаркою — на головний.
+  void _finishLesson() => Navigator.of(context).popUntil((r) => r.isFirst);
+
   /// Підказка пасічника для поточного кроку уроку.
   List<Widget> _lessonOverlay() {
     if (!widget.tutorial) return const [];
@@ -280,7 +283,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     const pose = LessonPose.leaning;
     final msg = _lessonMessage();
     const up = 0.0;
-    if (msg == null) return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up);
+    if (msg == null) {
+      return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up, onFinish: _finishLesson);
+    }
     final (text, onTap) = msg;
     if (_lesson == _Lesson.magic && !selectMode) {
       // фінал уроку: дві відповіді під хмаркою
@@ -288,6 +293,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       return lessonScene(
         pose: pose,
         bottomInset: selectMode ? 0 : up,
+        onFinish: _finishLesson,
         text: text,
         below: Row(children: [
           Expanded(
@@ -311,6 +317,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     return lessonScene(
       pose: pose,
       bottomInset: selectMode ? 0 : up,
+      onFinish: _finishLesson,
       text: text,
       onTap: onTap,
       below: onTap == null
@@ -900,7 +907,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 300), child: dialog)),
       // те саме місце, що й на карті: і карта, і вікно (showDialog) — у SafeArea,
       // тож системний відступ знизу вже врахований
-      ...lessonScene(pose: LessonPose.leaning, text: spans, toggleEditing: true),
+      ...lessonScene(
+          pose: LessonPose.leaning, text: spans, toggleEditing: true, onFinish: _finishLesson),
     ]);
   }
 
@@ -1949,20 +1957,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
-            // навчання необов'язкове: завершити можна в будь-який момент
-            if (widget.tutorial && !_lessonFormOpen)
-              Positioned(
-                top: 80,
-                right: 10,
-                child: PillButton(
-                  text: 'Завершити навчання',
-                  bg: AppColors.darkBtn,
-                  fg: AppColors.text,
-                  height: 30,
-                  fontSize: 11,
-                  onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-                ),
-              ),
             // справжня карта після уроку: «Наостанок покажу меню навігації»
             if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
               ...lessonScene(pose: LessonPose.onButton, text: [

@@ -156,8 +156,16 @@ List<Widget> lessonScene({
   VoidCallback? onTap,
   double bottomInset = 0,
   bool? toggleEditing,
+  VoidCallback? onFinish,
 }) {
   final base = kLessonOnButtonBottom + bottomInset;
+  // «завершити навчання» — посиланням під хмаркою (під кнопкою, якщо вона є)
+  final finish = onFinish == null ? null : LessonFinishLink(onPressed: onFinish);
+  if (finish != null) {
+    below = below == null
+        ? finish
+        : Column(mainAxisSize: MainAxisSize.min, children: [below, finish]);
+  }
   // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
   // не обрізались, а хмарка починалась після нього
   final pills = pose == LessonPose.pills;
@@ -218,7 +226,37 @@ List<Widget> lessonScene({
                   : IgnorePointer(child: bubble),
         ),
       ),
+    // пасічник мовчить — посилання там само, де було б під хмаркою
+    if (bubble == null && finish != null)
+      Positioned(
+        left: pills ? 164.0 : kLessonBubbleLeft,
+        right: 0,
+        bottom: base,
+        child: Material(type: MaterialType.transparency, child: Center(child: finish)),
+      ),
   ];
+}
+
+/// «завершити навчання» під хмаркою пасічника: навчання необов'язкове.
+class LessonFinishLink extends StatelessWidget {
+  final VoidCallback onPressed;
+  const LessonFinishLink({super.key, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+            minimumSize: const Size(0, 28),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+        child: Text('завершити навчання',
+            style: TextStyle(
+                color: AppColors.create,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+                decorationColor: AppColors.create)),
+      );
 }
 
 /// Хмарка уроку починається одразу праворуч від пасічника.
