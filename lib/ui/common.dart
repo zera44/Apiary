@@ -192,6 +192,35 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // меню навігації — як на карті: назва скраю, велика кнопка під нею посередині
+    if (onBack == null && onMenu != null) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          height: 52,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 0, 14, 0),
+            child: Row(children: [
+              Expanded(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              if (trailing != null) trailing!,
+            ]),
+          ),
+        ),
+        CircleIconButton(
+          icon: 'menu',
+          bg: AppColors.roundBtn,
+          iconColor: AppColors.text,
+          size: 48,
+          tooltip: 'Меню',
+          onPressed: onMenu,
+        ),
+      ]);
+    }
     return SizedBox(
       height: 52,
       child: Padding(
