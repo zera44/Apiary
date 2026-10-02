@@ -32,8 +32,8 @@ Future<void> openStart(NavigatorState nav, Repository repo) async {
   if (await repo.getMeta('intro_done') == null && (await repo.listApiaries()).isEmpty) {
     if (!nav.mounted) return;
     final learn = await showPillChoice(nav);
+    if (learn == null || !nav.mounted) return; // передумали - лишились на головному
     await repo.setMeta('intro_done', '1');
-    if (!nav.mounted) return;
     if (learn) {
       await nav.push(MaterialPageRoute(
           builder: (_) => TutorialScreen(realRepo: repo, autoStart: true)));

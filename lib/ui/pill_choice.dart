@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'common.dart';
 import 'guide_bubble.dart';
 
 /// Кнопка-пігулка: капсула з двома півкулями кольору та бликом.
@@ -77,40 +78,39 @@ List<InlineSpan> pillChoiceSpans(String lead) => [
       const TextSpan(text: ').'),
     ];
 
-/// Пасічник «як Нео» при першому «Почати»: true - червона (навчання),
-/// false - синя (без навчання).
-Future<bool> showPillChoice(NavigatorState nav) async {
-  final bottom = MediaQuery.of(nav.context).padding.bottom;
-  final r = await nav.push<bool>(RawDialogRoute<bool>(
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.6),
-    transitionDuration: Duration.zero,
-    pageBuilder: (ctx, _, __) => PopScope(
+/// Пасічник «як Нео» при першому «Почати» - на тлі порожнього екрана «Мої
+/// пасіки»: true - червона (навчання), false - синя (без навчання), null -
+/// передумали («назад»).
+Future<bool?> showPillChoice(NavigatorState nav) {
+  return nav.push<bool>(MaterialPageRoute<bool>(
+    builder: (ctx) => PopScope(
       canPop: false,
-      child: Material(
-        type: MaterialType.transparency,
-        child: Stack(children: [
-          ...lessonScene(
-            pose: LessonPose.pills,
-            text: pillChoiceSpans('Здоров був, новачок. Укуси мене бджола. Пропоную тобі вибір. '),
-            bottomInset: bottom + 24,
-            below: Row(children: [
-              Expanded(
-                  child: PillChoice(
-                      text: 'Червона',
-                      color: kPillRed,
-                      onPressed: () => Navigator.of(ctx).pop(true))),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: PillChoice(
-                      text: 'Синя',
-                      color: kPillBlue,
-                      onPressed: () => Navigator.of(ctx).pop(false))),
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(children: [
+            Column(children: [
+              TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(ctx).pop()),
             ]),
-          ),
-        ]),
+            ...lessonScene(
+              pose: LessonPose.pills,
+              text: pillChoiceSpans('Здоров був, новачок. Укуси мене бджола. Пропоную тобі вибір. '),
+              below: Row(children: [
+                Expanded(
+                    child: PillChoice(
+                        text: 'Червона',
+                        color: kPillRed,
+                        onPressed: () => Navigator.of(ctx).pop(true))),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: PillChoice(
+                        text: 'Синя',
+                        color: kPillBlue,
+                        onPressed: () => Navigator.of(ctx).pop(false))),
+              ]),
+            ),
+          ]),
+        ),
       ),
     ),
   ));
-  return r ?? false;
 }
