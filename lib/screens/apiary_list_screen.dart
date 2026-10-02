@@ -52,6 +52,9 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     super.dispose();
   }
 
+  // пасіки, що видаляються (чекають кінця «Відмінити»): _reload їх не повертає
+  final Set<String> _hiding = {};
+
   Future<void> _reload() async {
     // урок: пісочницю закривають, щойно урок скінчився, а екран ще може
     // доживати анімацію закриття — тоді просто нічого не читаємо
@@ -69,7 +72,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
     if (!mounted) return;
     setState(() {
-      apiaries = list;
+      apiaries = [for (final a in list) if (!_hiding.contains(a.id)) a];
       _cells
         ..clear()
         ..addAll({for (final e in els.entries) e.key: _cellsOf(e.value)});
@@ -176,10 +179,23 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   Future<void> _delete(Apiary a) => deleteWithUndo(
         context,
         message: 'Пасіку «${a.name}» видалено',
-        hide: () => setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id)),
-        restore: () => _reload(),
+        hide: () {
+          _hiding.add(a.id);
+          setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
+        },
+        restore: () {
+          _hiding.remove(a.id);
+          _reload();
+        },
         commit: () async {
-          await widget.repo.deleteApiary(a.id);
+          // урок: пісочницю могли закрити, поки висіло «Відмінити»
+          try {
+            await widget.repo.deleteApiary(a.id);
+          } catch (_) {
+            if (widget.repo.db.isOpen) rethrow;
+            return;
+          }
+          _hiding.remove(a.id);
           if (mounted) await _reload();
         },
       );

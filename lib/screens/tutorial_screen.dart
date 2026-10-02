@@ -49,11 +49,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
       final repo = sandbox;
       final nav = Navigator.of(context);
       final lessonsRoute = ModalRoute.of(context);
+      var finishing = false; // подвійний тап по фіналу не імпортує пасіку двічі
       await nav.push(MaterialPageRoute(
         builder: (_) => ApiaryListScreen(
           repo: repo,
           tutorial: true,
           onLessonDone: (magic, apiaryId) async {
+            if (finishing) return;
             if (magic) {
               // урок 2 ще готується — назад до плиток уроків
               nav.popUntil((r) => r == lessonsRoute);
@@ -70,7 +72,14 @@ class _TutorialScreenState extends State<TutorialScreen> {
               nav.popUntil((r) => r == lessonsRoute);
               return;
             }
-            final id = await real.importApiaryFrom(repo, apiaryId);
+            finishing = true;
+            final String id;
+            try {
+              id = await real.importApiaryFrom(repo, apiaryId);
+            } catch (_) {
+              finishing = false;
+              rethrow;
+            }
             final a = await real.getApiary(id);
             if (a == null || !nav.mounted) return;
             nav.popUntil((r) => r.isFirst);

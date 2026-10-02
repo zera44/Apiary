@@ -90,7 +90,7 @@ class Repository {
   /// пасіку "Моя пасіка", щоб не зникли з очей.
   Future<void> ensureLegacyApiary() async {
     final orphans = await db
-        .rawQuery('SELECT COUNT(*) c FROM elements WHERE apiary_id IS NULL');
+        .rawQuery('SELECT COUNT(*) c FROM elements WHERE apiary_id IS NULL AND deleted = 0');
     if (((orphans.first['c'] as num?) ?? 0) == 0) return;
     final existing =
         await db.rawQuery('SELECT id FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC LIMIT 1');
@@ -98,7 +98,8 @@ class Repository {
         ? existing.first['id'] as String
         : await addApiary('Моя пасіка');
     await db.rawUpdate(
-        'UPDATE elements SET apiary_id = ? WHERE apiary_id IS NULL', [apiaryId]);
+        'UPDATE elements SET apiary_id = ?, synced = 0, updated_at = ? WHERE apiary_id IS NULL',
+        [apiaryId, now()]);
   }
 
   /// Нова пасіка з типовою назвою «Пасіка N» (N — наступний вільний номер);
@@ -129,7 +130,7 @@ class Repository {
       if (paramMap.containsKey(srcId)) return paramMap[srcId];
       final p = await src.getParameter(srcId);
       String? id;
-      if (p != null) {
+      if (p != null && !p.deleted) {
         if (p.isBase && p.baseType != null && p.baseKey != null) {
           id = await baseParameterId(p.baseType!, p.baseKey!);
         } else {
@@ -1837,6 +1838,7 @@ class Repository {
       if (setTo != null) {
         // різницю рахуємо по свіжому залишку всередині транзакції
         amount = setTo - prev;
+        if (amount.abs() < 1e-9) amount = 0; // шум дробових чисел - не «нестача»
         delta = amount;
       }
       var next = prev + delta;

@@ -88,7 +88,22 @@ class _ParametersScreenState extends State<ParametersScreen> {
     // обов'язкові (з замочком) — завжди вгорі, решта в тому ж порядку
     final pinned = [for (final p in list) if (_pinned(p)) p];
     final rest = [for (final p in list) if (!_pinned(p)) p];
-    if (mounted) setState(() => params = [...pinned, ...rest]);
+    if (mounted) {
+      setState(() => params = [
+            for (final p in [...pinned, ...rest])
+              if (!_hiding.contains(p.id)) p
+          ]);
+    }
+  }
+
+  // параметри, що видаляються (чекають кінця «Відмінити»): _reload їх не повертає
+  final Set<String> _hiding = {};
+
+  /// «1 запис», «2 записи», «5 записів».
+  static String _recordsWord(int n) {
+    final t = n % 100, o = n % 10;
+    if (t >= 11 && t <= 14) return '$n записів';
+    return o == 1 ? '$n запис' : (o >= 2 && o <= 4 ? '$n записи' : '$n записів');
   }
 
   bool _lockedBase(Parameter p) => p.isBase && targetType != null && p.baseType == targetType;
@@ -387,9 +402,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final typeName = DataTypes.label(to.dataType);
     final text = StringBuffer(
         'З «${from.nameWithUnit}» у «${to.nameWithUnit}» ($typeName) буде перенесено '
-        '${preview.movable} запис(ів) історії з тими самими датами й об\'єктами.');
+        '${_recordsWord(preview.movable)} історії з тими самими датами й об\'єктами.');
     if (preview.skipped > 0) {
-      text.write('\n\n${preview.skipped} запис(ів) не підходять до типу «$typeName» - вони '
+      text.write('\n\n${_recordsWord(preview.skipped)} не підходять до типу «$typeName» - вони '
           'лишаться в «${from.name}».');
     }
     text.write('\n\nДе був «${from.name}», там з\'явиться «${to.name}».');
@@ -454,10 +469,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
     await deleteWithUndo(
       context,
       message: 'Параметр «${p.name}» видалено',
-      hide: () => setState(() => params = [...?params]..removeWhere((x) => x.id == p.id)),
-      restore: () => _reload(),
+      hide: () {
+        _hiding.add(p.id);
+        setState(() => params = [...?params]..removeWhere((x) => x.id == p.id));
+      },
+      restore: () {
+        _hiding.remove(p.id);
+        _reload();
+      },
       commit: () async {
         await repo.deleteParameter(p.id);
+        _hiding.remove(p.id);
         selected.remove(p.id);
         if (mounted) await _reload();
       },
@@ -530,7 +552,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   height: 48,
                   radius: 16,
                   width: double.infinity,
-                  onPressed: _save,
+                  // поки список не завантажено, «Зберегти» зняло б усі прив'язки
+                  onPressed: params == null ? null : _save,
                 ),
               ),
           ]),

@@ -548,7 +548,10 @@ class _FillDialogState extends State<_FillDialog> {
     ]));
   }
 
-  Widget _dialog() {
+  // поки «Зберегти й далі» працює, форма не реагує на дотики
+  Widget _dialog() => AbsorbPointer(absorbing: _saving, child: _dialogBody());
+
+  Widget _dialogBody() {
     return AlertDialog(
       // назва вулика — видно, що «Зберегти й далі» перейшло до наступного
       title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -51,7 +51,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _guest() async {
     if (_busy) return;
-    await widget.auth.continueAsGuest();
+    _busy = true; // подвійний тап не відкриває два головні екрани
+    try {
+      await widget.auth.continueAsGuest();
+    } catch (_) {
+      _busy = false;
+      rethrow;
+    }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => HomeScreen(repo: widget.repo, auth: widget.auth),

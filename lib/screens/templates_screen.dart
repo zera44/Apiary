@@ -27,11 +27,14 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     _reload();
   }
 
+  // шаблони, що видаляються (чекають кінця «Відмінити»): _reload їх не повертає
+  final Set<String> _hiding = {};
+
   Future<void> _reload() async {
     final list = await widget.repo.listTemplates();
     if (mounted) {
       setState(() {
-        templates = list;
+        templates = [for (final t in list) if (!_hiding.contains(t.id)) t];
         _thumbs.clear();
       });
     }
@@ -55,10 +58,17 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
   Future<void> _delete(ApiaryTemplate t) => deleteWithUndo(
         context,
         message: 'Шаблон «${t.name}» видалено',
-        hide: () => setState(() => templates = [...?templates]..removeWhere((x) => x.id == t.id)),
-        restore: () => _reload(),
+        hide: () {
+          _hiding.add(t.id);
+          setState(() => templates = [...?templates]..removeWhere((x) => x.id == t.id));
+        },
+        restore: () {
+          _hiding.remove(t.id);
+          _reload();
+        },
         commit: () async {
           await widget.repo.deleteTemplate(t.id);
+          _hiding.remove(t.id);
           if (mounted) await _reload();
         },
       );

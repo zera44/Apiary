@@ -292,6 +292,14 @@ String historyFileName(String paramName, String? scopeName, DateTime now) {
 /// Обмеження Excel: назва листа до 31 символу, без []:*?/\
 String safeSheetTitle(String name) {
   var s = name.replaceAll(RegExp(r'[\[\]:*?/\\]'), '_');
-  if (s.length > 31) s = s.substring(0, 31);
+  if (s.length > 31) {
+    // не розрізати суррогатну пару (емодзі)
+    var cut = 31;
+    final last = s.codeUnitAt(cut - 1);
+    if (last >= 0xD800 && last <= 0xDBFF) cut--;
+    s = s.substring(0, cut);
+  }
+  // Excel не приймає апостроф на початку чи в кінці назви листа
+  s = s.replaceAll(RegExp(r"^'+|'+$"), '');
   return s.isEmpty ? 'Історія' : s;
 }

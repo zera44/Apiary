@@ -49,9 +49,20 @@ class _StockScreenState extends State<StockScreen> {
     });
   }
 
+  // позиції, що видаляються (чекають кінця «Відмінити»): _reload їх не повертає
+  final Set<String> _hiding = {};
+
   Future<void> _reload() async {
-    final list = await repo.listStockItems();
-    if (mounted) setState(() => items = list);
+    final list = [for (final i in await repo.listStockItems()) if (!_hiding.contains(i.id)) i];
+    if (!mounted) return;
+    // поля «Фактично», які не чіпали, показують свіжий залишок
+    for (final it in list) {
+      final base = formatAmount(it.quantity ?? 0);
+      final c = _actual[it.id];
+      if (c != null && c.text == _actualBase[it.id]) c.text = base;
+      _actualBase[it.id] = base;
+    }
+    setState(() => items = list);
   }
 
   /// Одна дія за раз (подвійний тап не відкриває два діалоги).
@@ -94,11 +105,18 @@ class _StockScreenState extends State<StockScreen> {
           unawaited(deleteWithUndo(
             context,
             message: 'Номенклатуру «${it.name}» видалено',
-            hide: () => setState(() => items = [...?items]..removeWhere((x) => x.id == it.id)),
-            restore: () => _reload(),
+            hide: () {
+              _hiding.add(it.id);
+              setState(() => items = [...?items]..removeWhere((x) => x.id == it.id));
+            },
+            restore: () {
+              _hiding.remove(it.id);
+              _reload();
+            },
             commit: () async {
               await repo.deleteStockItem(it.id);
               await StockPhotos.remove(it.photo);
+              _hiding.remove(it.id);
               if (mounted) await _reload();
             },
           ));
@@ -149,8 +167,14 @@ class _StockScreenState extends State<StockScreen> {
     super.dispose();
   }
 
-  TextEditingController _actualFor(StockItem it) => _actual.putIfAbsent(
-      it.id, () => TextEditingController(text: formatAmount(it.quantity ?? 0)));
+  // чим поле «Фактично» було заповнене (щоб відрізнити неторкнуте від зміненого)
+  final Map<String, String> _actualBase = {};
+
+  TextEditingController _actualFor(StockItem it) {
+    final base = formatAmount(it.quantity ?? 0);
+    _actualBase.putIfAbsent(it.id, () => base);
+    return _actual.putIfAbsent(it.id, () => TextEditingController(text: base));
+  }
 
   /// «Зберегти інвентаризацію»: записуються лише позиції, де фактична
   /// кількість відрізняється від облікової.
@@ -170,15 +194,13 @@ class _StockScreenState extends State<StockScreen> {
         }
         var changed = 0;
         for (final it in list) {
-          final v = parseAmount(_actual[it.id]?.text ?? '');
+          final text = _actual[it.id]?.text ?? '';
+          if (text.trim() == _actualBase[it.id]) continue; // не чіпали
+          final v = parseAmount(text);
           if (v == null || (v - (it.quantity ?? 0)).abs() < 1e-9) continue;
           await repo.inventoryStock(it.id, v);
           changed++;
         }
-        for (final c in _actual.values) {
-          c.dispose();
-        }
-        _actual.clear();
         await _reload();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

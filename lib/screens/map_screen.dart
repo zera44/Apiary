@@ -494,7 +494,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// Довгий дотик до об'єкта: одразу режим редагування, об'єкт обрано й
   /// його можна тягнути тим самим дотиком (без «Редагувати» й вибору шаблону).
   bool _onLongPress(GridPress p) {
-    if (_busy || _elementAt(p.cell) == null) return false;
+    // урок: довгий дотик вивів би з кроку й заблокував завісу
+    if (widget.tutorial || _busy || _elementAt(p.cell) == null) return false;
     if (!selectMode) _enterEdit();
     return _onPressDown(p);
   }
@@ -661,6 +662,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // ---------------------------------------------------------------------
 
   void _showWarning(String text, {Duration? duration}) {
+    if (!mounted) return;
     _warnTimer?.cancel();
     setState(() => _warning = text);
     if (duration != null) {
@@ -762,6 +764,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _lessonHive = (hive.label?.trim().isNotEmpty ?? false) ? hive.label!.trim() : 'Вулик';
       _lesson = _Lesson.congrats;
     }
+    // «Відмінити» під видаленням діє лише в режимі редагування
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
       selectMode = false;
       pendingTemplate = null;

@@ -390,6 +390,8 @@ class _InfiniteGridState extends State<InfiniteGrid> {
     if (e.pointer == _primary) {
       final delta = e.localPosition - _start;
       if (_claimed) {
+        // скасування жесту: повернути показаний зсув на місце
+        if (cancelled) widget.onPressMove?.call(Offset.zero);
         widget.onPressUp?.call(cancelled ? Offset.zero : delta);
       } else if (!_panning && !_pinched && !cancelled) {
         widget.onTap?.call(GridPress(e.localPosition, c.screenToCell(e.localPosition)));

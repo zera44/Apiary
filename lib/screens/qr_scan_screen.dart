@@ -71,7 +71,11 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _done = true;
+      },
+      child: Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Stack(children: [
@@ -95,7 +99,13 @@ class _QrScanScreenState extends State<QrScanScreen> {
             right: 0,
             child: Container(
               color: Colors.black54,
-              child: TopBar(title: widget.title, onBack: () => Navigator.pop(context)),
+              child: TopBar(
+                  title: widget.title,
+                  onBack: () {
+                    if (_done) return;
+                    _done = true; // камера ще працює під час закриття - не закривати вдруге
+                    Navigator.pop(context);
+                  }),
             ),
           ),
           Positioned(
@@ -119,6 +129,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
           ),
         ]),
       ),
+    ),
     );
   }
 }

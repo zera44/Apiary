@@ -17,8 +17,12 @@ DateTime? parseDdMmYyyy(String? text) {
   if (text == null || text.trim().isEmpty) return null;
   final parts = text.trim().split('.');
   if (parts.length != 3) return null;
-  final d = int.tryParse(parts[0]), m = int.tryParse(parts[1]), y = int.tryParse(parts[2]);
+  final d = int.tryParse(parts[0]), m = int.tryParse(parts[1]);
+  var y = int.tryParse(parts[2]);
   if (d == null || m == null || y == null) return null;
+  // «05.03.25» - це 2025, а не 25-й рік нашої ери
+  if (parts[2].trim().length <= 2 && y >= 0) y += 2000;
+  if (y < 1900 || y > 2999) return null;
   final dt = DateTime(y, m, d);
   if (dt.day != d || dt.month != m) return null;
   return dt;

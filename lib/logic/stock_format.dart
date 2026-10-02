@@ -31,9 +31,9 @@ String formatMoney(double v) {
 /// Назва операції складу для історії ([amount] — для інвентаризації різниця зі знаком).
 String stockMoveTitle(String kind, String? reason, {double amount = 0}) => switch (kind) {
       'out' => reason == null || reason.isEmpty ? 'Списано' : 'Списано: $reason',
-      'inv' => amount < 0
+      'inv' => amount < -1e-9
           ? 'Інвентаризація: нестача'
-          : (amount > 0 ? 'Інвентаризація: надлишок' : 'Інвентаризація: без розбіжностей'),
+          : (amount > 1e-9 ? 'Інвентаризація: надлишок' : 'Інвентаризація: без розбіжностей'),
       'cancel' => 'Скасування запису',
       'set' => 'Перезаписано (старий запис)',
       _ => 'Прихід',
