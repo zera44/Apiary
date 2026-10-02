@@ -319,7 +319,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.congrats:
         return (
           const [TextSpan(text: 'З легким стартом, друже!')],
-          () => setState(() => _lesson = _Lesson.openHive)
+          // кінець уроку (після огляду меню): назад до плиток уроків
+          () => widget.onLessonDone?.call(true, widget.apiary.id)
         );
       case _Lesson.openHive:
         if (panelOpen) return null;
@@ -811,11 +812,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _exitEdit() {
-    // урок: вулик поставили й підтвердили — привітання
+    // урок: вулик поставили й підтвердили — далі відкрити його
     if (widget.tutorial && _lesson == _Lesson.place && elements.any((e) => e.isHive)) {
       final hive = elements.firstWhere((e) => e.isHive);
       _lessonHive = (hive.label?.trim().isNotEmpty ?? false) ? hive.label!.trim() : 'Вулик';
-      _lesson = _Lesson.congrats;
+      _lesson = _Lesson.openHive;
     }
     // «Відмінити» під видаленням діє лише в режимі редагування
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -1671,6 +1672,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       drawerEnableOpenDragGesture: false,
       onDrawerChanged: (open) {
         if (!open && _menuHint) setState(() => _menuHint = false);
+        // урок: огляд меню завершено - наприкінці пасічник вітає
+        if (!open && widget.tutorial && _lesson == _Lesson.drawer) {
+          setState(() => _lesson = _Lesson.congrats);
+        }
       },
       body: SafeArea(
         child: LayoutBuilder(builder: (context, box) {

@@ -735,9 +735,7 @@ void main() {
         findsOneWidget);
     await tester.tap(find.byTooltip('Готово'));
     await settle(tester);
-    expect(find.textContaining('З легким стартом'), findsOneWidget);
-    await tester.tap(find.textContaining('З легким стартом'));
-    await settle(tester);
+    expect(find.textContaining('З легким стартом'), findsNothing);
     expect(find.textContaining('Не час відпочивати'), findsOneWidget);
     expect(find.textContaining('«Вулик 1»'), findsOneWidget);
     // «Редагувати» вже немає (на її місці пасічник із вуликом)
@@ -805,8 +803,6 @@ void main() {
       await settle(tester);
     }
     await tester.tap(find.byTooltip('Готово'));
-    await settle(tester);
-    await tester.tap(find.textContaining('З легким стартом'));
     await settle(tester);
     await tester.tapAt(target);
     for (var i = 0; i < 3; i++) {
