@@ -9,7 +9,6 @@ import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/icons.dart';
-import '../ui/first_hints.dart';
 import '../ui/hive_postbox.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
@@ -487,9 +486,8 @@ class _StartupPromptsState extends State<_StartupPrompts> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      // підказки головного екрана немає: новачка зустрічає пасічник із вибором
       await WhatsNewScreen.maybeShow(context, widget.repo);
-      if (!mounted) return;
-      await Hints.show(context, widget.repo, Hints.home);
     });
   }
 

@@ -1605,12 +1605,8 @@ void main() {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     await tester.pump(const Duration(milliseconds: 500)); // поява завершилась
-    expect(find.text('Зрозуміло'), findsOneWidget);
-    await tester.tap(find.text('Зрозуміло'));
-    await tester.pump(const Duration(milliseconds: 500));
-    await settle(tester);
+    // на головному екрані підказки немає
     expect(find.text('Зрозуміло'), findsNothing);
-    expect(await tester.runAsync(() => repo.getMeta('hint:home')), '1');
     // склад — своя підказка; «Пропустити всі» вимикає решту
     await tester.tap(find.text('Склад'));
     await settle(tester);
