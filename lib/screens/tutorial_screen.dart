@@ -81,6 +81,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
               return;
             }
             finishing = true;
+            // навчання пройдено: перші підказки на справжніх екранах уже зайві
+            await real.setMeta('hints_off', '1');
             final String id;
             try {
               id = await real.importApiaryFrom(repo, apiaryId);
