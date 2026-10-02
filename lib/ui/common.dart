@@ -192,7 +192,7 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // меню навігації — як на карті: назва скраю, велика кнопка під нею посередині
+    // меню навігації — як на карті: назва скраю, велика кнопка під нею ліворуч
     if (onBack == null && onMenu != null) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
@@ -211,13 +211,19 @@ class TopBar extends StatelessWidget {
             ]),
           ),
         ),
-        CircleIconButton(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 34),
+            child: CircleIconButton(
           icon: 'menu',
           bg: AppColors.roundBtn,
           iconColor: AppColors.text,
           size: 48,
           tooltip: 'Меню',
           onPressed: onMenu,
+        ),
+          ),
         ),
       ]);
     }

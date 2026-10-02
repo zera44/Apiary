@@ -1783,12 +1783,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               ),
             ),
             const Positioned.fill(child: ScreenFrame()),
-            // меню навігації (в уроці — «Назад»): більша кнопка вгорі посередині,
-            // під рядком з назвою пасіки
+            // меню навігації (в уроці — «Назад»): більша кнопка ліворуч під
+            // назвою пасіки
             Positioned(
-              top: 50,
-              left: 0,
-              right: 0,
+              top: 46,
+              left: 34,
               child: Center(child: Builder(
                       builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
                           ? HoneyRing(
