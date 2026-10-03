@@ -734,7 +734,7 @@ void main() {
     await repo.init();
     final p = (await repo.getParameter('dup'))!;
     expect(p.isBase, isFalse);
-    expect((await repo.listParameters()).where((p) => p.isBase).length, 3);
+    expect((await repo.listParameters()).where((p) => p.isBase).length, 4);
     // тепер її можна прив'язати/видалити як звичайну
     await repo.deleteParameter('dup');
   });
