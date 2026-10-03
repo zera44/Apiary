@@ -167,7 +167,7 @@ class _AppDrawerState extends State<AppDrawer> {
           color: AppColors.popupBg,
           border: Border(top: BorderSide(color: AppColors.hive.withValues(alpha: 0.5)))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // зліва - який це крок екскурсії, справа - маленька табличка «завершити»
+        // який це крок екскурсії
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           if (hint == null)
             for (var i = 0; i < kDrawerTour.length; i++)
@@ -180,9 +180,6 @@ class _AppDrawerState extends State<AppDrawer> {
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-          const Spacer(),
-          if (widget.tour && widget.onFinishTutorial != null)
-            LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
         ]),
         const SizedBox(height: 6),
         // пасічник із газетою говорить хмаркою (як у навчанні) і стоїть
@@ -225,6 +222,12 @@ class _AppDrawerState extends State<AppDrawer> {
             }
           },
         ),
+        // маленька табличка «завершити» висить під кнопкою, з правого кута
+        if (widget.tour && widget.onFinishTutorial != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
+          ),
       ]),
     );
   }
