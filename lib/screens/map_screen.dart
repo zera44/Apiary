@@ -114,7 +114,7 @@ class MapScreen extends StatefulWidget {
 const kLessonPanelBottom = 290.0;
 
 /// Кроки уроку «Базові поняття» на карті.
-enum _Lesson { place, congrats, openHive, inspect, magic, menu, drawer }
+enum _Lesson { place, congrats, openHive, inspect, magic, menu, drawer, gear }
 
 class _Undo {
   final List<MapElement>? restore;
@@ -204,6 +204,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return inKey(_menuKey); // лише кнопка меню навігації
       case _Lesson.congrats:
       case _Lesson.magic:
+      case _Lesson.gear:
       case _Lesson.drawer:
         return false; // відповідь — у хмарці пасічника
     }
@@ -290,7 +291,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (selectMode && pendingTemplate == null) return const [];
     if (_lessonFormOpen) return const [];
     // увесь урок пасічник спирається на перемикач режимів
-    const pose = LessonPose.leaning;
+    final pose = _lesson == _Lesson.gear ? LessonPose.newspaper : LessonPose.leaning;
     final msg = _lessonMessage();
     const up = 0.0;
     // на кроці «Оглянути» (панель вулика) таблички немає; інакше вона висить
@@ -398,6 +399,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         );
       case _Lesson.drawer:
         return null;
+      case _Lesson.gear:
+        return (
+          [
+            GuideBubble.highlight('Шестерня'),
+            const TextSpan(
+                text: ' - характеристики й шаблони. А набір параметрів вулика збирай у '
+                    '«Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
+          ],
+          () => setState(() => _lesson = _Lesson.congrats)
+        );
       case _Lesson.magic:
         return (
           [
@@ -1888,7 +1899,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (!open && _menuHint) setState(() => _menuHint = false);
         // урок: огляд меню завершено - наприкінці пасічник вітає
         if (!open && widget.tutorial && _lesson == _Lesson.drawer) {
-          setState(() => _lesson = _Lesson.congrats);
+          setState(() => _lesson = _Lesson.gear);
         }
       },
       body: SafeArea(
@@ -2016,7 +2027,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             ),
                     )),
             ),
-            // налаштування (у навчанні шестерні немає)
+            // налаштування (у навчанні шестерні немає, крім кроку про неї: підсвічена, без дії)
             if (!widget.tutorial)
               Positioned(
                 top: 8,
@@ -2024,6 +2035,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: GearButton(
                     size: 48,
                     onPressed: () => SettingsScreen.open(Navigator.of(context), repo)),
+              )
+            else if (_lesson == _Lesson.gear)
+              Positioned(
+                top: 8,
+                right: 10,
+                child: IgnorePointer(
+                    child: HoneyRing(on: true, child: GearButton(size: 48, onPressed: () {}))),
               ),
             // зум
             Positioned(

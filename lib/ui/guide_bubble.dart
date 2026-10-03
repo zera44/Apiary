@@ -148,7 +148,7 @@ class _BubblePainter extends CustomPainter {
 
 /// Хто стоїть в уроці: пасічник спирається на «Редагувати», на свою «стійку»
 /// (кнопки немає) чи замість нього — ведмежа-помічник.
-enum LessonPose { onButton, leaning, pills, bear }
+enum LessonPose { onButton, leaning, newspaper, pills, bear }
 
 /// Урок: персонаж на ОДНОМУ місці (не стрибає між кроками й вікнами) і хмарка
 /// праворуч від нього. Обидва малюнки пасічника — в одному масштабі, тож
@@ -181,6 +181,13 @@ List<Widget> lessonScene({
         kToggleLeft + (kToggleW - kLessonLeaningHeight * 500 / 709) / 2,
         kToggleLessonBottom + kToggleH - 10 + bottomInset
       ),
+    // пасічник із газетою спирається на перемикач так само, як «стійка» (той самий масштаб)
+    LessonPose.newspaper => (
+        kLessonBeekeeperNewspaper,
+        kLessonLeaningHeight * 802 / 709,
+        kToggleLeft + (kToggleW - kLessonLeaningHeight * 500 / 709) / 2,
+        kToggleLessonBottom + kToggleH - 10 + bottomInset
+      ),
     // той самий кадр, що «стійка», але пасічник із бджолами-пігулками
     LessonPose.pills => (
         kLessonBeekeeperPills,
@@ -206,7 +213,7 @@ List<Widget> lessonScene({
           gap: below == null ? LessonFinishLink.heightFor(180) + 4 : 70);
   return [
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
-    if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.bear))
+    if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.newspaper || pose == LessonPose.bear))
       Positioned(
         left: kToggleLeft,
         bottom: kToggleLessonBottom + bottomInset,

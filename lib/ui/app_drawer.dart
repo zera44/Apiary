@@ -133,12 +133,6 @@ final List<List<InlineSpan>> kDrawerTour = [
     GuideBubble.highlight('Зворотний зв\'язок'),
     const TextSpan(text: ' - хочеш поділитись ідеєю чи дати зворотній зв\'язок? Тобі сюди.'),
   ],
-  [
-    GuideBubble.highlight('Шестерня'),
-    const TextSpan(
-        text: ' угорі справа на головному екрані - характеристики й шаблони. А набір параметрів '
-            'вулика збирай у «Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
-  ],
 ];
 
 class _AppDrawerState extends State<AppDrawer> {
