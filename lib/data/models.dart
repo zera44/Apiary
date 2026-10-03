@@ -352,3 +352,21 @@ class ApiaryReport {
     required this.history,
   });
 }
+
+/// Група параметрів у «Конструкторі»: заголовок і впорядковані id параметрів
+/// під ним. Групи спільні для всіх вуликів; на панелі показуються лише ті
+/// параметри групи, що обрані для цього вулика.
+class ParamGroup {
+  final String id;
+  String name;
+  List<String> ids;
+  ParamGroup({required this.id, required this.name, List<String>? ids}) : ids = ids ?? [];
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'ids': ids};
+
+  factory ParamGroup.fromJson(Map<String, dynamic> j) => ParamGroup(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        ids: [for (final x in (j['ids'] as List? ?? const [])) x as String],
+      );
+}

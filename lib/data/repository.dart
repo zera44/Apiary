@@ -1162,6 +1162,24 @@ class Repository {
   // Шаблони
   // ---------------------------------------------------------------------
 
+  /// Групи параметрів («Конструктор»): зберігаються в app_meta одним JSON.
+  Future<List<ParamGroup>> paramGroups() async {
+    final raw = await getMeta('param_groups');
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      return [
+        for (final j in jsonDecode(raw) as List) ParamGroup.fromJson(Map<String, dynamic>.from(j as Map))
+      ];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> setParamGroups(List<ParamGroup> groups) async {
+    await setMeta('param_groups',
+        groups.isEmpty ? null : jsonEncode([for (final g in groups) g.toJson()]));
+  }
+
   /// Службова позначка застосунку (таблиця app_meta, не синхронізується).
   Future<String?> getMeta(String key) async {
     final r = await db.query('app_meta', where: 'key = ?', whereArgs: [key]);

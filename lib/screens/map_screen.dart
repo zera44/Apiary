@@ -1158,6 +1158,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ? await repo.qrForObject(hiveObjectOf(fresh, elements))
         : await repo.qrForElement(fresh);
     final qrNum = qr == null ? null : await repo.qrNumberOf(qr);
+    final groups = await repo.paramGroups();
     if (!mounted) return;
     setState(() {
       panelElement = fresh;
@@ -1172,6 +1173,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         lastUpdated: last,
         qrCode: qr,
         qrNumber: qrNum,
+        groups: groups,
       );
     });
   }

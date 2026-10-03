@@ -27,6 +27,9 @@ class PanelData {
   /// Номер наліпки прив'язаного коду (якщо відомий).
   final int? qrNumber;
 
+  /// Групи параметрів («Конструктор»): таблиця значень ділиться на секції.
+  final List<ParamGroup> groups;
+
   const PanelData({
     required this.type,
     this.variant,
@@ -38,6 +41,7 @@ class PanelData {
     this.lastUpdated,
     this.qrCode,
     this.qrNumber,
+    this.groups = const [],
   });
 }
 
@@ -263,29 +267,61 @@ class CharacteristicsPanel extends StatelessWidget {
       return tap != null ? TableRowInkWell(onTap: () => tap(p.id), child: c) : c;
     }
 
-    return Table(
-      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
-      columnWidths: const {0: FlexColumnWidth(1.25), 1: FlexColumnWidth(1)},
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: [
-        if (data.placed && onQr != null)
-          TableRow(children: [
-            Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                child: Text('QR-код',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
-            _qrCell(context),
-          ]),
-        for (final (p, value) in data.params)
-          TableRow(children: [
-            cell(
-                p,
-                Text(p.nameWithUnit,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
-            cell(p, _valueView(p, value)),
-          ]),
+    Table table(List<TableRow> rows) => Table(
+          border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+          columnWidths: const {0: FlexColumnWidth(1.25), 1: FlexColumnWidth(1)},
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: rows,
+        );
+    TableRow row((Parameter, String?) e) => TableRow(children: [
+          cell(
+              e.$1,
+              Text(e.$1.nameWithUnit,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
+          cell(e.$1, _valueView(e.$1, e.$2)),
+        ]);
+
+    // параметри за групами (лише обрані для цього вулика); решта - без заголовка
+    final byId = {for (final e in data.params) e.$1.id: e};
+    final used = <String>{};
+    final sections = <(String, List<(Parameter, String?)>)>[];
+    for (final g in data.groups) {
+      final items = [for (final id in g.ids) if (byId[id] != null && used.add(id)) byId[id]!];
+      if (items.isNotEmpty) sections.add((g.name, items));
+    }
+    final loose = [for (final e in data.params) if (!used.contains(e.$1.id)) e];
+
+    final head = <TableRow>[
+      if (data.placed && onQr != null)
+        TableRow(children: [
+          Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+              child: Text('QR-код',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
+          _qrCell(context),
+        ]),
+      for (final e in loose) row(e),
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (head.isNotEmpty) table(head),
+      for (final (name, items) in sections) ...[
+        const SizedBox(height: 10),
+        Container(
+          height: 30,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+              color: AppColors.hive,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10))),
+          child: Text(name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Color(0xFF2B1A08), fontSize: 14, fontWeight: FontWeight.bold)),
+        ),
+        table([for (final e in items) row(e)]),
       ],
-    );
+    ]);
   }
 
   /// Значення QR-коду: «-», якщо не прив'язано (тап — прив'язати), інакше

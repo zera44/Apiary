@@ -64,6 +64,11 @@ class _ParametersScreenState extends State<ParametersScreen> {
   /// УПОРЯДКОВАНИЙ список: порядок вибору = порядок показу на панелі.
   List<String> selected = [];
 
+  /// Вкладка: 0 - «Список», 1 - «Конструктор» (групи обраних параметрів).
+  int _tab = 0;
+  List<ParamGroup> groups = [];
+  String? _dragOver; // id групи ('' - пул без групи), над якою тримають параметр
+
   String? get targetType => widget.element?.type ?? widget.elType;
 
   @override
@@ -73,6 +78,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
   }
 
   Future<void> _init() async {
+    groups = await repo.paramGroups();
     if (widget.element != null) {
       selected = await repo.attachedParameterIds(widget.element!.entity, elType: targetType);
     } else {
@@ -138,6 +144,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     // подвійний тап: другий виклик пізніше закрив би ще й екран під цим
     if (_saving) return;
     _saving = true;
+    await repo.setParamGroups(groups);
+    if (!mounted) return;
     if (widget.templateMode) {
       Navigator.pop(context, List<String>.from(selected));
       return;
@@ -545,9 +553,30 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 onPressed: () => _openForm(),
               ),
             ),
+            if (!widget.catalog && !widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                child: Row(children: [
+                  for (final (i, t) in const ['Список', 'Конструктор'].indexed) ...[
+                    if (i > 0) const SizedBox(width: 6),
+                    Expanded(
+                      child: PillButton(
+                        text: t,
+                        bg: _tab == i ? AppColors.accent : AppColors.darkBtn,
+                        fg: _tab == i ? Colors.white : AppColors.text,
+                        height: 38,
+                        fontSize: 13,
+                        onPressed: () => setState(() => _tab = i),
+                      ),
+                    ),
+                  ],
+                ]),
+              ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
+                  : (!widget.catalog && _tab == 1)
+                      ? _constructor(list)
                   : list.isEmpty
                       ? Center(
                           child: Text('Ще немає жодного параметра.\nСтвори його кнопкою «+» вгорі.',
@@ -563,7 +592,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                             )
                           : _orderList(list),
             ),
-            if (!widget.catalog && _canApplyToAll)
+            if (!widget.catalog && _tab == 0 && _canApplyToAll)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: InkWell(
@@ -585,6 +614,219 @@ class _ParametersScreenState extends State<ParametersScreen> {
       ),
     ),
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // Конструктор: групи й параметри під ними
+  // ---------------------------------------------------------------------
+
+  /// Кинути параметр у групу [groupId] (null - зняти з груп) на позицію [at].
+  void _drop(String paramId, String? groupId, {int? at}) {
+    setState(() {
+      for (final g in groups) {
+        g.ids.remove(paramId);
+      }
+      if (groupId != null) {
+        final g = groups.firstWhere((x) => x.id == groupId);
+        // позиція рахується серед ВИДИМИХ (обраних), у повному списку - до id перед нею
+        if (at == null || at >= g.ids.length) {
+          g.ids.add(paramId);
+        } else {
+          g.ids.insert(at, paramId);
+        }
+      }
+      _dragOver = null;
+    });
+  }
+
+  Future<void> _addGroup() async {
+    final name = await showTextPrompt(context, title: 'Нова група', initial: '');
+    if (name == null || name.trim().isEmpty || !mounted) return;
+    setState(() => groups.add(ParamGroup(id: 'g${DateTime.now().microsecondsSinceEpoch}', name: name.trim())));
+  }
+
+  Future<void> _renameGroup(ParamGroup g) async {
+    final name = await showTextPrompt(context, title: 'Назва групи', initial: g.name);
+    if (name == null || !mounted) return;
+    setState(() => g.name = name);
+  }
+
+  void _deleteGroup(ParamGroup g) => setState(() => groups.remove(g));
+
+  Widget _dragChip(Parameter p, Widget child) => LongPressDraggable<String>(
+        data: p.id,
+        feedback: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.hive, width: 1.5),
+            ),
+            child: Text(p.nameWithUnit,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: child),
+        child: child,
+      );
+
+  /// Вкладка «Конструктор»: у ній лише параметри, обрані у вкладці «Список».
+  Widget _constructor(List<Parameter> all) {
+    final byId = {for (final p in all) p.id: p};
+    final chosen = [for (final id in selected) if (byId[id] != null) byId[id]!];
+    final chosenIds = {for (final p in chosen) p.id};
+    final grouped = <String>{for (final g in groups) ...g.ids.where(chosenIds.contains)};
+    final loose = [for (final p in chosen) if (!grouped.contains(p.id)) p];
+    const honeyDark = Color(0xFF2B1A08);
+
+    Widget groupCard(ParamGroup g) {
+      final members = [for (final id in g.ids) if (byId[id] != null && chosenIds.contains(id)) byId[id]!];
+      return DragTarget<String>(
+        onWillAcceptWithDetails: (_) {
+          if (_dragOver != g.id) setState(() => _dragOver = g.id);
+          return true;
+        },
+        onLeave: (_) {
+          if (_dragOver == g.id) setState(() => _dragOver = null);
+        },
+        onAcceptWithDetails: (d) => _drop(d.data, g.id),
+        builder: (_, _, _) {
+          final over = _dragOver == g.id;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: AppColors.popupBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: over ? AppColors.hive : AppColors.hive.withValues(alpha: 0.5),
+                  width: over ? 2 : 1.5),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(
+                height: 46,
+                color: AppColors.hive,
+                padding: const EdgeInsets.only(left: 14, right: 6),
+                child: Row(children: [
+                  Expanded(
+                    child: Text(g.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: honeyDark, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  IconButton(
+                    tooltip: 'Назва групи',
+                    icon: const Icon(Icons.edit, color: honeyDark, size: 20),
+                    onPressed: () => _renameGroup(g),
+                  ),
+                  IconButton(
+                    tooltip: 'Видалити групу',
+                    icon: const Icon(Icons.delete_outline, color: honeyDark, size: 22),
+                    onPressed: () => _deleteGroup(g),
+                  ),
+                ]),
+              ),
+              for (final p in members)
+                DragTarget<String>(
+                  onWillAcceptWithDetails: (d) => d.data != p.id,
+                  onAcceptWithDetails: (d) => _drop(d.data, g.id, at: g.ids.indexOf(p.id)),
+                  builder: (_, _, _) => _dragChip(
+                    p,
+                    Container(
+                      height: 44,
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                          border: Border(
+                              top: BorderSide(color: AppColors.hive.withValues(alpha: 0.22)))),
+                      child: Text(p.nameWithUnit,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppColors.text, fontSize: 14)),
+                    ),
+                  ),
+                ),
+              if (members.isEmpty || over)
+                Container(
+                  height: 44,
+                  alignment: Alignment.center,
+                  color: over ? AppColors.hive.withValues(alpha: 0.14) : null,
+                  child: Text(over ? 'Відпусти тут' : 'Перетягни сюди параметри',
+                      style: TextStyle(
+                          color: over ? AppColors.hive : AppColors.textMuted, fontSize: 13)),
+                ),
+            ]),
+          );
+        },
+      );
+    }
+
+    return ListView(padding: const EdgeInsets.all(12), children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+        child: Text(
+            chosen.isEmpty
+                ? 'Тут з\'являться параметри, які ви оберете у вкладці «Список».'
+                : 'Затисни параметр і веди в потрібну групу.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+      ),
+      for (final g in groups) groupCard(g),
+      PillButton(
+        text: '+ Нова група',
+        bg: AppColors.darkBtn,
+        fg: AppColors.text,
+        height: 42,
+        width: double.infinity,
+        onPressed: _addGroup,
+      ),
+      const SizedBox(height: 14),
+      DragTarget<String>(
+        onWillAcceptWithDetails: (_) {
+          if (_dragOver != '') setState(() => _dragOver = '');
+          return true;
+        },
+        onLeave: (_) {
+          if (_dragOver == '') setState(() => _dragOver = null);
+        },
+        onAcceptWithDetails: (d) => _drop(d.data, null),
+        builder: (_, _, _) => Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.panel,
+            borderRadius: BorderRadius.circular(16),
+            border: _dragOver == '' ? Border.all(color: AppColors.hive, width: 2) : null,
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Обрані, але ще без групи',
+                style: TextStyle(
+                    color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(loose.isEmpty ? 'Усі параметри розкладено по групах.' : 'Затисни й перетягни в групу.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            if (loose.isNotEmpty) const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final p in loose)
+                _dragChip(
+                  p,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkBtn,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.neutralBtn),
+                    ),
+                    child: Text(p.nameWithUnit,
+                        style: TextStyle(color: AppColors.text, fontSize: 13)),
+                  ),
+                ),
+            ]),
+          ]),
+        ),
+      ),
+    ]);
   }
 
   /// Вибір для вулика / шаблону: обрані — вгорі в їхньому порядку, їх можна

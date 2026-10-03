@@ -572,6 +572,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('конструктор: групи зберігаються, у вкладці лише обрані параметри', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
+    final chosen = (await tester.runAsync(() => repo.attachedParameterIds(hive.entity, elType: 'hive')))!;
+    await tester.runAsync(() => repo.setParamGroups([ParamGroup(id: 'g1', name: 'Огляд', ids: [...chosen])]));
+    final back = (await tester.runAsync(() => repo.paramGroups()))!;
+    expect(back.single.name, 'Огляд');
+    expect(back.single.ids, chosen);
+
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    await tester.tap(find.text('Конструктор'));
+    await settle(tester);
+    expect(find.text('Огляд'), findsOneWidget);
+    expect(find.text('Обрані, але ще без групи'), findsOneWidget);
+    expect(find.text('+ Нова група'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('переоблік списком: записуються лише розбіжності', (tester) async {
     final (sugar, frames) = (await tester.runAsync(() async {
       final a = await repo.addStockItem('Цукор', 'кг');
