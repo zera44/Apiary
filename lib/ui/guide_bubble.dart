@@ -167,14 +167,7 @@ List<Widget> lessonScene({
   // «завершити навчання» — посиланням під хмаркою; якщо там уже кнопка
   // («Продовжити», пігулки) — над хмаркою
   final finish = onFinish == null ? null : LessonFinishLink(onPressed: onFinish);
-  Widget? above;
-  if (finish != null) {
-    if (below == null) {
-      below = finish;
-    } else {
-      above = finish;
-    }
-  }
+  // табличка - маленька, у правому нижньому куті (не заважає кнопкам хмарки)
   // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
   // не обрізались, а хмарка починалась після нього
   final pills = pose == LessonPose.pills;
@@ -210,11 +203,7 @@ List<Widget> lessonScene({
           image: null,
           imageLeft: 0,
           below: below,
-          above: above,
-          // табличка «завершити навчання» вища за звичайну кнопку
-          gap: identical(below, finish)
-              ? LessonFinishLink.heightFor(LessonFinishLink.kSignWidth) + 4
-              : 70);
+          gap: below == null ? LessonFinishLink.heightFor(180) + 4 : 70);
   return [
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
     if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.bear))
@@ -244,13 +233,11 @@ List<Widget> lessonScene({
                   : IgnorePointer(child: bubble),
         ),
       ),
-    // пасічник мовчить — посилання там само, де було б під хмаркою
-    if (bubble == null && finish != null)
+    if (finish != null)
       Positioned(
-        left: pills ? 164.0 : kLessonBubbleLeft,
-        right: 0,
-        bottom: base,
-        child: Material(type: MaterialType.transparency, child: Center(child: finish)),
+        right: 8,
+        bottom: 4 + bottomInset,
+        child: Material(type: MaterialType.transparency, child: finish),
       ),
   ];
 }
@@ -265,7 +252,7 @@ class LessonFinishLink extends StatelessWidget {
   const LessonFinishLink({super.key, required this.onPressed, this.width = kSignWidth});
 
   /// Табличка 5:3; напис — на середній дошці.
-  static const kSignWidth = 180.0;
+  static const kSignWidth = 90.0;
   static double heightFor(double w) => w * 0.6;
 
   @override

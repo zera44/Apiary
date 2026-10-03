@@ -170,7 +170,7 @@ class _AppDrawerState extends State<AppDrawer> {
         if (widget.tour && widget.onFinishTutorial != null)
           Align(
             alignment: Alignment.centerRight,
-            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 150),
+            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
           ),
         // пасічник стоїть руками на кнопці «Далі» - спирається на неї
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
