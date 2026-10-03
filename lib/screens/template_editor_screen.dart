@@ -556,7 +556,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       final name = title.trim().isEmpty ? 'Новий шаблон' : title.trim();
       final (w, h, out) = _export();
       if (widget.templateId != null) {
+        final old = await repo.getTemplate(widget.templateId!);
         await repo.updateTemplate(widget.templateId!, name: name, width: w, height: h, cells: out);
+        if (old != null && mounted) await _offerApplyToPlaced(old, out);
       } else {
         await repo.addTemplate(name, w, h, out);
       }
@@ -564,6 +566,36 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       if (mounted) Navigator.pop(context, true);
     } finally {
       _saving = false;
+    }
+  }
+
+  /// Набір характеристик вулика в шаблоні (з першої клітинки-вулика).
+  static List<String> _hiveParams(Map<String, dynamic> cells) {
+    for (final v in cells.values) {
+      final c = CellValue.parse(v);
+      if (c.isHive) return c.parameters;
+    }
+    return const [];
+  }
+
+  /// Змінили набір характеристик шаблону: запропонувати застосувати його до
+  /// вже поставлених з нього вуликів (інакше вони лишаються як були).
+  Future<void> _offerApplyToPlaced(ApiaryTemplate old, Map<String, dynamic> newCells) async {
+    final before = _hiveParams(old.cells), after = _hiveParams(newCells);
+    if (before.join('|') == after.join('|')) return;
+    final hives = await repo.hivesPlacedFrom(old.name);
+    if (hives.isEmpty || !mounted) return;
+    final ok = await showConfirm(context,
+        title: 'Застосувати до вуликів?',
+        text: 'З шаблону «${old.name}» уже поставлено вуликів: ${hives.length}. '
+            'Застосувати до них новий набір характеристик? '
+            'Історія значень збережеться.',
+        confirmText: 'Застосувати',
+        cancelText: 'Не змінювати',
+        danger: false);
+    if (!ok) return;
+    for (final h in hives) {
+      await repo.setAttachedParameters(after, h);
     }
   }
 

@@ -1243,6 +1243,21 @@ class Repository {
     return rows.map(_templateFromRow).toList();
   }
 
+  /// Групи вуликів, поставлених з шаблону з такою назвою (їхні назви -
+  /// «<назва> N»), у всіх пасіках.
+  Future<List<EntityRef>> hivesPlacedFrom(String templateName) async {
+    final rows = await db.rawQuery(
+        "SELECT group_id, label FROM elements WHERE deleted = 0 AND type = 'hive' "
+        'AND group_id IS NOT NULL AND label IS NOT NULL');
+    final re = RegExp('^${RegExp.escape(templateName.trim())} \\d+\$');
+    final seen = <String>{};
+    return [
+      for (final r in rows)
+        if (re.hasMatch(((r['label'] as String?) ?? '').trim()) && seen.add(r['group_id'] as String))
+          EntityRef.group(r['group_id'] as String)
+    ];
+  }
+
   Future<ApiaryTemplate?> getTemplate(String id) async {
     final rows = await db.query('templates', where: 'id = ?', whereArgs: [id]);
     return rows.isEmpty ? null : _templateFromRow(rows.first);

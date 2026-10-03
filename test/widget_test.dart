@@ -1720,6 +1720,15 @@ void main() {
     await settle(tester);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('P16: вулики, поставлені з шаблону, знаходяться за назвою «<назва> N»', (tester) async {
+    final n = await tester.runAsync(() async {
+      await repo.placeTemplate(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 20, 20, name: 'Дадан');
+      await repo.placeTemplate(apiaryId, {'0,0': 'hive'}, 30, 30, name: 'Дадан плюс');
+      return (await repo.hivesPlacedFrom('Дадан')).length;
+    });
+    expect(n, 1); // дві сусідні клітинки - один вулик; «Дадан плюс» - інший шаблон
+  });
 }
 
 /// Вхід без Google (для тестів).
