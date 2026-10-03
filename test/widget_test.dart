@@ -907,7 +907,7 @@ void main() {
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
     for (final t in ['рамки, корми, ліки', 'зміни показників', 'час на вітер',
-        'спеціалізоване навчання', 'поділитись ідеєю']) {
+        'спеціалізоване навчання', 'поділитись ідеєю', 'у «Конструкторі»']) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);

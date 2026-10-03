@@ -114,7 +114,7 @@ final List<List<InlineSpan>> kDrawerTour = [
   ],
   [
     GuideBubble.highlight('Склад'),
-    const TextSpan(text: ' - рамки, корми, ліки. А як ще керувати запасами?'),
+    const TextSpan(text: ' - рамки, корми, ліки: прихід, списання й переоблік. А як ще керувати запасами?'),
   ],
   [
     GuideBubble.highlight('Історія'),
@@ -123,7 +123,7 @@ final List<List<InlineSpan>> kDrawerTour = [
   [
     GuideBubble.highlight('QR-код'),
     const TextSpan(
-        text: ' - обхід без записів - час на вітер. Як же тут без сканування коду з вулика?'),
+        text: ' - обхід без записів - час на вітер. Скануй код з вулика, а новий - прив\'язуй до вулика.'),
   ],
   [
     GuideBubble.highlight('Навчання'),
@@ -132,6 +132,12 @@ final List<List<InlineSpan>> kDrawerTour = [
   [
     GuideBubble.highlight('Зворотний зв\'язок'),
     const TextSpan(text: ' - хочеш поділитись ідеєю чи дати зворотній зв\'язок? Тобі сюди.'),
+  ],
+  [
+    GuideBubble.highlight('Шестерня'),
+    const TextSpan(
+        text: ' угорі справа на головному екрані - характеристики й шаблони. А набір параметрів '
+            'вулика збирай у «Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
   ],
 ];
 
