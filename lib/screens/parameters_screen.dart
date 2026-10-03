@@ -9,8 +9,8 @@ import 'history_screen.dart';
 
 /// Екран "Список параметрів" (порт parameters_screen.py).
 ///
-/// Чекбоксом параметр із каталогу прив'язується до об'єкта; "Зберегти"
-/// записує весь набір. "+" — новий параметр у каталозі. Базові
+/// Чекбоксом параметр із каталогу прив'язується до об'єкта; вихід «назад»
+/// автоматично записує весь набір. "+" — новий параметр у каталозі. Базові
 /// характеристики для типу об'єкта завжди позначені й заблоковані.
 ///
 /// Два режими: для вже розміщеного об'єкта/групи ([ParametersScreen.forElement]
@@ -118,6 +118,16 @@ class _ParametersScreenState extends State<ParametersScreen> {
   bool _allHives = false;
 
   bool get _canApplyToAll => widget.element?.isHive == true && widget.element?.apiaryId != null;
+
+  /// «Назад» (стрілка чи системна): у списку вулика/шаблону зміни
+  /// зберігаються автоматично — окремої кнопки «Зберегти» немає.
+  void _back() {
+    if (widget.catalog || params == null) {
+      Navigator.pop(context); // поки список не завантажено — нічого не знімаємо
+      return;
+    }
+    _save();
+  }
 
   Future<void> _save() async {
     // подвійний тап: другий виклик пізніше закрив би ще й екран під цим
@@ -495,13 +505,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
   @override
   Widget build(BuildContext context) {
     final list = params;
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
             TopBar(
               title: widget.catalog ? 'Характеристики' : 'Список параметрів',
-              onBack: () => Navigator.pop(context),
+              onBack: _back,
               trailing: CircleIconButton(
                 icon: 'plus_circle',
                 bg: AppColors.accent,
@@ -543,23 +558,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   ]),
                 ),
               ),
-            if (!widget.catalog)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: PillButton(
-                  text: 'Зберегти',
-                  bg: AppColors.accent,
-                  height: 48,
-                  radius: 16,
-                  width: double.infinity,
-                  // поки список не завантажено, «Зберегти» зняло б усі прив'язки
-                  onPressed: params == null ? null : _save,
-                ),
-              ),
+            const SizedBox(height: 12),
           ]),
           const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
+    ),
     );
   }
 

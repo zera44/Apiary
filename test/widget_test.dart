@@ -629,7 +629,9 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Для всіх вуликів пасіки (такий самий набір і порядок)'));
     await settle(tester);
-    await tester.tap(find.text('Зберегти'));
+    // окремої «Зберегти» немає: «назад» зберігає автоматично
+    expect(find.text('Зберегти'), findsNothing);
+    await tester.tap(find.byWidgetPredicate((w) => w is CircleIconButton && w.icon == 'back_arrow'));
     await settle(tester);
     final a = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(groupId), elType: 'hive')))!;
     final b = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(other), elType: 'hive')))!;
