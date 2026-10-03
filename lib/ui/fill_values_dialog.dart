@@ -27,12 +27,16 @@ Future<FillResult?> showFillValuesDialog(
   String? title,
   Future<FillPage?> Function(FillResult result)? onNext,
   FillLesson? lesson,
+  String subtitle = 'Заповнити параметри',
+  VoidCallback? onHistory,
 }) {
   Widget host() => _FillHost(
         first: FillPage(params: params, latest: latest, stock: stock, title: title),
         offerNext: lesson == null && offerNext,
         onNext: onNext,
         lesson: lesson,
+        subtitle: subtitle,
+        onHistory: onHistory,
       );
   // урок: пасічник на карті зникає, а в формі з'являється на тому ж місці -
   // без анімації, щоб він не блимав
@@ -85,7 +89,15 @@ class _FillHost extends StatefulWidget {
   final bool offerNext;
   final Future<FillPage?> Function(FillResult result)? onNext;
   final FillLesson? lesson;
-  const _FillHost({required this.first, required this.offerNext, this.onNext, this.lesson});
+  final String subtitle;
+  final VoidCallback? onHistory;
+  const _FillHost(
+      {required this.first,
+      required this.offerNext,
+      this.onNext,
+      this.lesson,
+      this.subtitle = 'Заповнити параметри',
+      this.onHistory});
   @override
   State<_FillHost> createState() => _FillHostState();
 }
@@ -104,6 +116,8 @@ class _FillHostState extends State<_FillHost> {
       latest: _page.latest,
       offerNext: widget.offerNext,
       lesson: widget.lesson,
+      subtitle: widget.subtitle,
+      onHistory: widget.onHistory,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
       onNext: onNext == null
           ? null
@@ -123,15 +137,20 @@ class _FillHostState extends State<_FillHost> {
   }
 }
 
-/// Результат форми: змінені значення й чи натиснули «Зберегти й далі»
-/// (обхід ланцюжком — одразу наступний вулик).
+/// Чим закінчили огляд вулика в обході: записати зміни, «змін немає» (лише
+/// дата огляду) чи пропустити (нічого не записувати, вулик лишається на потім).
+enum FillAction { save, noChange, skip }
+
+/// Результат форми: змінені значення й чи далі наступний вулик (обхід
+/// ланцюжком: будь-яка з трьох кнопок відкриває наступний).
 class FillResult {
   final Map<String, String> values;
   final bool next;
+  final FillAction action;
 
   /// Підгодівля зі складу: що й скільки списати (або null).
   final ({String itemId, double amount})? feed;
-  const FillResult(this.values, {this.next = false, this.feed});
+  const FillResult(this.values, {this.next = false, this.feed, this.action = FillAction.save});
 }
 
 class _FillDialog extends StatefulWidget {
@@ -142,9 +161,13 @@ class _FillDialog extends StatefulWidget {
   final List<StockItem> stock;
   final Future<void> Function(FillResult result)? onNext;
   final FillLesson? lesson;
+  final String subtitle;
+  final VoidCallback? onHistory;
   const _FillDialog(
       {super.key,
       this.lesson,
+      this.subtitle = 'Заповнити параметри',
+      this.onHistory,
       this.title,
       required this.params,
       required this.latest,
@@ -275,6 +298,23 @@ class _FillDialogState extends State<_FillDialog> {
           tapNext: false
         ),
     };
+  }
+
+  /// «Змін немає» / «Пропустити»: без перевірки полів, одразу наступний вулик.
+  Future<void> _quick(FillAction action) async {
+    if (_saving) return;
+    final onNext = widget.onNext;
+    final result = FillResult(const {}, next: true, action: action);
+    if (onNext == null) {
+      Navigator.pop(context, result);
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await onNext(result);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _save({bool next = false}) async {
@@ -569,12 +609,30 @@ class _FillDialogState extends State<_FillDialog> {
   Widget _dialogBody() {
     return AlertDialog(
       // назва вулика — видно, що «Зберегти й далі» перейшло до наступного
-      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (widget.title != null) Text(widget.title!),
-        Text('Заповнити параметри',
-            style: widget.title == null
-                ? null
-                : TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w400)),
+      title: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (widget.title != null) Text(widget.title!),
+            Text(widget.subtitle,
+                style: widget.title == null
+                    ? null
+                    : TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w400)),
+          ]),
+        ),
+        // швидка правка: історія цього параметра — іконкою вгорі праворуч
+        if (widget.onHistory != null)
+          IconButton(
+            tooltip: 'Історія',
+            icon: Icon(Icons.history, color: AppColors.text),
+            onPressed: widget.onHistory,
+          ),
+        // обхід: вийти з огляду (кнопки внизу ведуть до наступного вулика)
+        if (widget.offerNext)
+          IconButton(
+            tooltip: 'Закрити',
+            icon: Icon(Icons.close, color: AppColors.text),
+            onPressed: _saving ? null : () => Navigator.pop(context),
+          ),
       ]),
       content: SizedBox(
         width: 340,
@@ -595,36 +653,54 @@ class _FillDialogState extends State<_FillDialog> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
             ),
-          Row(children: [
-            Expanded(
-              child: PillButton(
-                  text: 'Скасувати',
-                  bg: AppColors.neutralBtn,
-                  fg: AppColors.text,
-                  // урок: поки огляд не завершено — не вийти
-                  onPressed: _lesson != null ? null : () => Navigator.pop(context)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-                child: HoneyRing(
-                    on: _ring(5),
-                    radius: 14,
-                    child: PillButton(
-                        text: 'Зберегти',
-                        bg: AppColors.accent,
-                        // урок: зберегти — лише коли комірки заповнено
-                        onPressed: _saving || (_lesson != null && _step < 5) ? null : _save))),
-          ]),
-          if (widget.offerNext) ...[
-            const SizedBox(height: 8),
-            // обхід ланцюжком: зберегти й одразу наступний вулик
-            PillButton(
-              text: 'Зберегти й далі →',
-              bg: AppColors.create,
-              width: double.infinity,
-              onPressed: _saving ? null : () => _save(next: true),
-            ),
-          ],
+          if (widget.offerNext)
+            // обхід: кожна кнопка записує своє й відкриває наступний вулик;
+            // усі на сьогодні оглянуті — огляд закривається
+            Row(children: [
+              Expanded(
+                  child: PillButton(
+                      text: 'Зберегти',
+                      bg: AppColors.accent,
+                      fontSize: 13,
+                      onPressed: _saving ? null : () => _save(next: true))),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: PillButton(
+                      text: 'Змін немає',
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      fontSize: 13,
+                      onPressed: _saving ? null : () => _quick(FillAction.noChange))),
+              const SizedBox(width: 6),
+              Expanded(
+                  child: PillButton(
+                      text: 'Пропустити',
+                      bg: AppColors.neutralBtn,
+                      fg: AppColors.text,
+                      fontSize: 13,
+                      onPressed: _saving ? null : () => _quick(FillAction.skip))),
+            ])
+          else
+            Row(children: [
+              Expanded(
+                child: PillButton(
+                    text: 'Скасувати',
+                    bg: AppColors.neutralBtn,
+                    fg: AppColors.text,
+                    // урок: поки огляд не завершено — не вийти
+                    onPressed: _lesson != null ? null : () => Navigator.pop(context)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: HoneyRing(
+                      on: _ring(5),
+                      radius: 14,
+                      child: PillButton(
+                          text: 'Зберегти',
+                          bg: AppColors.accent,
+                          // урок: зберегти — лише коли комірки заповнено
+                          onPressed: _saving || (_lesson != null && _step < 5) ? null : _save))),
+            ]),
         ]),
       ],
     );

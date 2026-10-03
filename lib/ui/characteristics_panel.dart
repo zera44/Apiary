@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../data/models.dart';
 import '../logic/merge_layout.dart';
@@ -76,6 +75,11 @@ class CharacteristicsPanel extends StatelessWidget {
   /// Урок: ключ кнопки «Оглянути» (її дозволено натиснути).
   final Key? fillKey;
   final void Function(String parameterId)? onHistory;
+
+  /// Тап по значенню: швидка правка одного параметра (інакше — [onHistory]).
+  final void Function(String parameterId)? onValue;
+
+  /// Тап по комірці QR-коду: порожня — прив'язати, з номером — код і дії.
   final VoidCallback? onQr;
 
   /// Можна міняти назву, значок і колір (режим редагування / редактор шаблону).
@@ -99,6 +103,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.highlightFill = false,
     this.fillKey,
     this.onHistory,
+    this.onValue,
     this.onQr,
     this.editable = true,
     this.inspect = true,
@@ -184,14 +189,6 @@ class CharacteristicsPanel extends StatelessWidget {
                   Text('-', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
                 else
                   _paramTable(context),
-                const SizedBox(height: 18),
-                PillButton(
-                  text: 'Параметри',
-                  bg: AppColors.accent,
-                  height: 38,
-                  fontSize: 13,
-                  onPressed: onEditParams,
-                ),
                 if (data.placed && inspect) ...[
                   const SizedBox(height: 10),
                   Row(children: [
@@ -226,18 +223,16 @@ class CharacteristicsPanel extends StatelessWidget {
                       ),
                     ],
                   ]),
-                  if (onQr != null) ...[
-                    const SizedBox(height: 10),
-                    PillButton(
-                      text: data.qrCode == null ? 'Прив\'язати QR-код' : 'QR-код…',
-                      bg: AppColors.darkBtn,
-                      fg: AppColors.text,
-                      height: 38,
-                      fontSize: 13,
-                      onPressed: onQr,
-                    ),
-                  ],
                 ],
+                // набір параметрів вулика — у самому низу інформації
+                const SizedBox(height: 18),
+                PillButton(
+                  text: 'Параметри',
+                  bg: AppColors.accent,
+                  height: 38,
+                  fontSize: 13,
+                  onPressed: onEditParams,
+                ),
                 ],
               ],
             ),
@@ -262,10 +257,10 @@ class CharacteristicsPanel extends StatelessWidget {
   /// значень цього параметра (для розміщеного об'єкта).
   Widget _paramTable(BuildContext context) {
     final grid = AppColors.hive.withValues(alpha: 0.55);
-    final tappable = data.placed && onHistory != null;
+    final tap = data.placed ? (onValue ?? onHistory) : null;
     Widget cell(Parameter p, Widget child) {
       final c = Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9), child: child);
-      return tappable ? TableRowInkWell(onTap: () => onHistory!(p.id), child: c) : c;
+      return tap != null ? TableRowInkWell(onTap: () => tap(p.id), child: c) : c;
     }
 
     return Table(
@@ -293,45 +288,25 @@ class CharacteristicsPanel extends StatelessWidget {
     );
   }
 
-  /// Значення QR-коду: порожньо, якщо не прив'язано; інакше номер — по тапу
-  /// відкривається сам код.
+  /// Значення QR-коду: «-», якщо не прив'язано (тап — прив'язати), інакше
+  /// номер наліпки (тап — сам код, «Інший» і «Відв'язати»).
   Widget _qrCell(BuildContext context) {
     final code = data.qrCode;
-    if (code == null) return const SizedBox(height: 38);
-    final label = data.qrNumber != null ? '№ ${data.qrNumber}' : code;
+    final label = code == null ? '-' : (data.qrNumber != null ? '№ ${data.qrNumber}' : code);
     return InkWell(
-      onTap: () => showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(label),
-          content: SizedBox(
-            width: 220,
-            height: 220,
-            child: Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(8),
-              child: QrImageView(data: code, backgroundColor: Colors.white),
-            ),
-          ),
-          actions: [
-            PillButton(
-                text: 'Закрити',
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                onPressed: () => Navigator.pop(ctx)),
-          ],
-        ),
-      ),
+      onTap: onQr,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         child: Text(label,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-                color: AppColors.accent,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline)),
+            style: code == null
+                ? TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w600)
+                : TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline)),
       ),
     );
   }

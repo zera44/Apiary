@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -13,6 +14,7 @@ import '../services/reminders.dart';
 import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
+import '../ui/date_picker.dart' show formatDdMmYyyy;
 import '../ui/first_hints.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/fill_values_dialog.dart';
@@ -1255,9 +1257,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (el == null) return;
     _fillSaved = false;
     final panelWasOpen = panelOpen; // з сповіщення панель відкриється лише після «Зберегти»
-    final first = await _fillPage(el);
-    if (first == null || !mounted) return;
-    if (first.params.isEmpty) {
+    final first0 = await _fillPage(el);
+    if (first0 == null || !mounted) return;
+    if (first0.params.isEmpty) {
       _showWarning("Спершу прив'яжіть хоча б один параметр",
           duration: const Duration(milliseconds: 1200));
       return;
@@ -1276,6 +1278,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       if (!mounted) return;
     }
+    // періодичність обходу — налаштування вулика, не показник огляду: у формі
+    // її немає (змінюють тапом по значенню на панелі); урок її ще заповнює
+    final periodId = lesson == null ? await repo.baseParameterId(el.type, 'visit_period') : null;
+    FillPage formPage(FillPage pg) => periodId == null
+        ? pg
+        : FillPage(
+            params: [for (final p in pg.params) if (p.id != periodId) p],
+            latest: pg.latest,
+            stock: pg.stock,
+            title: pg.title);
+    final first = formPage(first0);
+    final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
+    if (!mounted) return;
     if (lesson != null) setState(() => _lessonFormOpen = true);
     final result = await showFillValuesDialog(
       context,
@@ -1285,12 +1300,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       title: first.title,
       offerNext: el.isHive,
       lesson: lesson,
-      // «Зберегти й далі»: зберегти, показати наступний вулик на карті й
-      // підставити його дані в ту саму форму (вікно не закривається)
+      // «Зберегти» / «Змін немає» / «Пропустити»: записати своє, показати
+      // наступний вулик на карті й підставити його дані в ту саму форму
+      // (вікно не закривається); далі нікого — огляд закривається
       onNext: (r) async {
-        await _saveFill(cur, r);
-        _fillSaved = true;
-        final n = await _nextTarget(cur);
+        switch (r.action) {
+          case FillAction.skip:
+            skipped.add(ownerKeyOf(cur));
+          case FillAction.noChange:
+            await _saveFill(cur, const FillResult({})); // лише дата огляду
+            _fillSaved = true;
+          case FillAction.save:
+            await _saveFill(cur, r);
+            _fillSaved = true;
+        }
+        final n = await _nextTarget(cur, skipped: skipped);
         if (n == null || !mounted) return null;
         final here = n.here;
         if (here == null) {
@@ -1299,7 +1323,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }
         cur = here;
         await _showOnMap(here, openPanel: panelWasOpen);
-        return _fillPage(here);
+        final pg = await _fillPage(here);
+        return pg == null ? null : formPage(pg);
       },
     );
     if (lesson != null && mounted) setState(() => _lessonFormOpen = false);
@@ -1393,7 +1418,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// «Зберегти й далі»: наступний вулик за [MapScreen.next] — на цій карті
   /// ([here]) чи на іншій пасіці ([away]); null — далі нікого.
   Future<({MapElement? here, ({Apiary apiary, String elementId})? away})?> _nextTarget(
-      MapElement cur) async {
+      MapElement cur, {Set<String> skipped = const {}}) async {
     switch (widget.next) {
       case NextHive.order:
         // один представник на вулик/групу: верхня-ліва клітинка
@@ -1405,12 +1430,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }
         final list = reps.values.toList()
           ..sort((a, b) => a.y != b.y ? b.y.compareTo(a.y) : a.x.compareTo(b.x));
+        // наступний за порядком (по колу), ще не оглянутий сьогодні й не
+        // пропущений у цьому обході
+        final today = formatDdMmYyyy(DateTime.now());
+        final visited = {
+          for (final t in await repo.visitTargets())
+            if (t.lastVisit == today) t.key
+        };
+        if (!mounted) return null;
         final i = list.indexWhere((e) => ownerKeyOf(e) == ownerKeyOf(cur));
-        if (i < 0 || i + 1 >= list.length) {
-          _showWarning('Це останній вулик на карті', duration: const Duration(milliseconds: 1500));
-          return null;
+        for (var k = 1; k < list.length; k++) {
+          final e = list.elementAt((i + k) % list.length);
+          final key = ownerKeyOf(e);
+          if (key == ownerKeyOf(cur) || skipped.contains(key) || visited.contains(key)) continue;
+          return (here: e, away: null);
         }
-        return (here: list[i + 1], away: null);
+        _showWarning(skipped.isEmpty ? 'Усі вулики на сьогодні оглянуто' : 'Обхід завершено',
+            duration: const Duration(milliseconds: 1500));
+        return null;
       case NextHive.qr:
         final code = await scanQrCode(context, title: 'Наступний вулик');
         if (code == null || !mounted) return null;
@@ -1433,7 +1470,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final now = DateTime.now();
         final due = [
           for (final t in await repo.visitTargets())
-            if (t.key != ownerKeyOf(cur))
+            if (t.key != ownerKeyOf(cur) && !skipped.contains(t.key))
               if (dueReminder(t, now: now) case final d?) (t: t, at: d.when)
         ]..sort((a, b) => a.at.compareTo(b.at));
         if (!mounted) return null;
@@ -1462,6 +1499,32 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       builder: (_) => HistoryScreen(repo: repo, parameter: p, entity: el.entity),
     ));
     await _refreshPanel();
+  }
+
+  /// Швидка правка одного значення (тап по рядку на панелі): маленьке вікно
+  /// з одним полем та історією іконкою. Це не огляд — дата обходу не
+  /// змінюється.
+  Future<void> _panelQuickEdit(String parameterId) async {
+    final el = panelElement;
+    if (el == null) return;
+    final p = await repo.getParameter(parameterId);
+    final latest = await repo.latestParameterValues(el.entity);
+    if (p == null || !mounted) return;
+    final result = await showFillValuesDialog(
+      context,
+      params: [p],
+      latest: latest,
+      title: p.nameWithUnit,
+      subtitle: panelData?.title ?? el.label ?? 'Вулик',
+      onHistory: () => _panelHistory(parameterId),
+    );
+    if (result == null || result.values.isEmpty || !mounted) return;
+    for (final e in result.values.entries) {
+      await repo.addParameterRecord(e.key, e.value, el.entity);
+    }
+    unawaited(ReminderService.instance.reschedule());
+    await _refreshPanel();
+    await _refreshOverdue();
   }
 
   bool _qrBusy = false;
@@ -1548,12 +1611,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final action = await showDialog<String>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('QR-код вулика'),
-            content: Text(current, style: TextStyle(color: AppColors.text)),
+            title: Text(Repository.appQrNumber(current) != null
+                ? 'QR-код № ${Repository.appQrNumber(current)}'
+                : 'QR-код вулика'),
+            content: SizedBox(
+              width: 220,
+              height: 220,
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(8),
+                child: QrImageView(data: current, backgroundColor: Colors.white),
+              ),
+            ),
             actions: [
               Column(mainAxisSize: MainAxisSize.min, children: [
                 PillButton(
-                    text: 'Сканувати інший',
+                    text: 'Інший код',
                     bg: AppColors.accent,
                     width: double.infinity,
                     onPressed: () => Navigator.pop(ctx, 'scan')),
@@ -1565,7 +1638,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     onPressed: () => Navigator.pop(ctx, 'unlink')),
                 const SizedBox(height: 8),
                 PillButton(
-                    text: 'Скасувати',
+                    text: 'Закрити',
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     width: double.infinity,
@@ -1939,9 +2012,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onVisited: (panelElement?.isHive ?? false)
                           ? (_lessonInspect ? () {} : () => _panelGuard(_panelVisited))
                           : null,
-                      onHistory: selectMode
+                      // тап по значенню — швидка правка (історія — іконкою в ній)
+                      onValue: selectMode
                           ? null
-                          : (id) => _lessonInspect ? null : _panelGuard(() => _panelHistory(id)),
+                          : (id) => _lessonInspect ? null : _panelGuard(() => _panelQuickEdit(id)),
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) && !selectMode
                           ? (_lessonInspect ? () {} : _panelQr)

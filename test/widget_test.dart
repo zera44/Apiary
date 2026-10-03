@@ -346,7 +346,7 @@ void main() {
     expect(ReminderService.instance.openHiveRequest.value, isNull);
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.text('Скасувати'));
+    await tester.tap(find.byTooltip('Закрити'));
     await settle(tester);
     expect(find.text('Лежак 1'), findsWidgets); // панель цього вулика
     expect(tester.takeException(), isNull);
@@ -442,7 +442,7 @@ void main() {
     expect(latest[visitId], Repository.formatVisitDate(DateTime.now()));
   });
 
-  testWidgets('форма: «Зберегти й далі» з карти - наступний вулик одразу з формою', (tester) async {
+  testWidgets('форма: «Зберегти» в обході з карти - наступний вулик одразу з формою', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     // другий вулик нижче лежака — наступний за порядком (зверху вниз)
@@ -455,7 +455,7 @@ void main() {
       await settle(tester);
     }
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.text('Зберегти й далі →'));
+    await tester.tap(find.text('Зберегти'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
@@ -464,7 +464,7 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Вулик 2')),
         findsOneWidget);
-    await tester.tap(find.text('Скасувати'));
+    await tester.tap(find.byTooltip('Закрити'));
     await settle(tester);
     expect(find.text('Вулик 2'), findsWidgets);
     expect(tester.takeException(), isNull);
@@ -490,7 +490,7 @@ void main() {
     }
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    expect(find.text('Зберегти й далі →'), findsOneWidget);
+    expect(find.text('Пропустити'), findsOneWidget); // обхід: Зберегти / Змін немає / Пропустити
     expect(tester.takeException(), isNull);
   });
 
@@ -1271,7 +1271,7 @@ void main() {
     }
     // після сканування одразу форма «Оглянути» (людина біля вулика)
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.text('Скасувати'));
+    await tester.tap(find.byTooltip('Закрити'));
     await settle(tester);
     expect(find.text('Тестова пасіка'), findsWidgets); // карта пасіки
     expect(find.text('Лежак 1'), findsWidgets); // панель вулика
