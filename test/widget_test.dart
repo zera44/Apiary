@@ -50,6 +50,7 @@ void main() {
     // підказки першого запуску й «Що нового» мають свої тести (вмикаються там)
     Hints.enabled = false;
     WhatsNewScreen.enabled = false;
+    HomeScreen.mapBackdrop = false; // під меню — карта (свій тест)
   });
 
   Future<void> settle(WidgetTester tester) async {
@@ -1677,6 +1678,21 @@ void main() {
     await settle(tester);
     expect(find.text('Поділитися'), findsOneWidget);
     expect(find.text('Зберегти у файл'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('P5: меню поверх неклікабельної карти, «Почати» просто прибирає меню', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(MapScreen), findsOneWidget); // під меню
+    expect(find.byType(IgnorePointer), findsWidgets);
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byTooltip('Меню'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/visit_reminders.dart';
 import '../services/auth.dart';
@@ -26,7 +27,7 @@ import 'whats_new_screen.dart';
 /// «Вийти» (назад на екран входу).
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
 /// на головний екран; список пасік — через меню ☰); інакше — список.
-Future<void> openStart(NavigatorState nav, Repository repo) async {
+Future<void> openStart(NavigatorState nav, Repository repo, {bool instant = false}) async {
   // перший «Почати» на щойно встановленому застосунку: пасічник пропонує вибір
   // (червона - навчання, синя - без нього); показується один раз
   if (await repo.getMeta('intro_done') == null && (await repo.listApiaries()).isEmpty) {
@@ -42,15 +43,44 @@ Future<void> openStart(NavigatorState nav, Repository repo) async {
   }
   final a = await repo.startApiary();
   if (!nav.mounted) return;
-  await nav.push(MaterialPageRoute(
-    builder: (_) => a == null ? ApiaryListScreen(repo: repo) : MapScreen(repo: repo, apiary: a),
-  ));
+  Widget page(BuildContext _) =>
+      a == null ? ApiaryListScreen(repo: repo) : MapScreen(repo: repo, apiary: a);
+  // меню лежало поверх цієї ж карти — «зникає» без переходу
+  await nav.push(instant
+      ? PageRouteBuilder<void>(
+          pageBuilder: (c, _, __) => page(c),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero)
+      : MaterialPageRoute(builder: page));
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final Repository repo;
   final AuthService auth;
+
+  /// Показувати під меню останню карту (неклікабельну); тести вимикають.
+  static bool mapBackdrop = true;
   const HomeScreen({super.key, required this.repo, required this.auth});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  Repository get repo => widget.repo;
+  AuthService get auth => widget.auth;
+  Apiary? _backdrop;
+
+  @override
+  void initState() {
+    super.initState();
+    if (HomeScreen.mapBackdrop) _loadBackdrop();
+  }
+
+  Future<void> _loadBackdrop() async {
+    final a = await repo.startApiary();
+    if (a != null && mounted) setState(() => _backdrop = a);
+  }
 
   /// Гість входить пізніше: дані на пристрої лишаються, головний екран
   /// оновлюється (пошта й «Вийти»).
@@ -94,7 +124,14 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          const Positioned.fill(child: _HoneycombBackdrop()),
+          if (_backdrop == null)
+            const Positioned.fill(child: _HoneycombBackdrop())
+          else ...[
+            // остання карта під меню: видно, але не реагує на дотики
+            Positioned.fill(
+                child: IgnorePointer(child: MapScreen(repo: repo, apiary: _backdrop!))),
+            Positioned.fill(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
+          ],
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 56, 16, 16),
@@ -128,7 +165,7 @@ class HomeScreen extends StatelessWidget {
                         height: 56,
                         radius: 18,
                         fontSize: 18,
-                        onPressed: () => openStart(nav, repo),
+                        onPressed: () => openStart(nav, repo, instant: _backdrop != null),
                       ),
                       const SizedBox(height: 14),
                       Row(children: [
