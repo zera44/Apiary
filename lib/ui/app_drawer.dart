@@ -6,11 +6,9 @@ import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
-import '../screens/parameters_screen.dart';
 import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/stock_screen.dart';
-import '../screens/templates_screen.dart';
 import '../screens/tutorial_screen.dart';
 import '../services/autostart.dart';
 import 'common.dart';
@@ -20,7 +18,7 @@ import 'theme.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
-/// Налаштування ▾ (характеристики, шаблони) / Навчання / Зворотний зв'язок. «Що нового» —
+/// Навчання / Зворотний зв'язок. «Що нового» —
 /// лише на головному екрані, туди — кнопкою «назад». Є лише на карті.
 class AppDrawer extends StatefulWidget {
   final Repository repo;
@@ -128,10 +126,6 @@ final List<List<InlineSpan>> kDrawerTour = [
         text: ' - обхід без записів - час на вітер. Як же тут без сканування коду з вулика?'),
   ],
   [
-    GuideBubble.highlight('Налаштування'),
-    const TextSpan(text: ' - тут є все: шаблони, характеристики та інше. А що ще треба?'),
-  ],
-  [
     GuideBubble.highlight('Навчання'),
     const TextSpan(text: ' - щось не зрозумів? Пройди спеціалізоване навчання.'),
   ],
@@ -154,7 +148,7 @@ class _AppDrawerState extends State<AppDrawer> {
       ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
       // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
       : widget.hint != null
-          ? HoneyRing(on: i == 5, radius: 12, child: child)
+          ? HoneyRing(on: i == 4, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -274,17 +268,10 @@ class _AppDrawerState extends State<AppDrawer> {
                 onBindQrRow!();
               }),
           ])),
-          // разове налаштування — рідко, тому згорнуто
-          _t(4, _group(context, Icon(Icons.tune, color: AppColors.text, size: 28), 'Налаштування', [
-            _item(context, '', 'Характеристики',
-                () => _open(nav, ParametersScreen.catalog(repo: repo)),
-                iconData: Icons.list_alt),
-            _item(context, 'hexagon', 'Шаблони', () => _open(nav, TemplatesScreen(repo: repo))),
-          ])),
-          _t(5, _item(context, '', 'Навчання',
+          _t(4, _item(context, '', 'Навчання',
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined)),
-          _t(6, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
+          _t(5, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           })),
@@ -296,7 +283,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
   }
 
-  /// Пункт, що розгортається (QR-код, Налаштування).
+  /// Пункт, що розгортається (QR-код).
   Widget _group(BuildContext context, Widget leading, String title, List<Widget> children) =>
       Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),

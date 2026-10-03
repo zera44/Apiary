@@ -851,7 +851,7 @@ void main() {
     expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 5; i++) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
     }
@@ -890,7 +890,7 @@ void main() {
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
     for (final t in ['рамки, корми, ліки', 'зміни показників', 'час на вітер',
-        'тут є все: шаблони', 'спеціалізоване навчання', 'поділитись ідеєю']) {
+        'спеціалізоване навчання', 'поділитись ідеєю']) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);
@@ -996,18 +996,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: Характеристики - каталог без вибору й без «Зберегти»', (tester) async {
+  testWidgets('налаштування: Характеристики - каталог без вибору й без «Зберегти»', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
-    await tester.tap(find.byTooltip('Меню'));
+    await tester.tap(find.byTooltip('Налаштування')); // шестерня: характеристики й шаблони
     await settle(tester);
-    await tester.tap(find.text('Налаштування')); // характеристики й шаблони — тут
-    await settle(tester);
-    await tester.ensureVisible(find.text('Характеристики'));
-    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text('Характеристики'));
     await settle(tester);
     await settle(tester);
