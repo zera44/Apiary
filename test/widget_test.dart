@@ -860,7 +860,7 @@ void main() {
       await settle(tester);
     }
     expect(find.textContaining('З легким стартом'), findsOneWidget);
-    await tester.tap(find.text('Продовжити'));
+    await tester.tap(find.text('Завершити'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }

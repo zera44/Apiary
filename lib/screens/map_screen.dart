@@ -294,7 +294,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     const up = 0.0;
     // на кроці «Оглянути» (панель вулика) таблички немає; інакше вона висить
     // під кнопкою «Продовжити» (без кнопки - без таблички)
-    final VoidCallback? finish = _lesson == _Lesson.inspect ? null : _finishLesson;
+    final VoidCallback? finish =
+        _lesson == _Lesson.inspect || _lesson == _Lesson.congrats ? null : _finishLesson;
     if (msg == null) {
       return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up, onFinish: finish);
     }
@@ -334,7 +335,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       below: onTap == null
           ? null
           : PillButton(
-              text: 'Продовжити',
+              text: _lesson == _Lesson.congrats ? 'Завершити' : 'Продовжити',
               bg: AppColors.accent,
               height: 38,
               fontSize: 13,
