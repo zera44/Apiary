@@ -1172,6 +1172,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     }
     final last = await repo.lastUpdated(entity);
+    // «Періодичність обходу» на панелі не показуємо: вона у вікні «Кількість днів до обходу»
+    final hidePeriod = fresh.isHive ? await repo.baseParameterId('hive', 'visit_period') : null;
     // вулик на кілька клітинок — один код на весь вулик
     final qr = fresh.isHive
         ? await repo.qrForObject(hiveObjectOf(fresh, elements))
@@ -1187,7 +1189,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         icon: fresh.icon,
         color: fresh.color,
         title: title,
-        params: [for (final p in params) (p, latest[p.id])],
+        params: [for (final p in params) if (p.id != hidePeriod) (p, latest[p.id])],
         placed: true,
         lastUpdated: last,
         qrCode: qr,
@@ -1536,26 +1538,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelQuickEdit(String parameterId) async {
     final el = panelElement;
     if (el == null) return;
-    // «Кількість днів до обходу» не редагується: тап відкриває «Періодичність
-    // обходу» цього вулика, а лишок днів видно в підзаголовку
+    // «Кількість днів до обходу»: у вікні і лишок днів (розрахунок), і
+    // «Періодичність обходу» цього вулика, яку можна змінити
     var editId = parameterId;
-    String? left;
+    final info = <(String, String)>[];
     if (el.isHive && parameterId == await repo.baseParameterId('hive', 'visit_left')) {
       final periodId = await repo.baseParameterId('hive', 'visit_period');
       if (periodId != null) editId = periodId;
       final n = await repo.daysToVisit(el.entity);
-      left = n == null ? 'Днів до обходу: -' : 'Днів до обходу: $n';
+      info.add(('Кількість днів до обходу', n?.toString() ?? '-'));
     }
     final p = await repo.getParameter(editId);
     final latest = await repo.latestParameterValues(el.entity);
     if (p == null || !mounted) return;
-    final title = panelData?.title ?? el.label ?? 'Вулик';
     final result = await showFillValuesDialog(
       context,
       params: [p],
       latest: latest,
+      infoRows: info,
       // угорі лише назва вулика; назва параметра - в самій таблиці
-      subtitle: left == null ? title : '$title · $left',
+      subtitle: panelData?.title ?? el.label ?? 'Вулик',
       onHistory: () => _panelHistory(editId),
     );
     if (result == null || result.values.isEmpty || !mounted) return;

@@ -29,6 +29,7 @@ Future<FillResult?> showFillValuesDialog(
   FillLesson? lesson,
   String subtitle = 'Заповнити параметри',
   VoidCallback? onHistory,
+  List<(String, String)> infoRows = const [],
 }) {
   Widget host() => _FillHost(
         first: FillPage(params: params, latest: latest, stock: stock, title: title),
@@ -37,6 +38,7 @@ Future<FillResult?> showFillValuesDialog(
         lesson: lesson,
         subtitle: subtitle,
         onHistory: onHistory,
+        infoRows: infoRows,
       );
   // урок: пасічник на карті зникає, а в формі з'являється на тому ж місці -
   // без анімації, щоб він не блимав
@@ -91,8 +93,10 @@ class _FillHost extends StatefulWidget {
   final FillLesson? lesson;
   final String subtitle;
   final VoidCallback? onHistory;
+  final List<(String, String)> infoRows;
   const _FillHost(
-      {required this.first,
+      {this.infoRows = const [],
+      required this.first,
       required this.offerNext,
       this.onNext,
       this.lesson,
@@ -118,6 +122,7 @@ class _FillHostState extends State<_FillHost> {
       lesson: widget.lesson,
       subtitle: widget.subtitle,
       onHistory: widget.onHistory,
+      infoRows: widget.infoRows,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
       onNext: onNext == null
           ? null
@@ -163,8 +168,12 @@ class _FillDialog extends StatefulWidget {
   final FillLesson? lesson;
   final String subtitle;
   final VoidCallback? onHistory;
+
+  /// Рядки лише для перегляду (назва, значення) - над полями.
+  final List<(String, String)> infoRows;
   const _FillDialog(
       {super.key,
+      this.infoRows = const [],
       this.lesson,
       this.subtitle = 'Заповнити параметри',
       this.onHistory,
@@ -402,6 +411,15 @@ class _FillDialogState extends State<_FillDialog> {
       columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
+        for (final (name, value) in widget.infoRows)
+          row(
+              name,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                child: Text(value,
+                    style: TextStyle(
+                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
+              )),
         for (final p in widget.params)
           row(
               p.nameWithUnit,

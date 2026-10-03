@@ -201,7 +201,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         icon: v.icon,
         color: v.color,
         title: title,
-        params: [for (final p in params) (p, null)],
+        params: [
+          for (final p in params)
+            if (!(p.isBase && p.baseKey == 'visit_period')) (p, null)
+        ],
         placed: false,
         groups: groups,
       );
