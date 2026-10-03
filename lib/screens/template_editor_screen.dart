@@ -789,11 +789,19 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     onPressed: _undo.isEmpty ? null : _onUndo,
                   ),
                   const SizedBox(width: 16),
-                  CircleIconButton(
-                    icon: 'check',
-                    bg: AppColors.accent,
-                    tooltip: 'Зберегти',
-                    onPressed: _save,
+                  // дискета замість галочки
+                  Tooltip(
+                    message: 'Зберегти',
+                    child: Material(
+                      color: AppColors.accent,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: _save,
+                        child: const SizedBox.square(
+                            dimension: 46, child: Icon(Icons.save, color: Colors.white, size: 26)),
+                      ),
+                    ),
                   ),
                 ]),
               ),
