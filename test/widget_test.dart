@@ -1295,6 +1295,12 @@ void main() {
       await settle(tester);
     }
     expect(find.text('Вулик не знайдено'), findsOneWidget);
+    // P3: код можна прив'язати відразу - карта чекає вибору вулика
+    await tester.tap(find.text('Прив\'язати до вулика'));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    expect(find.textContaining('Торкніться вулика'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

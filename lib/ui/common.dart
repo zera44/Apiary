@@ -415,6 +415,7 @@ Future<bool> showConfirm(
   String title = 'Підтвердження',
   String confirmText = 'Видалити',
   bool danger = true,
+  String cancelText = 'Скасувати',
 }) async {
   final res = await showDialog<bool>(
     context: context,
@@ -424,7 +425,7 @@ Future<bool> showConfirm(
       actions: [
         _dialogButtons([
           PillButton(
-              text: 'Скасувати',
+              text: cancelText,
               bg: AppColors.neutralBtn,
               fg: AppColors.text,
               onPressed: () => Navigator.pop(ctx, false)),

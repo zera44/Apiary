@@ -12,12 +12,16 @@ bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 /// Отримати текст QR-коду: на телефоні — камерою, на комп'ютері (де
 /// сканера немає) — ручним вводом. null — скасовано.
-Future<String?> scanQrCode(BuildContext context, {String title = 'Сканувати QR-код'}) async {
+Future<String?> scanQrCode(BuildContext context,
+    {String title = 'Сканувати QR-код', String? skipLabel}) async {
   if (!qrCameraAvailable) return _manualEntry(context);
   return Navigator.of(context).push<String>(MaterialPageRoute(
-    builder: (_) => QrScanScreen(title: title),
+    builder: (_) => QrScanScreen(title: title, skipLabel: skipLabel),
   ));
 }
+
+/// Повертається замість коду, коли натиснули [skipLabel] («Пропустити цей вулик»).
+const kQrSkip = '\u0000skip';
 
 Future<String?> _manualEntry(BuildContext context) async {
   final v = await showTextPrompt(context, title: 'Введіть код (посилання) вручну', initial: '');
@@ -29,7 +33,10 @@ Future<String?> _manualEntry(BuildContext context) async {
 /// Navigator.pop.
 class QrScanScreen extends StatefulWidget {
   final String title;
-  const QrScanScreen({super.key, this.title = 'Сканувати QR-код'});
+
+  /// Додаткова кнопка «пропустити» (наприклад, при прив'язці наліпок підряд).
+  final String? skipLabel;
+  const QrScanScreen({super.key, this.title = 'Сканувати QR-код', this.skipLabel});
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
 }
@@ -125,6 +132,21 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 width: double.infinity,
                 onPressed: _manual,
               ),
+              if (widget.skipLabel != null) ...[
+                const SizedBox(height: 8),
+                PillButton(
+                  text: widget.skipLabel!,
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  height: 44,
+                  width: double.infinity,
+                  onPressed: () {
+                    if (_done) return;
+                    _done = true;
+                    Navigator.of(context).pop(kQrSkip);
+                  },
+                ),
+              ],
             ]),
           ),
         ]),

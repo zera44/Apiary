@@ -70,13 +70,26 @@ class AppDrawer extends StatefulWidget {
     if (found == null) {
       final why = await repo.qrProblem(code);
       if (!nav.mounted) return;
-      await showInfo(
+      final bind = await showConfirm(
         nav.context,
-        '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\n'
-        'Щоб прив\'язати: відкрийте пасіку, торкніться вулика й на панелі '
-        '«Характеристики» натисніть «Прив\'язати QR-код».\n\nКод: $code',
         title: 'Вулик не знайдено',
+        text: '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code\n\n'
+            'Прив\'язати його до вулика зараз?',
+        confirmText: 'Прив\'язати до вулика',
+        cancelText: 'Закрити',
+        danger: false,
       );
+      if (!bind || !nav.mounted) return;
+      final a = await repo.startApiary();
+      if (!nav.mounted) return;
+      if (a == null) {
+        await showInfo(nav.context, 'Спершу створіть пасіку й вулики на карті.');
+        return;
+      }
+      // карта: торкнутися вулика - код прив'язується й одразу відкривається огляд
+      nav.popUntil((r) => r.isFirst);
+      nav.push(MaterialPageRoute(
+          builder: (_) => MapScreen(repo: repo, apiary: a, bindCode: code)));
       return;
     }
     openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);

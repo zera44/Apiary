@@ -65,6 +65,10 @@ class MapScreen extends StatefulWidget {
   /// прийшла саме заповнити).
   final bool openFill;
 
+  /// Відсканований код, якого ще немає в базі: на карті пасічник торкається
+  /// вулика — код прив'язується, і одразу відкривається огляд.
+  final String? bindCode;
+
   /// Куди веде «Зберегти й далі».
   final NextHive next;
 
@@ -86,6 +90,7 @@ class MapScreen extends StatefulWidget {
       required this.apiary,
       this.focusElementId,
       this.openFill = false,
+      this.bindCode,
       this.next = NextHive.order,
       this.tutorial = false,
       this.menuTour = false,
@@ -448,6 +453,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _init() async {
+    _bindCode = widget.bindCode;
+    if (_bindCode != null) _warning = 'Торкніться вулика, до якого прив\'язати код';
     // «Почати» на головному екрані відкриватиме цю пасіку
     unawaited(repo.setMeta('last_apiary', widget.apiary.id));
     await _reload();
@@ -468,18 +475,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (el != null) {
         grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
         if (widget.openFill && el.isHive && mounted) {
-          // з сповіщення / QR: спершу лише форма «Заповнити параметри»,
-          // панель вулика з'являється після «Зберегти»
-          grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
-          await _loadPanel(el);
-          if (!mounted || panelElement == null) return;
-          await _panelFill();
-          if (mounted && _fillSaved && panelElement != null) {
-            await _loadPanel(panelElement!);
-            if (!mounted) return;
-            setState(() => panelOpen = true);
-            _revealBesidePanel(panelElement!);
-          }
+          await _fillThenPanel(el);
         } else {
           await _onInfoRequest(el);
         }
@@ -702,7 +698,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Future<void> _onTap(GridPress p) async {
     if (!selectMode) {
-      await _onInfoRequest(_elementAt(p.cell));
+      final hit = _elementAt(p.cell);
+      if (_bindCode != null) {
+        if (hit != null && hit.isHive) await _bindScannedTo(hit);
+        return; // чекаємо вулик для коду
+      }
+      await _onInfoRequest(hit);
       return;
     }
     final tpl = pendingTemplate;
@@ -1537,13 +1538,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (_qrBusy || _busy) return;
     _qrBusy = true;
     var linked = 0;
+    final skipped = <String>{}; // «Пропустити цей вулик»
     try {
       if (selectMode) _exitEdit();
       setState(() => panelOpen = false);
       while (mounted) {
         List<MapElement>? members;
         for (final o in hiveObjects(elements)) {
-          if (await repo.qrForObject(o) == null) {
+          if (!skipped.contains(o.first.id) && await repo.qrForObject(o) == null) {
             members = o;
             break;
           }
@@ -1553,8 +1555,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           await showInfo(
               context,
               linked == 0
-                  ? 'У всіх вуликів цієї пасіки вже є QR-коди.'
-                  : 'Прив\'язано наліпок: $linked. Тепер у всіх вуликів є QR-коди.',
+                  ? (skipped.isEmpty
+                      ? 'У всіх вуликів цієї пасіки вже є QR-коди.'
+                      : 'Лишилось без коду (пропущено): ${skipped.length}.')
+                  : 'Прив\'язано наліпок: $linked.'
+                      '${skipped.isEmpty ? ' Тепер у всіх вуликів є QR-коди.' : ' Пропущено: ${skipped.length}.'}',
               title: 'QR-коди');
           return;
         }
@@ -1562,8 +1567,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final name = (hive.label ?? '').trim().isEmpty ? 'вулик' : hive.label!.trim();
         grid.centerOnGrid(hive.x + 0.5, hive.y + 0.5);
         setState(() => _select(hive)); // підсвітити, для якого вулика наліпка
-        final scanned = await scanQrCode(context, title: 'Наліпка для: $name');
+        final scanned = await scanQrCode(context,
+            title: 'Наліпка для: $name', skipLabel: 'Пропустити цей вулик');
         if (scanned == null || !mounted) break;
+        if (scanned == kQrSkip) {
+          skipped.add(hive.id);
+          continue;
+        }
         final code = await repo.resolveTypedQr(scanned);
         final other = await repo.findByQr(code);
         if (!mounted) return;
@@ -1771,6 +1781,54 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) e.id},
       outlineColor: _lessonOutlined != null ? AppColors.create : AppColors.danger,
     );
+  }
+
+  /// З сповіщення / QR: спершу лише форма «Заповнити параметри»,
+  /// панель вулика з'являється після «Зберегти».
+  Future<void> _fillThenPanel(MapElement el) async {
+    grid.centerOnGrid(el.x + 0.5, el.y + 0.5);
+    await _loadPanel(el);
+    if (!mounted || panelElement == null) return;
+    await _panelFill();
+    if (mounted && _fillSaved && panelElement != null) {
+      await _loadPanel(panelElement!);
+      if (!mounted) return;
+      setState(() => panelOpen = true);
+      _revealBesidePanel(panelElement!);
+    }
+  }
+
+  String? _bindCode;
+
+  /// Тап по вулику, коли чекаємо вибору для відсканованого коду.
+  Future<void> _bindScannedTo(MapElement el) async {
+    final code = _bindCode;
+    if (code == null || _qrBusy) return;
+    _qrBusy = true;
+    try {
+      final members = hiveObjectOf(el, elements);
+      final current = await repo.qrForObject(members);
+      if (!mounted) return;
+      if (current != null) {
+        final ok = await showConfirm(context,
+            title: 'У вулика вже є код',
+            text: 'Замінити поточний QR-код цього вулика на відсканований?',
+            confirmText: 'Замінити',
+            danger: false);
+        if (!ok || !mounted) return;
+      }
+      for (final m in members.skip(1)) {
+        await repo.unlinkQr(EntityRef.element(m.id));
+      }
+      await repo.linkQr(code, EntityRef.element(members.first.id));
+      _bindCode = null;
+      _clearWarning();
+    } finally {
+      _qrBusy = false;
+    }
+    if (!mounted) return;
+    _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
+    await _fillThenPanel(el);
   }
 
   @override
