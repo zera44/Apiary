@@ -655,6 +655,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   Widget _dragChip(Parameter p, Widget child) => LongPressDraggable<String>(
         data: p.id,
+        // майже одразу після дотику (не 0,5 с), але гортання списку ще працює
+        delay: const Duration(milliseconds: 120),
         feedback: Material(
           color: Colors.transparent,
           child: Container(
