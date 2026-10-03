@@ -15,6 +15,7 @@ import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
 import 'map_screen.dart';
+import 'settings_screen.dart';
 import 'splash_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
@@ -211,6 +212,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ]),
               ),
             ),
+          ),
+          // налаштування (характеристики, шаблони) - шестерня ліворуч угорі
+          Positioned(
+            top: 12,
+            left: 12,
+            child: GearButton(
+                size: 48,
+                bg: AppColors.darkBtn,
+                onPressed: () => SettingsScreen.open(nav, repo)),
           ),
           // сканер QR — значком у правому верхньому куті
           Positioned(

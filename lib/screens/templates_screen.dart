@@ -12,7 +12,10 @@ import 'template_editor_screen.dart';
 /// Екран "Шаблони": плитки-мініатюри збережених конфігурацій + "Створити шаблон".
 class TemplatesScreen extends StatefulWidget {
   final Repository repo;
-  const TemplatesScreen({super.key, required this.repo});
+
+  /// Вкладка в «Налаштуваннях»: без власної верхньої панелі й рамки.
+  final bool embedded;
+  const TemplatesScreen({super.key, required this.repo, this.embedded = false});
   @override
   State<TemplatesScreen> createState() => _TemplatesScreenState();
 }
@@ -80,7 +83,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Шаблони', onBack: () => Navigator.pop(context)),
+            if (!widget.embedded) TopBar(title: 'Шаблони', onBack: () => Navigator.pop(context)),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
@@ -112,7 +115,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
               ),
             ),
           ]),
-          const Positioned.fill(child: ScreenFrame()),
+          if (!widget.embedded) const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
     );

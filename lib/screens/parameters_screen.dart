@@ -27,12 +27,16 @@ class ParametersScreen extends StatefulWidget {
   /// лише створення, редагування, видалення та історія параметрів.
   final bool catalog;
 
+  /// Вкладка в «Налаштуваннях»: без власної верхньої панелі й рамки.
+  final bool embedded;
+
   const ParametersScreen.forElement({super.key, required this.repo, required MapElement this.element})
       : initialIds = const [],
         elType = null,
+        embedded = false,
         catalog = false;
 
-  const ParametersScreen.catalog({super.key, required this.repo})
+  const ParametersScreen.catalog({super.key, required this.repo, this.embedded = false})
       : element = null,
         initialIds = const [],
         elType = null,
@@ -44,6 +48,7 @@ class ParametersScreen extends StatefulWidget {
     required this.initialIds,
     required this.elType,
   })  : element = null,
+        embedded = false,
         catalog = false;
 
   bool get templateMode => element == null && !catalog;
@@ -514,6 +519,21 @@ class _ParametersScreenState extends State<ParametersScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
+            if (widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: CircleIconButton(
+                    icon: 'plus_circle',
+                    bg: AppColors.accent,
+                    size: 34,
+                    tooltip: 'Новий параметр',
+                    onPressed: () => _openForm(),
+                  ),
+                ),
+              )
+            else
             TopBar(
               title: widget.catalog ? 'Характеристики' : 'Список параметрів',
               onBack: _back,
@@ -560,7 +580,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               ),
             const SizedBox(height: 12),
           ]),
-          const Positioned.fill(child: ScreenFrame()),
+          if (!widget.embedded) const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
     ),

@@ -17,6 +17,8 @@ import '../ui/common.dart';
 import '../ui/date_picker.dart' show formatDdMmYyyy;
 import '../ui/first_hints.dart';
 import '../ui/guide_bubble.dart';
+import '../ui/icons.dart';
+import 'settings_screen.dart';
 import '../ui/fill_values_dialog.dart';
 import '../ui/grid_view.dart';
 import '../ui/mode_toggle.dart';
@@ -1800,6 +1802,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String? _bindCode;
 
+  late String _apiaryName = widget.apiary.name;
+
+  Future<void> _renameApiary() async {
+    final name = await showTextPrompt(context,
+        title: 'Назва пасіки', initial: _apiaryName);
+    final t = name?.trim() ?? '';
+    if (t.isEmpty || t == _apiaryName || !mounted) return;
+    await repo.updateApiary(widget.apiary.id, name: t);
+    if (mounted) setState(() => _apiaryName = t);
+  }
+
   /// Тап по вулику, коли чекаємо вибору для відсканованого коду.
   Future<void> _bindScannedTo(MapElement el) async {
     final code = _bindCode;
@@ -1889,48 +1902,65 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // над обраним об'єктом у редагуванні — "Повернути"/"Видалити"
             // (як у редакторі шаблону); кнопки внизу теж лишаються
             ..._selectionButtons(box.biggest),
-            // верхня панель: назва + статус
+            // «козирьок»: меню навігації - з одного боку, назва пасіки (з олівцем
+            // для перейменування) - по центру, шестерня налаштувань - з іншого
             Positioned(
               key: _topKey,
               top: 0,
               left: 0,
               right: 0,
-              height: 48,
-              child: IgnorePointer(
-                ignoring: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 0, 10, 0),
-                  child: Row(children: [
-                    // довга назва пасіки/статус більше не дають переповнення
-                    // рядка: обидва стискаються з "…"
-                    Expanded(
-                      flex: 2,
-                      child: Text(widget.apiary.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      flex: 3,
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: CapsuleLabel(status,
-                            bg: isWarn ? AppColors.warning : null,
-                            fg: isWarn ? Colors.white : null),
+              height: 64,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.popupBg,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                  border: Border(bottom: BorderSide(color: AppColors.hive, width: 2.5)),
+                ),
+                padding: const EdgeInsets.fromLTRB(70, 0, 70, 0), // місце під кнопки з боків
+                child: Center(
+                  child: GestureDetector(
+                    onTap: widget.tutorial ? null : _renameApiary,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Flexible(
+                        child: Text(_apiaryName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                color: AppColors.text,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18)),
                       ),
-                    ),
-                  ]),
+                      if (!widget.tutorial) ...[
+                        const SizedBox(width: 6),
+                        Tooltip(
+                            message: 'Перейменувати пасіку',
+                            child: AppIcon('pencil', size: 20, color: AppColors.textMuted)),
+                      ],
+                    ]),
+                  ),
                 ),
               ),
             ),
+            // статус (підказки режиму редагування, попередження) - під козирьком
+            if (status.isNotEmpty)
+              Positioned(
+                top: 70,
+                left: 70,
+                right: 70,
+                child: IgnorePointer(
+                  child: Center(
+                    child: CapsuleLabel(status,
+                        bg: isWarn ? AppColors.warning : null,
+                        fg: isWarn ? Colors.white : null),
+                  ),
+                ),
+              ),
             const Positioned.fill(child: ScreenFrame()),
             // меню навігації (в уроці — «Назад»): більша кнопка ліворуч під
             // назвою пасіки
             Positioned(
-              top: 46,
-              left: 34,
+              top: 8,
+              left: 10,
               child: Center(child: Builder(
                       builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
                           ? HoneyRing(
@@ -1979,6 +2009,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             ),
                     )),
             ),
+            // налаштування (у навчанні шестерні немає)
+            if (!widget.tutorial)
+              Positioned(
+                top: 8,
+                right: 10,
+                child: GearButton(
+                    size: 48,
+                    onPressed: () => SettingsScreen.open(Navigator.of(context), repo)),
+              ),
             // зум
             Positioned(
               right: 14,
@@ -2049,7 +2088,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               key: _panelBoxKey,
               duration: const Duration(milliseconds: 220),
               curve: panelOpen ? Curves.easeOutCubic : Curves.easeInCubic,
-              top: 52,
+              top: 70,
               // урок: панель закінчується над пасічником (він увесь урок унизу)
               bottom: widget.tutorial ? kLessonPanelBottom : 12,
               right: panelOpen ? 0 : -(CharacteristicsPanel.width + 12),
