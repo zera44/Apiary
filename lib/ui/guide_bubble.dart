@@ -240,7 +240,9 @@ List<Widget> lessonScene({
         right: 0,
         bottom: 6 + bottomInset,
         child: Material(
-            type: MaterialType.transparency, child: Center(child: finish)),
+            type: MaterialType.transparency,
+            // з правого кута - вирівняна по правому краю кнопки
+            child: Align(alignment: Alignment.centerRight, child: finish)),
       ),
   ];
 }
