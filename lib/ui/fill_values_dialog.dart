@@ -259,9 +259,9 @@ class _FillDialogState extends State<_FillDialog> {
         ),
       2 => (
           text: [
-            const TextSpan(text: 'Грр... я перевірив твого вулика. '),
-            GuideBubble.task('Запиши результати'),
-            const TextSpan(text: '.'),
+            const TextSpan(text: 'Кхе, кхе... Я допоможу зі '),
+            GuideBubble.highlight('внесенням інформації'),
+            const TextSpan(text: ' до твого вулика.'),
           ],
           bear: true,
           tapNext: true
