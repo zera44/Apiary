@@ -4,7 +4,7 @@ import 'common.dart';
 import 'theme.dart';
 
 /// Календар для типу даних "Дата" (порт date_picker.py): місяць/рік зі
-/// стрілками, сітка днів з понеділка, "Сьогодні" / "Очистити" / "Обрати".
+/// стрілками, сітка днів з понеділка, «Скасувати» / «Сьогодні» / «Підтвердити».
 /// Значення — текст "ДД.ММ.РРРР".
 
 const _monthNames = [
@@ -147,50 +147,33 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           ),
         ])),
       ),
+      // три кнопки, кожна закриває календар: скасувати / сьогодні / обрана дата
       actions: [
         Row(children: [
           Expanded(
             child: PillButton(
-              icon: Icons.today,
-              text: 'Сьогодні',
-              bg: AppColors.roundBtn,
-              fg: AppColors.text,
-              fontSize: 11,
-              onPressed: () => setState(() {
-                final t = DateTime.now();
-                selected = DateTime(t.year, t.month, t.day);
-                year = t.year;
-                month = t.month;
-              }),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: PillButton(
-                icon: Icons.backspace_outlined,
-              text: 'Очистити',
+                text: 'Скасувати',
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
-                fontSize: 11,
-                onPressed: () => Navigator.pop(context, '')),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: PillButton(
-                icon: Icons.close,
-              text: 'Скасувати',
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                fontSize: 11,
+                fontSize: 12,
                 onPressed: () => Navigator.pop(context)),
           ),
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-              icon: Icons.check,
-              text: 'Обрати',
+              text: 'Сьогодні',
+              bg: AppColors.roundBtn,
+              fg: AppColors.text,
+              fontSize: 12,
+              onPressed: () => Navigator.pop(context, formatDdMmYyyy(DateTime.now())),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: PillButton(
+              text: 'Підтвердити',
               bg: AppColors.accent,
-              fontSize: 11,
+              fontSize: 12,
               onPressed: selected == null
                   ? null
                   : () => Navigator.pop(context, formatDdMmYyyy(selected!)),

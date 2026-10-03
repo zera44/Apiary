@@ -1086,7 +1086,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Оглянути»: спорожнене поле й «Очистити» дату записують порожнє значення',
+  testWidgets('«Оглянути»: спорожнене поле записує порожнє значення, «Скасувати» в календарі - нічого',
       (tester) async {
     const text = Parameter(id: 't', name: 'Нотатка');
     const date = Parameter(id: 'd', name: 'Дата огляду', dataType: DataTypes.date);
@@ -1109,14 +1109,14 @@ void main() {
 
     // спорожнюємо текстове поле
     await tester.enterText(find.byType(TextField).first, '');
-    // очищаємо дату через календар
+    // календар: «Скасувати» лишає дату як була
     await tester.tap(find.text('01.02.2026')); // клітинка дати відкриває календар
     await settle(tester);
-    await tester.tap(find.byTooltip('Очистити'));
+    await tester.tap(find.text('Скасувати').last);
     await settle(tester);
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
-    expect(result?.values, {'t': '', 'd': ''}); // "Вага" не змінювалась — її немає
+    expect(result?.values, {'t': ''}); // дата й "Вага" не змінювались — їх немає
   });
 
   testWidgets('вибір іконки: вулику - лише вулики, перешкоді - лише перешкоди, різне - дві плитки',
