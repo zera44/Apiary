@@ -449,7 +449,7 @@ void main() {
       await settle(tester);
     }
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.text('Зберегти'));
+    await tester.tap(find.byTooltip('Зберегти'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
@@ -487,7 +487,7 @@ void main() {
     }
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.text('Заповнити параметри'), findsOneWidget);
-    expect(find.text('Пропустити'), findsOneWidget); // обхід: Зберегти / Змін немає / Пропустити
+    expect(find.byTooltip('Пропустити'), findsOneWidget); // обхід: ✓ / Змін немає / →
     expect(tester.takeException(), isNull);
   });
 
@@ -532,7 +532,7 @@ void main() {
     await tester.tap(find.text('Цукор (є 5 кг)').last);
     await settle(tester);
     await tester.enterText(find.byType(TextField).last, '2'); // рядок «Скільки, кг»
-    await tester.tap(find.text('Зберегти'));
+    await tester.tap(find.byTooltip('Зберегти'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
@@ -1637,8 +1637,8 @@ void main() {
     await tester.tap(find.text('Склад'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Пропустити'), findsOneWidget);
-    await tester.tap(find.text('Пропустити'));
+    expect(find.byTooltip('Пропустити'), findsOneWidget);
+    await tester.tap(find.byTooltip('Пропустити'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }

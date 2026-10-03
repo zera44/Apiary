@@ -656,28 +656,29 @@ class _FillDialogState extends State<_FillDialog> {
             // обхід: кожна кнопка записує своє й відкриває наступний вулик;
             // усі на сьогодні оглянуті — огляд закривається
             Row(children: [
-              Expanded(
-                  child: PillButton(
-                      text: 'Зберегти',
-                      bg: AppColors.accent,
-                      fontSize: 13,
-                      onPressed: _saving ? null : () => _save(next: true))),
-              const SizedBox(width: 6),
+              // «Зберегти» і «Пропустити» - значками (галочка й стрілка далі)
+              CircleIconButton(
+                  icon: 'check',
+                  bg: AppColors.accent,
+                  size: 50,
+                  tooltip: 'Зберегти',
+                  onPressed: _saving ? null : () => _save(next: true)),
+              const SizedBox(width: 10),
               Expanded(
                   child: PillButton(
                       text: 'Змін немає',
                       bg: AppColors.darkBtn,
                       fg: AppColors.text,
-                      fontSize: 13,
+                      height: 50,
                       onPressed: _saving ? null : () => _quick(FillAction.noChange))),
-              const SizedBox(width: 6),
-              Expanded(
-                  child: PillButton(
-                      text: 'Пропустити',
-                      bg: AppColors.neutralBtn,
-                      fg: AppColors.text,
-                      fontSize: 13,
-                      onPressed: _saving ? null : () => _quick(FillAction.skip))),
+              const SizedBox(width: 10),
+              CircleIconButton(
+                  icon: 'arrow_right',
+                  bg: AppColors.neutralBtn,
+                  iconColor: AppColors.text,
+                  size: 50,
+                  tooltip: 'Пропустити',
+                  onPressed: _saving ? null : () => _quick(FillAction.skip)),
             ])
           else
             Row(children: [
