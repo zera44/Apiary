@@ -24,7 +24,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<ParameterRecord>? rows;
   String? scopeName;
 
-  bool get scoped => widget.entity != null;
+  // фільтр «Об'єкт»: задається з вулика, його видно зверху - можна змінити чи очистити
+  late EntityRef? _entity = widget.entity;
+  List<({EntityRef ref, String label})> _choices = const [];
+
+  bool get scoped => _entity != null;
 
   @override
   void initState() {
@@ -33,15 +37,78 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    final r = await widget.repo.parameterHistory(widget.parameter.id, entity: widget.entity);
+    final r = await widget.repo.parameterHistory(widget.parameter.id, entity: _entity);
     String? name;
-    if (widget.entity != null) name = await widget.repo.entityLabel(widget.entity!);
+    if (_entity != null) name = await widget.repo.entityLabel(_entity!);
+    // варіанти фільтра - об'єкти, у яких є записи цього параметра
+    if (_choices.isEmpty) {
+      final all = _entity == null
+          ? r
+          : await widget.repo.parameterHistory(widget.parameter.id);
+      final seen = <String>{};
+      _choices = [
+        for (final x in all)
+          if (seen.add(x.groupId ?? x.elementId ?? ''))
+            (
+              ref: x.groupId != null
+                  ? EntityRef.group(x.groupId!)
+                  : EntityRef.element(x.elementId ?? ''),
+              label: x.entityLabel
+            )
+      ];
+    }
     if (!mounted) return;
     setState(() {
       rows = r;
       scopeName = name;
     });
   }
+
+  Future<void> _pickFilter() async {
+    final res = await showDialog<({EntityRef? ref})>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Фільтр: об\'єкт'),
+        children: [
+          SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, (ref: null)),
+              child: const Text('Усі об\'єкти')),
+          for (final c in _choices)
+            SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, (ref: c.ref)), child: Text(c.label)),
+        ],
+      ),
+    );
+    if (res == null || !mounted) return;
+    _entity = res.ref;
+    await _load();
+  }
+
+  Widget _filterBar() => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+        child: Row(children: [
+          Expanded(
+            child: PillButton(
+              text: scoped ? 'Об\'єкт: ${scopeName ?? ''}' : 'Усі об\'єкти',
+              bg: scoped ? AppColors.accent : AppColors.darkBtn,
+              fg: scoped ? Colors.white : AppColors.text,
+              height: 38,
+              onPressed: _pickFilter,
+            ),
+          ),
+          if (scoped) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: 'Очистити фільтр',
+              icon: Icon(Icons.close, color: AppColors.text),
+              onPressed: () async {
+                _entity = null;
+                await _load();
+              },
+            ),
+          ],
+        ]),
+      );
 
   Future<void> _export() async {
     final list = rows ?? const <ParameterRecord>[];
@@ -60,14 +127,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var title = 'Історія: ${widget.parameter.nameWithUnit}';
-    if (scopeName != null) title += ' - $scopeName';
+    final title = 'Історія: ${widget.parameter.nameWithUnit}';
     final list = rows;
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
             TopBar(title: title, onBack: () => Navigator.pop(context)),
+            _filterBar(),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())

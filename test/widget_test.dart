@@ -171,10 +171,8 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '2,5');
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
-    expect(find.text('Вкажіть загальну вартість приходу'), findsOneWidget);
-    await tester.enterText(find.byType(TextField).at(1), '75');
-    await tester.tap(find.text('Зберегти'));
-    await settle(tester);
+    // вартість необов'язкова - без неї 0 грн
+    expect(find.text('Вкажіть загальну вартість приходу'), findsNothing);
     expect(find.text('7,5 кг'), findsOneWidget);
 
     // списання: не більше залишку; поля — дата, кількість, коментар

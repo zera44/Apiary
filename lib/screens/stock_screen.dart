@@ -13,6 +13,7 @@ import '../ui/first_hints.dart';
 import '../ui/date_picker.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
+import 'history_hub_screen.dart' show StockHistoryScreen;
 
 /// Склад: три вкладки.
 /// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
@@ -154,6 +155,12 @@ class _StockScreenState extends State<StockScreen> {
         }
         await _reload();
       });
+
+  Future<void> _history(StockItem it) async {
+    await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => StockHistoryScreen(repo: repo, item: it)));
+    await _reload(); // залишок міг змінитись (скасування запису)
+  }
 
   /// Переоблік списком (усі позиції на одному екрані) чи по одній.
   bool _invList = false;
@@ -403,6 +410,23 @@ class _StockScreenState extends State<StockScreen> {
                         ),
                       ),
                     Positioned(
+                      right: 2,
+                      top: it.low ? 24 : 2,
+                      child: Tooltip(
+                        message: 'Історія',
+                        child: InkWell(
+                          onTap: () => _history(it),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.history, size: 20, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
@@ -425,14 +449,40 @@ class _StockScreenState extends State<StockScreen> {
         ),
       ),
       const SizedBox(height: 6),
-      PillButton(
-        text: text,
-        bg: color,
-        height: 36,
-        radius: 12,
-        width: double.infinity,
-        onPressed: () => _move(it, _op),
-      ),
+      if (_op == StockOp.receive)
+        // «Прихід» і «Списати» поруч — не треба шукати вкладку
+        Row(children: [
+          Expanded(
+            child: PillButton(
+              text: text,
+              bg: color,
+              height: 36,
+              radius: 12,
+              fontSize: 13,
+              onPressed: () => _move(it, _op),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: PillButton(
+              text: 'Списати',
+              bg: AppColors.danger,
+              height: 36,
+              radius: 12,
+              fontSize: 13,
+              onPressed: () => _move(it, StockOp.writeOff),
+            ),
+          ),
+        ])
+      else
+        PillButton(
+          text: text,
+          bg: color,
+          height: 36,
+          radius: 12,
+          width: double.infinity,
+          onPressed: () => _move(it, _op),
+        ),
     ]);
   }
 }
@@ -820,12 +870,8 @@ class _MoveDialogState extends State<_MoveDialog> {
     }
     double? total;
     if (op == StockOp.receive) {
-      // вартість приходу обов'язкова: з неї рахується ціна за одиницю
-      total = parseAmount(_total.text);
-      if (total == null) {
-        setState(() => _error = 'Вкажіть загальну вартість приходу');
-        return;
-      }
+      // вартість приходу необов'язкова: порожньо - 0 (ціна за одиницю 0)
+      total = parseAmount(_total.text) ?? 0;
     }
     final c = _comment.text.trim();
     Navigator.pop(context, _Move(v, _date, total: total, comment: c.isEmpty ? null : c));
@@ -890,7 +936,7 @@ class _MoveDialogState extends State<_MoveDialog> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: numeric,
                 style: TextStyle(color: AppColors.text),
-                decoration: _dec('Загальна вартість', suffix: 'грн'),
+                decoration: _dec('Загальна вартість (за замовч. 0)', suffix: 'грн'),
                 onChanged: (_) => setState(() => _error = null),
               ),
               if (price != null)
