@@ -192,6 +192,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       final p = await repo.getParameter(id);
       if (p != null && !p.deleted) params.add(p);
     }
+    final groups = await repo.paramGroups();
     if (!mounted) return;
     setState(() {
       _panelData = PanelData(
@@ -202,6 +203,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         title: title,
         params: [for (final p in params) (p, null)],
         placed: false,
+        groups: groups,
       );
     });
   }
