@@ -1521,7 +1521,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       context,
       params: [p],
       latest: latest,
-      title: p.nameWithUnit,
+      // угорі лише назва вулика; назва параметра - в самій таблиці
       subtitle: panelData?.title ?? el.label ?? 'Вулик',
       onHistory: () => _panelHistory(parameterId),
     );
