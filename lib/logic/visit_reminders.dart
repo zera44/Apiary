@@ -141,3 +141,18 @@ PlannedReminder? dueReminder(VisitTarget t, {required DateTime now, int hour = 9
   final title = t.apiaryName.isEmpty ? 'Моя пасіка' : t.apiaryName;
   return PlannedReminder(t.elementId, title, reminderBody(t.name), at(k));
 }
+
+/// Днів до наступного обходу: період мінус дні, що минули від останнього
+/// обходу (або від дня, коли задали періодичність). Не менше 0. null - якщо
+/// періодичності чи точки відліку немає.
+int? visitDaysLeft(VisitTarget t, DateTime now) {
+  final period = t.periodDays;
+  if (period == null || period <= 0) return null;
+  final anchor = _parseDate(t.lastVisit) ?? t.periodSetAt;
+  if (anchor == null) return null;
+  final elapsed = DateTime.utc(now.year, now.month, now.day)
+      .difference(DateTime.utc(anchor.year, anchor.month, anchor.day))
+      .inDays;
+  final left = period - elapsed;
+  return left < 0 ? 0 : left;
+}

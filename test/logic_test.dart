@@ -138,6 +138,18 @@ void main() {
   });
 
   group('нагадування про обхід', () {
+    test('днів до обходу: 5 - 0 днів = 5, щодня на 1 менше, не менше 0, після обходу знову 5', () {
+      VisitTarget t(String? last) => VisitTarget(
+          key: 'e:1', elementId: '1', apiaryName: 'П', name: 'В', periodDays: 5, lastVisit: last);
+      expect(visitDaysLeft(t('01.10.2026'), DateTime(2026, 10, 1, 8)), 5);
+      expect(visitDaysLeft(t('01.10.2026'), DateTime(2026, 10, 3, 8)), 3);
+      expect(visitDaysLeft(t('01.10.2026'), DateTime(2026, 10, 9, 8)), 0);
+      expect(visitDaysLeft(t('09.10.2026'), DateTime(2026, 10, 9, 8)), 5);
+      expect(
+          visitDaysLeft(const VisitTarget(key: 'e:1', elementId: '1', apiaryName: '', name: 'В'),
+              DateTime(2026, 10, 9)),
+          isNull);
+    });
     test('початок 1.10 і період 2 дні: нагадування 3.10, 5.10, 7.10 о 9:00', () {
       final t = reminderTimes(
           lastVisit: DateTime(2026, 10, 1), periodDays: 2, now: DateTime(2026, 10, 1, 10));

@@ -21,6 +21,8 @@ const _kOldVisitDateName = 'Дата початку обходу';
 /// (стабільний ключ, назва за замовчуванням, одиниця, тип даних)
 const Map<String, List<(String, String, String?, String)>> kBaseParameters = {
   'hive': [
+    // розрахункова: скільки днів лишилось до обходу (сама зменшується щодня)
+    ('visit_left', 'Кількість днів до обходу', 'днів', DataTypes.int_),
     ('visit_period', 'Періодичність обходу', 'днів', DataTypes.int_),
     ('visit_start', kVisitDateName, null, DataTypes.date),
     ('queen_mark', 'Мітка матки', null, DataTypes.color),
@@ -1609,6 +1611,17 @@ class Repository {
     final latest = await latestParameterValues(e);
     if (latest[id] == text) return;
     await addParameterRecord(id, text, e);
+  }
+
+  /// Скільки днів лишилось до обходу цього вулика (0 - пора), або null, якщо
+  /// періодичність чи точку відліку не задано. Розрахунок, а не лічильник:
+  /// щодня зменшується сам, а після обходу (нова дата) починається знову.
+  Future<int?> daysToVisit(EntityRef e, {DateTime? now}) async {
+    final key = e.groupId != null ? 'g:${e.groupId}' : 'e:${e.elementId}';
+    for (final t in await visitTargets()) {
+      if (t.key == key) return visitDaysLeft(t, now ?? DateTime.now());
+    }
+    return null;
   }
 
   /// Усі вулики (для груп — по одному запису на групу) з їхніми

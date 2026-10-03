@@ -32,9 +32,14 @@ void main() {
     await repo.init();
     await repo.init();
     final ids = await repo.baseParameterIds('hive');
-    expect(ids.length, 3);
+    expect(ids.length, 4);
     final names = [for (final id in ids) (await repo.getParameter(id))!.name];
-    expect(names, ['Періодичність обходу', 'Дата останнього обходу', 'Мітка матки']);
+    expect(names, [
+      'Кількість днів до обходу',
+      'Періодичність обходу',
+      'Дата останнього обходу',
+      'Мітка матки'
+    ]);
   });
 
   test('стара назва "Дата початку обходу" міняється на "Дата останнього обходу"', () async {
@@ -105,7 +110,7 @@ void main() {
     await repo.db.rawUpdate('UPDATE parameters SET base_key = NULL');
     await repo.init();
     final all = (await repo.listParameters()).where((p) => p.isBase).toList();
-    expect(all.length, 3);
+    expect(all.length, 4);
   });
 
   test('ВИПРАВЛЕНО: перейменована в старій базі характеристика не дублюється', () async {
@@ -118,9 +123,9 @@ void main() {
     await repo.updateParameter(legacy.first['id'] as String, {'name': 'Обхід (перейменовано)'});
     await repo.init(); // "оновлення застосунку"
     final all = (await repo.listParameters()).where((p) => p.isBase).toList();
-    expect(all.length, 3); // не 4
+    expect(all.length, 4); // не 5
     final ids = await repo.baseParameterIds('hive');
-    expect(ids.length, 3);
+    expect(ids.length, 4);
     expect((await repo.getParameter(ids.first))!.name, 'Обхід (перейменовано)');
   });
 

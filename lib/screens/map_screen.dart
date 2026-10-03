@@ -1163,6 +1163,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     final params = await repo.attachedParameters(entity, elType: fresh.type);
     final latest = await repo.latestParameterValues(entity);
+    // «Кількість днів до обходу» - розрахункове значення
+    if (fresh.isHive) {
+      final leftId = await repo.baseParameterId('hive', 'visit_left');
+      if (leftId != null) {
+        final left = await repo.daysToVisit(entity);
+        latest[leftId] = left?.toString();
+      }
+    }
     final last = await repo.lastUpdated(entity);
     // вулик на кілька клітинок — один код на весь вулик
     final qr = fresh.isHive
@@ -1301,10 +1309,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // періодичність обходу — налаштування вулика, не показник огляду: у формі
     // її немає (змінюють тапом по значенню на панелі); урок її ще заповнює
     final periodId = lesson == null ? await repo.baseParameterId(el.type, 'visit_period') : null;
-    FillPage formPage(FillPage pg) => periodId == null
+    final leftId = el.isHive ? await repo.baseParameterId('hive', 'visit_left') : null;
+    FillPage formPage(FillPage pg) => periodId == null && leftId == null
         ? pg
         : FillPage(
-            params: [for (final p in pg.params) if (p.id != periodId) p],
+            params: [for (final p in pg.params) if (p.id != periodId && p.id != leftId) p],
             latest: pg.latest,
             stock: pg.stock,
             title: pg.title);
@@ -1527,16 +1536,27 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelQuickEdit(String parameterId) async {
     final el = panelElement;
     if (el == null) return;
-    final p = await repo.getParameter(parameterId);
+    // «Кількість днів до обходу» не редагується: тап відкриває «Періодичність
+    // обходу» цього вулика, а лишок днів видно в підзаголовку
+    var editId = parameterId;
+    String? left;
+    if (el.isHive && parameterId == await repo.baseParameterId('hive', 'visit_left')) {
+      final periodId = await repo.baseParameterId('hive', 'visit_period');
+      if (periodId != null) editId = periodId;
+      final n = await repo.daysToVisit(el.entity);
+      left = n == null ? 'Днів до обходу: -' : 'Днів до обходу: $n';
+    }
+    final p = await repo.getParameter(editId);
     final latest = await repo.latestParameterValues(el.entity);
     if (p == null || !mounted) return;
+    final title = panelData?.title ?? el.label ?? 'Вулик';
     final result = await showFillValuesDialog(
       context,
       params: [p],
       latest: latest,
       // угорі лише назва вулика; назва параметра - в самій таблиці
-      subtitle: panelData?.title ?? el.label ?? 'Вулик',
-      onHistory: () => _panelHistory(parameterId),
+      subtitle: left == null ? title : '$title · $left',
+      onHistory: () => _panelHistory(editId),
     );
     if (result == null || result.values.isEmpty || !mounted) return;
     for (final e in result.values.entries) {
