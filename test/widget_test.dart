@@ -1699,7 +1699,13 @@ void main() {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    expect(find.byTooltip('Перейменувати пасіку'), findsOneWidget);
+    expect(find.byTooltip('Налаштування пасіки'), findsOneWidget);
+    // назва й періодичність пасіки - з карти (торкнутися назви)
+    await tester.tap(find.byTooltip('Налаштування пасіки'));
+    await settle(tester);
+    expect(find.text('Налаштування пасіки'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
     await tester.tap(find.byTooltip('Налаштування'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));

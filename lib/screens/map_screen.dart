@@ -11,6 +11,7 @@ import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
 import '../logic/visit_reminders.dart';
 import '../services/reminders.dart';
+import '../ui/apiary_settings.dart';
 import '../ui/app_drawer.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
@@ -1807,44 +1808,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   late String _apiaryName = widget.apiary.name;
 
+  /// Назва й періодичність обходу пасіки - торкнутися назви на козирьку.
   Future<void> _renameApiary() async {
-    final name = await showTextPrompt(context,
-        title: 'Назва пасіки', initial: _apiaryName);
-    final t = name?.trim() ?? '';
-    if (t.isEmpty || t == _apiaryName || !mounted) return;
-    await repo.updateApiary(widget.apiary.id, name: t);
-    if (mounted) setState(() => _apiaryName = t);
-  }
-
-  /// Тап по вулику, коли чекаємо вибору для відсканованого коду.
-  Future<void> _bindScannedTo(MapElement el) async {
-    final code = _bindCode;
-    if (code == null || _qrBusy) return;
-    _qrBusy = true;
-    try {
-      final members = hiveObjectOf(el, elements);
-      final current = await repo.qrForObject(members);
-      if (!mounted) return;
-      if (current != null) {
-        final ok = await showConfirm(context,
-            title: 'У вулика вже є код',
-            text: 'Замінити поточний QR-код цього вулика на відсканований?',
-            confirmText: 'Замінити',
-            danger: false);
-        if (!ok || !mounted) return;
-      }
-      for (final m in members.skip(1)) {
-        await repo.unlinkQr(EntityRef.element(m.id));
-      }
-      await repo.linkQr(code, EntityRef.element(members.first.id));
-      _bindCode = null;
-      _clearWarning();
-    } finally {
-      _qrBusy = false;
-    }
+    final cur = await repo.getApiary(widget.apiary.id) ?? widget.apiary;
     if (!mounted) return;
-    _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
-    await _fillThenPanel(el);
+    final changed = await editApiarySettings(context, repo, cur);
+    if (!changed || !mounted) return;
+    final fresh = await repo.getApiary(widget.apiary.id);
+    if (fresh != null && mounted) setState(() => _apiaryName = fresh.name);
   }
 
   @override
@@ -1936,7 +1907,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       if (!widget.tutorial) ...[
                         const SizedBox(width: 6),
                         Tooltip(
-                            message: 'Перейменувати пасіку',
+                            message: 'Налаштування пасіки',
                             child: AppIcon('pencil', size: 20, color: AppColors.textMuted)),
                       ],
                     ]),
