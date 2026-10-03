@@ -831,8 +831,8 @@ void main() {
     await tester.tap(find.textContaining('Це параметри вулика'));
     await settle(tester);
     expect(find.textContaining('Мій помічник'), findsNothing);
-    expect(find.textContaining('Грр...'), findsOneWidget);
-    await tester.tap(find.textContaining('Грр...'));
+    expect(find.textContaining('Кхе, кхе...'), findsOneWidget);
+    await tester.tap(find.textContaining('Кхе, кхе...'));
     await settle(tester);
     expect(find.textContaining('В тебе матка'), findsOneWidget);
     await tester.tap(find.byTooltip('Білий'));
