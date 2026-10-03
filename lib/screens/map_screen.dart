@@ -1810,6 +1810,37 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   late String _apiaryName = widget.apiary.name;
 
+  /// Тап по вулику, коли чекаємо вибору для відсканованого коду.
+  Future<void> _bindScannedTo(MapElement el) async {
+    final code = _bindCode;
+    if (code == null || _qrBusy) return;
+    _qrBusy = true;
+    try {
+      final members = hiveObjectOf(el, elements);
+      final current = await repo.qrForObject(members);
+      if (!mounted) return;
+      if (current != null) {
+        final ok = await showConfirm(context,
+            title: 'У вулика вже є код',
+            text: 'Замінити поточний QR-код цього вулика на відсканований?',
+            confirmText: 'Замінити',
+            danger: false);
+        if (!ok || !mounted) return;
+      }
+      for (final m in members.skip(1)) {
+        await repo.unlinkQr(EntityRef.element(m.id));
+      }
+      await repo.linkQr(code, EntityRef.element(members.first.id));
+      _bindCode = null;
+      _clearWarning();
+    } finally {
+      _qrBusy = false;
+    }
+    if (!mounted) return;
+    _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
+    await _fillThenPanel(el);
+  }
+
   /// Назва й періодичність обходу пасіки - торкнутися назви на козирьку.
   Future<void> _renameApiary() async {
     final cur = await repo.getApiary(widget.apiary.id) ?? widget.apiary;
