@@ -253,65 +253,62 @@ class CharacteristicsPanel extends StatelessWidget {
     );
   }
 
-  /// Значення блоками: у рядку по два, у кожного - маленька назва зверху й
-  /// значення під нею. Тап по блоку - швидка правка / історія значення
-  /// (для розміщеного об'єкта); QR-код - прив'язка чи перегляд коду.
+  /// Таблиця «параметр — значення» з медовою сіткою. Тап по рядку — історія
+  /// значень цього параметра (для розміщеного об'єкта).
   Widget _paramTable(BuildContext context) {
+    final grid = AppColors.hive.withValues(alpha: 0.55);
     final tap = data.placed ? (onValue ?? onHistory) : null;
-    final blocks = <Widget>[
-      if (data.placed && onQr != null) _block('QR-код', _qrValue(), onQr),
-      for (final (p, value) in data.params)
-        _block(p.nameWithUnit, _valueView(p, value), tap == null ? null : () => tap(p.id)),
-    ];
-    return Column(children: [
-      for (var i = 0; i < blocks.length; i += 2)
-        Padding(
-          padding: EdgeInsets.only(top: i == 0 ? 0 : 8),
-          child: IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(child: blocks[i]),
-              const SizedBox(width: 8),
-              Expanded(child: i + 1 < blocks.length ? blocks[i + 1] : const SizedBox()),
-            ]),
-          ),
-        ),
-    ]);
+    Widget cell(Parameter p, Widget child) {
+      final c = Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9), child: child);
+      return tap != null ? TableRowInkWell(onTap: () => tap(p.id), child: c) : c;
+    }
+
+    return Table(
+      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+      columnWidths: const {0: FlexColumnWidth(1.25), 1: FlexColumnWidth(1)},
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        if (data.placed && onQr != null)
+          TableRow(children: [
+            Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                child: Text('QR-код',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
+            _qrCell(context),
+          ]),
+        for (final (p, value) in data.params)
+          TableRow(children: [
+            cell(
+                p,
+                Text(p.nameWithUnit,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
+            cell(p, _valueView(p, value)),
+          ]),
+      ],
+    );
   }
 
-  Widget _block(String label, Widget value, VoidCallback? onTap) => Material(
-        color: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: AppColors.hive.withValues(alpha: 0.45)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11.5, height: 1.2)),
-              const SizedBox(height: 5),
-              value,
-            ]),
-          ),
-        ),
-      );
-
-  /// Значення QR-коду: «-», якщо не прив'язано (тап по блоку - прив'язати),
-  /// інакше номер наліпки (тап - сам код, «Інший» і «Відв'язати»).
-  Widget _qrValue() {
+  /// Значення QR-коду: «-», якщо не прив'язано (тап — прив'язати), інакше
+  /// номер наліпки (тап — сам код, «Інший» і «Відв'язати»).
+  Widget _qrCell(BuildContext context) {
     final code = data.qrCode;
     final label = code == null ? '-' : (data.qrNumber != null ? '№ ${data.qrNumber}' : code);
-    return Text(label,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: code == null
-            ? TextStyle(color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w600)
-            : TextStyle(color: AppColors.accent, fontSize: 15, fontWeight: FontWeight.w700));
+    return InkWell(
+      onTap: onQr,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        child: Text(label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: code == null
+                ? TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.w600)
+                : TextStyle(
+                    color: AppColors.accent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    decoration: TextDecoration.underline)),
+      ),
+    );
   }
 
   /// Колір (мітка матки) — кружечком потрібного кольору, решта — текстом.
@@ -331,7 +328,7 @@ class CharacteristicsPanel extends StatelessWidget {
     return Text((value == null || value.isEmpty) ? '-' : value,
                     style: TextStyle(
                         color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600));
   }
 }
