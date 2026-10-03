@@ -486,6 +486,9 @@ void main() {
     }
     expect(find.text('Сьогодні оглянути: 1'), findsOneWidget);
     await tester.tap(find.text('Сьогодні оглянути: 1'));
+    await settle(tester);
+    expect(find.text('Почати обхід'), findsOneWidget); // список прострочених
+    await tester.tap(find.text('Почати обхід'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }

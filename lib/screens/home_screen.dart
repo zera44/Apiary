@@ -391,9 +391,51 @@ class _AdvisorState extends State<_Advisor> {
     }
   }
 
-  Future<void> _openFirstDue() async {
+  /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
+  Future<void> _showDueList() async {
+    final pick = await showDialog<VisitTarget?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Сьогодні оглянути'),
+        content: SizedBox(
+          width: 320,
+          child: ListView(shrinkWrap: true, children: [
+            for (final d in _due)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(d.t.name, style: TextStyle(color: AppColors.text)),
+                subtitle: Text(d.t.apiaryName.isEmpty ? 'Моя пасіка' : d.t.apiaryName,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
+                onTap: () => Navigator.pop(ctx, d.t),
+              ),
+          ]),
+        ),
+        actions: [
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            PillButton(
+                text: 'Почати обхід',
+                bg: AppColors.accent,
+                width: double.infinity,
+                onPressed: () => Navigator.pop(ctx, _due.first.t)),
+            const SizedBox(height: 8),
+            PillButton(
+                text: 'Закрити',
+                bg: AppColors.neutralBtn,
+                fg: AppColors.text,
+                width: double.infinity,
+                onPressed: () => Navigator.pop(ctx)),
+          ]),
+        ],
+      ),
+    );
+    if (pick != null) await _openDue(pick);
+  }
+
+  Future<void> _openDue(VisitTarget t) async {
     final nav = Navigator.of(context);
-    final el = await widget.repo.getElement(_due.first.t.elementId);
+    final el = await widget.repo.getElement(t.elementId);
     final aid = el?.apiaryId;
     if (el == null || aid == null) return;
     final a = await widget.repo.getApiary(aid);
@@ -404,7 +446,7 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
-        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _openFirstDue),
+        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
         if (_low.isNotEmpty)
           (
             text: 'Час докупити: ${_low.join(', ')}',
@@ -414,7 +456,8 @@ class _AdvisorState extends State<_Advisor> {
         for (final t in _tips) (text: t, action: null),
       ];
 
-  int get _mail => (_due.isNotEmpty ? 1 : 0) + (_low.isNotEmpty ? 1 : 0);
+  // на вулику-поштоматі: скільки вуликів прострочено + позицій, що кінчаються
+  int get _mail => _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {
