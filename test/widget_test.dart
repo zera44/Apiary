@@ -149,9 +149,6 @@ void main() {
 
     // поки приходу не було — «Списати» вимкнено
     expect(tester.widget<PillButton>(find.widgetWithText(PillButton, 'Списати')).onPressed, isNull);
-    await tester.tap(find.widgetWithText(PillButton, 'Прихід'));
-    await settle(tester);
-
     // прихід: жодного «перезаписати» — лише кількість
     await tester.tap(find.widgetWithText(PillButton, 'Прихід').last);
     await settle(tester);
@@ -868,7 +865,7 @@ void main() {
     expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 6; i++) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
     }
@@ -1659,8 +1656,8 @@ void main() {
     await tester.tap(find.text('Склад'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byTooltip('Пропустити'), findsOneWidget);
-    await tester.tap(find.byTooltip('Пропустити'));
+    expect(find.text('Пропустити'), findsOneWidget);
+    await tester.tap(find.text('Пропустити'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
