@@ -167,18 +167,44 @@ class _AppDrawerState extends State<AppDrawer> {
           color: AppColors.popupBg,
           border: Border(top: BorderSide(color: AppColors.hive.withValues(alpha: 0.5)))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (widget.tour && widget.onFinishTutorial != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
-          ),
-        // пасічник стоїть руками на кнопці «Далі» - спирається на неї
+        // зліва - який це крок екскурсії, справа - маленька табличка «завершити»
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          if (hint == null)
+            for (var i = 0; i < kDrawerTour.length; i++)
+              Container(
+                width: i == _step ? 16 : 7,
+                height: 7,
+                margin: const EdgeInsets.only(right: 4, bottom: 4),
+                decoration: BoxDecoration(
+                  color: i == _step ? AppColors.create : AppColors.create.withValues(alpha: 0.28),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+          const Spacer(),
+          if (widget.tour && widget.onFinishTutorial != null)
+            LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
+        ]),
+        const SizedBox(height: 6),
+        // пасічник із газетою говорить хмаркою (як у навчанні) і стоїть
+        // руками на кнопці «Далі»
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
-          const SizedBox(width: 10),
+          const SizedBox(width: 6),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 22),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                // гострий кут - до пасічника
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(3),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: Border.all(color: AppColors.create, width: 1.5),
+              ),
               child: Text.rich(
                 TextSpan(children: text),
                 style: TextStyle(color: AppColors.text, fontSize: 13.5, height: 1.3),
