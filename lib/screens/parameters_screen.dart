@@ -527,21 +527,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            if (widget.embedded)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: CircleIconButton(
-                    icon: 'plus_circle',
-                    bg: AppColors.accent,
-                    size: 34,
-                    tooltip: 'Новий параметр',
-                    onPressed: () => _openForm(),
-                  ),
-                ),
-              )
-            else
+            if (!widget.embedded)
             TopBar(
               title: widget.catalog ? 'Характеристики' : 'Список параметрів',
               onBack: _back,
@@ -592,6 +578,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
                             )
                           : _orderList(list),
             ),
+            // у «Налаштуваннях» створення - кнопкою знизу
+            if (widget.embedded)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: PillButton(
+                  text: 'Створити характеристику',
+                  bg: AppColors.accent,
+                  height: 46,
+                  width: double.infinity,
+                  onPressed: () => _openForm(),
+                ),
+              ),
             if (!widget.catalog && _tab == 1 && _canApplyToAll)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
