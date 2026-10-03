@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../data/sync_service.dart';
 import '../logic/visit_reminders.dart';
 import '../services/auth.dart';
 import '../ui/app_drawer.dart';
@@ -89,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await auth.signIn();
+      unawaited(SyncService.now()); // одразу після входу
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => HomeScreen(repo: repo, auth: auth),
@@ -194,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 14),
                     Text(user.email,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                    const _SyncLine(),
                     TextButton(
                       onPressed: () => _signOut(context),
                       child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
@@ -562,6 +566,36 @@ class _AdvisorState extends State<_Advisor> {
       ),
     ]);
   }
+}
+
+/// «Синхронізовано: сьогодні 14:05» / «Очікує відправки: N» / «Немає зв'язку».
+class _SyncLine extends StatelessWidget {
+  const _SyncLine();
+
+  static String _fmt(DateTime t) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final n = DateTime.now();
+    final hm = '${two(t.hour)}:${two(t.minute)}';
+    return (t.year == n.year && t.month == n.month && t.day == n.day)
+        ? 'сьогодні $hm'
+        : '${two(t.day)}.${two(t.month)} $hm';
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<SyncInfo>(
+        valueListenable: SyncService.info,
+        builder: (_, i, __) {
+          final text = i.offline
+              ? 'Немає зв\'язку із сервером - зміни збережено на пристрої'
+              : i.pending > 0
+                  ? 'Очікує відправки: ${i.pending}'
+                  : i.lastOk != null
+                      ? 'Синхронізовано: ${_fmt(i.lastOk!)}'
+                      : null;
+          if (text == null) return const SizedBox.shrink();
+          return Text(text, style: TextStyle(color: AppColors.textMuted, fontSize: 12));
+        },
+      );
 }
 
 class _StartupPrompts extends StatefulWidget {

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show ValueNotifier, kReleaseMode;
 import 'package:http/http.dart' as http;
 
 import 'repository.dart';
@@ -16,7 +16,29 @@ import 'repository.dart';
 /// синхронізовані (як і в старій версії), щоб офлайн-частину можна було
 /// тестувати без бекенду. Кожен рядок відправляється POST-запитом на
 /// `{API_URL}/{таблиця}`.
+/// Стан синхронізації для рядка на головному екрані.
+class SyncInfo {
+  /// Коли востаннє все вивантажено (null - ще не було).
+  final DateTime? lastOk;
+
+  /// Скільки записів ще чекає відправки.
+  final int pending;
+
+  /// Немає зв'язку із сервером.
+  final bool offline;
+  const SyncInfo({this.lastOk, this.pending = 0, this.offline = false});
+}
+
 class SyncService {
+  /// Поточна служба (її можна смикнути одразу після входу).
+  static SyncService? current;
+  static final ValueNotifier<SyncInfo> info = ValueNotifier(const SyncInfo());
+
+  /// Синхронізувати зараз (наприклад, одразу після входу).
+  static Future<void> now() async {
+    await current?.syncOnce();
+  }
+
   static const apiUrl = String.fromEnvironment('APIARY_API_URL');
   static const interval = Duration(seconds: 20);
 
@@ -28,7 +50,11 @@ class SyncService {
   SyncService(this.repo);
 
   void start() {
-    _timer ??= Timer.periodic(interval, (_) => syncOnce());
+    current = this;
+    if (_timer == null) {
+      _timer = Timer.periodic(interval, (_) => syncOnce());
+      unawaited(syncOnce()); // одразу після запуску, не чекаючи 20 с
+    }
   }
 
   void stop() {
@@ -98,7 +124,10 @@ class SyncService {
       if (apiUrl.isNotEmpty) {
         final base = _base;
         if (base == null) return (0, 0); // не https — не синхронізуємо
-        if (!await hasInternet(base.host, base.port)) return (0, 0);
+        if (!await hasInternet(base.host, base.port)) {
+          info.value = SyncInfo(lastOk: info.value.lastOk, pending: info.value.pending, offline: true);
+          return (0, 0);
+        }
       }
       var ok = 0, total = 0;
       for (final table in kSyncTables) {
@@ -119,6 +148,8 @@ class SyncService {
         }
       }
       if (ok > 0) await repo.purgeDeleted();
+      info.value = SyncInfo(
+          lastOk: ok == total ? DateTime.now() : info.value.lastOk, pending: total - ok);
       return (ok, total);
     } catch (_) {
       return (0, 0);
