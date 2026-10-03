@@ -17,7 +17,7 @@ import 'history_hub_screen.dart' show StockHistoryScreen;
 
 /// Склад: три вкладки.
 /// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
-/// «Додати номенклатуру». «Вибуття» — номенклатура із залишком, під
+/// «Додати номенклатуру». «Прихід і списання» — на кожній плитці «Прихід» і «Списати»; раніше «Вибуття» — номенклатура із залишком, під
 /// кожною «Списати». «Переоблік» — «Перерахувати»: фактична кількість,
 /// різниця (нестача/надлишок) записується окремо.
 ///
@@ -37,7 +37,7 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   List<StockItem>? items;
   bool _busy = false;
-  late StockOp _op = widget.initialTab;
+  late StockOp _op = widget.initialTab == StockOp.writeOff ? StockOp.receive : widget.initialTab;
 
   Repository get repo => widget.repo;
 
@@ -271,13 +271,9 @@ class _StockScreenState extends State<StockScreen> {
   @override
   Widget build(BuildContext context) {
     final all = items;
-    final out = _op == StockOp.writeOff;
-    final list = all == null
-        ? null
-        : (out ? [for (final i in all) if ((i.quantity ?? 0) > 0) i] : all);
+    final list = all;
     final title = switch (_op) {
-      StockOp.receive => 'Прихід номенклатури',
-      StockOp.writeOff => 'Вибуття номенклатури',
+      StockOp.receive || StockOp.writeOff => 'Прихід і списання',
       StockOp.inventory => 'Переоблік',
     };
     return Scaffold(
@@ -288,10 +284,9 @@ class _StockScreenState extends State<StockScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [
-                _tab('Прихід', StockOp.receive),
-                const SizedBox(width: 6),
-                _tab('Вибуття', StockOp.writeOff),
-                const SizedBox(width: 6),
+                // «Прихід» і «Списати» - на кожній плитці, тож одна вкладка
+                _tab('Прихід і списання', StockOp.receive),
+                const SizedBox(width: 8),
                 _tab('Переоблік', StockOp.inventory),
               ]),
             ),
@@ -311,10 +306,7 @@ class _StockScreenState extends State<StockScreen> {
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
-                            child: Text(
-                                out
-                                    ? 'Немає що списувати.\nСпершу оформіть прихід номенклатури.'
-                                    : 'Ще немає жодної номенклатури',
+                            child: Text('Ще немає жодної номенклатури',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: AppColors.textMuted)),
                           ))
@@ -470,7 +462,8 @@ class _StockScreenState extends State<StockScreen> {
               height: 36,
               radius: 12,
               fontSize: 13,
-              onPressed: () => _move(it, StockOp.writeOff),
+              // списати можна лише те, що є на складі
+              onPressed: (it.quantity ?? 0) > 0 ? () => _move(it, StockOp.writeOff) : null,
             ),
           ),
         ])

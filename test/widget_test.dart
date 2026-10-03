@@ -130,7 +130,7 @@ void main() {
   testWidgets('склад: додати номенклатуру, прихід і списання', (tester) async {
     await tester.pumpWidget(wrap(StockScreen(repo: repo)));
     await settle(tester);
-    expect(find.text('Прихід номенклатури'), findsOneWidget);
+    expect(find.text('Прихід і списання'), findsWidgets);
     expect(find.text('Ще немає жодної номенклатури'), findsOneWidget);
 
     await tester.tap(find.text('Додати номенклатуру'));
@@ -147,11 +147,8 @@ void main() {
     expect(find.text('Цукор'), findsOneWidget);
     expect(find.text('-'), findsOneWidget);
 
-    // вибуття: поки приходу не було — нічого списувати
-    await tester.tap(find.text('Вибуття'));
-    await settle(tester);
-    expect(find.text('Вибуття номенклатури'), findsOneWidget);
-    expect(find.textContaining('Немає що списувати'), findsOneWidget);
+    // поки приходу не було — «Списати» вимкнено
+    expect(tester.widget<PillButton>(find.widgetWithText(PillButton, 'Списати')).onPressed, isNull);
     await tester.tap(find.widgetWithText(PillButton, 'Прихід'));
     await settle(tester);
 
@@ -176,8 +173,6 @@ void main() {
     expect(find.text('7,5 кг'), findsOneWidget);
 
     // списання: не більше залишку; поля — дата, кількість, коментар
-    await tester.tap(find.text('Вибуття'));
-    await settle(tester);
     await tester.tap(find.widgetWithText(PillButton, 'Списати'));
     await settle(tester);
     expect(find.text('Списання: Цукор'), findsOneWidget);
