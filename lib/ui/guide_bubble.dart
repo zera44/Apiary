@@ -233,11 +233,14 @@ List<Widget> lessonScene({
                   : IgnorePointer(child: bubble),
         ),
       ),
-    if (finish != null)
+    // табличка висить просто під кнопкою «Продовжити»; немає кнопки - немає й таблички
+    if (finish != null && below != null)
       Positioned(
-        right: 8,
-        bottom: 4 + bottomInset,
-        child: Material(type: MaterialType.transparency, child: finish),
+        left: pills ? 164.0 : kLessonBubbleLeft,
+        right: 0,
+        bottom: 6 + bottomInset,
+        child: Material(
+            type: MaterialType.transparency, child: Center(child: finish)),
       ),
   ];
 }
@@ -276,10 +279,10 @@ class LessonFinishLink extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: width * 0.12),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text('завершити навчання',
+                    child: Text('завершити',
                         style: TextStyle(
                             color: const Color(0xFFFFF3DC),
-                            fontSize: width * 0.075,
+                            fontSize: width * 0.11,
                             fontWeight: FontWeight.w800,
                             shadows: const [Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))])),
                   ),
