@@ -1702,6 +1702,24 @@ void main() {
     expect(find.byTooltip('Меню'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
+    final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
+    await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    expect(find.byTooltip('Перейменувати пасіку'), findsOneWidget);
+    await tester.tap(find.byTooltip('Налаштування'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Налаштування'), findsOneWidget);
+    expect(find.text('Головна'), findsOneWidget);
+    expect(find.text('Історія'), findsNothing); // історія - лише по картах
+    await tester.tap(find.text('Шаблони'));
+    await settle(tester);
+    await tester.tap(find.text('Характеристики'));
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 /// Вхід без Google (для тестів).
