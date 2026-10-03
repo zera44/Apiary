@@ -294,10 +294,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final pose = _lesson == _Lesson.gear ? LessonPose.newspaper : LessonPose.leaning;
     final msg = _lessonMessage();
     const up = 0.0;
-    // на кроці «Оглянути» (панель вулика) таблички немає; інакше вона висить
-    // під кнопкою «Продовжити» (без кнопки - без таблички)
-    final VoidCallback? finish =
-        _lesson == _Lesson.inspect || _lesson == _Lesson.congrats ? null : _finishLesson;
+    // табличка висить під кнопкою «Продовжити» (без кнопки - без таблички)
+    final VoidCallback? finish = _lesson == _Lesson.congrats ? null : _finishLesson;
     if (msg == null) {
       return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up, onFinish: finish);
     }

@@ -245,7 +245,7 @@ List<Widget> lessonScene({
       Positioned(
         left: pills ? 164.0 : kLessonBubbleLeft,
         right: 0,
-        bottom: 6 + bottomInset,
+        bottom: 14 + bottomInset,
         child: Material(
             type: MaterialType.transparency,
             // з правого кута - вирівняна по правому краю кнопки
