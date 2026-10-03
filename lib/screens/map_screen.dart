@@ -2060,7 +2060,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onClose: _lessonInspect ? () {} : () => setState(() => panelOpen = false),
                       // подвійний тап не відкриває два вікна
                       // (у кроці уроку «Оглянути» решта кнопок панелі вимкнена)
-                      editable: selectMode,
+                      // назву, значок і колір можна змінити й у робочому режимі
+                      editable: selectMode || !widget.tutorial,
                       inspect: !selectMode,
                       onRename: _lessonInspect ? () {} : () => _panelGuard(_panelRename),
                       onIcon: _lessonInspect ? () {} : () => _panelGuard(_panelIcon),
