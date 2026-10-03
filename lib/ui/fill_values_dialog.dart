@@ -657,12 +657,20 @@ class _FillDialogState extends State<_FillDialog> {
             // усі на сьогодні оглянуті — огляд закривається
             Row(children: [
               // «Зберегти» і «Пропустити» - значками (галочка й стрілка далі)
-              CircleIconButton(
-                  icon: 'check',
-                  bg: AppColors.accent,
-                  size: 50,
-                  tooltip: 'Зберегти',
-                  onPressed: _saving ? null : () => _save(next: true)),
+              // дискета замість галочки
+              Tooltip(
+                message: 'Зберегти',
+                child: Material(
+                  color: _saving ? AppColors.accent.withValues(alpha: 0.45) : AppColors.accent,
+                  shape: const CircleBorder(),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _saving ? null : () => _save(next: true),
+                    child: const SizedBox.square(
+                        dimension: 50, child: Icon(Icons.save, color: Colors.white, size: 28)),
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                   child: PillButton(
