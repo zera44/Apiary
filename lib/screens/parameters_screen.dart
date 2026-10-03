@@ -592,7 +592,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                             )
                           : _orderList(list),
             ),
-            if (!widget.catalog && _tab == 0 && _canApplyToAll)
+            if (!widget.catalog && _tab == 1 && _canApplyToAll)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: InkWell(

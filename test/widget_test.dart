@@ -644,6 +644,8 @@ void main() {
     await tester.tap(find.descendant(
         of: find.widgetWithText(ListCard, 'Вага'), matching: find.byType(CheckToggle)));
     await settle(tester);
+    await tester.tap(find.text('Конструктор'));
+    await settle(tester);
     await tester.tap(find.text('Для всіх вуликів пасіки (такий самий набір і порядок)'));
     await settle(tester);
     // окремої «Зберегти» немає: «назад» зберігає автоматично
