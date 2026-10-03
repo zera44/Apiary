@@ -116,6 +116,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
         },
         selected: _members(selected),
         outlined: _members(linked),
+        outlineColor: const Color(0xFF1E5E2E), // код уже є - темно-зелений
       );
 
   void _onTap(GridPress p) {
@@ -189,7 +190,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                   cells: _scene(),
                   maskSelected: false,
                   showMoveHints: false, // тут нічого не переміщується
-                  selectColor: const Color(0xFF1E5E2E), // вибір для коду - темно-зелений
+                  selectColor: AppColors.danger, // обрано (коду немає) - червоний ободок
                   selectWidth: 5,
                   onTap: _onTap,
                 ),
@@ -204,35 +205,39 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                     child: CapsuleLabel(
                       elements.isEmpty
                           ? 'На цій пасіці ще немає вуликів'
-                          : 'Зелений ободок - код уже є ($withCode з $hives) · тапайте вулики',
+                          : 'Червоний ободок - обрано, коду немає · зелений - код уже є ($withCode з $hives)',
                     ),
                   ),
                 ),
               ),
+              // масштаб - як на основній карті: праворуч по центру
               Positioned(
                 right: 14,
-                bottom: 14,
-                child: Column(children: [
-                  PillButton(
-                      text: '+',
-                      bg: AppColors.roundBtn,
-                      fg: AppColors.text,
-                      width: 40,
-                      height: 40,
-                      radius: 20,
-                      fontSize: 18,
-                      onPressed: () => grid.zoomBy(4)),
-                  const SizedBox(height: 6),
-                  PillButton(
-                      text: '−',
-                      bg: AppColors.roundBtn,
-                      fg: AppColors.text,
-                      width: 40,
-                      height: 40,
-                      radius: 20,
-                      fontSize: 18,
-                      onPressed: () => grid.zoomBy(-4)),
-                ]),
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    PillButton(
+                        text: '+',
+                        bg: AppColors.roundBtn,
+                        fg: AppColors.text,
+                        width: 42,
+                        height: 42,
+                        radius: 21,
+                        fontSize: 20,
+                        onPressed: () => grid.zoomBy(4)),
+                    const SizedBox(height: 8),
+                    PillButton(
+                        text: '−',
+                        bg: AppColors.roundBtn,
+                        fg: AppColors.text,
+                        width: 42,
+                        height: 42,
+                        radius: 21,
+                        fontSize: 20,
+                        onPressed: () => grid.zoomBy(-4)),
+                  ]),
+                ),
               ),
             ]),
           ),
