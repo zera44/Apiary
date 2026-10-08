@@ -355,10 +355,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold)),
                   const Spacer(),
                   if (_lines.any((l) => l.use && l.valid))
-                    TextButton.icon(
+                    IconButton(
+                      tooltip: 'Копіювати список',
+                      visualDensity: VisualDensity.compact,
                       onPressed: _copy,
-                      icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('Копіювати список'),
+                      icon: Icon(Icons.copy, size: 20, color: AppColors.textMuted),
                     ),
                 ]),
               ),

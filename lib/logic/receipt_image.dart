@@ -48,7 +48,12 @@ Uint8List binarizeAdaptive(Uint8List gray, int width, int height,
 
 /// Фото (байти jpg/png) → png, готовий для Tesseract. null - не вдалося прочитати.
 Uint8List? prepareReceiptImage(Uint8List bytes) {
-  final decoded = img.decodeImage(bytes);
+  img.Image? decoded;
+  try {
+    decoded = img.decodeImage(bytes);
+  } catch (_) {
+    return null; // пошкоджений чи невідомий файл
+  }
   if (decoded == null) return null;
   var image = img.bakeOrientation(decoded);
   if (image.width > receiptOcrWidth) {
