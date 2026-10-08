@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
+import '../ui/date_picker.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
-
-DateTime _firstOfMonth(DateTime d) => DateTime(d.year, d.month);
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
 class FinEntryTile extends StatelessWidget {
@@ -98,88 +97,52 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
   }
 }
 
-/// Розподіл за категоріями: значок, назва, сума, частка смужкою.
-class FinBreakdown extends StatelessWidget {
-  final Map<String?, double> byCategory;
-  final Map<String, FinCategory> cats;
-  final void Function(FinCategory)? onCategory;
-  const FinBreakdown({super.key, required this.byCategory, required this.cats, this.onCategory});
+/// Період огляду.
+enum FinPeriod { day, week, month, year, custom }
+
+const _periodNames = {
+  FinPeriod.day: 'День',
+  FinPeriod.week: 'Тиждень',
+  FinPeriod.month: 'Місяць',
+  FinPeriod.year: 'Рік',
+  FinPeriod.custom: 'Період',
+};
+
+/// Кільцева діаграма: кожна категорія - сегмент її кольору.
+class _DonutPainter extends CustomPainter {
+  final List<(double, Color)> parts;
+  final Color empty;
+  _DonutPainter(this.parts, this.empty);
 
   @override
-  Widget build(BuildContext context) {
-    final items = byCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final total = items.fold(0.0, (a, e) => a + e.value);
-    if (items.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text('Поки порожньо', style: TextStyle(color: AppColors.textMuted)),
-      );
+  void paint(Canvas canvas, Size size) {
+    const stroke = 40.0;
+    final rect = Rect.fromLTWH(stroke / 2, stroke / 2, size.width - stroke, size.height - stroke);
+    final total = parts.fold(0.0, (a, p) => a + p.$1);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    if (total <= 0) {
+      paint.color = empty;
+      canvas.drawArc(rect, 0, 6.283185307, false, paint);
+      return;
     }
-    return Column(children: [
-      for (final e in items)
-        Builder(builder: (_) {
-          final c = e.key == null ? null : cats[e.key];
-          final share = total > 0 ? e.value / total : 0.0;
-          return InkWell(
-            onTap: c != null && onCategory != null ? () => onCategory!(c) : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              child: Row(children: [
-                e.key == null
-                    ? const FinBadge(icon: 'home', color: 'olive', size: 34)
-                    : FinBadge(icon: c?.icon ?? 'other', color: c?.color ?? 'nut', size: 34),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      Expanded(
-                        child: Text(e.key == null ? kFinStockCategoryName : (c?.name ?? 'Без категорії'),
-                            style: TextStyle(color: AppColors.text, fontSize: 14.5)),
-                      ),
-                      Text(uah(e.value), style: TextStyle(color: AppColors.text, fontSize: 14.5)),
-                    ]),
-                    const SizedBox(height: 5),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: share,
-                        minHeight: 5,
-                        backgroundColor: AppColors.darkBtn,
-                        color: finColor(c?.color ?? 'olive'),
-                      ),
-                    ),
-                  ]),
-                ),
-              ]),
-            ),
-          );
-        }),
-    ]);
+    var start = -1.5707963;
+    final gap = parts.length > 1 ? 0.03 : 0.0;
+    for (final p in parts) {
+      final sweep = p.$1 / total * 6.283185307;
+      paint.color = p.$2;
+      canvas.drawArc(rect, start + gap / 2, sweep - gap > 0.001 ? sweep - gap : sweep, false, paint);
+      start += sweep;
+    }
   }
-}
-
-class _MonthBar extends StatelessWidget {
-  final String title;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  const _MonthBar({required this.title, required this.onPrev, required this.onNext});
 
   @override
-  Widget build(BuildContext context) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        IconButton(
-            onPressed: onPrev, icon: Icon(Icons.chevron_left, color: AppColors.text), tooltip: 'Раніше'),
-        SizedBox(
-          width: 170,
-          child: Text(title,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
-        ),
-        IconButton(
-            onPressed: onNext, icon: Icon(Icons.chevron_right, color: AppColors.text), tooltip: 'Пізніше'),
-      ]);
+  bool shouldRepaint(_DonutPainter old) => true;
 }
 
-/// Фінанси: огляд місяця. Вхід у процес - кнопки «Витрата» і «Дохід».
+/// Фінанси: огляд за період (день / тиждень / місяць / рік / свій період).
+/// Кільце за категоріями, під ним список; «+» - нова витрата чи дохід.
 class FinanceScreen extends StatefulWidget {
   final Repository repo;
   const FinanceScreen({super.key, required this.repo});
@@ -189,12 +152,54 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  DateTime _month = _firstOfMonth(DateTime.now());
+  FinPeriod _period = FinPeriod.month;
+  DateTime _anchor = DateTime.now();
+  DateTime? _customFrom;
+  DateTime? _customTo;
+  String _kind = kFinExpense;
   List<FinEntry> _entries = [];
   Map<String, FinCategory> _cats = {};
   bool _loaded = false;
 
   Repository get repo => widget.repo;
+  bool get _expense => _kind == kFinExpense;
+
+  (DateTime, DateTime) get _range {
+    final a = _anchor;
+    switch (_period) {
+      case FinPeriod.day:
+        return (DateTime(a.year, a.month, a.day), DateTime(a.year, a.month, a.day + 1));
+      case FinPeriod.week:
+        final d = a.day - (a.weekday - 1);
+        return (DateTime(a.year, a.month, d), DateTime(a.year, a.month, d + 7));
+      case FinPeriod.month:
+        return (DateTime(a.year, a.month), DateTime(a.year, a.month + 1));
+      case FinPeriod.year:
+        return (DateTime(a.year), DateTime(a.year + 1));
+      case FinPeriod.custom:
+        final f = _customFrom ?? DateTime(a.year, a.month);
+        final t = _customTo ?? DateTime(a.year, a.month + 1, 0);
+        return (f, DateTime(t.year, t.month, t.day + 1));
+    }
+  }
+
+  String get _title {
+    final (f, t) = _range;
+    switch (_period) {
+      case FinPeriod.day:
+        return formatDdMmYyyy(f);
+      case FinPeriod.week:
+        final last = DateTime(t.year, t.month, t.day - 1);
+        return '${finDay(f)} – ${formatDdMmYyyy(last)}';
+      case FinPeriod.month:
+        return finMonthTitle(f);
+      case FinPeriod.year:
+        return '${f.year}';
+      case FinPeriod.custom:
+        final last = DateTime(t.year, t.month, t.day - 1);
+        return '${formatDdMmYyyy(f)} – ${formatDdMmYyyy(last)}';
+    }
+  }
 
   @override
   void initState() {
@@ -211,7 +216,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
-    final list = await repo.listFinEntries(from: _month, to: DateTime(_month.year, _month.month + 1));
+    final (f, t) = _range;
+    final list = await repo.listFinEntries(from: f, to: t);
     if (!mounted) return;
     setState(() {
       _cats = cats;
@@ -221,18 +227,66 @@ class _FinanceScreenState extends State<FinanceScreen> {
   }
 
   void _shift(int d) {
-    setState(() => _month = DateTime(_month.year, _month.month + d));
+    final a = _anchor;
+    switch (_period) {
+      case FinPeriod.day:
+        _anchor = DateTime(a.year, a.month, a.day + d);
+      case FinPeriod.week:
+        _anchor = DateTime(a.year, a.month, a.day + 7 * d);
+      case FinPeriod.month:
+        _anchor = DateTime(a.year, a.month + d, 1);
+      case FinPeriod.year:
+        _anchor = DateTime(a.year + d, 1, 1);
+      case FinPeriod.custom:
+        return;
+    }
+    setState(() {});
     _reload();
   }
 
-  Future<void> _add(String kind) async {
+  Future<void> _setPeriod(FinPeriod p) async {
+    if (p == FinPeriod.custom) {
+      final f = parseDdMmYyyy(await showAppDatePicker(context, formatDdMmYyyy(_range.$1)));
+      if (f == null || !mounted) return;
+      final t = parseDdMmYyyy(await showAppDatePicker(context, formatDdMmYyyy(f)));
+      if (t == null || !mounted) return;
+      setState(() {
+        _period = p;
+        _customFrom = t.isBefore(f) ? t : f;
+        _customTo = t.isBefore(f) ? f : t;
+      });
+    } else {
+      setState(() {
+        _period = p;
+        if (p == FinPeriod.month) _anchor = DateTime(_anchor.year, _anchor.month, 1);
+      });
+    }
+    _reload();
+  }
+
+  Future<void> _add() async {
     final msg = await Navigator.of(context).push<String>(
-        MaterialPageRoute(builder: (_) => FinAddScreen(repo: repo, kind: kind)));
+        MaterialPageRoute(builder: (_) => FinAddScreen(repo: repo, kind: _kind)));
     if (!mounted) return;
     await _reload();
     if (msg != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
+  }
+
+  Future<void> _history({String? categoryId, bool onlyStock = false, String? title}) async {
+    final (f, t) = _range;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => FinHistoryScreen(
+              repo: repo,
+              from: f,
+              to: t,
+              title: title ?? 'Операції · $_title',
+              filter: _expense ? 1 : 2,
+              categoryId: categoryId,
+              onlyStock: onlyStock,
+            )));
+    if (mounted) _reload();
   }
 
   Future<void> _editCategory(FinCategory c) async {
@@ -241,22 +295,38 @@ class _FinanceScreenState extends State<FinanceScreen> {
     await _reload();
   }
 
-  Widget _stat(String label, double v, Color color) => Expanded(
-        child: Column(children: [
-          Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(uah(v),
-                style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w700)),
-          ),
+  Widget _periodTabs() => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(children: [
+          for (final p in FinPeriod.values)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _setPeriod(p),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border(
+                      bottom: BorderSide(
+                          color: p == _period ? AppColors.create : Colors.transparent, width: 3)),
+                ),
+                child: Text(_periodNames[p]!,
+                    style: TextStyle(
+                        color: p == _period ? AppColors.create : AppColors.textMuted,
+                        fontSize: 15,
+                        fontWeight: p == _period ? FontWeight.w700 : FontWeight.w500)),
+              ),
+            ),
         ]),
       );
 
   @override
   Widget build(BuildContext context) {
     final s = FinSummary.of(_entries);
-    final recent = _entries.take(5).toList();
+    final by = _expense ? s.expenseByCategory : s.incomeByCategory;
+    final items = by.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final total = items.fold(0.0, (a, e) => a + e.value);
+    Color colorOf(String? id) => id == null ? finColor('olive') : finColor(_cats[id]?.color ?? 'nut');
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
@@ -265,96 +335,164 @@ class _FinanceScreenState extends State<FinanceScreen> {
               title: 'Фінанси',
               onBack: () => Navigator.pop(context),
               trailing: IconButton(
-                tooltip: 'Підсумок сезону',
+                tooltip: 'Усі операції',
                 visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.insights_outlined, color: AppColors.text),
-                onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => FinSeasonScreen(repo: repo))),
+                icon: Icon(Icons.receipt_long_outlined, color: AppColors.text),
+                onPressed: () => _history(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: FinSegment(
+                labels: const ['Витрати', 'Дохід'],
+                selected: _expense ? 0 : 1,
+                onChanged: (i) => setState(() => _kind = i == 0 ? kFinExpense : kFinIncome),
               ),
             ),
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), children: [
-                      _MonthBar(
-                          title: finMonthTitle(_month), onPrev: () => _shift(-1), onNext: () => _shift(1)),
+                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
                         decoration: BoxDecoration(
-                            color: AppColors.card, borderRadius: BorderRadius.circular(18)),
-                        child: Row(children: [
-                          _stat('Витрати', s.expense, AppColors.text),
-                          _stat('Доходи', s.income, AppColors.grass),
-                          _stat('Баланс', s.balance,
-                              s.balance < 0 ? AppColors.danger : AppColors.create),
+                            color: AppColors.card, borderRadius: BorderRadius.circular(20)),
+                        child: Column(children: [
+                          _periodTabs(),
+                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            if (_period != FinPeriod.custom)
+                              IconButton(
+                                  onPressed: () => _shift(-1),
+                                  tooltip: 'Раніше',
+                                  icon: Icon(Icons.chevron_left, color: AppColors.text)),
+                            Flexible(
+                              child: GestureDetector(
+                                onTap: _period == FinPeriod.custom
+                                    ? () => _setPeriod(FinPeriod.custom)
+                                    : null,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                  child: Text(_title,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: AppColors.text,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                              ),
+                            ),
+                            if (_period != FinPeriod.custom)
+                              IconButton(
+                                  onPressed: () => _shift(1),
+                                  tooltip: 'Пізніше',
+                                  icon: Icon(Icons.chevron_right, color: AppColors.text)),
+                          ]),
+                          SizedBox(
+                            width: 250,
+                            height: 250,
+                            child: Stack(alignment: Alignment.center, children: [
+                              CustomPaint(
+                                size: const Size(250, 250),
+                                painter: _DonutPainter(
+                                    [for (final e in items) (e.value, colorOf(e.key))],
+                                    AppColors.darkBtn),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 52),
+                                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(uah(total),
+                                        style: TextStyle(
+                                            color: AppColors.text,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w600)),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text('баланс ${uah(s.balance)}',
+                                      style: TextStyle(
+                                          color: s.balance < 0
+                                              ? AppColors.danger
+                                              : AppColors.textMuted,
+                                          fontSize: 12)),
+                                ]),
+                              ),
+                            ]),
+                          ),
                         ]),
                       ),
-                      const SizedBox(height: 18),
-                      Text('Витрати за категоріями',
-                          style: TextStyle(
-                              color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      FinBreakdown(
-                          byCategory: s.expenseByCategory, cats: _cats, onCategory: _editCategory),
-                      const SizedBox(height: 14),
-                      Row(children: [
-                        Expanded(
-                          child: Text('Останні операції',
-                              style: TextStyle(
-                                  color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-                        ),
-                        TextButton(
-                          onPressed: () async {
-                            await Navigator.of(context).push(MaterialPageRoute<void>(
-                                builder: (_) => FinHistoryScreen(repo: repo, month: _month)));
-                            if (mounted) _reload();
-                          },
-                          child: Text('Усі →', style: TextStyle(color: AppColors.create)),
-                        ),
-                      ]),
-                      if (recent.isEmpty)
+                      const SizedBox(height: 12),
+                      if (items.isEmpty)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text('У цьому місяці ще нічого немає',
-                              style: TextStyle(color: AppColors.textMuted)),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: Center(
+                              child: Text('За цей період нічого немає',
+                                  style: TextStyle(color: AppColors.textMuted))),
                         ),
-                      for (final e in recent)
-                        FinEntryTile(
-                          entry: e,
-                          cats: _cats,
-                          onTap: () async {
-                            if (await openFinEntry(context, repo, e, _cats)) _reload();
-                          },
-                        ),
+                      for (final e in items)
+                        Builder(builder: (_) {
+                          final c = e.key == null ? null : _cats[e.key];
+                          final pct = total > 0 ? (e.value / total * 100).round() : 0;
+                          final name = e.key == null
+                              ? kFinStockCategoryName
+                              : (c?.name ?? 'Без категорії');
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                                color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _history(
+                                  categoryId: e.key,
+                                  onlyStock: e.key == null,
+                                  title: '$name · $_title'),
+                              onLongPress: c == null ? null : () => _editCategory(c),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(children: [
+                                  e.key == null
+                                      ? const FinBadge(icon: 'home', color: 'olive', size: 44)
+                                      : FinBadge(
+                                          icon: c?.icon ?? 'other', color: c?.color ?? 'nut', size: 44),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Text(name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                  ),
+                                  Text('$pct%',
+                                      style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+                                  const SizedBox(width: 14),
+                                  Text(uah(e.value),
+                                      style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                ]),
+                              ),
+                            ),
+                          );
+                        }),
                     ]),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Row(children: [
-                Expanded(
-                  child: PillButton(
-                    text: '− Витрата',
-                    bg: AppColors.accent,
-                    height: 52,
-                    radius: 26,
-                    fontSize: 16,
-                    onPressed: () => _add(kFinExpense),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: PillButton(
-                    text: '+ Дохід',
-                    bg: AppColors.addObject,
-                    height: 52,
-                    radius: 26,
-                    fontSize: 16,
-                    onPressed: () => _add(kFinIncome),
-                  ),
-                ),
-              ]),
-            ),
           ]),
+          Positioned(
+            right: 20,
+            bottom: 24,
+            child: Material(
+              color: const Color(0xFFFBC02D),
+              shape: const CircleBorder(),
+              elevation: 4,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _add,
+                child: const SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: Tooltip(
+                      message: 'Нова операція', child: Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                ),
+              ),
+            ),
+          ),
           const Positioned.fill(child: ScreenFrame()),
         ]),
       ),
@@ -362,24 +500,41 @@ class _FinanceScreenState extends State<FinanceScreen> {
   }
 }
 
-/// Усі операції за місяць (фільтр: усі / витрати / доходи).
+/// Операції за період: усі, лише витрати чи доходи, або однієї категорії.
 class FinHistoryScreen extends StatefulWidget {
   final Repository repo;
-  final DateTime month;
-  const FinHistoryScreen({super.key, required this.repo, required this.month});
+  final DateTime from;
+  final DateTime to;
+  final String title;
+
+  /// 0 - усі, 1 - витрати, 2 - доходи.
+  final int filter;
+  final String? categoryId;
+
+  /// Лише прихід, внесений на складі.
+  final bool onlyStock;
+  const FinHistoryScreen(
+      {super.key,
+      required this.repo,
+      required this.from,
+      required this.to,
+      required this.title,
+      this.filter = 0,
+      this.categoryId,
+      this.onlyStock = false});
 
   @override
   State<FinHistoryScreen> createState() => _FinHistoryScreenState();
 }
 
 class _FinHistoryScreenState extends State<FinHistoryScreen> {
-  late DateTime _month = _firstOfMonth(widget.month);
   List<FinEntry> _entries = [];
   Map<String, FinCategory> _cats = {};
-  int _filter = 0; // 0 - усі, 1 - витрати, 2 - доходи
+  late int _filter = widget.filter;
   bool _loaded = false;
 
   Repository get repo => widget.repo;
+  bool get _scoped => widget.categoryId != null || widget.onlyStock;
 
   @override
   void initState() {
@@ -396,7 +551,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
-    final list = await repo.listFinEntries(from: _month, to: DateTime(_month.year, _month.month + 1));
+    final list = await repo.listFinEntries(from: widget.from, to: widget.to);
     if (!mounted) return;
     setState(() {
       _cats = cats;
@@ -405,31 +560,31 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
     });
   }
 
-  void _shift(int d) {
-    setState(() => _month = DateTime(_month.year, _month.month + d));
-    _reload();
-  }
-
   @override
   Widget build(BuildContext context) {
     final shown = [
       for (final e in _entries)
-        if (_filter == 0 || (_filter == 1 && e.isExpense) || (_filter == 2 && !e.isExpense)) e
+        if (widget.onlyStock
+            ? e.fromStock
+            : widget.categoryId != null
+                ? (!e.fromStock && e.categoryId == widget.categoryId)
+                : (_filter == 0 || (_filter == 1 && e.isExpense) || (_filter == 2 && !e.isExpense)))
+          e
     ];
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Операції', onBack: () => Navigator.pop(context)),
-            _MonthBar(title: finMonthTitle(_month), onPrev: () => _shift(-1), onNext: () => _shift(1)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: FinSegment(
-                labels: const ['Усі', 'Витрати', 'Доходи'],
-                selected: _filter,
-                onChanged: (i) => setState(() => _filter = i),
+            TopBar(title: widget.title, onBack: () => Navigator.pop(context)),
+            if (!_scoped)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: FinSegment(
+                  labels: const ['Усі', 'Витрати', 'Доходи'],
+                  selected: _filter,
+                  onChanged: (i) => setState(() => _filter = i),
+                ),
               ),
-            ),
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
@@ -453,165 +608,4 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
       ),
     );
   }
-}
-
-/// Підсумок сезону (календарний рік): гроші по місяцях і за категоріями.
-class FinSeasonScreen extends StatefulWidget {
-  final Repository repo;
-  const FinSeasonScreen({super.key, required this.repo});
-
-  @override
-  State<FinSeasonScreen> createState() => _FinSeasonScreenState();
-}
-
-class _FinSeasonScreenState extends State<FinSeasonScreen> {
-  int _year = DateTime.now().year;
-  List<FinEntry> _entries = [];
-  Map<String, FinCategory> _cats = {};
-  bool _loaded = false;
-
-  Repository get repo => widget.repo;
-
-  @override
-  void initState() {
-    super.initState();
-    _reload();
-  }
-
-  Future<void> _reload() async {
-    final cats = await repo.finCategoryMap();
-    final list = await repo.listFinEntries(from: DateTime(_year), to: DateTime(_year + 1));
-    if (!mounted) return;
-    setState(() {
-      _cats = cats;
-      _entries = list;
-      _loaded = true;
-    });
-  }
-
-  void _shift(int d) {
-    setState(() => _year += d);
-    _reload();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = FinSummary.of(_entries);
-    final months = [
-      for (var m = 1; m <= 12; m++)
-        FinSummary.of(_entries.where((e) => e.date.month == m)),
-    ];
-    final peak = months.fold(0.0, (a, x) => [a, x.expense, x.income].reduce((p, q) => p > q ? p : q));
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(children: [
-          Column(children: [
-            TopBar(title: 'Підсумок сезону', onBack: () => Navigator.pop(context)),
-            Expanded(
-              child: !_loaded
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
-                      _MonthBar(title: '$_year', onPrev: () => _shift(-1), onNext: () => _shift(1)),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                            color: AppColors.card, borderRadius: BorderRadius.circular(18)),
-                        child: Column(children: [
-                          Text('Баланс сезону', style: TextStyle(color: AppColors.textMuted)),
-                          const SizedBox(height: 4),
-                          Text(uah(s.balance),
-                              style: TextStyle(
-                                  color: s.balance < 0 ? AppColors.danger : AppColors.create,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 10),
-                          Row(children: [
-                            Expanded(
-                                child: Column(children: [
-                              Text('Доходи', style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                              Text(uah(s.income),
-                                  style: TextStyle(color: AppColors.grass, fontWeight: FontWeight.w700)),
-                            ])),
-                            Expanded(
-                                child: Column(children: [
-                              Text('Витрати', style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                              Text(uah(s.expense),
-                                  style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
-                            ])),
-                          ]),
-                        ]),
-                      ),
-                      const SizedBox(height: 18),
-                      Text('По місяцях',
-                          style: TextStyle(
-                              color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 6),
-                      for (var m = 0; m < 12; m++)
-                        if (months[m].expense > 0 || months[m].income > 0)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 5),
-                            child: Row(children: [
-                              SizedBox(
-                                width: 34,
-                                child: Text(finMonthTitle(DateTime(_year, m + 1)).substring(0, 3),
-                                    style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                              ),
-                              Expanded(
-                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  _bar(months[m].expense, peak, AppColors.create),
-                                  const SizedBox(height: 3),
-                                  _bar(months[m].income, peak, AppColors.grass),
-                                ]),
-                              ),
-                              SizedBox(
-                                width: 92,
-                                child: Text(uah(months[m].balance),
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                        color: months[m].balance < 0
-                                            ? AppColors.danger
-                                            : AppColors.text,
-                                        fontSize: 13)),
-                              ),
-                            ]),
-                          ),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Row(children: [
-                          Icon(Icons.circle, size: 10, color: AppColors.create),
-                          Text('  витрати    ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                          Icon(Icons.circle, size: 10, color: AppColors.grass),
-                          Text('  доходи', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        ]),
-                      ),
-                      const SizedBox(height: 18),
-                      Text('Витрати за категоріями',
-                          style: TextStyle(
-                              color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      FinBreakdown(byCategory: s.expenseByCategory, cats: _cats),
-                      const SizedBox(height: 14),
-                      Text('Доходи за категоріями',
-                          style: TextStyle(
-                              color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      FinBreakdown(byCategory: s.incomeByCategory, cats: _cats),
-                    ]),
-            ),
-          ]),
-          const Positioned.fill(child: ScreenFrame()),
-        ]),
-      ),
-    );
-  }
-
-  Widget _bar(double v, double peak, Color color) => ClipRRect(
-        borderRadius: BorderRadius.circular(3),
-        child: LinearProgressIndicator(
-          value: peak > 0 ? v / peak : 0,
-          minHeight: 6,
-          backgroundColor: AppColors.darkBtn,
-          color: color,
-        ),
-      );
 }
