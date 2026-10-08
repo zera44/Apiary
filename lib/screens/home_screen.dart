@@ -19,6 +19,7 @@ import 'feedback_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import 'splash_screen.dart';
+import 'finance_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
 import 'tutorial_screen.dart';
@@ -26,7 +27,7 @@ import 'whats_new_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
-/// «Склад», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
+/// «Фінанси», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
 /// «Вийти» (назад на екран входу).
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
 /// на головний екран; список пасік — через меню ☰); інакше — список.
@@ -174,9 +175,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 14),
                       Row(children: [
                         _Tile(
-                            icon: AppIcon('box', size: 30, color: AppColors.text),
-                            label: 'Склад',
-                            onTap: () => push(StockScreen(repo: repo))), // вкладка «Прихід»
+                            icon: Icon(Icons.account_balance_wallet_outlined,
+                                size: 30, color: AppColors.text),
+                            label: 'Фінанси',
+                            onTap: () => push(FinanceScreen(repo: repo))),
                         _Tile(
                             icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
                             label: 'Навчання',

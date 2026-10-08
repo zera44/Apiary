@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
@@ -246,7 +247,7 @@ void main() {
     // головний екран
     expect(find.byType(HomeScreen), findsOneWidget);
     expect(find.byTooltip('Сканувати QR-код'), findsOneWidget); // значок угорі праворуч
-    expect(find.text('Склад'), findsOneWidget);
+    expect(find.text('Фінанси'), findsOneWidget);
     expect(find.text('Відгук'), findsOneWidget);
     expect(find.text('Навчання'), findsOneWidget);
     expect(find.text('Що нового'), findsOneWidget);
@@ -275,7 +276,8 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
     // «Склад» — склад на вкладці «Прихід»
-    await tester.tap(find.text('Склад'));
+    unawaited(Navigator.of(tester.element(find.byType(HomeScreen)))
+        .push(MaterialPageRoute<void>(builder: (_) => StockScreen(repo: repo))));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(StockScreen), findsOneWidget);
@@ -1654,7 +1656,8 @@ void main() {
     // на головному екрані підказки немає
     expect(find.text('Зрозуміло'), findsNothing);
     // склад — своя підказка; «Пропустити всі» вимикає решту
-    await tester.tap(find.text('Склад'));
+    unawaited(Navigator.of(tester.element(find.byType(HomeScreen)))
+        .push(MaterialPageRoute<void>(builder: (_) => StockScreen(repo: repo))));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Пропустити'), findsOneWidget);
