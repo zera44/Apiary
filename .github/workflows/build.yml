@@ -104,6 +104,43 @@ jobs:
       # будь-яких інших кроків, які могли б тихо переписати файл версій).
       - name: Залежності
         run: flutter pub get --enforce-lockfile
+      # Плагін розпізнавання тексту має застарілий build.gradle (jcenter, AGP 7.1):
+      # з сучасним Gradle не збирається. Підміняємо на мінімальний сучасний.
+      - name: Полагодити gradle плагіна розпізнавання
+        shell: bash
+        run: |
+          d=$(ls -d "$HOME"/.pub-cache/hosted/pub.dev/flutter_tesseract_ocr-*/ | head -1)
+          cat > "${d}android/build.gradle" <<'EOF2'
+          group 'io.paratoner.flutter_tesseract_ocr'
+          version '1.0'
+
+          rootProject.allprojects {
+              repositories {
+                  flatDir {
+                      dirs project(':flutter_tesseract_ocr').file('libs')
+                  }
+              }
+          }
+
+          apply plugin: 'com.android.library'
+
+          android {
+              namespace "io.paratoner.flutter_tesseract_ocr"
+              compileSdk 34
+              defaultConfig {
+                  minSdk 21
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          }
+
+          dependencies {
+              api(name: 'tesseract4android-release', ext: 'aar')
+          }
+          EOF2
+          echo "::notice title=GRADLE::патч застосовано до $d"
       - name: Згенерувати платформні файли
         env:
           APIARY_SIGNING: '1'
