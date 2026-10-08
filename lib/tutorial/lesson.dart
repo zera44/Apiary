@@ -213,7 +213,10 @@ class _LessonLayerState extends State<LessonLayer> {
     return rectOfKey(widget.lesson.key(name), ref);
   }
 
-  bool _allows(LessonCue cue, Offset p) {
+  bool _allows(Offset p) {
+    // крок - щойно змінений (ще до перебудови шару)
+    final cue = widget.lesson.cueFor(widget.screen);
+    if (cue == null) return true;
     if (cue.allowAll) return !cue.deny.any((n) => _rect(n)?.contains(p) ?? false);
     for (final n in [...cue.highlight, ...cue.allow, 'exit']) {
       if (_rect(n)?.contains(p) ?? false) return true;
@@ -229,7 +232,7 @@ class _LessonLayerState extends State<LessonLayer> {
         final cue = widget.lesson.cueFor(widget.screen);
         if (cue == null) return SizedBox.shrink(key: _self);
         return Stack(key: _self, children: [
-          Positioned.fill(child: LessonGate(allow: (p) => _allows(cue, p))),
+          Positioned.fill(child: LessonGate(allow: _allows)),
           // решта екрана притемнена; ціль (у медовому ободку), пасічник і
           // хмарка - яскраві. Форму, яку заповнюють, не затемнюємо.
           if (!cue.allowAll)

@@ -405,6 +405,7 @@ void main() {
     final save = find.widgetWithText(PillButton, 'Зберегти').last;
     expect(tester.getRect(save).bottom, lessThan(640 - 200));
     await tester.enterText(find.byType(TextField).first, 'Сила');
+    await settle(tester);
     await tester.tap(save);
     await settle(tester, 8);
     await tester.tap(find.text('Конструктор'));
