@@ -605,15 +605,7 @@ class _FillDialogState extends State<_FillDialog> {
         pose: line.bear ? LessonPose.bear : LessonPose.leaning,
         text: line.text,
         onTap: line.tapNext ? () => setState(() => _step = _step == 0 ? 2 : _step + 1) : null,
-        below: line.tapNext
-            ? PillButton(
-                text: 'Продовжити',
-                bg: AppColors.accent,
-                height: 38,
-                fontSize: 13,
-                width: double.infinity,
-                onPressed: () => setState(() => _step = _step == 0 ? 2 : _step + 1))
-            : null,
+        onContinue: line.tapNext ? () => setState(() => _step = _step == 0 ? 2 : _step + 1) : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
         toggleEditing: false,
         // табличка висить під кнопкою «Продовжити» (без кнопки - без таблички)

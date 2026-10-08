@@ -350,15 +350,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       onFinish: finish,
       text: text,
       onTap: onTap,
-      below: onTap == null
-          ? null
-          : PillButton(
-              text: _lesson == _Lesson.congrats ? 'Завершити' : 'Продовжити',
-              bg: AppColors.accent,
-              height: 38,
-              fontSize: 13,
-              width: double.infinity,
-              onPressed: onTap),
+      onContinue: onTap,
+      done: _lesson == _Lesson.congrats,
     );
   }
 

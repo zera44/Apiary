@@ -167,7 +167,17 @@ List<Widget> lessonScene({
   double bottomInset = 0,
   bool? toggleEditing,
   VoidCallback? onFinish,
+
+  /// «Продовжити» з табличкою «завершити» на мотузках під хмаркою (малюнок автора);
+  /// [done] - у кінці уроку: широка кнопка «Завершити» без таблички.
+  VoidCallback? onContinue,
+  bool done = false,
 }) {
+  if (onContinue != null) {
+    below = done
+        ? LessonDoneButton(onPressed: onContinue)
+        : LessonContinue(onContinue: onContinue, onFinish: onFinish);
+  }
   final base = kLessonOnButtonBottom + bottomInset;
   // «завершити навчання» — посиланням під хмаркою; якщо там уже кнопка
   // («Продовжити», пігулки) — над хмаркою
@@ -215,7 +225,7 @@ List<Widget> lessonScene({
           image: null,
           imageLeft: 0,
           below: below,
-          gap: below == null ? LessonFinishLink.heightFor(180) + 4 : 70);
+          gap: onContinue != null ? 0 : (below == null ? LessonFinishLink.heightFor(180) + 4 : 70));
   return [
     // решта екрана притемнена, крім цілей у медовому ободку (пасічник і хмарка - над нею)
     const Positioned.fill(child: LessonScrim()),
@@ -248,7 +258,7 @@ List<Widget> lessonScene({
         ),
       ),
     // табличка висить просто під кнопкою «Продовжити»; немає кнопки - немає й таблички
-    if (finish != null && below != null)
+    if (finish != null && below != null && onContinue == null)
       Positioned(
         left: pills ? 164.0 : kLessonBubbleLeft,
         right: 0,
@@ -353,4 +363,143 @@ Rect? rectOfKey(GlobalKey key, RenderBox ref) {
   if (box is! RenderBox || !box.attached || !box.hasSize) return null;
   final topLeft = ref.globalToLocal(box.localToGlobal(Offset.zero));
   return topLeft & box.size;
+}
+
+/// «Продовжити» з дерев'яною табличкою «завершити», прибитою під нею
+/// (малюнок автора, assets/guide/continue_with_sign.webp; написи - текстом).
+class LessonContinue extends StatelessWidget {
+  final VoidCallback onContinue;
+  final VoidCallback? onFinish;
+  final String label;
+  const LessonContinue(
+      {super.key, required this.onContinue, this.onFinish, this.label = 'Продовжити'});
+
+  static const asset = 'assets/guide/continue_with_sign.webp';
+  static const aspect = 700 / 353;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth.isFinite ? c.maxWidth : 240.0;
+      final h = w / aspect;
+      const shadow = [Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))];
+      return SizedBox(
+        width: w,
+        height: h,
+        child: Stack(children: [
+          Positioned.fill(
+              child: Image.asset(asset, fit: BoxFit.fill, filterQuality: FilterQuality.medium)),
+          // кнопка - верхні ~42% малюнка
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: h * 0.42,
+            child: Semantics(
+              button: true,
+              label: label,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onContinue,
+                child: Align(
+                  alignment: const Alignment(0.1, -0.05),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(label,
+                          style: TextStyle(
+                              color: const Color(0xFFFFF3DC),
+                              fontSize: w * 0.075,
+                              fontWeight: FontWeight.w800,
+                              shadows: shadow)),
+                      Icon(Icons.chevron_right, color: const Color(0xFFFFF3DC), size: w * 0.09),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // табличка «завершити» - середня дошка між мотузками
+          if (onFinish != null)
+            Positioned(
+              left: w * 0.24,
+              right: w * 0.24,
+              top: h * 0.5,
+              bottom: 0,
+              child: Semantics(
+                button: true,
+                label: 'завершити навчання',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onFinish,
+                  child: Align(
+                    alignment: const Alignment(0, 0.12),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: w * 0.05),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('завершити',
+                            style: TextStyle(
+                                color: const Color(0xFFFFF3DC),
+                                fontSize: w * 0.06,
+                                fontWeight: FontWeight.w800,
+                                shadows: shadow)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      );
+    });
+  }
+}
+
+/// Фінал уроку: широка медова кнопка «Завершити» (assets/guide/button_wide.webp).
+class LessonDoneButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String label;
+  const LessonDoneButton({super.key, required this.onPressed, this.label = 'Завершити'});
+
+  static const asset = 'assets/guide/button_wide.webp';
+  static const aspect = 700 / 142;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth.isFinite ? c.maxWidth : 240.0;
+      final h = w / aspect;
+      return Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onPressed,
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: Stack(children: [
+              Positioned.fill(
+                  child: Image.asset(asset, fit: BoxFit.fill, filterQuality: FilterQuality.medium)),
+              Align(
+                alignment: const Alignment(0.12, -0.1),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label,
+                      style: TextStyle(
+                          color: const Color(0xFFFFF3DC),
+                          fontSize: w * 0.075,
+                          fontWeight: FontWeight.w800,
+                          shadows: const [
+                            Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))
+                          ])),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+    });
+  }
 }
