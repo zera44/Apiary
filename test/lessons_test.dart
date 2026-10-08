@@ -42,7 +42,8 @@ void main() {
   Future<void> settle(WidgetTester tester, [int n = 5]) async {
     for (var i = 0; i < n; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-      await tester.pump(const Duration(milliseconds: 50));
+      // довгі кроки - з переходами між екранами (анімація до ~0,8 с)
+      await tester.pump(Duration(milliseconds: n >= 8 ? 200 : 50));
     }
   }
 
