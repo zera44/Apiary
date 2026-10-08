@@ -81,8 +81,8 @@ void main() {
     expect(e.lineCount, 3);
     expect(e.categoryId, korm.id);
     final s = FinSummary.of(entries);
-    expect(s.expense, 1200);
-    expect(s.balance, -1200);
+    expect(s.expense, 1300); // 1200 витрата + 100 ручний прихід Вощини на складі
+    expect(s.balance, -1300);
     // той самий прихід не задвоюється як «внесено на складі»
     expect(entries.where((x) => x.fromStock).length, 1); // лише ручний прихід Вощини (100 ₴)
     expect(entries.singleWhere((x) => x.fromStock).amount, 100);

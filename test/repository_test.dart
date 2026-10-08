@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:apiary/data/database.dart';
+import 'package:apiary/data/finance.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
@@ -290,6 +291,14 @@ void main() {
     await repo.linkQr('https://example.org/hive/1', EntityRef.element(id));
     final item = await repo.addStockItem('Цукор', 'кг');
     await repo.receiveStock(item, 1, total: 30);
+    // фінанси: операція з рядком (категорії створює init)
+    final cat = (await repo.listFinCategories()).first;
+    await repo.addFinOp(
+        kind: 'expense',
+        categoryId: cat.id,
+        amount: 10,
+        date: DateTime.now(),
+        lines: const [FinLineInput(name: 'Цукор', qty: 1, unit: 'кг', price: 10)]);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }
