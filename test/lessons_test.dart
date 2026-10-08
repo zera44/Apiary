@@ -1,0 +1,458 @@
+import 'package:apiary/data/database.dart';
+import 'package:apiary/data/models.dart';
+import 'package:apiary/data/repository.dart';
+import 'package:apiary/icons/app_icons.dart';
+import 'package:apiary/screens/map_screen.dart';
+import 'package:apiary/screens/parameters_screen.dart';
+import 'package:apiary/screens/settings_screen.dart';
+import 'package:apiary/screens/template_editor_screen.dart';
+import 'package:apiary/screens/tutorial_screen.dart';
+import 'package:apiary/screens/whats_new_screen.dart';
+import 'package:apiary/screens/home_screen.dart';
+import 'package:apiary/ui/common.dart';
+import 'package:apiary/ui/first_hints.dart';
+import 'package:apiary/ui/grid_view.dart';
+import 'package:apiary/ui/theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+/// Уроки з «Навчання» (крок за кроком, як їх проходить людина) і нові дрібниці
+/// таблиці параметрів: перейменування тапом, перемикач «Застосувати до», свайп.
+void main() {
+  late Repository repo;
+
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+    await AppIcons.load();
+    Hints.enabled = false;
+    WhatsNewScreen.enabled = false;
+    HomeScreen.mapBackdrop = false;
+  });
+
+  setUp(() async {
+    final db = await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath);
+    repo = Repository(db);
+    await repo.init();
+  });
+
+  tearDown(() async => repo.db.close());
+
+  Future<void> settle(WidgetTester tester, [int n = 5]) async {
+    for (var i = 0; i < n; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
+  Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
+
+  Future<Repository> sandbox() async {
+    final r = Repository(await AppDatabase.openSandbox(databaseFactoryFfiNoIsolate));
+    await r.prepareLikeFreshInstall();
+    return r;
+  }
+
+  /// Екран як у телефона.
+  Future<void> phone(WidgetTester tester, [Size size = const Size(412, 915)]) async {
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+  }
+
+  Future<void> openTutorial(WidgetTester tester) async {
+    await tester.pumpWidget(wrap(TutorialScreen(realRepo: repo, openSandbox: sandbox)));
+    await settle(tester);
+  }
+
+  Future<void> startLesson(WidgetTester tester, String title) async {
+    await tester.ensureVisible(find.text(title));
+    await settle(tester, 2);
+    await tester.tap(find.text(title));
+    await settle(tester, 12);
+  }
+
+  /// Ціль у «вікні» затемнення (не притемнена).
+  void expectLit(WidgetTester tester, Finder target) {
+    final scrimF = find.byType(LessonScrim).last;
+    final holes = tester.state<LessonScrimState>(scrimF).holes;
+    final box = tester.renderObject<RenderBox>(scrimF);
+    final c = box.globalToLocal(tester.getCenter(target));
+    expect(holes.any((h) => h.contains(c)), isTrue, reason: 'ціль притемнена');
+  }
+
+  bool ringOn(WidgetTester tester, Finder target) => tester
+      .widgetList<HoneyRing>(find.ancestor(of: target, matching: find.byType(HoneyRing)))
+      .any((r) => r.on);
+
+  Future<void> longDrag(WidgetTester tester, Finder from, Finder to) async {
+    final g = await tester.startGesture(tester.getCenter(from));
+    await tester.pump(const Duration(milliseconds: 400));
+    await g.moveBy(const Offset(0, -8));
+    await tester.pump(const Duration(milliseconds: 20));
+    await g.moveTo(tester.getCenter(to));
+    await tester.pump(const Duration(milliseconds: 20));
+    await g.moveBy(const Offset(0, 2));
+    await tester.pump(const Duration(milliseconds: 20));
+    await g.up();
+    await settle(tester, 3);
+  }
+
+  Finder backArrow() =>
+      find.byWidgetPredicate((w) => w is CircleIconButton && w.icon == 'back_arrow');
+
+  testWidgets('навчання: плитки уроків, «скоро» - лише повідомлення', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    expect(find.text('Базові поняття'), findsOneWidget);
+    expect(find.text('Групи і параметри обходу'), findsOneWidget);
+    expect(find.text('Налаштування (шаблони і параметри)'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Історія'), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('скоро'), findsNWidgets(3));
+    await tester.tap(find.text('QR-код'));
+    await settle(tester);
+    expect(find.textContaining('скоро з\'явиться'), findsOneWidget);
+    expect(find.byType(MapScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('урок «Групи і параметри обходу» - від вулика до ідеальної таблиці', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startLesson(tester, 'Групи і параметри обходу');
+
+    // 1. натисни на вулик
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    final glow = find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('lesson-pick-glow-'));
+    expect(glow, findsWidgets);
+    expectLit(tester, glow.first);
+    // поза вулика - нічого не відкривається (завіса)
+    await tester.tapAt(const Offset(40, 400));
+    await settle(tester);
+    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    await tester.tapAt(tester.getCenter(glow.first));
+    await settle(tester, 8);
+
+    // 2. панель вулика, «Параметри» в ободку й не притемнені
+    expect(find.textContaining('геть не густо'), findsOneWidget);
+    final paramsBtn = find.widgetWithText(PillButton, 'Параметри');
+    expect(ringOn(tester, paramsBtn), isTrue);
+    expectLit(tester, paramsBtn);
+    await tester.tap(paramsBtn);
+    await settle(tester, 8);
+
+    // 3. «Створити параметр»
+    expect(find.byType(ParametersScreen), findsOneWidget);
+    expect(find.text('Таблиця параметрів'), findsOneWidget);
+    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    final create = find.byTooltip('Створити параметр');
+    expectLit(tester, create);
+    // перемикач «Застосувати до» з'являється лише на своєму кроці
+    expect(find.byType(ApplyScopeSwitch), findsNothing);
+    await tester.tap(create);
+    await settle(tester);
+
+    // 4. форма - пояснення з «Продовжити»
+    expect(find.textContaining('Тут ти можеш назвати'), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    // 5. заповнити: «Скасувати» не працює
+    expect(find.textContaining('Створи свій параметр'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.textContaining('Створи свій параметр'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
+    await settle(tester);
+    // 6. «Не забудь зберегти»
+    expect(find.textContaining('Не забудь'), findsOneWidget);
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester, 8);
+
+    // 7. відкрий конструктор
+    expect(find.textContaining('вже додано до конструктора'), findsOneWidget);
+    expect(find.textContaining('«Сила сім\'ї»'), findsOneWidget);
+    await tester.tap(find.text('Конструктор'));
+    await settle(tester);
+
+    // 8. нова група
+    expect(find.textContaining('який безлад'), findsOneWidget);
+    await tester.tap(find.text('+ Нова група'));
+    await settle(tester);
+    // 9. назва - лише «Обходи»
+    expect(find.textContaining('Назви її'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Огляд');
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester);
+    expect(find.textContaining('Назви групу «Обходи»'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Обходи');
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester, 8);
+
+    // 10. перетягнути три характеристики обходу в «Обходи»
+    expect(find.textContaining('до нової групи'), findsOneWidget);
+    for (final name in ['Періодичність обходу', 'Кількість днів до обходу', 'Дата останнього обходу']) {
+      final chip = find.descendant(
+          of: find.byType(LongPressDraggable<String>), matching: find.textContaining(name));
+      await tester.ensureVisible(chip.first);
+      await settle(tester, 2);
+      await tester.ensureVisible(find.text('Обходи'));
+      await settle(tester, 2);
+      await longDrag(tester, chip.first, find.text('Обходи'));
+    }
+    await settle(tester, 4);
+    final groups = (await tester.runAsync(() => repo.paramGroups()))!;
+    expect(groups, isEmpty); // справжні дані не чіпаємо - усе в пісочниці
+
+    // 11. «Застосувати до» - з «Продовжити»
+    expect(find.textContaining('За потреби можна застосувати'), findsOneWidget);
+    expect(find.byType(ApplyScopeSwitch), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+
+    // 12. вимкнути зайве - свій параметр
+    expect(find.textContaining('Вимкни все лишнє'), findsOneWidget);
+    final check = find.descendant(
+        of: find.widgetWithText(ListCard, 'Сила сім\'ї'), matching: find.byType(CheckToggle));
+    expect(ringOn(tester, check), isTrue);
+    await tester.tap(check);
+    await settle(tester);
+
+    // 13. назад до вулика
+    expect(find.textContaining('Повернімось до'), findsOneWidget);
+    await tester.tap(backArrow().first);
+    await settle(tester, 10);
+
+    // 14. таблиця на панелі - з групою «Обходи»; «Завершити»
+    expect(find.byType(ParametersScreen), findsNothing);
+    expect(find.textContaining('Вона ідеальна'), findsOneWidget);
+    expect(find.text('Обходи'), findsWidgets);
+    expect(find.text('Сила сім\'ї'), findsNothing);
+    await tester.tap(find.text('Завершити'));
+    await settle(tester, 8);
+    expect(find.byType(MapScreen), findsNothing);
+    expect(find.text('Групи і параметри обходу'), findsOneWidget);
+    // пройдено - наступного разу спочатку, без питання
+    expect(await tester.runAsync(() => repo.getMeta('lesson_params')), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('урок перервали - «Продовжити» з того місця або «Спочатку»', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startLesson(tester, 'Групи і параметри обходу');
+    final glow = find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('lesson-pick-glow-'));
+    await tester.tapAt(tester.getCenter(glow.first));
+    await settle(tester, 8);
+    await tester.tap(find.widgetWithText(PillButton, 'Параметри'));
+    await settle(tester, 8);
+    await tester.tap(find.byTooltip('Створити параметр'));
+    await settle(tester);
+    // системне «назад» у формі - знову крок «Створити параметр», а не глухий кут
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    // «назад» на екрані - вихід з уроку
+    await tester.binding.handlePopRoute();
+    await settle(tester, 8);
+    expect(find.byType(MapScreen), findsNothing);
+    expect(await tester.runAsync(() => repo.getMeta('lesson_params')), isNotNull);
+
+    // знову урок - питання
+    await tester.tap(find.text('Групи і параметри обходу'));
+    await settle(tester);
+    expect(find.text('Продовжити'), findsOneWidget);
+    expect(find.text('Спочатку'), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester, 15);
+    // одразу «Таблиця параметрів» вулика уроку
+    expect(find.byType(ParametersScreen), findsOneWidget);
+    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await settle(tester, 8);
+
+    await tester.tap(find.text('Групи і параметри обходу'));
+    await settle(tester);
+    await tester.tap(find.text('Спочатку'));
+    await settle(tester, 12);
+    expect(find.byType(ParametersScreen), findsNothing);
+    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    await tester.tap(backArrow().first);
+    await settle(tester, 8);
+    expect(find.byType(MapScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('урок «Налаштування» - шаблон-перешкода 2×2 і він у своїх шаблонах', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startLesson(tester, 'Налаштування (шаблони і параметри)');
+
+    expect(find.textContaining('це знову ти'), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    expect(find.textContaining('Натисни на'), findsOneWidget);
+    expectLit(tester, find.byTooltip('Налаштування'));
+    await tester.tap(find.byTooltip('Налаштування'));
+    await settle(tester, 8);
+
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.text('Характеристики'), findsNothing);
+    expect(find.textContaining('загальні налаштування додатку'), findsOneWidget);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    expect(find.textContaining('створимо новий шаблон'), findsOneWidget);
+    await tester.tap(find.text('Створити шаблон'));
+    await settle(tester, 8);
+
+    expect(find.byType(TemplateEditorScreen), findsOneWidget);
+    expect(find.textContaining('Пора створювати'), findsOneWidget);
+    await tester.tap(find.byTooltip('Додати'));
+    await settle(tester);
+    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget);
+    // вулик зараз не можна - лише перешкоду
+    await tester.tap(find.byTooltip('Вулик'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget);
+    await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
+    await settle(tester);
+
+    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget);
+    // у режимі додавання «+» - червоний хрестик
+    expect(find.byTooltip('Завершити додавання'), findsOneWidget);
+    final gridRect = tester.getRect(find.byType(InfiniteGrid));
+    final first = gridRect.topLeft + Offset(gridRect.width * 0.3, gridRect.height * 0.25);
+    await tester.tapAt(first);
+    await settle(tester);
+    expect(find.textContaining('заповни квадрат'), findsOneWidget);
+    // квадрат у медовій рамці - ще три порожні клітинки
+    final square = find.byWidgetPredicate((w) =>
+        w is DecoratedBox &&
+        w.decoration is BoxDecoration &&
+        (w.decoration as BoxDecoration).border is Border &&
+        ((w.decoration as BoxDecoration).border! as Border).top.color == AppColors.create &&
+        ((w.decoration as BoxDecoration).border! as Border).top.width == 3);
+    final r = tester.getRect(square.last).deflate(3);
+    expect(r.contains(first), isTrue);
+    expectLit(tester, square.last);
+    for (final c in [
+      r.topLeft + Offset(r.width / 4, r.height / 4),
+      r.topLeft + Offset(r.width * 3 / 4, r.height / 4),
+      r.topLeft + Offset(r.width / 4, r.height * 3 / 4),
+      r.topLeft + Offset(r.width * 3 / 4, r.height * 3 / 4),
+    ]) {
+      if ((c - first).distance < r.width / 4) continue; // перша плитка вже стоїть
+      await tester.tapAt(c);
+      await settle(tester, 2);
+    }
+    expect(find.textContaining('Заверши створення'), findsOneWidget);
+    await tester.tap(find.byTooltip('Завершити додавання'));
+    await settle(tester);
+    expect(find.textContaining('А тепер - '), findsOneWidget);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await settle(tester);
+    expect(find.textContaining('Назви свій шаблон'), findsOneWidget);
+    // системне «назад» - знову крок «зберегти»
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.textContaining('А тепер - '), findsOneWidget);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).first, 'Скеля');
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester, 8);
+
+    expect(find.byType(TemplateEditorScreen), findsNothing);
+    expect(find.textContaining('швидко вчишся'), findsOneWidget);
+    expect(find.textContaining('«Скеля»'), findsOneWidget);
+    await tester.tap(find.text('Завершити'));
+    await settle(tester, 8);
+    expect(find.byType(SettingsScreen), findsNothing);
+    final real = (await tester.runAsync(() => repo.listTemplates()))!;
+    final t = real.where((t) => t.name == 'Скеля').single;
+    expect(t.cells.length, 4);
+    expect(await tester.runAsync(() => repo.getMeta('lesson_templates')), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('таблиця параметрів: тап по назві - перейменувати, поки немає записів', (tester) async {
+    await phone(tester);
+    final aid = (await tester.runAsync(() => repo.addApiary('П')))!;
+    final gid = (await tester.runAsync(
+        () => repo.addGroup(aid, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1')))!;
+    final (used, free) = (await tester.runAsync(() async {
+      final a = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
+      await repo.addParameterRecord(a, '12', EntityRef.group(gid));
+      final b = await repo.addParameter('Настрій');
+      return (a, b);
+    }))!;
+    final hive = (await tester.runAsync(() => repo.getGroupElements(gid)))!.first;
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    await tester.tap(find.text('Вага'));
+    await settle(tester);
+    expect(find.text('Не можна перейменувати'), findsOneWidget);
+    await tester.tap(find.text('Гаразд'));
+    await settle(tester);
+    await tester.tap(find.text('Настрій'));
+    await settle(tester);
+    expect(find.text('Редагувати параметр'), findsOneWidget);
+    expect(find.text('Видалити параметр'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Настрій бджіл');
+    await tester.tap(find.text('Зберегти').last);
+    await settle(tester);
+    expect(find.text('Настрій бджіл'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.getParameter(free)))!.name, 'Настрій бджіл');
+    expect((await tester.runAsync(() => repo.getParameter(used)))!.name, 'Вага');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Застосувати до»: лише такі самі вулики (той самий клас)', (tester) async {
+    await phone(tester);
+    final (hive, lezhak2, vulyk) = (await tester.runAsync(() async {
+      final aid = await repo.addApiary('П');
+      final g1 = await repo.addGroup(aid, {'0,0': 'hive'}, 0, 0, groupLabel: 'Лежак 1');
+      final g2 = await repo.addGroup(aid, {'0,0': 'hive'}, 3, 0, groupLabel: 'Лежак 2');
+      final g3 = await repo.addGroup(aid, {'0,0': 'hive'}, 6, 0, groupLabel: 'Вулик 1');
+      final h = (await repo.getGroupElements(g1)).first;
+      return (h, g2, g3);
+    }))!;
+    final p = (await tester.runAsync(() => repo.addParameter('Сила')))!;
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    await tester.tap(find.descendant(
+        of: find.widgetWithText(ListCard, 'Сила'), matching: find.byType(CheckToggle)));
+    await settle(tester);
+    expect(find.text('Усі «Лежак»'), findsOneWidget);
+    await tester.tap(find.text('Усі «Лежак»'));
+    await settle(tester);
+    await tester.tap(backArrow().first);
+    await settle(tester);
+    final a = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(lezhak2), elType: 'hive')))!;
+    final b = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(vulyk), elType: 'hive')))!;
+    expect(a, contains(p));
+    expect(b, isNot(contains(p)));
+  });
+
+  testWidgets('вкладки свайпом: «Список» ↔ «Конструктор»', (tester) async {
+    await phone(tester);
+    final hive = (await tester.runAsync(() async {
+      final aid = await repo.addApiary('П');
+      final g = await repo.addGroup(aid, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1');
+      return (await repo.getGroupElements(g)).first;
+    }))!;
+    await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
+    await settle(tester);
+    expect(find.text('+ Нова група'), findsNothing);
+    await tester.fling(find.byType(TabSwipe), const Offset(-300, 0), 1200);
+    await settle(tester);
+    expect(find.text('+ Нова група'), findsOneWidget);
+    await tester.fling(find.byType(TabSwipe), const Offset(300, 0), 1200);
+    await settle(tester);
+    expect(find.text('+ Нова група'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+}

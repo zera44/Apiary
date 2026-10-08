@@ -205,7 +205,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
             // створений шаблон лишається у справжніх шаблонах - розміщувати сам
             final name = c.data['template'];
             final t = (await sb.listTemplates()).where((t) => t.name == name).firstOrNull;
-            if (t != null && real != null) await real.addTemplate(t.name, t.width, t.height, t.cells);
+            if (t != null && real != null) {
+              // така назва вже є у своїх шаблонах - додаємо номер
+              final taken = {for (final x in await real.listTemplates()) x.name};
+              var name = t.name;
+              for (var n = 2; taken.contains(name); n++) {
+                name = '${t.name} $n';
+              }
+              await real.addTemplate(name, t.width, t.height, t.cells);
+            }
             // і назад на свою карту (туди, звідки відкривали «Навчання»)
             nav.popUntil((r) => r == lessonsRoute);
             if (nav.canPop()) nav.pop();

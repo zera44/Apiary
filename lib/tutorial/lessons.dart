@@ -144,7 +144,13 @@ LessonCue? paramsLessonScript(LessonController c) {
         ],
       );
     case 12:
-      return LessonCue(screen: 'params', pic: LessonPic.thinking, highlight: const ['lesson-param-check'], text: [
+      // список можна гортати (на малому екрані параметр уроку нижче)
+      return LessonCue(
+          screen: 'params',
+          pic: LessonPic.thinking,
+          highlight: const ['lesson-param-check'],
+          allow: const ['list'],
+          text: [
         _t('Бачив, ми не все використали? '),
         _h('Вимкни все лишнє'),
       ]);

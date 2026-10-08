@@ -2249,7 +2249,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       onRename: _panelLocked ? () {} : () => _panelGuard(_panelRename),
                       onIcon: _panelLocked ? () {} : () => _panelGuard(_panelIcon),
                       onColor: _panelLocked ? () {} : () => _panelGuard(_panelColor),
-                      onEditParams: _lessonInspect ? () {} : () => _panelGuard(_panelEditParams),
+                      // урок із «Навчання»: «Параметри» - лише на своєму кроці
+                      onEditParams: _lessonInspect
+                          ? () {}
+                          : () {
+                              if ((widget.lesson?.step ?? 2) != 2) return;
+                              _panelGuard(_panelEditParams);
+                            },
                       onFill: (_lessonInspect && !_inspectRead) || widget.lesson != null ? () {} : () => _panelGuard(_panelFill),
                       onVisited: (panelElement?.isHive ?? false)
                           ? (_panelLocked ? () {} : () => _panelGuard(_panelVisited))

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -111,6 +113,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
   @override
   void dispose() {
     _lesson?.removeListener(_onLesson);
+    _autoScroll?.cancel();
+    _consScroll.dispose();
     super.dispose();
   }
 
@@ -118,8 +122,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
   static int? _lessonTab(int step) => step >= 8 && step <= 11 ? 1 : (step >= 3 && step <= 13 ? 0 : null);
 
   void _onLesson() {
+    if (!mounted) return;
+    // перебудувати й тоді, коли вкладка та сама (перемикач з'являється на кроці 11)
     final want = _lessonTab(_lesson!.step);
-    if (mounted && want != null && want != _tab) setState(() => _tab = want);
+    setState(() {
+      if (want != null) _tab = want;
+    });
   }
 
   void _setTab(int i) {
@@ -195,12 +203,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
   void _back() {
     final l = _lesson;
     if (l != null) {
-      // в уроці «назад» - лише на кроці «Повернімось до вулика»; інакше - вихід з уроку
-      if (l.step != 13) {
+      // в уроці «назад» - на кроці «Повернімось до вулика»; раніше - вихід з уроку
+      // (а після нього, з панелі на фіналі, - звичайне «назад»)
+      if (l.step < 13) {
         l.exit();
         return;
       }
-      l.go(14);
+      l.advance(13, 14);
     }
     if (widget.catalog || params == null) {
       Navigator.pop(context); // поки список не завантажено — нічого не знімаємо
@@ -456,6 +465,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
       await _delete(param);
       return null;
     }
+    // урок: форму закрили («назад» системи) - знову крок «Створити параметр»
+    if (l != null && action != 'save' && l.step >= 4 && l.step <= 6) l.go(3);
     final name = nameCtrl.text.trim();
     final unit = unitCtrl.text.trim();
     if (action != 'save' || name.isEmpty) return null;
@@ -726,7 +737,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 ),
               ),
             // кому застосувати набір і порядок: вулику, таким самим вуликам, усій пасіці
-            if (!widget.catalog && _canApplyToAll)
+            if (!widget.catalog && _canApplyToAll && (_lesson == null || _lesson!.step >= 11))
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: LessonTarget(
@@ -822,7 +833,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
           ? null
           : (which, b) => LessonTarget(lesson: l, name: 'group-$which', radius: 14, child: b),
     );
-    if (name == null || name.trim().isEmpty || !mounted) return;
+    if (name == null || name.trim().isEmpty || !mounted) {
+      l?.advance(9, 8); // урок: вікно закрили - знову «Нова група»
+      return;
+    }
     setState(() => groups.add(ParamGroup(id: 'g${DateTime.now().microsecondsSinceEpoch}', name: name.trim())));
     l?.advance(9, 10);
     _lessonGroupsChanged();
@@ -840,8 +854,46 @@ class _ParametersScreenState extends State<ParametersScreen> {
     _lessonGroupsChanged();
   }
 
+  // поки параметр тягнуть до краю конструктора - список сам гортається
+  final _consScroll = ScrollController();
+  final _consBox = GlobalKey();
+  Timer? _autoScroll;
+  double _dragY = 0;
+
+  void _dragMoved(DragUpdateDetails d) {
+    _dragY = d.globalPosition.dy;
+    _autoScroll ??= Timer.periodic(const Duration(milliseconds: 16), (_) => _autoScrollTick());
+  }
+
+  void _dragStopped() {
+    _autoScroll?.cancel();
+    _autoScroll = null;
+  }
+
+  void _autoScrollTick() {
+    final box = _consBox.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !_consScroll.hasClients) return;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final bottom = top + box.size.height;
+    const edge = 56.0, speed = 10.0;
+    double v = 0;
+    if (_dragY < top + edge) {
+      v = -speed * ((top + edge - _dragY) / edge).clamp(0.0, 1.0);
+    } else if (_dragY > bottom - edge) {
+      v = speed * ((_dragY - bottom + edge) / edge).clamp(0.0, 1.0);
+    }
+    if (v == 0) return;
+    final p = _consScroll.position;
+    final to = (p.pixels + v).clamp(p.minScrollExtent, p.maxScrollExtent);
+    if (to != p.pixels) _consScroll.jumpTo(to);
+  }
+
   Widget _dragChip(Parameter p, Widget child) => LongPressDraggable<String>(
         data: p.id,
+        onDragUpdate: _dragMoved,
+        onDragEnd: (_) => _dragStopped(),
+        onDraggableCanceled: (_, _) => _dragStopped(),
+        onDragCompleted: _dragStopped,
         // майже одразу після дотику (не 0,5 с), але гортання списку ще працює
         delay: const Duration(milliseconds: 120),
         feedback: Material(
@@ -984,7 +1036,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
       );
     }
 
-    return ListView(key: _lesson?.key('constructor'), padding: const EdgeInsets.all(12), children: [
+    return KeyedSubtree(
+      key: _consBox,
+      child: ListView(
+        key: _lesson?.key('constructor'),
+        controller: _consScroll,
+        padding: const EdgeInsets.all(12),
+        children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
         child: Text(
@@ -1051,7 +1109,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
           ]),
         ),
       ),
-    ]);
+    ]),
+    );
   }
 
   /// Вибір для вулика / шаблону: обрані — вгорі в їхньому порядку, їх можна
@@ -1062,7 +1121,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final chosen = [for (final id in selected) if (byId[id] != null) byId[id]!];
     final rest = [for (final p in all) if (!selected.contains(p.id)) p];
     final items = [...chosen, ...rest];
+    // в уроці порядок не міняють (і копія картки під пальцем дублювала б ціль уроку)
+    final reorder = _lesson == null;
     return ReorderableListView.builder(
+      key: _lesson?.key('list'),
       padding: const EdgeInsets.all(12),
       buildDefaultDragHandles: false,
       itemCount: items.length,
@@ -1080,12 +1142,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
         });
       },
       itemBuilder: (_, i) {
-        final card = _card(items[i], dragIndex: i < chosen.length ? i : null);
+        final card = _card(items[i], dragIndex: reorder && i < chosen.length ? i : null);
         return Padding(
           key: ValueKey(items[i].id),
           padding: const EdgeInsets.only(bottom: 10),
           // обраний можна тягнути й за саму картку (довгим дотиком), не лише за ручку
-          child: i < chosen.length
+          child: reorder && i < chosen.length
               ? ReorderableDelayedDragStartListener(index: i, child: card)
               : card,
         );

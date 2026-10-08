@@ -95,7 +95,8 @@ class LessonController extends ChangeNotifier {
   int get step => _step;
 
   void go(int s) {
-    if (s == _step) return;
+    // урок уже закрито (вийшли чи пройшли) - пізні кроки не пишемо
+    if (s == _step || _finishing) return;
     _step = s;
     onSave(this);
     notifyListeners();
@@ -110,6 +111,7 @@ class LessonController extends ChangeNotifier {
 
   void setData(String key, String value) {
     data[key] = value;
+    if (_finishing) return;
     onSave(this);
   }
 
@@ -445,7 +447,17 @@ class LessonDoneButton extends StatelessWidget {
 Widget lessonDialog(LessonController? lesson, String screen, Widget dialog) {
   if (lesson == null) return dialog;
   return Stack(children: [
-    Positioned.fill(child: Padding(padding: const EdgeInsets.only(bottom: 300), child: dialog)),
+    // вікно над пасічником; коли відкрита клавіатура (вона й так закриває
+    // пасічника) - не стискаємо вікно ще й відступом
+    Positioned.fill(
+      child: Builder(builder: (context) {
+        final kb = MediaQuery.viewInsetsOf(context).bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: (kLessonReserve - kb).clamp(0.0, kLessonReserve)),
+          child: dialog,
+        );
+      }),
+    ),
     Positioned.fill(child: LessonLayer(lesson: lesson, screen: screen)),
   ]);
 }

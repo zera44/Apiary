@@ -314,8 +314,18 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     final l = _lesson;
     if (l == null) return;
     if (l.step == 7 && cells[key]?.type == 'obstacle') {
-      // квадрат - вгору й праворуч (унизу пасічник)
-      setState(() => _lessonSquare = {key, (key.$1 + 1, key.$2), (key.$1, key.$2 + 1), (key.$1 + 1, key.$2 + 1)});
+      // квадрат росте від плитки до середини поля: унизу пасічник, праворуч -
+      // кнопки масштабу, тож туди не лізе
+      final size = _gridKey.currentContext?.size;
+      final c = grid.cellRect(key.$1, key.$2).center;
+      final dx = size != null && c.dx > size.width / 2 ? -1 : 1;
+      final dy = size != null && c.dy > size.height / 2 ? -1 : 1;
+      setState(() => _lessonSquare = {
+            key,
+            (key.$1 + dx, key.$2),
+            (key.$1, key.$2 + dy),
+            (key.$1 + dx, key.$2 + dy),
+          });
       l.go(8);
     } else if (l.step == 8 &&
         _lessonSquare.isNotEmpty &&
@@ -535,7 +545,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         ));
       },
     );
-    if (picked == null) return;
+    if (picked == null) {
+      l?.advance(6, 5); // урок: вікно закрили - знову «+»
+      return;
+    }
     if (picked.$1 == 'obstacle') l?.advance(6, 7);
     setState(() {
       mode = picked.$1;
@@ -642,6 +655,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
               ? null
               : (which, b) => LessonTarget(lesson: l, name: 'name-$which', radius: 14, child: b));
       _saving = false;
+      if (asked == null) l?.advance(11, 10); // урок: вікно закрили - знову «зберегти»
       if (asked == null || !mounted) return;
       title = asked;
     }

@@ -829,12 +829,15 @@ class LessonScrim extends StatefulWidget {
   const LessonScrim({super.key, this.extra});
 
   @override
-  State<LessonScrim> createState() => _LessonScrimState();
+  State<LessonScrim> createState() => LessonScrimState();
 }
 
-class _LessonScrimState extends State<LessonScrim> with SingleTickerProviderStateMixin {
+class LessonScrimState extends State<LessonScrim> with SingleTickerProviderStateMixin {
   late final Ticker _ticker;
   List<RRect> _holes = const [];
+
+  /// «Вікна» в затемненні (у координатах завіси).
+  List<RRect> get holes => _holes;
 
   @override
   void initState() {
@@ -888,11 +891,14 @@ class _ScrimPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (holes.isEmpty) return;
-    final p = Path()..addRect(Offset.zero & size);
+    // «вікна» об'єднуємо: ціль і її сяйво перекриваються, а з even-odd
+    // перекриття знову ставало темним
+    Path? cut;
     for (final h in holes) {
-      p.addRRect(h);
+      final hp = Path()..addRRect(h);
+      cut = cut == null ? hp : Path.combine(PathOperation.union, cut, hp);
     }
-    p.fillType = PathFillType.evenOdd;
+    final p = Path.combine(PathOperation.difference, Path()..addRect(Offset.zero & size), cut!);
     canvas.drawPath(p, Paint()..color = Colors.black.withValues(alpha: 0.55));
   }
 
