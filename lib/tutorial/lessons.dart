@@ -60,7 +60,8 @@ LessonCue? paramsLessonScript(LessonController c) {
         _t('!'),
       ]);
     case 2:
-      return LessonCue(screen: 'map', highlight: const ['panel-params'], text: [
+      // панель можна гортати (на малому екрані «Параметри» нижче)
+      return LessonCue(screen: 'map', highlight: const ['panel-params'], allow: const ['panel'], text: [
         _t('Як бачиш - геть не густо. Додаймо нові '),
         _h('параметри'),
         _t('!'),

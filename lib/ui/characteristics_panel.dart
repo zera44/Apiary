@@ -141,6 +141,9 @@ class CharacteristicsPanel extends StatelessWidget {
           Positioned.fill(
             top: 48,
             child: ListView(
+              // урок: будуємо все одразу - кнопка уроку внизу панелі має існувати,
+              // щоб її підсвітити й прокрутити до неї (на малому екрані вона нижче)
+              cacheExtent: lesson != null ? 4000 : null,
               padding: const EdgeInsets.fromLTRB(18, 0, 14, 18),
               children: [
                 Align(

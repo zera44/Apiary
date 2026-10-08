@@ -394,6 +394,7 @@ void main() {
         w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('lesson-pick-glow-'));
     await tester.tapAt(tester.getCenter(glow.first));
     await settle(tester, 8);
+    expect(find.textContaining('геть не густо'), findsOneWidget, reason: said(tester));
     await tester.tap(find.widgetWithText(PillButton, 'Параметри'));
     await settle(tester, 8);
     await tester.tap(find.byTooltip('Створити параметр'));
