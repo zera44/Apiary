@@ -47,18 +47,18 @@ final _priceLine = RegExp(
 
 /// Службові рядки чека - не товари.
 final _skip = RegExp(
-  r'(пдв|податк|фн\b|фн\s|пн\b|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
-  r'округл|дата|час\b|еквайр|термінал|термiнал|рнок|iпн|іпн|код\b|номер|тел\b|тел\.|'
+  r'(пдв|податк|фн(?=\s|$|[.:№])|пн(?=\s|$|[.:№])|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
+  r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
   r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість)',
   caseSensitive: false,
 );
 
 /// Кінець переліку товарів.
-final _end = RegExp(r'^(сума|разом|всього|до сплати|усього|підсумок)\b', caseSensitive: false);
+final _end = RegExp(r'^(сума|разом|всього|до сплати|усього|підсумок)(?=\s|$|[.:])', caseSensitive: false);
 
 /// Велика літера «О» всередині числа (45.5О, 1О0) - це нуль.
 String _fixDigits(String s) => s.replaceAllMapped(
-    RegExp(r'(?<=\d)[OО](?=\d)|(?<=\d[.,])[OО]|(?<=\d)[OО](?=[.,]\d)'), (_) => '0');
+    RegExp(r'(?<=\d)[OО](?=\d)|(?<=\d[.,])[OО]|(?<=\d)[OО](?=[.,]\d)|(?<=\d)[OО](?=\s|$)'), (_) => '0');
 
 double? _num(String? s) {
   if (s == null) return null;
@@ -90,7 +90,8 @@ List<ReceiptRow> parseReceipt(String text) {
       .where((l) => l.isNotEmpty);
 
   for (final line in lines) {
-    if (_end.hasMatch(line) && rows.isNotEmpty) break;
+    final low = line.toLowerCase();
+    if (_end.hasMatch(low) && rows.isNotEmpty) break;
 
     final q = _qtyLine.firstMatch(line);
     if (q != null) {
@@ -107,7 +108,7 @@ List<ReceiptRow> parseReceipt(String text) {
         var name = _cleanName(q.namedGroup('name') ?? '');
         if (!_hasLetters(name)) name = pending ?? '';
         pending = null;
-        if (_hasLetters(name) && !_skip.hasMatch(name)) {
+        if (_hasLetters(name) && !_skip.hasMatch(name.toLowerCase())) {
           rows.add(ReceiptRow(
               name: name, qty: qty, unit: _guessUnit(q.namedGroup('unit'), qty), price: price));
         }
@@ -115,7 +116,7 @@ List<ReceiptRow> parseReceipt(String text) {
       }
     }
 
-    if (_skip.hasMatch(line)) {
+    if (_skip.hasMatch(low)) {
       pending = null;
       continue;
     }
