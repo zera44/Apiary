@@ -98,6 +98,12 @@ void main() {
     await settle(tester, 3);
   }
 
+  /// Що зараз каже пасічник (для повідомлень про помилку).
+  String said(WidgetTester tester) => [
+        for (final e in find.byType(RichText).evaluate())
+          (e.widget as RichText).text.toPlainText()
+      ].where((t) => t.length > 25).join(' | ');
+
   Finder backArrow() =>
       find.byWidgetPredicate((w) => w is CircleIconButton && w.icon == 'back_arrow');
 
@@ -112,8 +118,8 @@ void main() {
     expect(find.text('скоро'), findsNWidgets(3));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    expect(find.textContaining('скоро з\'явиться'), findsOneWidget);
-    expect(find.byType(MapScreen), findsNothing);
+    expect(find.textContaining('скоро з\'явиться'), findsOneWidget, reason: said(tester));
+    expect(find.byType(MapScreen), findsNothing, reason: said(tester));
     expect(tester.takeException(), isNull);
   });
 
@@ -123,8 +129,8 @@ void main() {
     await startLesson(tester, 'Групи і параметри обходу');
 
     // 1. натисни на вулик
-    expect(find.byType(MapScreen), findsOneWidget);
-    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    expect(find.byType(MapScreen), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('натисни на вулик'), findsOneWidget, reason: said(tester));
     final glow = find.byWidgetPredicate((w) =>
         w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('lesson-pick-glow-'));
     expect(glow, findsWidgets);
@@ -132,12 +138,12 @@ void main() {
     // поза вулика - нічого не відкривається (завіса)
     await tester.tapAt(const Offset(40, 400));
     await settle(tester);
-    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    expect(find.textContaining('натисни на вулик'), findsOneWidget, reason: said(tester));
     await tester.tapAt(tester.getCenter(glow.first));
     await settle(tester, 8);
 
     // 2. панель вулика, «Параметри» в ободку й не притемнені
-    expect(find.textContaining('геть не густо'), findsOneWidget);
+    expect(find.textContaining('геть не густо'), findsOneWidget, reason: said(tester));
     final paramsBtn = find.widgetWithText(PillButton, 'Параметри');
     expect(ringOn(tester, paramsBtn), isTrue);
     expectLit(tester, paramsBtn);
@@ -145,54 +151,54 @@ void main() {
     await settle(tester, 8);
 
     // 3. «Створити параметр»
-    expect(find.byType(ParametersScreen), findsOneWidget);
+    expect(find.byType(ParametersScreen), findsOneWidget, reason: said(tester));
     expect(find.text('Таблиця параметрів'), findsOneWidget);
-    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    expect(find.textContaining('В цьому меню'), findsOneWidget, reason: said(tester));
     final create = find.byTooltip('Створити параметр');
     expectLit(tester, create);
     // перемикач «Застосувати до» з'являється лише на своєму кроці
-    expect(find.byType(ApplyScopeSwitch), findsNothing);
+    expect(find.byType(ApplyScopeSwitch), findsNothing, reason: said(tester));
     await tester.tap(create);
     await settle(tester);
 
     // 4. форма - пояснення з «Продовжити»
-    expect(find.textContaining('Тут ти можеш назвати'), findsOneWidget);
+    expect(find.textContaining('Тут ти можеш назвати'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
     // 5. заповнити: «Скасувати» не працює
-    expect(find.textContaining('Створи свій параметр'), findsOneWidget);
+    expect(find.textContaining('Створи свій параметр'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Скасувати'), warnIfMissed: false);
     await settle(tester);
-    expect(find.textContaining('Створи свій параметр'), findsOneWidget);
+    expect(find.textContaining('Створи свій параметр'), findsOneWidget, reason: said(tester));
     await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
     await settle(tester);
     // 6. «Не забудь зберегти»
-    expect(find.textContaining('Не забудь'), findsOneWidget);
-    await tester.tap(find.text('Зберегти').last);
+    expect(find.textContaining('Не забудь'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
     await settle(tester, 8);
 
     // 7. відкрий конструктор
-    expect(find.textContaining('вже додано до конструктора'), findsOneWidget);
-    expect(find.textContaining('«Сила сім\'ї»'), findsOneWidget);
+    expect(find.textContaining('вже додано до конструктора'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('«Сила сім\'ї»'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Конструктор'));
     await settle(tester);
 
     // 8. нова група
-    expect(find.textContaining('який безлад'), findsOneWidget);
+    expect(find.textContaining('який безлад'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('+ Нова група'));
     await settle(tester);
     // 9. назва - лише «Обходи»
-    expect(find.textContaining('Назви її'), findsOneWidget);
+    expect(find.textContaining('Назви її'), findsOneWidget, reason: said(tester));
     await tester.enterText(find.byType(TextField).first, 'Огляд');
-    await tester.tap(find.text('Зберегти').last);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
     await settle(tester);
-    expect(find.textContaining('Назви групу «Обходи»'), findsOneWidget);
+    expect(find.textContaining('Назви групу «Обходи»'), findsOneWidget, reason: said(tester));
     await tester.enterText(find.byType(TextField).first, 'Обходи');
-    await tester.tap(find.text('Зберегти').last);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
     await settle(tester, 8);
 
     // 10. перетягнути три характеристики обходу в «Обходи»
-    expect(find.textContaining('до нової групи'), findsOneWidget);
+    expect(find.textContaining('до нової групи'), findsOneWidget, reason: said(tester));
     for (final name in ['Періодичність обходу', 'Кількість днів до обходу', 'Дата останнього обходу']) {
       final chip = find.descendant(
           of: find.byType(LongPressDraggable<String>), matching: find.textContaining(name));
@@ -207,13 +213,14 @@ void main() {
     expect(groups, isEmpty); // справжні дані не чіпаємо - усе в пісочниці
 
     // 11. «Застосувати до» - з «Продовжити»
-    expect(find.textContaining('За потреби можна застосувати'), findsOneWidget);
-    expect(find.byType(ApplyScopeSwitch), findsOneWidget);
+    expect(find.textContaining('За потреби можна застосувати'), findsOneWidget, reason: said(tester));
+    expect(find.byType(ApplyScopeSwitch), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
 
     // 12. вимкнути зайве - свій параметр
-    expect(find.textContaining('Вимкни все лишнє'), findsOneWidget);
+    expect(find.textContaining('Вимкни все лишнє'), findsOneWidget, reason: said(tester));
+    await tester.pump(const Duration(milliseconds: 500)); // список доїхав до параметра
     final check = find.descendant(
         of: find.widgetWithText(ListCard, 'Сила сім\'ї'), matching: find.byType(CheckToggle));
     expect(ringOn(tester, check), isTrue);
@@ -221,18 +228,18 @@ void main() {
     await settle(tester);
 
     // 13. назад до вулика
-    expect(find.textContaining('Повернімось до'), findsOneWidget);
+    expect(find.textContaining('Повернімось до'), findsOneWidget, reason: said(tester));
     await tester.tap(backArrow().first);
     await settle(tester, 10);
 
     // 14. таблиця на панелі - з групою «Обходи»; «Завершити»
-    expect(find.byType(ParametersScreen), findsNothing);
-    expect(find.textContaining('Вона ідеальна'), findsOneWidget);
+    expect(find.byType(ParametersScreen), findsNothing, reason: said(tester));
+    expect(find.textContaining('Вона ідеальна'), findsOneWidget, reason: said(tester));
     expect(find.text('Обходи'), findsWidgets);
     expect(find.text('Сила сім\'ї'), findsNothing);
     await tester.tap(find.text('Завершити'));
     await settle(tester, 8);
-    expect(find.byType(MapScreen), findsNothing);
+    expect(find.byType(MapScreen), findsNothing, reason: said(tester));
     expect(find.text('Групи і параметри обходу'), findsOneWidget);
     // пройдено - наступного разу спочатку, без питання
     expect(await tester.runAsync(() => repo.getMeta('lesson_params')), isNull);
@@ -254,11 +261,11 @@ void main() {
     // системне «назад» у формі - знову крок «Створити параметр», а не глухий кут
     await tester.binding.handlePopRoute();
     await settle(tester);
-    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    expect(find.textContaining('В цьому меню'), findsOneWidget, reason: said(tester));
     // «назад» на екрані - вихід з уроку
     await tester.binding.handlePopRoute();
     await settle(tester, 8);
-    expect(find.byType(MapScreen), findsNothing);
+    expect(find.byType(MapScreen), findsNothing, reason: said(tester));
     expect(await tester.runAsync(() => repo.getMeta('lesson_params')), isNotNull);
 
     // знову урок - питання
@@ -269,8 +276,8 @@ void main() {
     await tester.tap(find.text('Продовжити'));
     await settle(tester, 15);
     // одразу «Таблиця параметрів» вулика уроку
-    expect(find.byType(ParametersScreen), findsOneWidget);
-    expect(find.textContaining('В цьому меню'), findsOneWidget);
+    expect(find.byType(ParametersScreen), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('В цьому меню'), findsOneWidget, reason: said(tester));
     await tester.binding.handlePopRoute();
     await settle(tester, 8);
 
@@ -278,11 +285,11 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Спочатку'));
     await settle(tester, 12);
-    expect(find.byType(ParametersScreen), findsNothing);
-    expect(find.textContaining('натисни на вулик'), findsOneWidget);
+    expect(find.byType(ParametersScreen), findsNothing, reason: said(tester));
+    expect(find.textContaining('натисни на вулик'), findsOneWidget, reason: said(tester));
     await tester.tap(backArrow().first);
     await settle(tester, 8);
-    expect(find.byType(MapScreen), findsNothing);
+    expect(find.byType(MapScreen), findsNothing, reason: said(tester));
     expect(tester.takeException(), isNull);
   });
 
@@ -291,43 +298,43 @@ void main() {
     await openTutorial(tester);
     await startLesson(tester, 'Налаштування (шаблони і параметри)');
 
-    expect(find.textContaining('це знову ти'), findsOneWidget);
+    expect(find.textContaining('це знову ти'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    expect(find.textContaining('Натисни на'), findsOneWidget);
+    expect(find.textContaining('Натисни на'), findsOneWidget, reason: said(tester));
     expectLit(tester, find.byTooltip('Налаштування'));
     await tester.tap(find.byTooltip('Налаштування'));
     await settle(tester, 8);
 
-    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byType(SettingsScreen), findsOneWidget, reason: said(tester));
     expect(find.text('Характеристики'), findsNothing);
-    expect(find.textContaining('загальні налаштування додатку'), findsOneWidget);
+    expect(find.textContaining('загальні налаштування додатку'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    expect(find.textContaining('створимо новий шаблон'), findsOneWidget);
+    expect(find.textContaining('створимо новий шаблон'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Створити шаблон'));
     await settle(tester, 8);
 
-    expect(find.byType(TemplateEditorScreen), findsOneWidget);
-    expect(find.textContaining('Пора створювати'), findsOneWidget);
+    expect(find.byType(TemplateEditorScreen), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Пора створювати'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Додати'));
     await settle(tester);
-    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget);
+    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget, reason: said(tester));
     // вулик зараз не можна - лише перешкоду
     await tester.tap(find.byTooltip('Вулик'), warnIfMissed: false);
     await settle(tester);
-    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget);
+    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
     await settle(tester);
 
-    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget);
+    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget, reason: said(tester));
     // у режимі додавання «+» - червоний хрестик
     expect(find.byTooltip('Завершити додавання'), findsOneWidget);
     final gridRect = tester.getRect(find.byType(InfiniteGrid));
     final first = gridRect.topLeft + Offset(gridRect.width * 0.3, gridRect.height * 0.25);
     await tester.tapAt(first);
     await settle(tester);
-    expect(find.textContaining('заповни квадрат'), findsOneWidget);
+    expect(find.textContaining('заповни квадрат'), findsOneWidget, reason: said(tester));
     // квадрат у медовій рамці - ще три порожні клітинки
     final square = find.byWidgetPredicate((w) =>
         w is DecoratedBox &&
@@ -348,29 +355,29 @@ void main() {
       await tester.tapAt(c);
       await settle(tester, 2);
     }
-    expect(find.textContaining('Заверши створення'), findsOneWidget);
+    expect(find.textContaining('Заверши створення'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Завершити додавання'));
     await settle(tester);
-    expect(find.textContaining('А тепер - '), findsOneWidget);
+    expect(find.textContaining('А тепер - '), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Зберегти'));
     await settle(tester);
-    expect(find.textContaining('Назви свій шаблон'), findsOneWidget);
+    expect(find.textContaining('Назви свій шаблон'), findsOneWidget, reason: said(tester));
     // системне «назад» - знову крок «зберегти»
     await tester.binding.handlePopRoute();
     await settle(tester);
-    expect(find.textContaining('А тепер - '), findsOneWidget);
+    expect(find.textContaining('А тепер - '), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Зберегти'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Скеля');
-    await tester.tap(find.text('Зберегти').last);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
     await settle(tester, 8);
 
-    expect(find.byType(TemplateEditorScreen), findsNothing);
-    expect(find.textContaining('швидко вчишся'), findsOneWidget);
-    expect(find.textContaining('«Скеля»'), findsOneWidget);
+    expect(find.byType(TemplateEditorScreen), findsNothing, reason: said(tester));
+    expect(find.textContaining('швидко вчишся'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('«Скеля»'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Завершити'));
     await settle(tester, 8);
-    expect(find.byType(SettingsScreen), findsNothing);
+    expect(find.byType(SettingsScreen), findsNothing, reason: said(tester));
     final real = (await tester.runAsync(() => repo.listTemplates()))!;
     final t = real.where((t) => t.name == 'Скеля').single;
     expect(t.cells.length, 4);
@@ -402,7 +409,7 @@ void main() {
     expect(find.text('Редагувати параметр'), findsOneWidget);
     expect(find.text('Видалити параметр'), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, 'Настрій бджіл');
-    await tester.tap(find.text('Зберегти').last);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
     await settle(tester);
     expect(find.text('Настрій бджіл'), findsOneWidget);
     expect((await tester.runAsync(() => repo.getParameter(free)))!.name, 'Настрій бджіл');

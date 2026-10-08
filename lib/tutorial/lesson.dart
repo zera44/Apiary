@@ -117,6 +117,10 @@ class LessonController extends ChangeNotifier {
 
   bool _finishing = false;
 
+  /// Урок закрито (вийшли чи пройшли): пісочницю от-от закриють - екрани
+  /// уроку не мають більше звертатися до неї.
+  bool get finished => _finishing;
+
   void exit() {
     if (_finishing) return;
     _finishing = true;

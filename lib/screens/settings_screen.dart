@@ -123,7 +123,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: TabSwipe(
                   index: _tab,
                   count: 2,
-                  onChanged: (i) => setState(() => _tab = i),
+                  // в уроці вкладку веде урок - свайп не збиває крок
+                  onChanged: (i) {
+                    if (l == null) setState(() => _tab = i);
+                  },
                   child: _tab == 0
                       ? Center(
                           child: Padding(

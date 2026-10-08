@@ -1302,6 +1302,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ParametersScreen.forElement(repo: repo, element: el, lesson: widget.lesson),
     ));
+    // з уроку вийшли - пісочницю вже закривають
+    if (!mounted || (widget.lesson?.finished ?? false)) return;
     await _refreshPanel();
   }
 

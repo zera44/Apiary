@@ -53,6 +53,8 @@ class TemplatesScreenState extends State<TemplatesScreen> {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => TemplateEditorScreen(repo: widget.repo, templateId: id, lesson: l),
     ));
+    // з уроку вийшли - пісочницю вже закривають
+    if (!mounted || (l?.finished ?? false)) return;
     await _reload();
   }
 

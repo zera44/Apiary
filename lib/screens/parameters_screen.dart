@@ -132,6 +132,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   void _setTab(int i) {
     if (i == _tab) return;
+    // в уроці вкладку веде сам урок (свайп не має збити крок), крім
+    // «Відкрий конструктор»
+    final l = _lesson;
+    if (l != null && !(i == 1 && l.step == 7)) return;
     setState(() => _tab = i);
     if (i == 1) _lesson?.advance(7, 8);
   }
