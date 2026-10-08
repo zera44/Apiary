@@ -386,6 +386,79 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('уроки на малому екрані (360×640): без переповнень, вікна вміщуються', (tester) async {
+    await phone(tester, const Size(360, 640));
+    await openTutorial(tester);
+    await startLesson(tester, 'Групи і параметри обходу');
+    final glow = find.byWidgetPredicate((w) =>
+        w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('lesson-pick-glow-'));
+    await tester.tapAt(tester.getCenter(glow.first));
+    await settle(tester, 8);
+    await tester.tap(find.widgetWithText(PillButton, 'Параметри'));
+    await settle(tester, 8);
+    await tester.tap(find.byTooltip('Створити параметр'));
+    await settle(tester);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    // «Зберегти» форми видно (не під пасічником)
+    final save = find.widgetWithText(PillButton, 'Зберегти').last;
+    expect(tester.getRect(save).bottom, lessThan(640 - 200));
+    await tester.enterText(find.byType(TextField).first, 'Сила');
+    await tester.tap(save);
+    await settle(tester, 8);
+    await tester.tap(find.text('Конструктор'));
+    await settle(tester);
+    await tester.tap(find.text('+ Нова група'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField).first, 'Обходи');
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
+    await settle(tester, 8);
+    expect(find.textContaining('до нової групи'), findsOneWidget, reason: said(tester));
+    // параметр унизу, група вгорі: тягнемо до верхнього краю - список сам гортається
+    final scroll = find
+        .descendant(of: find.byType(ParametersScreen), matching: find.byType(Scrollable))
+        .first;
+    final chip = find.descendant(
+        of: find.byType(LongPressDraggable<String>), matching: find.textContaining('Мітка матки'));
+    await tester.ensureVisible(chip.first);
+    await settle(tester, 2);
+    final before = tester.state<ScrollableState>(scroll).position.pixels;
+    if (before > 0) {
+      final top = tester.getRect(scroll).top;
+      final d = await tester.startGesture(tester.getCenter(chip.first));
+      await tester.pump(const Duration(milliseconds: 400));
+      await d.moveBy(const Offset(0, -10));
+      await tester.pump(const Duration(milliseconds: 16));
+      await d.moveTo(Offset(tester.getCenter(scroll).dx, top + 6));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final after = tester.state<ScrollableState>(scroll).position.pixels;
+      await d.up();
+      await settle(tester);
+      expect(after, lessThan(before));
+    }
+    expect(tester.takeException(), isNull);
+    await tester.binding.handlePopRoute();
+    await settle(tester, 8);
+
+    await startLesson(tester, 'Налаштування (шаблони і параметри)');
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Налаштування'));
+    await settle(tester, 8);
+    await tester.tap(find.text('Продовжити'));
+    await settle(tester);
+    await tester.tap(find.text('Створити шаблон'));
+    await settle(tester, 8);
+    await tester.tap(find.byTooltip('Додати'));
+    await settle(tester);
+    await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
+    await settle(tester);
+    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget, reason: said(tester));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('таблиця параметрів: тап по назві - перейменувати, поки немає записів', (tester) async {
     await phone(tester);
     final aid = (await tester.runAsync(() => repo.addApiary('П')))!;
