@@ -325,6 +325,7 @@ void main() {
     await tester.tap(find.byTooltip('Вулик'), warnIfMissed: false);
     await settle(tester);
     expect(find.textContaining('тут можна створити як вулик'), findsOneWidget, reason: said(tester));
+    await tester.pump(const Duration(milliseconds: 500)); // вікно доїхало до перешкод
     await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
     await settle(tester);
 
@@ -455,6 +456,7 @@ void main() {
     await settle(tester, 8);
     await tester.tap(find.byTooltip('Додати'));
     await settle(tester);
+    await tester.pump(const Duration(milliseconds: 500)); // вікно доїхало до перешкод
     await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
     await settle(tester);
     expect(find.textContaining('постав на карту одну плитку'), findsOneWidget, reason: said(tester));
