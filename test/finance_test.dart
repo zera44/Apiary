@@ -163,12 +163,91 @@ void main() {
       categoryId: inc.id,
       amount: 3000,
       date: DateTime(2026, 7, 10),
-      lines: const [FinLineInput(name: 'Мед', qty: 10, unit: 'кг', price: 300, toStock: true)],
+      lines: const [FinLineInput(name: 'Мед', qty: 10, unit: 'кг', price: 300)],
     );
     expect(await repo.listStockItems(), isEmpty);
     expect(await repo.listFinEntries(from: DateTime(2026, 8), to: DateTime(2026, 9)), isEmpty);
     final july = await repo.listFinEntries(from: DateTime(2026, 7), to: DateTime(2026, 8));
     expect(FinSummary.of(july).income, 3000);
+  });
+
+  test('продаж меду: відкачали (прихід) -> продали (списання зі складу), різні ціни', () async {
+    final honey = await repo.addStockItem('Мед липовий', 'кг');
+    await repo.receiveStock(honey, 100, total: 0);
+    final inc = await cat('Продаж меду');
+    expect(inc.toStock, isTrue);
+    await repo.addFinOp(
+      kind: kFinIncome,
+      categoryId: inc.id,
+      amount: 4750,
+      date: DateTime.now(),
+      lines: const [
+        FinLineInput(name: 'Мед липовий', qty: 10, unit: 'кг', price: 300, toStock: true),
+        FinLineInput(name: 'мед липовий', qty: 5, unit: 'кг', price: 350, toStock: true),
+      ],
+    );
+    expect((await repo.getStockItem(honey))!.quantity, 85);
+    var e = (await repo.listFinEntries(from: from(), to: to())).firstWhere((x) => !x.isExpense);
+    expect(e.amount, 4750);
+    // скасування продажу повертає мед на склад
+    await repo.cancelFinEntry(e);
+    expect((await repo.getStockItem(honey))!.quantity, 100);
+    e = (await repo.listFinEntries(from: from(), to: to())).firstWhere((x) => !x.isExpense);
+    expect(e.cancelled, isTrue);
+  });
+
+  test('продаж у літрах списує кг (1 л = 1,4 кг)', () async {
+    final honey = await repo.addStockItem('Мед', 'кг');
+    await repo.receiveStock(honey, 10, total: 0);
+    final inc = await cat('Продаж меду');
+    await repo.addFinOp(
+      kind: kFinIncome,
+      categoryId: inc.id,
+      amount: 600,
+      date: DateTime.now(),
+      lines: const [FinLineInput(name: 'Мед', qty: 3, unit: 'л', price: 200, toStock: true)],
+    );
+    expect((await repo.getStockItem(honey))!.quantity, closeTo(10 - 4.2, 1e-9));
+  });
+
+  test('продаж більше за залишок - коригування (надлишок) і списання; скасовуються разом', () async {
+    final honey = await repo.addStockItem('Мед', 'кг');
+    await repo.receiveStock(honey, 5, total: 0);
+    final inc = await cat('Продаж меду');
+    await repo.addFinOp(
+      kind: kFinIncome,
+      categoryId: inc.id,
+      amount: 120,
+      date: DateTime.now(),
+      lines: const [FinLineInput(name: 'Мед', qty: 6, unit: 'кг', price: 20, toStock: true)],
+    );
+    expect((await repo.getStockItem(honey))!.quantity, 0);
+    final moves = await repo.stockMoves(honey);
+    final fix = moves.singleWhere((m) => m['kind'] == 'inv');
+    expect((fix['amount'] as num).toDouble(), 1); // надлишок +1 кг
+    expect(moves.where((m) => m['kind'] == 'out').single['amount'], 6);
+
+    final e = (await repo.listFinEntries(from: from(), to: to())).firstWhere((x) => !x.isExpense);
+    await repo.cancelFinEntry(e);
+    // і продаж, і коригування скасовано: залишок як був
+    expect((await repo.getStockItem(honey))!.quantity, 5);
+  });
+
+  test('продаж товару, якого немає на складі, чи в інших одиницях - не записується', () async {
+    final honey = await repo.addStockItem('Мед', 'кг');
+    await repo.receiveStock(honey, 5, total: 0);
+    final inc = await cat('Продаж меду');
+    Future<void> sell(String n, String u) => repo.addFinOp(
+          kind: kFinIncome,
+          categoryId: inc.id,
+          amount: 100,
+          date: DateTime.now(),
+          lines: [FinLineInput(name: n, qty: 1, unit: u, price: 20, toStock: true)],
+        );
+    await expectLater(sell('Віск', 'кг'), throwsStateError);
+    await expectLater(sell('Мед', 'шт'), throwsStateError);
+    expect((await repo.getStockItem(honey))!.quantity, 5);
+    expect((await repo.listFinEntries(from: from(), to: to())).every((x) => x.fromStock), isTrue);
   });
 
   test('нова категорія й видалення (старі записи зберігають назву)', () async {

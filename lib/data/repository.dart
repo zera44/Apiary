@@ -2050,6 +2050,8 @@ class Repository {
     });
   }
 
+  static String fmtQty(double v) => _fmtQty(v);
+
   static String _fmtQty(double v) {
     final r = (v * 1000).roundToDouble() / 1000;
     return r == r.truncateToDouble()

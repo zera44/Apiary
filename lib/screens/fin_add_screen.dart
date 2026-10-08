@@ -157,9 +157,14 @@ class _FinAddScreenState extends State<FinAddScreen> {
 
   /// Для рядка «на склад» з наявною номенклатурою одиниця береться зі складу.
   void _applyStockUnit(_FLine l) {
-    if (!_expense || !l.toStock) return;
+    if (!l.toStock) return;
     final it = _stockByName(l.name.text);
-    if (it != null) l.unit = it.unit;
+    if (it == null) return;
+    // продаж меду: можна в кг або в літрах (перераховується), решта - як на складі
+    final keep = !_expense &&
+        (it.unit == 'кг' || it.unit == 'л') &&
+        (l.unit == 'кг' || l.unit == 'л');
+    if (!keep) l.unit = it.unit;
   }
 
   void _setKind(String kind) {
@@ -168,7 +173,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
       _kind = kind;
       _catId = null;
       for (final l in _lines) {
-        if (kind != kFinExpense) l.toStock = false;
+        l.toStock = false;
+        l.touched = false;
       }
     });
     _load();
@@ -178,7 +184,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     setState(() {
       _catId = c.id;
       for (final l in _lines) {
-        if (!l.touched) l.toStock = _expense && c.toStock;
+        if (!l.touched) l.toStock = c.toStock;
         _applyStockUnit(l);
       }
     });
@@ -244,7 +250,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
               qty: r.qty,
               unit: r.unit,
               price: r.price,
-              toStock: _expense && (cat?.toStock ?? false));
+              toStock: cat?.toStock ?? false);
           _applyStockUnit(l);
           _lines.add(l);
         }
@@ -336,16 +342,21 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 qty: l.qtyValue!,
                 unit: l.unit,
                 price: l.priceValue!,
-                toStock: _expense && l.toStock)
+                toStock: l.toStock)
         ],
       );
       if (!mounted) return;
-      final toStock = used.where((l) => _expense && l.toStock).length;
-      Navigator.pop(context, toStock > 0 ? 'Записано · на склад: $toStock' : 'Записано');
+      final toStock = used.where((l) => l.toStock).length;
+      Navigator.pop(
+          context,
+          toStock > 0
+              ? 'Записано · ${_expense ? 'на склад' : 'зі складу'}: $toStock'
+              : 'Записано');
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        await showInfo(context, 'Не вдалося записати: $e', title: 'Помилка');
+        await showInfo(context, e is StateError ? e.message : 'Не вдалося записати: $e',
+            title: 'Не записано');
       }
     }
   }
@@ -522,7 +533,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
       child: Row(children: [
-        if (_expense) SizedBox(width: 34, child: Tooltip(message: 'На склад', child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
+        SizedBox(width: 34, child: Tooltip(message: _expense ? 'На склад' : 'Зі складу', child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
         Expanded(flex: 5, child: Text('Товар', style: s)),
         const SizedBox(width: 6),
         Expanded(flex: 3, child: Text('К-сть', style: s)),
@@ -596,17 +607,33 @@ class _FinAddScreenState extends State<FinAddScreen> {
         InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10));
     final style = TextStyle(color: AppColors.text, fontSize: 13.5);
     const numKb = TextInputType.numberWithOptions(decimal: true);
-    final item = _expense && l.toStock ? _stockByName(l.name.text) : null;
-    final locked = item != null;
+    final item = l.toStock ? _stockByName(l.name.text) : null;
+    final kgl = item != null && !_expense && (item.unit == 'кг' || item.unit == 'л');
+    final locked = item != null && !kgl;
 
     // підказки під рядком
     final hints = <Widget>[];
-    if (_expense && l.toStock && l.name.text.trim().isNotEmpty) {
+    if (l.toStock && l.name.text.trim().isNotEmpty) {
       if (item != null) {
         hints.add(Text('є на складі · ${formatAmount(item.quantity ?? 0)} ${item.unit}',
             style: TextStyle(color: AppColors.addObject, fontSize: 12)));
-      } else {
+        if (!_expense && (l.qtyValue ?? 0) > 0) {
+          final q = stockQty(l.unit, item.unit, l.qtyValue!);
+          if (l.unit.toLowerCase() != item.unit.toLowerCase()) {
+            hints.add(Text('спише ${formatAmount(q)} ${item.unit}',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)));
+          }
+          final have = item.quantity ?? 0;
+          if (q > have + 1e-9) {
+            hints.add(Text('більше за залишок · коригування +${formatAmount(q - have)} ${item.unit}',
+                style: TextStyle(color: AppColors.create, fontSize: 12, fontWeight: FontWeight.w600)));
+          }
+        }
+      } else if (_expense) {
         hints.add(Text('новий товар', style: TextStyle(color: AppColors.create, fontSize: 12)));
+      } else {
+        hints.add(Text('немає на складі',
+            style: TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w600)));
       }
     }
     final pv = l.priceValue;
@@ -631,11 +658,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          if (_expense)
-            SizedBox(
+          SizedBox(
               width: 34,
               child: IconButton(
-                tooltip: 'Покласти на склад',
+                tooltip: _expense ? 'Покласти на склад' : 'Списати зі складу',
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 icon: Icon(l.toStock ? Icons.inventory_2 : Icons.inventory_2_outlined,
@@ -670,7 +696,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                         padding: EdgeInsets.zero,
                         onSelected: (u) => setState(() => l.unit = u),
                         itemBuilder: (_) => [
-                          for (final u in {...kStockUnits, l.unit})
+                          for (final u in (kgl ? const ['кг', 'л'] : {...kStockUnits, l.unit}))
                             PopupMenuItem(value: u, child: Text(u)),
                         ],
                         child: Padding(
@@ -716,7 +742,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ]),
         if (hints.isNotEmpty)
           Padding(
-            padding: EdgeInsets.fromLTRB(_expense ? 40 : 6, 3, 30, 0),
+            padding: const EdgeInsets.fromLTRB(40, 3, 30, 0),
             child: Wrap(spacing: 12, runSpacing: 2, children: hints),
           ),
       ]),
@@ -737,7 +763,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         for (final l in _lines) _row(l),
         Row(children: [
           TextButton(
-            onPressed: () => setState(() => _lines.add(_FLine(toStock: _expense && (_cat?.toStock ?? false)))),
+            onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
             child: Text('+ рядок', style: TextStyle(color: AppColors.create)),
           ),
           const Spacer(),

@@ -135,21 +135,47 @@ const _seed = <(String, String, bool, String, String)>[
   ('Рамки', kFinExpense, true, 'frame', 'nut'),
   ('Дорога', kFinExpense, false, 'car', 'sky'),
   ('Ремонт', kFinExpense, false, 'tool', 'terra'),
-  ('Продаж меду', kFinIncome, false, 'honey', 'honey'),
+  ('Продаж меду', kFinIncome, true, 'honey', 'honey'),
   ('Інший дохід', kFinIncome, false, 'other', 'olive'),
 ];
+
+/// Густина меду: 1 л = 1,4 кг (продаж у літрах списує кілограми).
+const kHoneyDensity = 1.4;
+
+bool _isKgL(String a, String b) {
+  final x = a.trim().toLowerCase(), y = b.trim().toLowerCase();
+  return (x == 'л' && y == 'кг') || (x == 'кг' && y == 'л');
+}
+
+bool _unitsMatch(String lineUnit, String stockUnit) =>
+    lineUnit.trim().toLowerCase() == stockUnit.trim().toLowerCase() || _isKgL(lineUnit, stockUnit);
+
+/// Кількість у одиницях складу ([qty] - у одиницях рядка; кг і л перераховуються).
+double stockQty(String lineUnit, String stockUnit, double qty) {
+  if (!_isKgL(lineUnit, stockUnit)) return qty;
+  return lineUnit.trim().toLowerCase() == 'л' ? qty * kHoneyDensity : qty / kHoneyDensity;
+}
 
 extension RepositoryFinance on Repository {
   // ---------------------------------------------------------------- категорії
 
   Future<void> seedFinanceCategories() async {
     const key = 'fin_seed_v1';
-    if (await getMeta(key) != null) return;
+    if (await getMeta(key) != null) {
+      // v2: «Продаж меду» списує мед зі складу
+      if (await getMeta('fin_seed_v2') == null) {
+        await db.update('fin_categories', {'to_stock': 1, 'updated_at': Repository.now(), 'synced': 0},
+            where: "name = 'Продаж меду' AND kind = 'income' AND deleted = 0");
+        await setMeta('fin_seed_v2', '1');
+      }
+      return;
+    }
     var order = 0;
     for (final s in _seed) {
       await addFinCategory(s.$1, s.$2, toStock: s.$3, icon: s.$4, color: s.$5, sortOrder: order++);
     }
     await setMeta(key, '1');
+    await setMeta('fin_seed_v2', '1');
   }
 
   Future<List<FinCategory>> listFinCategories({String? kind}) async {
@@ -181,7 +207,7 @@ extension RepositoryFinance on Repository {
       'id': id,
       'name': clean,
       'kind': kind,
-      'to_stock': kind == kFinExpense && toStock ? 1 : 0,
+      'to_stock': toStock ? 1 : 0,
       'icon': icon,
       'color': color,
       'sort_order': order,
@@ -250,9 +276,9 @@ extension RepositoryFinance on Repository {
         byName.putIfAbsent((r['name'] as String).trim().toLowerCase(), () => r);
       }
       for (final l in lines) {
-        final stock = kind == kFinExpense && l.toStock;
+        final stock = l.toStock;
         String? itemId, moveId, unit = l.unit;
-        if (stock) {
+        if (stock && kind == kFinExpense) {
           touchedStock = true;
           final key = l.name.trim().toLowerCase();
           final found = byName[key];
@@ -289,6 +315,60 @@ extension RepositoryFinance on Repository {
             'price': l.price,
             'comment': 'Фінанси',
             'created_at': t,
+            'updated_at': t,
+            'synced': 0,
+          });
+        } else if (stock) {
+          // продаж: списання зі складу (товар має бути на складі й у потрібній кількості)
+          touchedStock = true;
+          final found = byName[l.name.trim().toLowerCase()];
+          if (found == null) {
+            throw StateError('«${l.name.trim()}» немає на складі - спершу додайте прихід '
+                '(наприклад, відкачали мед) або зніміть позначку «зі складу».');
+          }
+          itemId = found['id'] as String;
+          final rows = await txn.query('stock_items',
+              columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
+          final stockUnit = rows.first['unit'] as String;
+          if (!_unitsMatch(l.unit, stockUnit)) {
+            throw StateError('«${l.name.trim()}» на складі в одиницях «$stockUnit», '
+                'а в продажі «${l.unit}». Продавати можна в тих самих одиницях '
+                '(кг і л перераховуються: 1 л = $kHoneyDensity кг).');
+          }
+          final q = stockQty(l.unit, stockUnit, l.qty);
+          final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
+          moveId = Repository.newId();
+          if (q > prev + 1e-9) {
+            // продаємо більше, ніж записано: спершу коригування (переоблік,
+            // надлишок), щоб залишок на складі відповідав дійсності
+            await txn.insert('stock_moves', {
+              'id': Repository.newId(),
+              'item_id': itemId,
+              'kind': 'inv',
+              'amount': q - prev,
+              'quantity_after': q,
+              'op_date': _secs(date),
+              'comment': 'Коригування під час продажу',
+              'ref_id': moveId, // пов'язано з продажем: скасовуються разом
+              'created_at': t,
+              'updated_at': t,
+              'synced': 0,
+            });
+          }
+          var next = (q > prev ? q : prev) - q;
+          if (next.abs() < 1e-9) next = 0;
+          await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
+              where: 'id = ?', whereArgs: [itemId]);
+          await txn.insert('stock_moves', {
+            'id': moveId,
+            'item_id': itemId,
+            'kind': 'out',
+            'amount': q,
+            'quantity_after': next,
+            'op_date': _secs(date),
+            'reason': 'Продаж',
+            'comment': 'Фінанси',
+            'created_at': t + 0.000001,
             'updated_at': t,
             'synced': 0,
           });
@@ -332,6 +412,7 @@ extension RepositoryFinance on Repository {
             columns: ['cancelled'], where: 'id = ?', whereArgs: [l['stock_move_id']], limit: 1);
         if (mv.isNotEmpty && (mv.first['cancelled'] as int? ?? 0) == 0) {
           await cancelStockMoveTx(txn, l['stock_move_id'] as String);
+          await _cancelFixTx(txn, l['stock_move_id'] as String);
           touched = true;
         }
       }
@@ -339,6 +420,15 @@ extension RepositoryFinance on Repository {
           where: 'id = ?', whereArgs: [e.id]);
     });
     if (touched) stockChanges.value++;
+  }
+
+  /// Коригування (переоблік), що було зроблено разом із продажем [moveId], скасовується з ним.
+  Future<void> _cancelFixTx(DatabaseExecutor txn, String moveId) async {
+    final fixes = await txn.query('stock_moves',
+        where: "kind = 'inv' AND ref_id = ? AND cancelled = 0", whereArgs: [moveId]);
+    for (final f in fixes) {
+      await cancelStockMoveTx(txn, f['id'] as String);
+    }
   }
 
   /// Викликається зі складу, коли скасовано прихід: якщо він належав операції
@@ -358,8 +448,10 @@ extension RepositoryFinance on Repository {
             columns: ['cancelled'], where: 'id = ?', whereArgs: [l['stock_move_id']], limit: 1);
         if (mv.isNotEmpty && (mv.first['cancelled'] as int? ?? 0) == 0) {
           await cancelStockMoveTx(txn, l['stock_move_id'] as String);
+          await _cancelFixTx(txn, l['stock_move_id'] as String);
         }
       }
+      await _cancelFixTx(txn, moveId);
       await txn.update('fin_ops', {'cancelled': 1, 'updated_at': Repository.now(), 'synced': 0},
           where: 'id = ?', whereArgs: [opId]);
     }

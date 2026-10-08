@@ -51,7 +51,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
       if (_editing) {
         id = widget.category!.id;
         await repo.updateFinCategory(id,
-            name: name, toStock: _kind == kFinExpense && _toStock, icon: _icon, color: _color);
+            name: name, toStock: _toStock, icon: _icon, color: _color);
       } else {
         id = await repo.addFinCategory(name, _kind,
             toStock: _toStock, icon: _icon, color: _color);
@@ -112,11 +112,13 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                     child: FinSegment(
                       labels: const ['Витрати', 'Дохід'],
                       selected: expense ? 0 : 1,
-                      onChanged: (i) => setState(() => _kind = i == 0 ? kFinExpense : kFinIncome),
+                      onChanged: (i) => setState(() {
+                        _kind = i == 0 ? kFinExpense : kFinIncome;
+                        _toStock = false;
+                      }),
                     ),
                   ),
-                if (expense)
-                  Container(
+                Container(
                     margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
                     decoration: BoxDecoration(
@@ -129,10 +131,10 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Позиції йдуть на склад',
+                          Text(expense ? 'Позиції йдуть на склад' : 'Позиції списуються зі складу',
                               style: TextStyle(color: AppColors.text, fontSize: 15)),
                           const SizedBox(height: 2),
-                          Text('Рядки таблиці витрати стануть приходом',
+                          Text(expense ? 'Рядки таблиці витрати стануть приходом' : 'Рядки таблиці доходу спишуть залишок (продаж)',
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                         ]),
                       ),
