@@ -1045,6 +1045,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       child: ListView(
         key: _lesson?.key('constructor'),
         controller: _consScroll,
+        cacheExtent: _lesson != null ? 4000 : null,
         padding: const EdgeInsets.all(12),
         children: [
       Padding(
@@ -1129,6 +1130,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final reorder = _lesson == null;
     return ReorderableListView.builder(
       key: _lesson?.key('list'),
+      // урок: усі картки одразу - ціль уроку існує, навіть коли нижче екрана
+      cacheExtent: _lesson != null ? 4000 : null,
       padding: const EdgeInsets.all(12),
       buildDefaultDragHandles: false,
       itemCount: items.length,
