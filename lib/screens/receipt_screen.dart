@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
 import '../logic/receipt_parser.dart';
@@ -111,6 +112,19 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     }
   }
 
+  /// Позначені рядки списком «Назва 1 шт, 75 грн, сума 75 грн».
+  Future<void> _copy() async {
+    final rows = [
+      for (final l in _lines)
+        if (l.use && l.valid)
+          ReceiptRow(name: l.name.text.trim(), qty: l.qtyValue!, unit: l.unit, price: l.priceValue!)
+    ];
+    if (rows.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: receiptAsText(rows)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Список скопійовано')));
+  }
+
   void _addLine() => setState(() => _lines.add(_Line(ReceiptRow(name: '', price: 0))));
 
   void _remove(_Line l) {
@@ -201,7 +215,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: l.use && !l.valid ? AppColors.danger : AppColors.darkBtn),
       ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+       Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         SizedBox(
           width: 36,
           child: Checkbox(
@@ -266,6 +281,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             onPressed: () => _remove(l),
           ),
         ),
+       ]),
+        if (l.valid)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(46, 4, 40, 0),
+            child: Text('сума ${formatMoney(l.qtyValue! * l.priceValue!)} грн',
+                textAlign: TextAlign.right,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ),
       ]),
     );
   }
@@ -330,6 +353,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   Text('Разом: ', style: TextStyle(color: AppColors.textMuted)),
                   Text('${formatMoney(_sum)} грн',
                       style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  if (_lines.any((l) => l.use && l.valid))
+                    TextButton.icon(
+                      onPressed: _copy,
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Копіювати список'),
+                    ),
                 ]),
               ),
               Padding(

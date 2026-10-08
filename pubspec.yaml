@@ -48,6 +48,8 @@ dependencies:
   timezone: ^0.11.1
   # розпізнавання чеків (Tesseract, українська: assets/tessdata/ukr.traineddata; Android/iOS)
   flutter_tesseract_ocr: ^0.4.31
+  # підготовка фото чека до розпізнавання (сірі тони, адаптивний поріг)
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:

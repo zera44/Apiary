@@ -2,8 +2,15 @@
 ///
 /// Текст від OCR «брудний», тому розбір поблажливий: пробує кілька типових
 /// видів рядка українських чеків і пропускає службові (сума, ПДВ, картка…).
+/// Буває два порядки рядків:
+///  * назва, а під нею «кількість x ціна [сума]» (супермаркети);
+///  * «кількість x ціна», а під нею «назва … сума» (каси кафе, Checkbox тощо).
+/// Порядок визначається для всього чека; ціна й кількість звіряються із сумою
+/// рядка (вона надрукована великим і читається найнадійніше).
 /// Результат завжди показують людині в таблиці, де його можна виправити.
 library;
+
+import 'stock_format.dart';
 
 class ReceiptRow {
   String name;
@@ -25,24 +32,24 @@ class ReceiptRow {
   String toString() => 'ReceiptRow($name, $qty $unit x $price)';
 }
 
+const _letters = r'A-Za-zА-ЯІЇЄҐа-яіїєґ';
 const _number = r'\d+(?:[.,]\d+)?';
 
 /// «2 x 45.50», «2.000 кг х 120,00», «3 шт * 10.00 = 30.00», далі може бути
-/// сума й літера податкової групи.
+/// сума, літера податкової групи й дрібне сміття від згинів паперу
+/// («1,000 х/112,00 |»).
 final _qtyLine = RegExp(
   r'^(?:(?<name>.*?)\s+)?(?<qty>' +
       _number +
-      r')\s*(?<unit>шт|кг|г|л|мл|м|уп)?\.?\s*[xх×*]\s*(?<price>' +
+      r')\s*(?<unit>шт|кг|г|л|мл|м|уп)?\.?\s*[xх×*][^\d\s]{0,2}\s*(?<price>' +
       _number +
-      r')\s*(?:=?\s*(?<sum>' +
-      _number +
-      r'))?\s*[A-Za-zА-ЯІЇЄа-яіїє]?$',
+      r')\s*(?:=?\s*(?<sum>\d+[.,]\d{2}))?[^\d\s]*(?:\s+\S{1,4})*\s*$',
   caseSensitive: false,
 );
 
 /// «Мед липовий 0.5кг 150.00 А»: назва і сума в кінці.
 final _priceLine = RegExp(
-  r'^(?<name>.*?[A-Za-zА-ЯІЇЄҐа-яіїєґ].*?)\s+(?<sum>\d+[.,]\d{2})\s*[A-Za-zА-ЯІЇЄа-яіїє]?$',
+  r'^(?<name>.*?[' + _letters + r'].*?)\s+(?<sum>\d+[.,]\d{2})\s*[' + _letters + r']?$',
 );
 
 /// Службові рядки чека - не товари.
@@ -53,8 +60,8 @@ final _skip = RegExp(
   caseSensitive: false,
 );
 
-/// Кінець переліку товарів.
-final _end = RegExp(r'^(сума|разом|всього|до сплати|усього|підсумок)(?=\s|$|[.:])', caseSensitive: false);
+/// Кінець переліку товарів («СУМА», «Сума!», «РАЗОМ:»…).
+final _end = RegExp(r'^(сума|разом|всього|до сплати|усього|підсумок)(?![а-яіїєґa-z])', caseSensitive: false);
 
 /// Велика літера «О» всередині числа (45.5О, 1О0) - це нуль.
 String _fixDigits(String s) => s.replaceAllMapped(
@@ -65,18 +72,127 @@ double? _num(String? s) {
   return double.tryParse(s.replaceAll(',', '.'));
 }
 
+/// Кома, крапка, риска чи «|» в кінці рядка - сліди згинів, не текст.
+String _trimTail(String s) => s.replaceAll(RegExp(r'[\s,.;:|]+$'), '');
+
 String _cleanName(String s) {
-  var t = s.replaceAll(RegExp(r'^[\d\s.,)\-–#*№]+(?=[A-Za-zА-ЯІЇЄҐа-яіїєґ])'), ''); // «1. », «12) »
-  t = t.replaceAll(RegExp(r'[|_~=]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
-  return t;
+  var t = s.replaceAll(RegExp(r'^[\d\s.,)\-–#*№]+(?=[' + _letters + r'])'), ''); // «1. », «12) »
+  t = t.replaceAll(RegExp(r'[|_~=«»"“”]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  // окремі символи в кінці («… 75,00 А .», «КИЇВСЬК ї») - сміття, крім одиниці
+  // після числа («200/10 г»)
+  while (true) {
+    final m = RegExp(r'\s(\S)$').firstMatch(t);
+    if (m == null || RegExp(r'\d\s\S$').hasMatch(t)) break;
+    t = t.substring(0, m.start).trimRight();
+  }
+  return t.replaceAll(RegExp(r"[\s.,;:'`]+$"), '');
 }
 
-bool _hasLetters(String s) => RegExp(r'[A-Za-zА-ЯІЇЄҐа-яіїєґ]{2,}').hasMatch(s);
+/// Хоч одне слово з 3+ літер: рядок схожий на назву, а не на сміття OCR.
+bool _hasWord(String s) => RegExp('[$_letters]{3,}').hasMatch(s);
+
+bool _round(double v, int decimals) {
+  var k = 1.0;
+  for (var i = 0; i < decimals; i++) {
+    k *= 10;
+  }
+  return ((v * k) - (v * k).roundToDouble()).abs() < 1e-6;
+}
+
+double _to(double v, int decimals) {
+  var k = 1.0;
+  for (var i = 0; i < decimals; i++) {
+    k *= 10;
+  }
+  return (v * k).roundToDouble() / k;
+}
+
+/// Звірити кількість і ціну з сумою рядка: OCR частіше псує дрібні цифри
+/// («1,060 х/12,00» при сумі 112,00), а суму друкують великою.
+(double, double) _reconcile(double qty, double price, double? sum) {
+  if (sum == null || (qty * price - sum).abs() <= 0.02) return (qty, price);
+  if (price > 0) {
+    final q = sum / price;
+    if (q > 0 && _round(q, 3)) return (_to(q, 3), price);
+  }
+  final p = sum / qty;
+  if (_round(p, 2)) return (qty, _to(p, 2));
+  final whole = qty.roundToDouble();
+  if (whole > 0 && (qty - whole).abs() < 0.07) return (whole, _to(sum / whole, 2));
+  return (qty, price);
+}
 
 String _guessUnit(String? unit, double qty) {
   final u = unit?.toLowerCase();
   if (u != null && u.isNotEmpty) return u == 'уп' ? 'упаковка' : u;
   return qty == qty.truncateToDouble() ? 'шт' : 'кг';
+}
+
+/// Чи текст здебільшого ВЕЛИКИМИ літерами.
+bool _mostlyUpper(String s) {
+  var up = 0, all = 0;
+  for (final r in s.runes) {
+    final c = String.fromCharCode(r);
+    final lo = c.toLowerCase(), hi = c.toUpperCase();
+    if (lo == hi) continue; // не літера
+    all++;
+    if (c == hi) up++;
+  }
+  return all > 0 && up >= all * 0.6;
+}
+
+/// «МОРКВА ПО-КОРЕЙСЬКИ 120Г» → «Морква по-корейськи 120 г».
+String _sentenceCase(String s) {
+  if (s.isEmpty) return s;
+  var t = s.toLowerCase();
+  t = t[0].toUpperCase() + t.substring(1);
+  return t.replaceAllMapped(RegExp(r'(\d)\s*(кг|г|мл|л)(?![а-яіїєґ])'), (m) => '${m[1]} ${m[2]}');
+}
+
+class _Qty {
+  final RegExpMatch m;
+  final double qty;
+  final double price;
+  _Qty(this.m, this.qty, this.price);
+}
+
+_Qty? _qtyInfo(String line) {
+  final m = _qtyLine.firstMatch(line);
+  if (m == null) return null;
+  final qty = _num(m.namedGroup('qty'));
+  final price = _num(m.namedGroup('price'));
+  if (qty == null || qty <= 0 || price == null) return null;
+  return _Qty(m, qty, price);
+}
+
+/// Чи «кількість x ціна» друкується ПЕРЕД назвою (назва з сумою - рядком нижче).
+bool _qtyFirst(List<String> lines) {
+  var first = 0, after = 0;
+  for (var i = 0; i < lines.length - 1; i++) {
+    final q = _qtyInfo(lines[i]);
+    if (q == null || _hasWord(_cleanName(q.m.namedGroup('name') ?? ''))) continue;
+    final next = _priceLine.firstMatch(_trimTail(lines[i + 1]));
+    if (next != null && _hasWord(_cleanName(next.namedGroup('name')!))) {
+      final sum = _num(next.namedGroup('sum'))!;
+      final t = q.qty * q.price;
+      if ((t - sum).abs() <= 0.02 ||
+          (sum > 0 && t / sum > 0.9 && t / sum < 1.1) ||
+          q.m.namedGroup('price')!.endsWith(next.namedGroup('sum')!)) {
+        first++;
+        continue;
+      }
+    }
+    if (i > 0) {
+      final prev = lines[i - 1];
+      if (_hasWord(prev) &&
+          _qtyInfo(prev) == null &&
+          _priceLine.firstMatch(prev) == null &&
+          !_skip.hasMatch(prev.toLowerCase())) {
+        after++;
+      }
+    }
+  }
+  return first > after;
 }
 
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
@@ -86,34 +202,45 @@ List<ReceiptRow> parseReceipt(String text) {
 
   final lines = text
       .split(RegExp(r'[\r\n]+'))
-      .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
-      .where((l) => l.isNotEmpty);
+      .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
+      .where((l) => l.isNotEmpty)
+      .toList();
+  final qtyFirst = _qtyFirst(lines);
 
-  for (final line in lines) {
+  void add(String name, double qty, String? unit, double price) {
+    if (!_hasWord(name) || _skip.hasMatch(name.toLowerCase())) return;
+    rows.add(ReceiptRow(name: name, qty: qty, unit: _guessUnit(unit, qty), price: price));
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i];
     final low = line.toLowerCase();
     if (_end.hasMatch(low) && rows.isNotEmpty) break;
 
-    final q = _qtyLine.firstMatch(line);
+    final q = _qtyInfo(line);
     if (q != null) {
-      final qty = _num(q.namedGroup('qty'));
-      var price = _num(q.namedGroup('price'));
-      final sum = _num(q.namedGroup('sum'));
-      if (qty != null && qty > 0 && price != null) {
-        // «2 x 45.50 91.00»: якщо ціна й сума не сходяться, а сума з кількістю - ні,
-        // вірніше та, що дає цілу ціну за одиницю
-        if (sum != null && (qty * price - sum).abs() > 0.02 && qty > 0) {
-          final byUnit = sum / qty;
-          if ((byUnit * 100 - (byUnit * 100).roundToDouble()).abs() < 1e-6) price = byUnit;
+      var sum = _num(q.m.namedGroup('sum'));
+      var name = _cleanName(q.m.namedGroup('name') ?? '');
+      if (!_hasWord(name)) {
+        if (qtyFirst && i + 1 < lines.length && _hasWord(lines[i + 1]) && _qtyInfo(lines[i + 1]) == null) {
+          // назва (і сума) - наступним рядком
+          final next = _trimTail(lines[i + 1]);
+          final p = _priceLine.firstMatch(next);
+          if (p != null) {
+            name = _cleanName(p.namedGroup('name')!);
+            sum = _num(p.namedGroup('sum'));
+          } else {
+            name = _cleanName(next);
+          }
+          i++;
+        } else {
+          name = pending ?? '';
         }
-        var name = _cleanName(q.namedGroup('name') ?? '');
-        if (!_hasLetters(name)) name = pending ?? '';
-        pending = null;
-        if (_hasLetters(name) && !_skip.hasMatch(name.toLowerCase())) {
-          rows.add(ReceiptRow(
-              name: name, qty: qty, unit: _guessUnit(q.namedGroup('unit'), qty), price: price));
-        }
-        continue;
       }
+      pending = null;
+      final (qty, price) = _reconcile(q.qty, q.price, sum);
+      add(name, qty, q.m.namedGroup('unit'), price);
+      continue;
     }
 
     if (_skip.hasMatch(low)) {
@@ -121,19 +248,41 @@ List<ReceiptRow> parseReceipt(String text) {
       continue;
     }
 
-    final p = _priceLine.firstMatch(line);
+    // перенесений кінець назви («… 200/10» + «г»)
+    if (rows.isNotEmpty && pending == null && RegExp('^[$_letters]{1,2}\\.?\$').hasMatch(line)) {
+      final last = rows.last;
+      final glue = RegExp(r'[\d/]$').hasMatch(last.name) ? '' : ' ';
+      last.name = '${last.name}$glue${line.toLowerCase()}';
+      continue;
+    }
+
+    final p = _priceLine.firstMatch(_trimTail(line));
     if (p != null) {
-      final name = _cleanName(p.namedGroup('name')!);
+      var name = _cleanName(p.namedGroup('name')!);
       final sum = _num(p.namedGroup('sum'));
-      if (_hasLetters(name) && sum != null) {
-        rows.add(ReceiptRow(name: name, price: sum));
+      if (!_hasWord(name) && pending != null) name = pending;
+      if (_hasWord(name) && sum != null) {
+        add(name, 1, null, sum);
         pending = null;
         continue;
       }
     }
 
     // просто текст: ймовірно, назва товару, а «кількість x ціна» - у наступному рядку
-    if (_hasLetters(line)) pending = _cleanName(line);
+    if (_hasWord(line)) pending = _cleanName(line);
+  }
+
+  // чек надруковано ВЕЛИКИМИ - назви звичайним реченням («Морква по-корейськи 120 г»)
+  if (rows.isNotEmpty && _mostlyUpper(rows.map((r) => r.name).join(' '))) {
+    for (final r in rows) {
+      r.name = _sentenceCase(r.name);
+    }
   }
   return rows;
 }
+
+/// Список у вигляді «Назва 1 шт, 75 грн, сума 75 грн» - по рядку на позицію.
+String receiptAsText(List<ReceiptRow> rows) => rows
+    .map((r) => '${r.name} ${formatAmount(r.qty)} ${r.unit}, ${formatMoney(r.price)} грн, '
+        'сума ${formatMoney(r.total)} грн')
+    .join('\n');
