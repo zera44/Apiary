@@ -286,3 +286,26 @@ String receiptAsText(List<ReceiptRow> rows) => rows
     .map((r) => '${r.name} ${formatAmount(r.qty)} ${r.unit}, ${formatMoney(r.price)} грн, '
         'сума ${formatMoney(r.total)} грн')
     .join('\n');
+
+/// Підсумок, надрукований на чеку («СУМА 1 250,00», «РАЗОМ: 97.00»; число може
+/// стояти й у наступному рядку). null - не знайдено. Потрібен, щоб звірити
+/// суму розпізнаної таблиці з чеком.
+double? receiptDeclaredTotal(String text) {
+  final lines = [
+    for (final l in text.split('\n'))
+      if (l.trim().isNotEmpty) _fixDigits(l.trim())
+  ];
+  final money = RegExp(r'(\d[\d ]*[.,]\d{2})(?!\d)');
+  double? read(String l) {
+    final all = money.allMatches(l).toList();
+    if (all.isEmpty) return null;
+    return double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+  }
+
+  for (var i = 0; i < lines.length; i++) {
+    if (!_end.hasMatch(lines[i].toLowerCase())) continue;
+    final v = read(lines[i]) ?? (i + 1 < lines.length ? read(lines[i + 1]) : null);
+    if (v != null) return v;
+  }
+  return null;
+}

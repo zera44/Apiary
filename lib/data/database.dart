@@ -211,6 +211,54 @@ class AppDatabase {
     // мінімальний залишок: досягли — «час докупити»
     await _ensureColumn(db, 'stock_items', 'min_quantity', 'REAL');
 
+    // фінанси: довідник категорій, операції (витрата/дохід) і рядки таблиці
+    // операції. Гроші склад не дублює: рядок із stock_move_id - це той самий
+    // прихід, що лежить у stock_moves.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS fin_categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        to_stock INTEGER NOT NULL DEFAULT 0,
+        icon TEXT,
+        color TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS fin_ops (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        category_id TEXT,
+        amount REAL NOT NULL,
+        op_date REAL NOT NULL,
+        comment TEXT,
+        cancelled INTEGER NOT NULL DEFAULT 0,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS fin_lines (
+        id TEXT PRIMARY KEY,
+        op_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        qty REAL NOT NULL,
+        unit TEXT NOT NULL,
+        price REAL NOT NULL,
+        to_stock INTEGER NOT NULL DEFAULT 0,
+        stock_item_id TEXT,
+        stock_move_id TEXT,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_op ON fin_lines(op_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_move ON fin_lines(stock_move_id)');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

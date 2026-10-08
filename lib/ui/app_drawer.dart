@@ -4,6 +4,7 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_screen.dart';
+import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/qr_generate_screen.dart';
@@ -254,6 +255,13 @@ class _AppDrawerState extends State<AppDrawer> {
           })),
           _t(1, _item(context, 'box', 'Склад',
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
+          // фінанси: окремий пункт, не входить в екскурсію по меню
+          widget.tour
+              ? IgnorePointer(
+                  child: _item(context, '', 'Фінанси', () {},
+                      iconData: Icons.account_balance_wallet_outlined))
+              : _item(context, '', 'Фінанси', () => _open(nav, FinanceScreen(repo: repo)),
+                  iconData: Icons.account_balance_wallet_outlined),
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _t(2, _item(context, 'history', 'Історія',
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),

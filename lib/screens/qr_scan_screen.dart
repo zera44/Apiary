@@ -8,7 +8,8 @@ import '../data/repository.dart';
 import '../services/receipt_ocr.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
-import 'receipt_screen.dart';
+import '../data/finance.dart';
+import 'fin_add_screen.dart';
 
 /// Чи є на цьому пристрої камера-сканер (телефон/планшет).
 bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
@@ -17,7 +18,7 @@ bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 /// сканера немає) — ручним вводом. null — скасовано.
 ///
 /// З [receiptRepo] у сканері є ще й режим «Чек»: фото чека розпізнається й
-/// потрапляє у склад (екран чека відкривається замість повернення коду).
+/// потрапляє у таблицю нової витрати у фінансах (рядки «на склад» стають приходом).
 Future<String?> scanQrCode(BuildContext context,
     {String title = 'Сканувати QR-код', String? skipLabel, Repository? receiptRepo}) async {
   if (!qrCameraAvailable) return _manualEntry(context);
@@ -77,7 +78,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
     _done = true;
     // екран чека стає на місце сканера
     await Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => ReceiptScreen(repo: repo, imagePath: path)));
+        MaterialPageRoute<void>(builder: (_) =>
+            FinAddScreen(repo: repo, kind: kFinExpense, imagePath: path)));
   }
 
   Widget _modeSwitch() {

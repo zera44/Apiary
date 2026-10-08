@@ -10,6 +10,7 @@ import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
 import '../logic/value_convert.dart';
 import '../logic/visit_reminders.dart';
+import 'finance.dart';
 import 'models.dart';
 
 /// Назва базової характеристики "дата останнього обходу" (ключ visit_start;
@@ -40,6 +41,9 @@ const kSyncTables = [
   'qr_codes',
   'stock_items',
   'stock_moves',
+  'fin_categories',
+  'fin_ops',
+  'fin_lines',
 ];
 
 /// Усі операції з локальною базою (порт db.py).
@@ -73,6 +77,7 @@ class Repository {
     await ensureBaseParameters();
     await ensureLegacyApiary();
     await splitMultiObjectGroups();
+    await seedFinanceCategories();
   }
 
   /// Усе, що отримує людина, яка щойно встановила застосунок: базові
@@ -1942,47 +1947,55 @@ class Repository {
   /// (частково) списано так, що залишок став би від'ємним.
   Future<double> cancelStockMove(String moveId) async {
     final r = await db.transaction((txn) async {
-      final rows = await txn.query('stock_moves', where: 'id = ?', whereArgs: [moveId], limit: 1);
-      if (rows.isEmpty) throw StateError('Запис не знайдено');
-      final m = rows.first;
-      final kind = m['kind'] as String;
-      if ((m['cancelled'] as int? ?? 0) == 1) throw StateError('Цей запис уже скасовано');
-      if (kind == 'cancel') throw StateError('Скасування не можна скасувати');
-      if (kind == 'set') throw StateError('Старий запис «перезаписано» не можна скасувати');
-      final amount = (m['amount'] as num).toDouble();
-      final effect = switch (kind) { 'out' => -amount, _ => amount }; // in/add: +, inv: зі знаком
-      final itemId = m['item_id'] as String;
-      final items = await txn.query('stock_items',
-          columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
-      if (items.isEmpty) throw StateError('Номенклатуру не знайдено');
-      final prev = (items.first['quantity'] as num?)?.toDouble() ?? 0;
-      var next = prev - effect;
-      if (next < -1e-9) {
-        throw StateError('Не можна скасувати: частину вже списано '
-            '(залишок: ${_fmtQty(prev)} ${items.first['unit']})');
-      }
-      if (next.abs() < 1e-9) next = 0;
-      final t = now();
-      await txn.update('stock_moves', {'cancelled': 1, 'updated_at': t, 'synced': 0},
-          where: 'id = ?', whereArgs: [moveId]);
-      await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
-          where: 'id = ?', whereArgs: [itemId]);
-      await txn.insert('stock_moves', {
-        'id': newId(),
-        'item_id': itemId,
-        'kind': 'cancel',
-        'amount': -effect,
-        'quantity_after': next,
-        'op_date': t,
-        'ref_id': moveId,
-        'created_at': t,
-        'updated_at': t,
-        'synced': 0,
-      });
+      final next = await cancelStockMoveTx(txn, moveId);
+      // прихід був частиною витрати у фінансах - скасовується й вона
+      await finCascadeStockCancelTx(txn, moveId);
       return next;
     });
     stockChanges.value++;
     return r;
+  }
+
+  /// Скасування одного запису в межах чужої транзакції (без каскаду у фінанси).
+  Future<double> cancelStockMoveTx(DatabaseExecutor txn, String moveId) async {
+    final rows = await txn.query('stock_moves', where: 'id = ?', whereArgs: [moveId], limit: 1);
+    if (rows.isEmpty) throw StateError('Запис не знайдено');
+    final m = rows.first;
+    final kind = m['kind'] as String;
+    if ((m['cancelled'] as int? ?? 0) == 1) throw StateError('Цей запис уже скасовано');
+    if (kind == 'cancel') throw StateError('Скасування не можна скасувати');
+    if (kind == 'set') throw StateError('Старий запис «перезаписано» не можна скасувати');
+    final amount = (m['amount'] as num).toDouble();
+    final effect = switch (kind) { 'out' => -amount, _ => amount }; // in/add: +, inv: зі знаком
+    final itemId = m['item_id'] as String;
+    final items = await txn.query('stock_items',
+        columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
+    if (items.isEmpty) throw StateError('Номенклатуру не знайдено');
+    final prev = (items.first['quantity'] as num?)?.toDouble() ?? 0;
+    var next = prev - effect;
+    if (next < -1e-9) {
+      throw StateError('Не можна скасувати: частину вже списано '
+          '(залишок: ${_fmtQty(prev)} ${items.first['unit']})');
+    }
+    if (next.abs() < 1e-9) next = 0;
+    final t = now();
+    await txn.update('stock_moves', {'cancelled': 1, 'updated_at': t, 'synced': 0},
+        where: 'id = ?', whereArgs: [moveId]);
+    await txn.update('stock_items', {'quantity': next, 'updated_at': t, 'synced': 0},
+        where: 'id = ?', whereArgs: [itemId]);
+    await txn.insert('stock_moves', {
+      'id': newId(),
+      'item_id': itemId,
+      'kind': 'cancel',
+      'amount': -effect,
+      'quantity_after': next,
+      'op_date': t,
+      'ref_id': moveId,
+      'created_at': t,
+      'updated_at': t,
+      'synced': 0,
+    });
+    return next;
   }
 
   /// Кожна операція — окремий запис у stock_moves; залишок у stock_items
