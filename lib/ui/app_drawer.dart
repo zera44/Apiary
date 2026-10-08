@@ -61,7 +61,7 @@ class AppDrawer extends StatefulWidget {
   /// Працює через [NavigatorState] — контекст меню після закриття вже
   /// недійсний.
   static Future<void> openHiveByQr(NavigatorState nav, Repository repo) async {
-    final code = await scanQrCode(nav.context);
+    final code = await scanQrCode(nav.context, receiptRepo: repo);
     if (code == null || !nav.mounted) return;
     final found = await repo.findByQr(code);
     if (!nav.mounted) return;
