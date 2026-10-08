@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
-import 'parameters_screen.dart';
+import '../tutorial/lesson.dart';
 import 'templates_screen.dart';
 
 /// Шестерня «Налаштування» (карта й головний екран).
@@ -30,14 +30,18 @@ class GearButton extends StatelessWidget {
       );
 }
 
-/// «Налаштування»: вкладки «Головна» (поки порожня), «Характеристики» й
-/// «Шаблони». Історії тут немає - вона лише по картах.
+/// «Налаштування»: вкладки «Головна» (поки порожня) і «Шаблони» (свайпом
+/// теж). Параметри створюються й перейменовуються в «Таблиці параметрів»
+/// вулика. Історії тут немає - вона лише по картах.
 class SettingsScreen extends StatefulWidget {
   final Repository repo;
-  const SettingsScreen({super.key, required this.repo});
 
-  static Future<void> open(NavigatorState nav, Repository repo) =>
-      nav.push(MaterialPageRoute(builder: (_) => SettingsScreen(repo: repo)));
+  /// Урок «Налаштування (шаблони і параметри)».
+  final LessonController? lesson;
+  const SettingsScreen({super.key, required this.repo, this.lesson});
+
+  static Future<void> open(NavigatorState nav, Repository repo, {LessonController? lesson}) =>
+      nav.push(MaterialPageRoute(builder: (_) => SettingsScreen(repo: repo, lesson: lesson)));
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -45,6 +49,43 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _tab = 0;
+  final _templates = GlobalKey<TemplatesScreenState>();
+
+  LessonController? get _lesson => widget.lesson;
+
+  @override
+  void initState() {
+    super.initState();
+    final l = _lesson;
+    if (l != null) {
+      _tab = l.step >= 4 ? 1 : 0;
+      l.addListener(_onLesson);
+      // продовжений урок: шаблон малювали - знову редактор
+      if (l.step >= 5 && l.step <= 11) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _templates.currentState?.openNew());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _lesson?.removeListener(_onLesson);
+    super.dispose();
+  }
+
+  /// Урок сам гортає вкладки: «Головна» → «Шаблони».
+  void _onLesson() {
+    final want = (_lesson?.step ?? 0) >= 4 ? 1 : 0;
+    if (mounted && want != _tab) setState(() => _tab = want);
+  }
+
+  void _back() {
+    if (_lesson != null) {
+      _lesson!.exit();
+      return;
+    }
+    Navigator.maybePop(context);
+  }
 
   Widget _tabButton(String text, int i) => Expanded(
         child: PillButton(
@@ -59,40 +100,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Stack(children: [
-          Column(children: [
-            TopBar(title: 'Налаштування', onBack: () => Navigator.maybePop(context)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-              child: Row(children: [
-                _tabButton('Головна', 0),
-                const SizedBox(width: 8),
-                _tabButton('Характеристики', 1),
-                const SizedBox(width: 8),
-                _tabButton('Шаблони', 2),
-              ]),
-            ),
-            Expanded(
-              child: switch (_tab) {
-                0 => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text('Загальні налаштування з\'являться тут згодом.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.textMuted)),
-                    ),
-                  ),
-                1 => ParametersScreen.catalog(
-                    key: const ValueKey('settings-params'), repo: widget.repo, embedded: true),
-                _ => TemplatesScreen(
-                    key: const ValueKey('settings-templates'), repo: widget.repo, embedded: true),
-              },
-            ),
+    final l = _lesson;
+    return PopScope(
+      canPop: l == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Stack(children: [
+            Column(children: [
+              TopBar(title: 'Налаштування', onBack: _back),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                child: Row(children: [
+                  _tabButton('Головна', 0),
+                  const SizedBox(width: 8),
+                  _tabButton('Шаблони', 1),
+                ]),
+              ),
+              Expanded(
+                child: TabSwipe(
+                  index: _tab,
+                  count: 2,
+                  onChanged: (i) => setState(() => _tab = i),
+                  child: _tab == 0
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text('Загальні налаштування з\'являться тут згодом.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.textMuted)),
+                          ),
+                        )
+                      : TemplatesScreen(
+                          key: _templates, repo: widget.repo, embedded: true, lesson: l),
+                ),
+              ),
+              // місце під пасічника з хмаркою
+              if (l != null) const SizedBox(height: kLessonReserve),
+            ]),
+            const Positioned.fill(child: ScreenFrame()),
+            if (l != null) Positioned.fill(child: LessonLayer(lesson: l, screen: 'settings')),
           ]),
-          const Positioned.fill(child: ScreenFrame()),
-        ]),
+        ),
       ),
     );
   }

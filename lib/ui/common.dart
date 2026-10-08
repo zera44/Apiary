@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../icons/app_icons.dart';
 import 'icons.dart';
@@ -188,7 +189,11 @@ class TopBar extends StatelessWidget {
 
   /// Якщо задано — зліва замість "назад" показується кнопка меню (три смужки).
   final VoidCallback? onMenu;
-  const TopBar({super.key, required this.title, this.onBack, this.trailing, this.onMenu});
+
+  /// Обгортка кнопки «назад» (урок: медовий ободок).
+  final Widget Function(Widget back)? decorateBack;
+  const TopBar(
+      {super.key, required this.title, this.onBack, this.trailing, this.onMenu, this.decorateBack});
 
   @override
   Widget build(BuildContext context) {
@@ -233,13 +238,13 @@ class TopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(children: [
           if (onBack != null)
-            CircleIconButton(
+            (decorateBack ?? (w) => w)(CircleIconButton(
               icon: 'back_arrow',
               bg: AppColors.roundBtn,
               iconColor: AppColors.text,
               size: 34,
               onPressed: onBack,
-            )
+            ))
           else if (onMenu != null)
             CircleIconButton(
               icon: 'menu',
@@ -457,37 +462,71 @@ Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
 }
 
 /// Запит тексту (перейменування). Повертає новий текст або null.
+///
+/// [validate] - текст помилки (тоді вікно не закривається) або null.
+/// [wrap] - обгортка вікна (урок малює під ним пасічника), [decorate] -
+/// обгортка кнопок ('save' / 'cancel'), напр. медовий ободок уроку.
 Future<String?> showTextPrompt(BuildContext context,
-    {required String title, required String initial}) {
+    {required String title,
+    required String initial,
+    String? Function(String text)? validate,
+    Widget Function(Widget dialog)? wrap,
+    Widget Function(String which, Widget button)? decorate,
+    bool dismissible = true}) {
   final ctrl = TextEditingController(text: initial);
+  String? error;
   return showDialog<String>(
     context: context,
-    builder: (ctx) {
+    barrierDismissible: dismissible,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, setD) {
       void save() {
         final v = ctrl.text.trim();
+        final e = validate?.call(v);
+        if (e != null) {
+          setD(() => error = e);
+          return;
+        }
         Navigator.pop(ctx, v.isEmpty ? initial : v);
       }
 
-      return AlertDialog(
+      final dec = decorate;
+      Widget deco(String which, Widget b) => dec == null ? b : dec(which, b);
+      final dialog = AlertDialog(
         title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          style: TextStyle(color: AppColors.text),
-          onSubmitted: (_) => save(),
-        ),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            style: TextStyle(color: AppColors.text),
+            onChanged: (_) {
+              if (error != null) setD(() => error = null);
+            },
+            onSubmitted: (_) => save(),
+          ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
+            ),
+        ]),
         actions: [
           _dialogButtons([
-            PillButton(
-                text: 'Скасувати',
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                onPressed: () => Navigator.pop(ctx)),
-            PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save),
+            deco(
+                'cancel',
+                PillButton(
+                    text: 'Скасувати',
+                    bg: AppColors.neutralBtn,
+                    fg: AppColors.text,
+                    onPressed: () => Navigator.pop(ctx))),
+            deco('save', PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
           ]),
         ],
       );
-    },
+      final w = wrap;
+      return w == null ? dialog : w(dialog);
+    }),
   );
 }
 
@@ -674,9 +713,10 @@ class _HoneyRingState extends State<HoneyRing> {
 
   @override
   Widget build(BuildContext context) {
-    // ободок малюється ПОЗА кнопкою й нічого не зсуває (розмір той самий)
+    // ободок малюється ПОЗА кнопкою й нічого не зсуває (розмір той самий);
+    // увімкнений ободок - ще й «вікно» в затемненні уроку (див. LessonScrim)
     return Stack(clipBehavior: Clip.none, children: [
-      widget.child,
+      SpotlightHole(on: widget.on, radius: widget.radius, child: widget.child),
       if (widget.on)
         Positioned(
           left: -5,
@@ -697,4 +737,165 @@ class _HoneyRingState extends State<HoneyRing> {
         ),
     ]);
   }
+}
+
+
+/// Вкладки змінюються ще й свайпом: провели пальцем вліво - наступна,
+/// вправо - попередня. Вертикальне гортання списків усередині не заважає.
+class TabSwipe extends StatelessWidget {
+  final int index;
+  final int count;
+  final ValueChanged<int> onChanged;
+  final Widget child;
+  const TabSwipe(
+      {super.key,
+      required this.index,
+      required this.count,
+      required this.onChanged,
+      required this.child});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v < -250 && index < count - 1) {
+            onChanged(index + 1);
+          } else if (v > 250 && index > 0) {
+            onChanged(index - 1);
+          }
+        },
+        child: child,
+      );
+}
+
+
+/// Ціль уроку, яку не затемнювати: [LessonScrim] на тому ж екрані вирізає
+/// навколо неї «вікно».
+class SpotlightHole extends StatefulWidget {
+  final Widget child;
+  final double radius;
+
+  /// false - звичайний віджет (так дерево не перебудовується, коли ціль
+  /// вмикається й вимикається).
+  final bool on;
+  const SpotlightHole({super.key, required this.child, this.radius = 16, this.on = true});
+
+  /// Усі зараз показані цілі.
+  static final active = <SpotlightHoleState>{};
+
+  @override
+  State<SpotlightHole> createState() => SpotlightHoleState();
+}
+
+class SpotlightHoleState extends State<SpotlightHole> {
+  ModalRoute<dynamic>? route;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    route = ModalRoute.of(context);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    SpotlightHole.active.add(this);
+  }
+
+  @override
+  void dispose() {
+    SpotlightHole.active.remove(this);
+    super.dispose();
+  }
+
+  /// Рамка в глобальних координатах (або null, поки не викладено).
+  Rect? get globalRect {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Урок: притемнює екран, крім цілей ([SpotlightHole] на тому ж екрані й
+/// [extra]). Ставиться під пасічником із хмаркою - їх не затемнює.
+/// Без цілей - нічого не малює.
+class LessonScrim extends StatefulWidget {
+  /// Ще цілі (у своїх координатах): клітинки карти тощо.
+  final List<Rect> Function(RenderBox self)? extra;
+  const LessonScrim({super.key, this.extra});
+
+  @override
+  State<LessonScrim> createState() => _LessonScrimState();
+}
+
+class _LessonScrimState extends State<LessonScrim> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+  List<RRect> _holes = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    // цілі рухаються разом із прокруткою й анімаціями - стежимо щокадру
+    _ticker = createTicker((_) => _update())..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  void _update() {
+    final self = context.findRenderObject();
+    if (self is! RenderBox || !self.hasSize || !self.attached) return;
+    final route = ModalRoute.of(context);
+    final holes = <RRect>[];
+    for (final h in SpotlightHole.active) {
+      if (!h.mounted || !h.widget.on || h.route != route) continue;
+      final g = h.globalRect;
+      if (g == null) continue;
+      final r = self.globalToLocal(g.topLeft) & g.size;
+      holes.add(RRect.fromRectAndRadius(r.inflate(6), Radius.circular(h.widget.radius + 6)));
+    }
+    for (final r in widget.extra?.call(self) ?? const <Rect>[]) {
+      holes.add(RRect.fromRectAndRadius(r.inflate(6), const Radius.circular(12)));
+    }
+    if (!_same(holes, _holes)) setState(() => _holes = holes);
+  }
+
+  static bool _same(List<RRect> a, List<RRect> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+        child: CustomPaint(painter: _ScrimPainter(_holes), child: const SizedBox.expand()),
+      );
+}
+
+class _ScrimPainter extends CustomPainter {
+  final List<RRect> holes;
+  _ScrimPainter(this.holes);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (holes.isEmpty) return;
+    final p = Path()..addRect(Offset.zero & size);
+    for (final h in holes) {
+      p.addRRect(h);
+    }
+    p.fillType = PathFillType.evenOdd;
+    canvas.drawPath(p, Paint()..color = Colors.black.withValues(alpha: 0.55));
+  }
+
+  @override
+  bool shouldRepaint(_ScrimPainter old) => old.holes != holes;
 }

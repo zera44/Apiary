@@ -300,6 +300,10 @@ class _StockScreenState extends State<StockScreen> {
                 ]),
               ),
             Expanded(
+              child: TabSwipe(
+              index: _op == StockOp.inventory ? 1 : 0,
+              count: 2,
+              onChanged: (i) => setState(() => _op = i == 1 ? StockOp.inventory : StockOp.receive),
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
                   : list.isEmpty
@@ -323,6 +327,7 @@ class _StockScreenState extends State<StockScreen> {
                           itemCount: list.length,
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),
+              ),
             ),
             if (_op == StockOp.inventory && _invList && (list?.isNotEmpty ?? false))
               Padding(

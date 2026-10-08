@@ -5,9 +5,24 @@ import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/type_picker.dart';
 import '../ui/theme.dart';
+import '../tutorial/lesson.dart';
+import '../tutorial/lessons.dart' show kVisitKeys, kVisitsGroup;
 import 'history_screen.dart';
 
-/// Екран "Список параметрів" (порт parameters_screen.py).
+/// Кому застосувати набір і порядок параметрів (перемикач унизу).
+enum ApplyScope {
+  /// Лише цьому вулику.
+  hive,
+
+  /// Усім вуликам цієї пасіки того самого класу (з того самого шаблону:
+  /// «Вулик 1», «Вулик 2»… - клас «Вулик»).
+  kind,
+
+  /// Усім вуликам пасіки.
+  apiary,
+}
+
+/// Екран «Таблиця параметрів» (порт parameters_screen.py).
 ///
 /// Чекбоксом параметр із каталогу прив'язується до об'єкта; вихід «назад»
 /// автоматично записує весь набір. "+" — новий параметр у каталозі. Базові
@@ -30,7 +45,11 @@ class ParametersScreen extends StatefulWidget {
   /// Вкладка в «Налаштуваннях»: без власної верхньої панелі й рамки.
   final bool embedded;
 
-  const ParametersScreen.forElement({super.key, required this.repo, required MapElement this.element})
+  /// Урок «Групи і параметри обходу».
+  final LessonController? lesson;
+
+  const ParametersScreen.forElement(
+      {super.key, required this.repo, required MapElement this.element, this.lesson})
       : initialIds = const [],
         elType = null,
         embedded = false,
@@ -40,6 +59,7 @@ class ParametersScreen extends StatefulWidget {
       : element = null,
         initialIds = const [],
         elType = null,
+        lesson = null,
         catalog = true;
 
   const ParametersScreen.forTemplate({
@@ -49,6 +69,7 @@ class ParametersScreen extends StatefulWidget {
     required this.elType,
   })  : element = null,
         embedded = false,
+        lesson = null,
         catalog = false;
 
   bool get templateMode => element == null && !catalog;
@@ -71,14 +92,50 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   String? get targetType => widget.element?.type ?? widget.elType;
 
+  LessonController? get _lesson => widget.lesson;
+
+  /// Урок: три базові характеристики обходу (їх розкладають у «Обходи»).
+  List<String> _visitIds = const [];
+
   @override
   void initState() {
     super.initState();
+    final l = _lesson;
+    if (l != null) {
+      _tab = _lessonTab(l.step) ?? 0;
+      l.addListener(_onLesson);
+    }
     _init();
+  }
+
+  @override
+  void dispose() {
+    _lesson?.removeListener(_onLesson);
+    super.dispose();
+  }
+
+  /// Яку вкладку показує крок уроку (null - не важливо).
+  static int? _lessonTab(int step) => step >= 8 && step <= 11 ? 1 : (step >= 3 && step <= 13 ? 0 : null);
+
+  void _onLesson() {
+    final want = _lessonTab(_lesson!.step);
+    if (mounted && want != null && want != _tab) setState(() => _tab = want);
+  }
+
+  void _setTab(int i) {
+    if (i == _tab) return;
+    setState(() => _tab = i);
+    if (i == 1) _lesson?.advance(7, 8);
   }
 
   Future<void> _init() async {
     groups = await repo.paramGroups();
+    if (_lesson != null) {
+      _visitIds = [
+        for (final k in kVisitKeys)
+          if (await repo.baseParameterId('hive', k) case final id?) id
+      ];
+    }
     if (widget.element != null) {
       selected = await repo.attachedParameterIds(widget.element!.entity, elType: targetType);
     } else {
@@ -124,15 +181,27 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   bool _saving = false;
 
-  /// «Для всіх вуликів пасіки»: такий самий набір і порядок — усім вуликам
-  /// пасіки цього вулика (лише для вулика на карті).
-  bool _allHives = false;
+  /// Кому застосувати набір і порядок (лише для вулика на карті).
+  ApplyScope _scope = ApplyScope.hive;
 
   bool get _canApplyToAll => widget.element?.isHive == true && widget.element?.apiaryId != null;
+
+  /// Клас вулика - назва без номера: «Вулик 3» → «Вулик».
+  static String kindOf(String? label) =>
+      (label ?? '').trim().replaceFirst(RegExp(r'\s+\d+$'), '').trim();
 
   /// «Назад» (стрілка чи системна): у списку вулика/шаблону зміни
   /// зберігаються автоматично — окремої кнопки «Зберегти» немає.
   void _back() {
+    final l = _lesson;
+    if (l != null) {
+      // в уроці «назад» - лише на кроці «Повернімось до вулика»; інакше - вихід з уроку
+      if (l.step != 13) {
+        l.exit();
+        return;
+      }
+      l.go(14);
+    }
     if (widget.catalog || params == null) {
       Navigator.pop(context); // поки список не завантажено — нічого не знімаємо
       return;
@@ -151,12 +220,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
       return;
     }
     try {
-      if (_allHives && _canApplyToAll) {
+      if (_scope != ApplyScope.hive && _canApplyToAll) {
+        final kind = kindOf(widget.element!.label);
         final owners = <String, EntityRef>{};
         for (final e in await repo.listElements(widget.element!.apiaryId!)) {
           if (!e.isHive) continue;
+          if (_scope == ApplyScope.kind && kindOf(e.label) != kind) continue;
           owners[e.groupId != null ? 'g:${e.groupId}' : 'e:${e.id}'] = e.entity;
         }
+        // сам вулик - завжди (навіть якщо його перейменували)
+        owners[widget.element!.groupId != null
+            ? 'g:${widget.element!.groupId}'
+            : 'e:${widget.element!.id}'] = widget.element!.entity;
         for (final o in owners.values) {
           await repo.setAttachedParameters(selected, o);
         }
@@ -190,6 +265,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
     final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
     if (!mounted) return null;
+    final l = isEdit ? null : _lesson;
+    l?.advance(3, 4);
 
     final action = await showDialog<String>(
       context: context,
@@ -197,7 +274,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) {
         final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
         final note = TextStyle(color: AppColors.textMuted, fontSize: 10.5);
-        return AlertDialog(
+        return lessonDialog(l, 'param-form', AlertDialog(
           title: Text(isEdit ? 'Редагувати параметр' : 'Новий параметр'),
           content: SizedBox(
             width: 340,
@@ -210,19 +287,28 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   const SizedBox(height: 4),
                   TextField(
                     controller: nameCtrl,
-                    autofocus: !isEdit,
+                    // в уроці клавіатура закрила б пасічника - поле відкривають самі
+                    autofocus: !isEdit && l == null,
                     readOnly: isBase,
                     style: TextStyle(color: isBase ? AppColors.textMuted : AppColors.text),
                     // decoration: null прибрав би заливку поля, тож завжди InputDecoration
                     decoration: InputDecoration(
                         enabledBorder: nameError ? redFieldBorder() : null,
                         focusedBorder: nameError ? redFieldBorder() : null),
-                    onChanged: (_) {
+                    onChanged: (v) {
                       if (nameError) {
                         setD(() {
                           nameError = false;
                           formError = null;
                         });
+                      }
+                      // урок: назву вписали - «Не забудь зберегти»
+                      if (l != null) {
+                        if (v.trim().isNotEmpty) {
+                          l.advance(5, 6);
+                        } else {
+                          l.advance(6, 5);
+                        }
                       }
                     },
                   ),
@@ -287,6 +373,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
                       fontSize: 13,
                       onPressed: () => Navigator.pop(ctx, 'port'),
                     ),
+                    // налаштувань із характеристиками більше немає - видаляють тут
+                    if (!widget.catalog) ...[
+                      const SizedBox(height: 8),
+                      PillButton(
+                        text: 'Видалити параметр',
+                        bg: AppColors.danger,
+                        height: 38,
+                        fontSize: 13,
+                        onPressed: () => Navigator.pop(ctx, 'delete'),
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -295,15 +392,24 @@ class _ParametersScreenState extends State<ParametersScreen> {
           actions: [
             Row(children: [
               Expanded(
-                child: PillButton(
-                    text: 'Скасувати',
-                    bg: AppColors.neutralBtn,
-                    fg: AppColors.text,
-                    onPressed: () => Navigator.pop(ctx)),
+                child: LessonTarget(
+                  lesson: l,
+                  name: 'form-cancel',
+                  radius: 14,
+                  child: PillButton(
+                      text: 'Скасувати',
+                      bg: AppColors.neutralBtn,
+                      fg: AppColors.text,
+                      onPressed: () => Navigator.pop(ctx)),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: PillButton(
+                child: LessonTarget(
+                  lesson: l,
+                  name: 'form-save',
+                  radius: 14,
+                  child: PillButton(
                   text: 'Зберегти',
                   bg: AppColors.accent,
                   onPressed: () {
@@ -333,16 +439,21 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     Navigator.pop(ctx, 'save');
                   },
                 ),
+                ),
               ),
             ]),
           ],
-        );
+        ));
       }),
     );
     // контролери не звільняємо одразу: діалог ще анімує закриття й
     // користується ними (їх прибере збирач сміття)
     if (action == 'port' && param != null) {
       await _portFlow(param);
+      return null;
+    }
+    if (action == 'delete' && param != null) {
+      await _delete(param);
       return null;
     }
     final name = nameCtrl.text.trim();
@@ -365,6 +476,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
           options: type == DataTypes.choice ? options : const []);
       // новостворений параметр одразу позначаємо обраним
       if (!widget.catalog) selected.add(created);
+      if (l != null) {
+        l.setData('param', name);
+        l.setData('param_id', created);
+        l.setData('param_type', type);
+        if (unit.isNotEmpty) l.setData('param_unit', unit);
+        l.advance(6, 7);
+      }
     }
     await _reload();
     return created;
@@ -529,14 +647,21 @@ class _ParametersScreenState extends State<ParametersScreen> {
           Column(children: [
             if (!widget.embedded)
             TopBar(
-              title: widget.catalog ? 'Характеристики' : 'Список параметрів',
+              title: widget.catalog ? 'Характеристики' : 'Таблиця параметрів',
               onBack: _back,
-              trailing: CircleIconButton(
-                icon: 'plus_circle',
-                bg: AppColors.accent,
-                size: 34,
-                tooltip: 'Новий параметр',
-                onPressed: () => _openForm(),
+              decorateBack: _lesson == null
+                  ? null
+                  : (b) => LessonTarget(lesson: _lesson, name: 'params-back', child: b),
+              trailing: LessonTarget(
+                lesson: _lesson,
+                name: 'param-create',
+                child: CircleIconButton(
+                  icon: 'plus_circle',
+                  bg: AppColors.accent,
+                  size: 34,
+                  tooltip: 'Створити параметр',
+                  onPressed: () => _openForm(),
+                ),
               ),
             ),
             if (!widget.catalog && !widget.embedded)
@@ -546,19 +671,28 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   for (final (i, t) in const ['Список', 'Конструктор'].indexed) ...[
                     if (i > 0) const SizedBox(width: 6),
                     Expanded(
-                      child: PillButton(
-                        text: t,
-                        bg: _tab == i ? AppColors.accent : AppColors.darkBtn,
-                        fg: _tab == i ? Colors.white : AppColors.text,
-                        height: 38,
-                        fontSize: 13,
-                        onPressed: () => setState(() => _tab = i),
+                      child: LessonTarget(
+                        lesson: _lesson,
+                        name: i == 1 ? 'tab-constructor' : 'tab-list',
+                        radius: 14,
+                        child: PillButton(
+                          text: t,
+                          bg: _tab == i ? AppColors.accent : AppColors.darkBtn,
+                          fg: _tab == i ? Colors.white : AppColors.text,
+                          height: 38,
+                          fontSize: 13,
+                          onPressed: () => _setTab(i),
+                        ),
                       ),
                     ),
                   ],
                 ]),
               ),
             Expanded(
+              child: TabSwipe(
+              index: _tab,
+              count: widget.catalog ? 1 : 2,
+              onChanged: _setTab,
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
                   : (!widget.catalog && _tab == 1)
@@ -577,6 +711,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                               itemBuilder: (_, i) => _card(list[i]),
                             )
                           : _orderList(list),
+              ),
             ),
             // у «Налаштуваннях» створення - кнопкою знизу
             if (widget.embedded)
@@ -590,24 +725,27 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   onPressed: () => _openForm(),
                 ),
               ),
-            if (!widget.catalog && _tab == 1 && _canApplyToAll)
+            // кому застосувати набір і порядок: вулику, таким самим вуликам, усій пасіці
+            if (!widget.catalog && _canApplyToAll)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: InkWell(
-                  onTap: () => setState(() => _allHives = !_allHives),
-                  child: Row(children: [
-                    CheckToggle(checked: _allHives, onChanged: (v) => setState(() => _allHives = v)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text('Для всіх вуликів пасіки (такий самий набір і порядок)',
-                          style: TextStyle(color: AppColors.text, fontSize: 14)),
-                    ),
-                  ]),
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                child: LessonTarget(
+                  lesson: _lesson,
+                  name: 'apply-scope',
+                  radius: 16,
+                  child: ApplyScopeSwitch(
+                    value: _scope,
+                    kind: kindOf(widget.element!.label),
+                    onChanged: (v) => setState(() => _scope = v),
+                  ),
                 ),
               ),
+            // урок: місце під пасічника з хмаркою
+            if (_lesson != null) const SizedBox(height: kLessonReserve),
             const SizedBox(height: 12),
           ]),
           if (!widget.embedded) const Positioned.fill(child: ScreenFrame()),
+          if (_lesson != null) Positioned.fill(child: LessonLayer(lesson: _lesson!, screen: 'params')),
         ]),
       ),
     ),
@@ -635,21 +773,72 @@ class _ParametersScreenState extends State<ParametersScreen> {
       }
       _dragOver = null;
     });
+    _lessonGroupsChanged();
+  }
+
+  /// Урок: групи пишемо одразу (щоб перерваний урок продовжився з ними) і
+  /// дивимось, чи три характеристики обходу вже в «Обходах».
+  void _lessonGroupsChanged() {
+    final l = _lesson;
+    if (l == null) return;
+    repo.setParamGroups(groups);
+    final g = groups.where((x) => x.name.trim().toLowerCase() == kVisitsGroup.toLowerCase()).firstOrNull;
+    if (g != null && _visitIds.isNotEmpty && _visitIds.every(g.ids.contains)) l.advance(10, 11);
+  }
+
+  /// Переставити параметр усередині групи (за ручку): [from]/[to] - серед
+  /// видимих (обраних) параметрів групи.
+  void _reorderInGroup(ParamGroup g, List<String> visible, int from, int to) {
+    if (to > from) to -= 1;
+    if (from < 0 || from >= visible.length) return;
+    to = to.clamp(0, visible.length - 1);
+    if (to == from) return;
+    setState(() {
+      final ids = [...visible];
+      final moved = ids.removeAt(from);
+      ids.insert(to, moved);
+      // приховані (не обрані тут) id групи лишаються в кінці
+      g.ids = [...ids, ...g.ids.where((id) => !ids.contains(id))];
+    });
+    _lessonGroupsChanged();
   }
 
   Future<void> _addGroup() async {
-    final name = await showTextPrompt(context, title: 'Нова група', initial: '');
+    final l = _lesson;
+    l?.advance(8, 9);
+    final name = await showTextPrompt(
+      context,
+      title: 'Нова група',
+      initial: '',
+      dismissible: l == null,
+      // урок: група має зватися «Обходи»
+      validate: l == null
+          ? null
+          : (v) => v.toLowerCase() == kVisitsGroup.toLowerCase()
+              ? null
+              : 'Назви групу «$kVisitsGroup»',
+      wrap: l == null ? null : (d) => lessonDialog(l, 'group-form', d),
+      decorate: l == null
+          ? null
+          : (which, b) => LessonTarget(lesson: l, name: 'group-$which', radius: 14, child: b),
+    );
     if (name == null || name.trim().isEmpty || !mounted) return;
     setState(() => groups.add(ParamGroup(id: 'g${DateTime.now().microsecondsSinceEpoch}', name: name.trim())));
+    l?.advance(9, 10);
+    _lessonGroupsChanged();
   }
 
   Future<void> _renameGroup(ParamGroup g) async {
     final name = await showTextPrompt(context, title: 'Назва групи', initial: g.name);
     if (name == null || !mounted) return;
     setState(() => g.name = name);
+    _lessonGroupsChanged();
   }
 
-  void _deleteGroup(ParamGroup g) => setState(() => groups.remove(g));
+  void _deleteGroup(ParamGroup g) {
+    setState(() => groups.remove(g));
+    _lessonGroupsChanged();
+  }
 
   Widget _dragChip(Parameter p, Widget child) => LongPressDraggable<String>(
         data: p.id,
@@ -705,9 +894,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              // назва групи - заокруглена медова плашка
               Container(
                 height: 46,
-                color: AppColors.hive,
+                margin: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                decoration: BoxDecoration(
+                    color: AppColors.hive, borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.only(left: 14, right: 6),
                 child: Row(children: [
                   Expanded(
@@ -729,26 +921,54 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   ),
                 ]),
               ),
-              for (final p in members)
-                DragTarget<String>(
-                  onWillAcceptWithDetails: (d) => d.data != p.id,
-                  onAcceptWithDetails: (d) => _drop(d.data, g.id, at: g.ids.indexOf(p.id)),
-                  builder: (_, _, _) => _dragChip(
-                    p,
-                    Container(
+              // параметри групи: ручка ліворуч - переставити місцями (як у «Списку»),
+              // довгий дотик до назви - перенести в іншу групу
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                itemCount: members.length,
+                onReorder: (from, to) =>
+                    _reorderInGroup(g, [for (final p in members) p.id], from, to),
+                itemBuilder: (_, i) {
+                  final p = members[i];
+                  return DragTarget<String>(
+                    key: ValueKey('${g.id}/${p.id}'),
+                    onWillAcceptWithDetails: (d) => d.data != p.id,
+                    onAcceptWithDetails: (d) => _drop(d.data, g.id, at: g.ids.indexOf(p.id)),
+                    builder: (_, _, _) => Container(
                       height: 44,
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
+                          color: AppColors.popupBg,
                           border: Border(
                               top: BorderSide(color: AppColors.hive.withValues(alpha: 0.22)))),
-                      child: Text(p.nameWithUnit,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: AppColors.text, fontSize: 14)),
+                      child: Row(children: [
+                        ReorderableDragStartListener(
+                          index: i,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(Icons.drag_indicator, color: AppColors.textMuted, size: 24),
+                          ),
+                        ),
+                        Expanded(
+                          child: _dragChip(
+                            p,
+                            Container(
+                              height: 44,
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(right: 14),
+                              child: Text(p.nameWithUnit,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: AppColors.text, fontSize: 14)),
+                            ),
+                          ),
+                        ),
+                      ]),
                     ),
-                  ),
-                ),
+                  );
+                },
+              ),
               if (members.isEmpty || over)
                 Container(
                   height: 44,
@@ -764,7 +984,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       );
     }
 
-    return ListView(padding: const EdgeInsets.all(12), children: [
+    return ListView(key: _lesson?.key('constructor'), padding: const EdgeInsets.all(12), children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
         child: Text(
@@ -774,13 +994,18 @@ class _ParametersScreenState extends State<ParametersScreen> {
             style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       ),
       for (final g in groups) groupCard(g),
-      PillButton(
-        text: '+ Нова група',
-        bg: AppColors.darkBtn,
-        fg: AppColors.text,
-        height: 42,
-        width: double.infinity,
-        onPressed: _addGroup,
+      LessonTarget(
+        lesson: _lesson,
+        name: 'new-group',
+        radius: 14,
+        child: PillButton(
+          text: '+ Нова група',
+          bg: AppColors.darkBtn,
+          fg: AppColors.text,
+          height: 42,
+          width: double.infinity,
+          onPressed: _addGroup,
+        ),
       ),
       const SizedBox(height: 14),
       DragTarget<String>(
@@ -854,12 +1079,33 @@ class _ParametersScreenState extends State<ParametersScreen> {
           selected = [...ids, ...selected.where((id) => !ids.contains(id))];
         });
       },
-      itemBuilder: (_, i) => Padding(
-        key: ValueKey(items[i].id),
-        padding: const EdgeInsets.only(bottom: 10),
-        child: _card(items[i], dragIndex: i < chosen.length ? i : null),
-      ),
+      itemBuilder: (_, i) {
+        final card = _card(items[i], dragIndex: i < chosen.length ? i : null);
+        return Padding(
+          key: ValueKey(items[i].id),
+          padding: const EdgeInsets.only(bottom: 10),
+          // обраний можна тягнути й за саму картку (довгим дотиком), не лише за ручку
+          child: i < chosen.length
+              ? ReorderableDelayedDragStartListener(index: i, child: card)
+              : card,
+        );
+      },
     );
+  }
+
+  /// Тап по параметру - перейменувати (поки в нього немає жодного запису).
+  Future<void> _renameIfFree(Parameter p) async {
+    if (p.isBase) return;
+    if (await repo.parameterHasRecords(p.id)) {
+      if (!mounted) return;
+      await showInfo(context,
+          'У «${p.name}» уже є записи, тож назву змінити не можна. Можна створити новий '
+          'параметр і перенести в нього історію.',
+          title: 'Не можна перейменувати');
+      return;
+    }
+    if (!mounted) return;
+    await _openForm(p);
   }
 
   Widget _card(Parameter p, {int? dragIndex}) {
@@ -870,12 +1116,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
     return ListCard(
       height: 66,
       child: Row(children: [
-        // ручка перетягування — лише в обраних
+        // ручка перетягування — лише в обраних (без підказки: її довгий дотик
+        // заважав почати перетягування)
         if (dragIndex != null) ...[
           ReorderableDragStartListener(
             index: dragIndex,
-            child: Tooltip(
-              message: 'Перетягніть, щоб змінити порядок',
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Icon(Icons.drag_indicator, color: AppColors.textMuted, size: 26),
             ),
           ),
@@ -885,21 +1132,34 @@ class _ParametersScreenState extends State<ParametersScreen> {
         if (_pinned(p))
           const LockMark()
         else
-        CheckToggle(
-          checked: selected.contains(p.id),
-          onChanged: (v) => setState(() {
-                    // тап додає id В КІНЕЦЬ — щойно обраний стає останнім
-                    if (v) {
-                      if (!selected.contains(p.id)) selected.add(p.id);
-                    } else {
-                      selected.remove(p.id);
-                    }
-                  }),
+        LessonTarget(
+          lesson: p.id == _lesson?.data['param_id'] ? _lesson : null,
+          name: 'lesson-param-check',
+          radius: 8,
+          child: CheckToggle(
+            checked: selected.contains(p.id),
+            onChanged: (v) {
+              setState(() {
+                // тап додає id В КІНЕЦЬ — щойно обраний стає останнім
+                if (v) {
+                  if (!selected.contains(p.id)) selected.add(p.id);
+                } else {
+                  selected.remove(p.id);
+                }
+              });
+              // урок: зайвий параметр вимкнено
+              if (!v && p.id == _lesson?.data['param_id']) _lesson?.advance(12, 13);
+            },
+          ),
         ),
         const SizedBox(width: 8),
         ],
         Expanded(
-          child: Column(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            // у таблиці вулика / шаблону: тап по назві - перейменувати (поки немає записів)
+            onTap: widget.catalog || p.isBase || _lesson != null ? null : () => _renameIfFree(p),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -912,6 +1172,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
             ],
+          ),
           ),
         ),
         // історія характеристик у каталозі — окремою вкладкою меню («Історія»)
@@ -945,5 +1206,92 @@ class _ParametersScreenState extends State<ParametersScreen> {
             onPressed: () => _delete(p)),
       ]),
     );
+  }
+}
+
+/// Перемикач на три положення: кому застосувати набір і порядок параметрів -
+/// цьому вулику (типово), таким самим вуликам (того самого класу) чи всій пасіці.
+class ApplyScopeSwitch extends StatelessWidget {
+  final ApplyScope value;
+
+  /// Клас вулика («Вулик», «Лежак»…) - для напису середнього положення.
+  final String kind;
+  final ValueChanged<ApplyScope> onChanged;
+  const ApplyScopeSwitch({super.key, required this.value, required this.kind, required this.onChanged});
+
+  static const _h = 40.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = {
+      ApplyScope.hive: 'Цей вулик',
+      ApplyScope.kind: kind.isEmpty ? 'Такі самі' : 'Усі «$kind»',
+      ApplyScope.apiary: 'Уся пасіка',
+    };
+    final i = ApplyScope.values.indexOf(value);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 4),
+        child: Text('Застосувати до:', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+      ),
+      Container(
+        height: _h + 8,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: AppColors.roundBtn,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        ),
+        child: LayoutBuilder(builder: (context, box) {
+          final w = box.maxWidth / 3;
+          return Stack(children: [
+            // медовий повзунок під обраним положенням
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              left: w * i,
+              top: 0,
+              width: w,
+              height: _h,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+            Row(children: [
+              for (final s in ApplyScope.values)
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: s == value,
+                    label: labels[s],
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onChanged(s),
+                      child: SizedBox(
+                        height: _h,
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(labels[s]!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: s == value ? Colors.white : AppColors.text,
+                                    fontSize: 13,
+                                    fontWeight: s == value ? FontWeight.bold : FontWeight.w500)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ]),
+          ]);
+        }),
+      ),
+    ]);
   }
 }

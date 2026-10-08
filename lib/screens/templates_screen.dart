@@ -7,6 +7,7 @@ import '../logic/merge_layout.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
+import '../tutorial/lesson.dart';
 import 'template_editor_screen.dart';
 
 /// Екран "Шаблони": плитки-мініатюри збережених конфігурацій + "Створити шаблон".
@@ -15,12 +16,15 @@ class TemplatesScreen extends StatefulWidget {
 
   /// Вкладка в «Налаштуваннях»: без власної верхньої панелі й рамки.
   final bool embedded;
-  const TemplatesScreen({super.key, required this.repo, this.embedded = false});
+
+  /// Урок «Налаштування»: «Створити шаблон» - ціль уроку.
+  final LessonController? lesson;
+  const TemplatesScreen({super.key, required this.repo, this.embedded = false, this.lesson});
   @override
-  State<TemplatesScreen> createState() => _TemplatesScreenState();
+  State<TemplatesScreen> createState() => TemplatesScreenState();
 }
 
-class _TemplatesScreenState extends State<TemplatesScreen> {
+class TemplatesScreenState extends State<TemplatesScreen> {
   List<ApiaryTemplate>? templates;
   final Map<String, List<SceneCell>> _thumbs = {};
 
@@ -44,11 +48,16 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
   }
 
   Future<void> _open(String? id) async {
+    final l = widget.lesson;
+    if (id == null) l?.advance(4, 5);
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => TemplateEditorScreen(repo: widget.repo, templateId: id),
+      builder: (_) => TemplateEditorScreen(repo: widget.repo, templateId: id, lesson: l),
     ));
     await _reload();
   }
+
+  /// «Створити шаблон» (урок відкриває редактор сам, коли продовжують).
+  Future<void> openNew() => _open(null);
 
   Future<void> _rename(ApiaryTemplate t) async {
     final name = await showTextPrompt(context, title: 'Перейменувати шаблон', initial: t.name);
@@ -105,13 +114,18 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: PillButton(
-                text: 'Створити шаблон',
-                bg: AppColors.accent,
-                height: 48,
+              child: LessonTarget(
+                lesson: widget.lesson,
+                name: 'template-create',
                 radius: 16,
-                width: double.infinity,
-                onPressed: () => _open(null),
+                child: PillButton(
+                  text: 'Створити шаблон',
+                  bg: AppColors.accent,
+                  height: 48,
+                  radius: 16,
+                  width: double.infinity,
+                  onPressed: () => _open(null),
+                ),
               ),
             ),
           ]),

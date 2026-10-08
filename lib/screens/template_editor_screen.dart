@@ -11,8 +11,10 @@ import '../logic/merge_layout.dart';
 import '../ui/characteristics_panel.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
+import '../ui/guide_bubble.dart' show rectOfKey;
 import '../ui/icons.dart';
 import '../ui/theme.dart';
+import '../tutorial/lesson.dart';
 import 'parameters_screen.dart';
 
 /// Редактор заготовки (порт TemplateEditorScreen / TemplateGridArea).
@@ -30,7 +32,10 @@ import 'parameters_screen.dart';
 class TemplateEditorScreen extends StatefulWidget {
   final Repository repo;
   final String? templateId;
-  const TemplateEditorScreen({super.key, required this.repo, this.templateId});
+
+  /// Урок «Налаштування (шаблони і параметри)».
+  final LessonController? lesson;
+  const TemplateEditorScreen({super.key, required this.repo, this.templateId, this.lesson});
   @override
   State<TemplateEditorScreen> createState() => _TemplateEditorScreenState();
 }
@@ -92,6 +97,12 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   Timer? _warnTimer;
 
   PanelData? _panelData;
+
+  LessonController? get _lesson => widget.lesson;
+
+  /// Урок: квадрат 2×2, який треба заповнити перешкодами (від першої плитки).
+  Set<Cell> _lessonSquare = const {};
+  final _gridKey = GlobalKey();
 
   @override
   void initState() {
@@ -278,6 +289,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         }
         selected = {};
       });
+      _lessonAfterTap(key);
       _afterChange();
       return;
     }
@@ -294,6 +306,65 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       setState(() => selected = {});
       _afterChange();
     }
+  }
+
+  /// Урок: перша плитка перешкоди - далі квадрат 2×2 від неї; квадрат
+  /// заповнено - «Червоною кнопкою» завершити додавання.
+  void _lessonAfterTap(Cell key) {
+    final l = _lesson;
+    if (l == null) return;
+    if (l.step == 7 && cells[key]?.type == 'obstacle') {
+      // квадрат - вгору й праворуч (унизу пасічник)
+      setState(() => _lessonSquare = {key, (key.$1 + 1, key.$2), (key.$1, key.$2 + 1), (key.$1 + 1, key.$2 + 1)});
+      l.go(8);
+    } else if (l.step == 8 &&
+        _lessonSquare.isNotEmpty &&
+        _lessonSquare.every((c) => cells[c]?.type == 'obstacle')) {
+      l.go(9);
+    }
+  }
+
+  /// Урок: квадрат 2×2 у медовому ободку.
+  List<Widget> _lessonSquareGlow() {
+    if (_lesson?.step != 8 || _lessonSquare.isEmpty) return const [];
+    return [
+      AnimatedBuilder(
+        animation: grid,
+        builder: (context, _) {
+          Rect? r;
+          for (final c in _lessonSquare) {
+            final cr = grid.cellRect(c.$1, c.$2);
+            r = r == null ? cr : r.expandToInclude(cr);
+          }
+          return Positioned.fromRect(
+            rect: r!.inflate(3),
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.create, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.create.withValues(alpha: 0.6), blurRadius: 12)
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  /// Рамка квадрата уроку в координатах шару уроку [ref].
+  Rect? _lessonSquareRect(RenderBox ref) {
+    final g = rectOfKey(_gridKey, ref);
+    if (g == null || _lessonSquare.isEmpty) return null;
+    Rect? r;
+    for (final c in _lessonSquare) {
+      final cr = grid.cellRect(c.$1, c.$2).shift(g.topLeft);
+      r = r == null ? cr : r.expandToInclude(cr);
+    }
+    return r;
   }
 
   /// Увімкнути/вимкнути режим переміщення (вимикає додавання).
@@ -399,16 +470,20 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   // ---------------------------------------------------------------------
 
   Future<void> _onAddType() async {
+    final l = _lesson;
     if (addingMode) {
       setState(() {
         addingMode = false;
         selected = {};
       });
+      l?.advance(9, 10);
       _afterChange();
       return;
     }
+    l?.advance(5, 6);
     final picked = await showDialog<(String, String?)>(
       context: context,
+      barrierDismissible: l == null,
       builder: (ctx) {
         Widget section(String t, List<Widget> children) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,7 +496,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                 Wrap(spacing: 10, runSpacing: 10, children: children),
               ],
             );
-        return AlertDialog(
+        return lessonDialog(l, 'editor-picker', AlertDialog(
           title: const Text('Тип для малювання'),
           content: SizedBox(
             width: 300,
@@ -439,23 +514,29 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                         onPressed: () => Navigator.pop(ctx, ('hive', null))),
                   ]),
                   const SizedBox(height: 14),
-                  section('Перешкоди', [
-                    for (final (key, label) in obstacleVariants)
-                      CircleIconButton(
-                          icon: key,
-                          bg: AppColors.obstacle,
-                          size: 52,
-                          tooltip: label,
-                          onPressed: () => Navigator.pop(ctx, ('obstacle', key))),
-                  ]),
+                  LessonTarget(
+                    lesson: l,
+                    name: 'picker-obstacle',
+                    radius: 14,
+                    child: section('Перешкоди', [
+                      for (final (key, label) in obstacleVariants)
+                        CircleIconButton(
+                            icon: key,
+                            bg: AppColors.obstacle,
+                            size: 52,
+                            tooltip: label,
+                            onPressed: () => Navigator.pop(ctx, ('obstacle', key))),
+                    ]),
+                  ),
                 ],
               ),
             ),
           ),
-        );
+        ));
       },
     );
     if (picked == null) return;
+    if (picked.$1 == 'obstacle') l?.advance(6, 7);
     setState(() {
       mode = picked.$1;
       if (picked.$2 != null) obstacleVariant = picked.$2!;
@@ -550,8 +631,16 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     // лишаємось у редакторі)
     if (widget.templateId == null) {
       _saving = true;
+      final l = _lesson;
+      l?.advance(10, 11);
       final asked = await showTextPrompt(context,
-          title: 'Назва шаблону', initial: title.trim().isEmpty ? 'Новий шаблон' : title.trim());
+          title: 'Назва шаблону',
+          initial: title.trim().isEmpty ? 'Новий шаблон' : title.trim(),
+          dismissible: l == null,
+          wrap: l == null ? null : (d) => lessonDialog(l, 'template-name', d),
+          decorate: l == null
+              ? null
+              : (which, b) => LessonTarget(lesson: l, name: 'name-$which', radius: 14, child: b));
       _saving = false;
       if (asked == null || !mounted) return;
       title = asked;
@@ -566,6 +655,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         if (old != null && mounted) await _offerApplyToPlaced(old, out);
       } else {
         await repo.addTemplate(name, w, h, out);
+        _lesson?.setData('template', name);
+        _lesson?.advance(11, 12);
       }
       _savedSnapshot = _snapshot();
       if (mounted) Navigator.pop(context, true);
@@ -605,6 +696,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   }
 
   Future<void> _back() async {
+    if (_lesson != null) {
+      _lesson!.exit();
+      return;
+    }
     if (_dirty) {
       final leave = await showConfirm(context,
           title: 'Вийти без збереження?',
@@ -670,7 +765,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   Widget build(BuildContext context) {
     final panelOpen = _panelData != null && _selectedCells.isNotEmpty && !moveMode;
     return PopScope(
-      canPop: !_dirty,
+      canPop: !_dirty && _lesson == null,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
@@ -706,6 +801,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                 child: LayoutBuilder(builder: (context, box) {
                   return Stack(children: [
                     Positioned.fill(
+                      key: _gridKey,
                       child: InfiniteGrid(
                         controller: grid,
                         cells: _scene(),
@@ -719,30 +815,12 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       ),
                     ),
                     const Positioned.fill(child: ScreenFrame()),
+                    // масштаб - як на основній карті: праворуч по центру
                     Positioned(
                       right: 14,
-                      top: 14,
-                      child: Column(children: [
-                        PillButton(
-                            text: '+',
-                            bg: AppColors.roundBtn,
-                            fg: AppColors.text,
-                            width: 38,
-                            height: 38,
-                            radius: 19,
-                            fontSize: 18,
-                            onPressed: () => grid.zoomBy(4)),
-                        const SizedBox(height: 6),
-                        PillButton(
-                            text: '−',
-                            bg: AppColors.roundBtn,
-                            fg: AppColors.text,
-                            width: 38,
-                            height: 38,
-                            radius: 19,
-                            fontSize: 18,
-                            onPressed: () => grid.zoomBy(-4)),
-                      ]),
+                      top: 0,
+                      bottom: 0,
+                      child: Center(child: ZoomButtons(controller: grid)),
                     ),
                     Positioned(
                       top: 14,
@@ -756,6 +834,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       ),
                     ),
                     ..._overlayButtons(box.biggest),
+                    ..._lessonSquareGlow(),
                   ]);
                 }),
               ),
@@ -771,11 +850,16 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                 height: 70,
                 color: AppColors.panel,
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  CircleIconButton(
-                    icon: 'plus_circle',
-                    bg: addingMode ? AppColors.modeActive : AppColors.accent,
-                    tooltip: addingMode ? 'Завершити додавання' : 'Додати',
-                    onPressed: _onAddType,
+                  // у режимі додавання «+» стає червоним хрестиком - ним і вимикають
+                  LessonTarget(
+                    lesson: _lesson,
+                    name: 'editor-add',
+                    child: CircleIconButton(
+                      icon: addingMode ? 'close' : 'plus_circle',
+                      bg: addingMode ? AppColors.danger : AppColors.accent,
+                      tooltip: addingMode ? 'Завершити додавання' : 'Додати',
+                      onPressed: _onAddType,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   CircleIconButton(
@@ -793,7 +877,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   ),
                   const SizedBox(width: 16),
                   // дискета замість галочки
-                  Tooltip(
+                  LessonTarget(
+                    lesson: _lesson,
+                    name: 'editor-save',
+                    child: Tooltip(
                     message: 'Зберегти',
                     child: Material(
                       color: AppColors.accent,
@@ -805,6 +892,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                             dimension: 46, child: Icon(Icons.save, color: Colors.white, size: 26)),
                       ),
                     ),
+                  ),
                   ),
                 ]),
               ),
@@ -829,6 +917,19 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       onEditParams: _panelParams,
                     ),
             ),
+            // урок: пасічник над нижньою панеллю кнопок
+            if (_lesson != null)
+              Positioned.fill(
+                child: LessonLayer(
+                  lesson: _lesson!,
+                  screen: 'editor',
+                  bottomInset: 96,
+                  regions: {
+                    'grid': (ref) => rectOfKey(_gridKey, ref),
+                    'square': _lessonSquareRect,
+                  },
+                ),
+              ),
           ]),
         ),
       ),

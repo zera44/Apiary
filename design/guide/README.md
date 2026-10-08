@@ -42,3 +42,12 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 - beekeeper_bust_18_mailbox_bee.pdf (→ assets/guide/beekeeper_mailbox_bee.webp) — урок: пасічник
   із поштовою скринькою й бджолою, крок «Зворотний зв'язок» в огляді меню навігації.
+
+Уроки «Групи і параметри обходу» й «Налаштування (шаблони і параметри)» (lib/tutorial/lessons.dart),
+малюнки з ТЗ у масштабі beekeeper_on_toggle.webp (позиція — за головою пасічника):
+- beekeeper_blueprint.webp — пасічник із кресленням (створення параметра / шаблону);
+- beekeeper_scheming.webp — «задумує» назву параметра;
+- beekeeper_surprised.webp — здивований (нова група, фінал уроку);
+- beekeeper_thinking.webp — замислений (назва групи «Обходи»);
+- continue_with_sign.webp — «Продовжити» з табличкою «Завершити» на мотузках;
+- button_wide.webp — широка кнопка «Завершити» в кінці уроку.

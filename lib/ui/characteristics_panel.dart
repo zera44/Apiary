@@ -5,6 +5,7 @@ import '../logic/merge_layout.dart';
 import 'cell_style.dart';
 import 'common.dart';
 import 'icons.dart';
+import '../tutorial/lesson.dart';
 import 'theme.dart';
 
 /// Що показує панель "Характеристики".
@@ -78,6 +79,9 @@ class CharacteristicsPanel extends StatelessWidget {
 
   /// Урок: ключ кнопки «Оглянути» (її дозволено натиснути).
   final Key? fillKey;
+
+  /// Урок із «Навчання»: «Параметри» - ціль уроку (медовий ободок).
+  final LessonController? lesson;
   final void Function(String parameterId)? onHistory;
 
   /// Тап по значенню: швидка правка одного параметра (інакше — [onHistory]).
@@ -106,6 +110,7 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onFill,
     this.highlightFill = false,
     this.fillKey,
+    this.lesson,
     this.onHistory,
     this.onValue,
     this.onQr,
@@ -230,12 +235,17 @@ class CharacteristicsPanel extends StatelessWidget {
                 ],
                 // набір параметрів вулика — у самому низу інформації
                 const SizedBox(height: 18),
-                PillButton(
-                  text: 'Параметри',
-                  bg: AppColors.accent,
-                  height: 38,
-                  fontSize: 13,
-                  onPressed: onEditParams,
+                LessonTarget(
+                  lesson: lesson,
+                  name: 'panel-params',
+                  radius: 14,
+                  child: PillButton(
+                    text: 'Параметри',
+                    bg: AppColors.accent,
+                    height: 38,
+                    fontSize: 13,
+                    onPressed: onEditParams,
+                  ),
                 ),
                 ],
               ],
@@ -310,15 +320,16 @@ class CharacteristicsPanel extends StatelessWidget {
           height: 30,
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: 10),
+          // назва групи - заокруглена «плашка» над таблицею
           decoration: BoxDecoration(
-              color: AppColors.hive,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10))),
+              color: AppColors.hive, borderRadius: BorderRadius.circular(10)),
           child: Text(name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   color: Color(0xFF2B1A08), fontSize: 14, fontWeight: FontWeight.bold)),
         ),
+        const SizedBox(height: 6),
         table([for (final e in items) row(e)]),
       ],
     ]);

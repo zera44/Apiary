@@ -641,9 +641,7 @@ void main() {
     await tester.tap(find.descendant(
         of: find.widgetWithText(ListCard, 'Вага'), matching: find.byType(CheckToggle)));
     await settle(tester);
-    await tester.tap(find.text('Конструктор'));
-    await settle(tester);
-    await tester.tap(find.text('Для всіх вуликів пасіки (такий самий набір і порядок)'));
+    await tester.tap(find.descendant(of: find.byType(ApplyScopeSwitch), matching: find.text('Уся пасіка')));
     await settle(tester);
     // окремої «Зберегти» немає: «назад» зберігає автоматично
     expect(find.text('Зберегти'), findsNothing);
@@ -985,10 +983,10 @@ void main() {
         lessThan(tester.getTopLeft(find.text('Вага')).dy));
     expect(find.byType(LockMark), findsWidgets);
     // у списку конкретного вулика параметри не редагуються й не видаляються
-    // (лише в меню → «Характеристики»)
+    // (торкання назви відкриває форму, лише поки немає записів)
     expect(find.byTooltip('Редагувати'), findsNothing);
     expect(find.byTooltip('Видалити'), findsNothing);
-    await tester.tap(find.byTooltip('Новий параметр'));
+    await tester.tap(find.byTooltip('Створити параметр'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
     await tester.tap(find.text('Зберегти').last);
@@ -1016,20 +1014,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('налаштування: Характеристики - каталог без вибору й без «Зберегти»', (tester) async {
+  testWidgets('налаштування: без вкладки «Характеристики»', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування')); // шестерня: характеристики й шаблони
+    await tester.tap(find.byTooltip('Налаштування')); // шестерня: головна й шаблони
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('Характеристики'));
-    await settle(tester);
-    await settle(tester);
-    expect(find.text('Вага'), findsOneWidget);
-    expect(find.text('Зберегти'), findsNothing);
+    expect(find.text('Шаблони'), findsOneWidget);
+    expect(find.text('Характеристики'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -1200,7 +1195,7 @@ void main() {
   testWidgets('новий параметр «Список»: варіанти задаються в самій формі', (tester) async {
     await tester.pumpWidget(wrap(ParametersScreen.catalog(repo: repo)));
     await settle(tester);
-    await tester.tap(find.byTooltip('Новий параметр'));
+    await tester.tap(find.byTooltip('Створити параметр'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Сила сім\'ї');
     await tester.tap(find.text('Список'));
@@ -1738,8 +1733,6 @@ void main() {
     expect(find.text('Головна'), findsOneWidget);
     expect(find.text('Історія'), findsNothing); // історія - лише по картах
     await tester.tap(find.text('Шаблони'));
-    await settle(tester);
-    await tester.tap(find.text('Характеристики'));
     await settle(tester);
     expect(tester.takeException(), isNull);
   });

@@ -200,7 +200,7 @@ class DataTypes {
   }
 }
 
-/// Параметр із каталогу ("Список параметрів").
+/// Параметр із каталогу («Таблиця параметрів»).
 class Parameter {
   final String id;
   final String name;

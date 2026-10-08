@@ -25,6 +25,7 @@ import '../ui/grid_view.dart';
 import '../ui/mode_toggle.dart';
 import '../ui/pill_choice.dart';
 import '../ui/theme.dart';
+import '../tutorial/lesson.dart';
 import 'history_screen.dart';
 import 'parameters_screen.dart';
 import 'qr_scan_screen.dart';
@@ -87,6 +88,9 @@ class MapScreen extends StatefulWidget {
   /// Після «Я сам собі маг пасіки»: на справжній карті пасічник востаннє
   /// просить відкрити меню навігації (кнопка в медовому ободку).
   final bool menuTour;
+
+  /// Урок із «Навчання» (пісочниця): пасічник веде за сценарієм [LessonController].
+  final LessonController? lesson;
   const MapScreen(
       {super.key,
       required this.repo,
@@ -97,6 +101,7 @@ class MapScreen extends StatefulWidget {
       this.next = NextHive.order,
       this.tutorial = false,
       this.menuTour = false,
+      this.lesson,
       this.onLessonDone});
 
   /// Урок: на карті ще немає вуликів.
@@ -140,6 +145,9 @@ class _Drag {
 
 class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   Repository get repo => widget.repo;
+
+  /// Будь-який урок: «Базові поняття» чи урок із [MapScreen.lesson].
+  bool get _guided => widget.tutorial || widget.lesson != null;
 
   final grid = GridController(cellSize: 34, minCell: 18, maxCell: 56);
   List<MapElement> elements = [];
@@ -225,7 +233,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             key: const ValueKey('lesson-target'),
             rect: r,
             child: IgnorePointer(
-              child: DecoratedBox(
+              child: SpotlightHole(
+                radius: 6,
+                child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.create.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(6),
@@ -234,6 +244,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     BoxShadow(color: AppColors.create.withValues(alpha: 0.6), blurRadius: 10)
                   ],
                 ),
+              ),
               ),
             ),
           );
@@ -257,7 +268,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             key: ValueKey('lesson-hive-glow-${c.id}'),
             rect: grid.cellRect(c.x, c.y).inflate(3),
             child: IgnorePointer(
-              child: DecoratedBox(
+              child: SpotlightHole(
+                radius: 8,
+                child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.create, width: 3),
@@ -265,6 +278,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     BoxShadow(color: AppColors.create.withValues(alpha: 0.7), blurRadius: 14)
                   ],
                 ),
+              ),
               ),
             ),
           ),
@@ -276,6 +290,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   /// Підтвердити розміщення: перемикач у медовому ободку.
   bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced && _lessonMoved;
+
+  /// Кнопки панелі нічого не роблять: крок уроку «Оглянути» або урок із
+  /// «Навчання» (у ньому з панелі - лише «Параметри»).
+  bool get _panelLocked => _lessonInspect || widget.lesson != null;
 
   /// Огляд: «Оглянути» на панелі в медовому ободку.
   bool get _lessonInspect => widget.tutorial && _lesson == _Lesson.inspect && panelOpen;
@@ -402,7 +420,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           [
             GuideBubble.highlight('Шестерня'),
             const TextSpan(
-                text: ' - характеристики й шаблони. А набір параметрів вулика збирай у '
+                text: ' - налаштування й шаблони. А набір параметрів вулика збирай у '
                     '«Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
           ],
           () => setState(() => _lesson = _Lesson.congrats)
@@ -483,7 +501,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
     }
-    if (mounted && !widget.tutorial) await Hints.show(context, repo, Hints.map);
+    if (mounted && !_guided) await Hints.show(context, repo, Hints.map);
+    if (widget.lesson != null) {
+      if (mounted) setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resumeLesson());
+      return;
+    }
     final focusId = widget.focusElementId;
     if (focusId != null && mounted) {
       final el = elements.where((e) => e.id == focusId).firstOrNull;
@@ -1121,7 +1144,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     });
     _revealBesidePanel(el);
-    if (!widget.tutorial) await Hints.show(context, repo, Hints.panel);
+    if (_isLessonHive(el)) widget.lesson?.advance(1, 2);
+    if (!_guided) await Hints.show(context, repo, Hints.panel);
   }
 
   /// Панель «Характеристики» праворуч не повинна закривати обраний об'єкт:
@@ -1274,10 +1298,93 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Future<void> _panelEditParams() async {
     final el = panelElement;
     if (el == null) return;
+    widget.lesson?.advance(2, 3);
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ParametersScreen.forElement(repo: repo, element: el),
+      builder: (_) => ParametersScreen.forElement(repo: repo, element: el, lesson: widget.lesson),
     ));
     await _refreshPanel();
+  }
+
+  /// Шестерня «Налаштування» (в уроці - з пасічником).
+  Future<void> _openSettings() async {
+    final l = widget.lesson;
+    l?.advance(2, 3);
+    await SettingsScreen.open(Navigator.of(context), repo, lesson: l);
+  }
+
+  // ---------------------------------------------------------------------
+  // урок із «Навчання»
+  // ---------------------------------------------------------------------
+
+  /// Вулик, з яким працює урок (його id - у даних уроку).
+  MapElement? get _lessonHiveEl {
+    final id = widget.lesson?.data['hive'];
+    return id == null ? null : elements.where((e) => e.id == id).firstOrNull;
+  }
+
+  bool _isLessonHive(MapElement el) {
+    final h = _lessonHiveEl;
+    return h != null && mergedObjectOf(h, elements).any((e) => e.id == el.id);
+  }
+
+  Rect? _lessonHiveRect() {
+    final h = _lessonHiveEl;
+    if (h == null) return null;
+    Rect? r;
+    for (final c in mergedObjectOf(h, elements)) {
+      final cr = grid.cellRect(c.x, c.y);
+      r = r == null ? cr : r.expandToInclude(cr);
+    }
+    return r;
+  }
+
+  /// Крок «натисни на вулик»: медове сяйво навколо вулика уроку.
+  List<Widget> _lessonPickGlow() {
+    final l = widget.lesson;
+    final h = _lessonHiveEl;
+    if (l == null || h == null || l.step != 1 || panelOpen || selectMode) return const [];
+    return [
+      for (final c in mergedObjectOf(h, elements))
+        AnimatedBuilder(
+          animation: grid,
+          builder: (context, _) => Positioned.fromRect(
+            key: ValueKey('lesson-pick-glow-${c.id}'),
+            rect: grid.cellRect(c.x, c.y).inflate(3),
+            child: IgnorePointer(
+              child: SpotlightHole(
+                radius: 8,
+                child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.create, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: AppColors.create.withValues(alpha: 0.7), blurRadius: 14)
+                  ],
+                ),
+              ),
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// Продовжений урок: відкрити те, на чому зупинились (панель вулика,
+  /// «Таблицю параметрів», налаштування).
+  Future<void> _resumeLesson() async {
+    final l = widget.lesson;
+    if (l == null || !mounted) return;
+    if (l.id == 'params') {
+      final h = _lessonHiveEl;
+      if (h == null || l.step < 2) return;
+      grid.centerOnGrid(h.x + 0.5, h.y + 0.5);
+      await _loadPanel(h);
+      if (!mounted) return;
+      setState(() => panelOpen = true);
+      if (l.step >= 3 && l.step <= 13) await _panelEditParams();
+    } else if (l.id == 'templates') {
+      if (l.step >= 3) await _openSettings();
+    }
   }
 
   Future<void> _panelFill() async {
@@ -1292,7 +1399,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           duration: const Duration(milliseconds: 1200));
       return;
     }
-    if (!widget.tutorial) await Hints.show(context, repo, Hints.fill);
+    if (!_guided) await Hints.show(context, repo, Hints.fill);
     if (!mounted) return;
     var cur = el;
     ({Apiary apiary, String elementId})? away; // наступний — на іншій пасіці
@@ -1891,7 +1998,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     return PopScope(
       canPop: !widget.tutorial,
       child: Scaffold(
-      drawer: widget.tutorial && _lesson != _Lesson.menu && _lesson != _Lesson.drawer
+      drawer: widget.lesson != null || (widget.tutorial && _lesson != _Lesson.menu && _lesson != _Lesson.drawer)
           ? null
           : AppDrawer(
               tour: widget.tutorial,
@@ -1957,7 +2064,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 padding: const EdgeInsets.fromLTRB(70, 0, 70, 0), // місце під кнопки з боків
                 child: Center(
                   child: GestureDetector(
-                    onTap: widget.tutorial ? null : _renameApiary,
+                    onTap: _guided ? null : _renameApiary,
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(
                         child: Text(_apiaryName,
@@ -1968,7 +2075,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18)),
                       ),
-                      if (!widget.tutorial) ...[
+                      if (!_guided) ...[
                         const SizedBox(width: 6),
                         Tooltip(
                             message: 'Налаштування пасіки',
@@ -2000,7 +2107,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               top: 8,
               left: 10,
               child: Center(child: Builder(
-                      builder: (ctx) => widget.tutorial && _lesson == _Lesson.menu
+                      builder: (ctx) => widget.lesson != null
+                          ? CircleIconButton(
+                              key: widget.lesson!.key('exit'),
+                              icon: 'back_arrow',
+                              bg: AppColors.roundBtn,
+                              iconColor: AppColors.text,
+                              size: 48,
+                              tooltip: 'Назад',
+                              onPressed: widget.lesson!.exit,
+                            )
+                          : widget.tutorial && _lesson == _Lesson.menu
                           ? HoneyRing(
                               key: _menuKey,
                               on: true,
@@ -2052,9 +2169,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               Positioned(
                 top: 8,
                 right: 10,
-                child: GearButton(
-                    size: 48,
-                    onPressed: () => SettingsScreen.open(Navigator.of(context), repo)),
+                child: LessonTarget(
+                  lesson: widget.lesson,
+                  name: 'gear',
+                  child: GearButton(size: 48, onPressed: _openSettings),
+                ),
               )
             else if (_lesson == _Lesson.gear)
               Positioned(
@@ -2067,27 +2186,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             Positioned(
               right: 14,
               top: box.maxHeight / 2 - 46,
-              child: Column(key: _zoomKey, children: [
-                PillButton(
-                    text: '+',
-                    bg: AppColors.roundBtn,
-                    fg: AppColors.text,
-                    width: 42,
-                    height: 42,
-                    radius: 21,
-                    fontSize: 20,
-                    onPressed: () => grid.zoomBy(4)),
-                const SizedBox(height: 8),
-                PillButton(
-                    text: '−',
-                    bg: AppColors.roundBtn,
-                    fg: AppColors.text,
-                    width: 42,
-                    height: 42,
-                    radius: 21,
-                    fontSize: 20,
-                    onPressed: () => grid.zoomBy(-4)),
-              ]),
+              child: ZoomButtons(key: _zoomKey, controller: grid),
             ),
             // перемикач режимів: унизу ліворуч (у редагуванні — над панеллю дій;
             // в уроці — завжди на одному місці, на ньому спирається пасічник)
@@ -2135,36 +2234,37 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               curve: panelOpen ? Curves.easeOutCubic : Curves.easeInCubic,
               top: 70,
               // урок: панель закінчується над пасічником (він увесь урок унизу)
-              bottom: widget.tutorial ? kLessonPanelBottom : 12,
+              bottom: _guided ? kLessonPanelBottom : 12,
               right: panelOpen ? 0 : -(CharacteristicsPanel.width + 12),
               child: panelData == null
                   ? const SizedBox(width: CharacteristicsPanel.width)
                   : CharacteristicsPanel(
                       data: panelData!,
-                      onClose: _lessonInspect ? () {} : () => setState(() => panelOpen = false),
+                      onClose: _panelLocked ? () {} : () => setState(() => panelOpen = false),
                       // подвійний тап не відкриває два вікна
                       // (у кроці уроку «Оглянути» решта кнопок панелі вимкнена)
                       // назву, значок і колір можна змінити й у робочому режимі
-                      editable: selectMode || !widget.tutorial,
+                      editable: selectMode || !_guided,
                       inspect: !selectMode,
-                      onRename: _lessonInspect ? () {} : () => _panelGuard(_panelRename),
-                      onIcon: _lessonInspect ? () {} : () => _panelGuard(_panelIcon),
-                      onColor: _lessonInspect ? () {} : () => _panelGuard(_panelColor),
+                      onRename: _panelLocked ? () {} : () => _panelGuard(_panelRename),
+                      onIcon: _panelLocked ? () {} : () => _panelGuard(_panelIcon),
+                      onColor: _panelLocked ? () {} : () => _panelGuard(_panelColor),
                       onEditParams: _lessonInspect ? () {} : () => _panelGuard(_panelEditParams),
-                      onFill: _lessonInspect && !_inspectRead ? () {} : () => _panelGuard(_panelFill),
+                      onFill: (_lessonInspect && !_inspectRead) || widget.lesson != null ? () {} : () => _panelGuard(_panelFill),
                       onVisited: (panelElement?.isHive ?? false)
-                          ? (_lessonInspect ? () {} : () => _panelGuard(_panelVisited))
+                          ? (_panelLocked ? () {} : () => _panelGuard(_panelVisited))
                           : null,
                       // тап по значенню — швидка правка (історія — іконкою в ній)
                       onValue: selectMode
                           ? null
-                          : (id) => _lessonInspect ? null : _panelGuard(() => _panelQuickEdit(id)),
+                          : (id) => _panelLocked ? null : _panelGuard(() => _panelQuickEdit(id)),
                       // QR-коди — лише для вуликів
                       onQr: (panelElement?.isHive ?? false) && !selectMode
-                          ? (_lessonInspect ? () {} : _panelQr)
+                          ? (_panelLocked ? () {} : _panelQr)
                           : null,
                       highlightFill: _lessonInspect && _inspectRead,
                       fillKey: _fillKey,
+                      lesson: widget.lesson,
                     ),
             ),
             // урок «Базові поняття»: підсвічена клітинка, «завіса» (поки урок
@@ -2174,6 +2274,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             if (widget.tutorial)
               Positioned.fill(child: LessonGate(key: _gateKey, allow: _lessonAllows)),
             ..._lessonOverlay(),
+            // урок із «Навчання»: сяйво навколо вулика, «завіса» і пасічник
+            ..._lessonPickGlow(),
+            if (widget.lesson != null)
+              Positioned.fill(
+                child: LessonLayer(
+                  lesson: widget.lesson!,
+                  screen: 'map',
+                  regions: {
+                    'hive': (ref) => _lessonHiveRect(),
+                    'panel': (ref) => rectOfKey(_panelBoxKey, ref),
+                  },
+                ),
+              ),
             // справжня карта після уроку: «Наостанок покажу меню навігації»
             if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
               ...lessonScene(pose: LessonPose.onButton, text: [
@@ -2241,7 +2354,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// огляд) і «Редагування» (рухаємо, додаємо, видаляємо, міняємо вигляд).
   /// Перехід у редагування одразу пропонує шаблон, щоб додати вулик.
   /// Перемикач стоїть на одному місці в обох режимах.
-  double get _toggleBottom => widget.tutorial ? kToggleLessonBottom : 24;
+  double get _toggleBottom => _guided ? kToggleLessonBottom : 24;
 
   /// Перехід у робочий режим і є збереженням (окремого «Готово» немає).
   Widget _modeToggle() {
@@ -2262,7 +2375,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// повернути, видалити; перемикач — вийти).
   Future<void> _editAndAdd() async {
     _enterEdit();
-    if (!widget.tutorial) await Hints.show(context, repo, Hints.edit);
+    if (!_guided) await Hints.show(context, repo, Hints.edit);
     if (!mounted) return;
     // шаблон пропонується одразу лише на порожній карті; інакше — кнопкою «+»
     if (elements.isEmpty) await _onAddObject();

@@ -85,7 +85,14 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
                   onPressed: () => showApiaryReport(context, repo, widget.apiary!),
                 ),
               ),
-            Expanded(child: _stock ? _stockList() : _paramList()),
+            Expanded(
+              child: TabSwipe(
+                index: _stock ? 1 : 0,
+                count: 2,
+                onChanged: (i) => setState(() => _stock = i == 1),
+                child: _stock ? _stockList() : _paramList(),
+              ),
+            ),
           ]),
           const Positioned.fill(child: ScreenFrame()),
         ]),

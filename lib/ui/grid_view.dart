@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../logic/merge_layout.dart';
 import 'cell_style.dart';
+import 'common.dart';
 import 'theme.dart';
 
 /// Нескінченне поле з сіткою (порт infinite_view.py) — спільне для карти
@@ -753,4 +754,35 @@ Rect? cellsScreenBounds(GridController c, Iterable<(int, int)> cells) {
 double shakeOffset(double t, double duration) {
   if (t >= duration) return 0;
   return 4 * math.sin(t / duration * 3 * 2 * math.pi) * (1 - t / duration);
+}
+
+
+/// Кнопки масштабу «+» / «−» - однакові на всіх картах (ставляться праворуч
+/// по центру висоти карти).
+class ZoomButtons extends StatelessWidget {
+  final GridController controller;
+  const ZoomButtons({super.key, required this.controller});
+
+  @override
+  Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
+        PillButton(
+            text: '+',
+            bg: AppColors.roundBtn,
+            fg: AppColors.text,
+            width: 42,
+            height: 42,
+            radius: 21,
+            fontSize: 20,
+            onPressed: () => controller.zoomBy(4)),
+        const SizedBox(height: 8),
+        PillButton(
+            text: '−',
+            bg: AppColors.roundBtn,
+            fg: AppColors.text,
+            width: 42,
+            height: 42,
+            radius: 21,
+            fontSize: 20,
+            onPressed: () => controller.zoomBy(-4)),
+      ]);
 }

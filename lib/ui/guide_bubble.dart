@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'common.dart';
 import 'mode_toggle.dart';
 import 'theme.dart';
 
@@ -53,7 +54,7 @@ class GuideBubble extends StatelessWidget {
   /// Висота пасічника (компактна підказка — менша).
   final double imageHeight;
 
-  /// Висота проміжку під хмаркою (до низу пасічника).
+  /// Висота проміжку під хмаркою (до низу пасічника); 0 - за висотою [below].
   final double gap;
   const GuideBubble(
       {super.key,
@@ -102,7 +103,11 @@ class GuideBubble extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(height: gap, child: Center(child: below)),
+            // gap 0 - те, що під хмаркою, займає свою висоту (кнопка-малюнок)
+            if (gap <= 0 && below != null)
+              below!
+            else
+              SizedBox(height: gap, child: Center(child: below)),
           ]),
         ),
       ]),
@@ -212,6 +217,8 @@ List<Widget> lessonScene({
           below: below,
           gap: below == null ? LessonFinishLink.heightFor(180) + 4 : 70);
   return [
+    // решта екрана притемнена, крім цілей у медовому ободку (пасічник і хмарка - над нею)
+    const Positioned.fill(child: LessonScrim()),
     // у вікнах уроку перемикача карти не видно — малюємо його копію під пасічником
     if (toggleEditing != null && (pose == LessonPose.leaning || pose == LessonPose.newspaper || pose == LessonPose.bear))
       Positioned(
