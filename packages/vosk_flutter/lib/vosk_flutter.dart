@@ -1,6 +1,7 @@
 /// Офлайн-розпізнавання мови Vosk (Android). Коротка копія плагіна
-/// vosk_flutter (Apache-2.0, alphacep): модель розпаковується з ресурсу
-/// застосунку, мікрофон слухає Vosk SDK (`org.vosk.android.SpeechService`).
+/// vosk_flutter (Apache-2.0, alphacep): модель (zip, скачує застосунок)
+/// розпаковується один раз, мікрофон слухає Vosk SDK
+/// (`org.vosk.android.SpeechService`).
 library;
 
 import 'dart:async';
@@ -50,11 +51,16 @@ class Vosk {
     return '';
   }
 
-  /// Підготувати модель із ресурсу [asset] (zip). Першого разу архів
-  /// розпаковується (кілька секунд); [version] - назва версії моделі: нова
-  /// версія розпакується заново, стара видалиться.
-  static Future<void> init({required String asset, required String version}) =>
-      _channel.invokeMethod('init', {'asset': asset, 'version': version});
+  /// Чи модель [version] уже розпакована на телефоні.
+  static Future<bool> ready(String version) async =>
+      (await _channel.invokeMethod<bool>('ready', {'version': version})) ?? false;
+
+  /// Завантажити модель [version]. Якщо її ще немає на телефоні -
+  /// розпакувати скачаний архів [zip] (кілька секунд; архів потім
+  /// видаляється). Нова назва версії - модель розпакується заново, стара
+  /// видалиться.
+  static Future<void> init({required String version, String? zip}) =>
+      _channel.invokeMethod('init', {'zip': zip, 'version': version});
 
   /// Дозвіл на мікрофон (за потреби - системний запит). true - є.
   static Future<bool> permission() async =>

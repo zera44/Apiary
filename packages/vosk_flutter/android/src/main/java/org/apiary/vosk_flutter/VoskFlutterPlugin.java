@@ -11,6 +11,7 @@ import android.os.Looper;
 import androidx.annotation.NonNull;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,7 +23,6 @@ import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import io.flutter.FlutterInjector;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -40,8 +40,9 @@ import org.vosk.android.SpeechService;
  * Офлайн-розпізнавання мови Vosk для «Моя пасіка».
  *
  * Методи (канал "vosk_flutter"):
- *  - init {asset, version}: розпакувати модель із Flutter-ресурсу (zip) у
- *    пам'ять застосунку (лише першого разу) і завантажити її;
+ *  - ready {version}: чи модель уже розпакована на телефоні;
+ *  - init {zip, version}: розпакувати скачаний архів моделі (лише першого
+ *    разу, потім архів видаляється) і завантажити модель;
  *  - permission: чи є дозвіл на мікрофон, за потреби - запитати;
  *  - start: слухати мікрофон; stop: зупинити (прийде остаточний текст);
  *    cancel: зупинити без результату.
@@ -130,8 +131,13 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
         switch (call.method) {
             case "init":
-                init(call.argument("asset"), call.argument("version"), result);
+                init(call.argument("zip"), call.argument("version"), result);
                 break;
+            case "ready": {
+                String v = call.argument("version");
+                result.success(v != null && new File(modelRoot(v), ".ok").exists());
+                break;
+            }
             case "permission":
                 permission(result);
                 break;
@@ -151,9 +157,17 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
         }
     }
 
-    private void init(String asset, String version, MethodChannel.Result result) {
-        if (asset == null || version == null) {
-            result.error("ARGS", "asset і version обов'язкові", null);
+    private File modelRoot(String version) {
+        return new File(context.getFilesDir(), "vosk/" + version.replaceAll("[^A-Za-z0-9._-]", "_"));
+    }
+
+    /**
+     * Завантажити модель [version]. Якщо її ще не розпаковано - розпакувати
+     * скачаний архів [zip] (після цього архів видаляється).
+     */
+    private void init(String zip, String version, MethodChannel.Result result) {
+        if (version == null) {
+            result.error("ARGS", "version обов'язковий", null);
             return;
         }
         if (model != null && version.equals(modelVersion)) {
@@ -162,8 +176,7 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
         }
         worker.execute(() -> {
             try {
-                File root = new File(context.getFilesDir(), "vosk/" + version);
-                File dir = unpack(asset, root);
+                File dir = unpack(zip, modelRoot(version));
                 Model m = new Model(dir.getAbsolutePath());
                 main.post(() -> {
                     if (model != null) model.close();
@@ -178,13 +191,14 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
     }
 
     /**
-     * Розпакувати zip-модель із Flutter-ресурсу в [root] (лише першого разу:
-     * позначка ".ok" ставиться після повного розпакування). Повертає теку
-     * моделі (єдина тека верхнього рівня архіву або сам [root]).
+     * Розпакувати zip-модель [zipPath] у [root] (лише першого разу: позначка
+     * ".ok" ставиться після повного розпакування). Повертає теку моделі
+     * (єдина тека верхнього рівня архіву або сам [root]).
      */
-    private File unpack(String asset, File root) throws IOException {
+    private File unpack(String zipPath, File root) throws IOException {
         File ok = new File(root, ".ok");
         if (!ok.exists()) {
+            if (zipPath == null || !new File(zipPath).isFile()) throw new IOException("NOMODEL");
             deleteTree(root);
             if (!root.mkdirs() && !root.isDirectory()) throw new IOException("не вдалося створити " + root);
             // старі версії моделі більше не потрібні
@@ -194,10 +208,9 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
                     if (!f.equals(root)) deleteTree(f);
                 }
             }
-            String key = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(asset);
             String canonRoot = root.getCanonicalPath() + File.separator;
             byte[] buf = new byte[1 << 16];
-            try (InputStream in = context.getAssets().open(key);
+            try (InputStream in = new FileInputStream(zipPath);
                  ZipInputStream zip = new ZipInputStream(in)) {
                 ZipEntry e;
                 while ((e = zip.getNextEntry()) != null) {
@@ -217,6 +230,8 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
                 }
             }
             if (!ok.createNewFile() && !ok.exists()) throw new IOException("не вдалося записати позначку");
+            //noinspection ResultOfMethodCallIgnored
+            new File(zipPath).delete(); // друга копія моделі на телефоні не потрібна
         }
         File[] items = root.listFiles(f -> f.isDirectory());
         File[] all = root.listFiles(f -> !f.getName().equals(".ok"));

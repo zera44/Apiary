@@ -62,6 +62,13 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
   StreamSubscription<VoskEvent>? _sub;
   Timer? _limit;
 
+  /// Моделі ще немає на телефоні - на смужці кнопка «Скачати».
+  bool _offer = false;
+
+  /// Скачування моделі: частка 0..1 (null - не скачуємо).
+  double? _downloading;
+  bool _cancelDownload = false;
+
   @override
   void initState() {
     super.initState();
@@ -104,8 +111,17 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
   }
 
   Future<void> _start() async {
+    if (_downloading != null) {
+      _cancelDownload = true; // мікрофон під час скачування - «зупинити»
+      return;
+    }
     final t = _focused;
     if (t == null || _busy || _target != null) return;
+    if (!await VoiceInput.instance.modelOnPhone()) {
+      _offer = true;
+      _say('Для голосу один раз скачайте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
+      return;
+    }
     setState(() {
       _busy = true;
       _message = 'Готую розпізнавання…';
@@ -131,6 +147,34 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
       _say('Голосовий ввід недоступний: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _download() async {
+    if (_downloading != null) return;
+    setState(() {
+      _offer = false;
+      _cancelDownload = false;
+      _downloading = 0;
+      _message = null;
+    });
+    try {
+      await VoiceInput.instance.download(
+        onProgress: (p) {
+          if (mounted) setState(() => _downloading = p);
+        },
+        cancelled: () => _cancelDownload || !mounted,
+      );
+      _say('Модель готова - натисніть мікрофон і говоріть');
+    } catch (e) {
+      if (isVoiceDownloadCancelled(e)) {
+        _say('Скачування зупинено - наступного разу докачається');
+      } else {
+        _offer = true;
+        _say('Не вдалося скачати модель: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _downloading = null);
     }
   }
 
@@ -232,9 +276,12 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
   }
 
   Widget _bar(bool listening) {
+    final dl = _downloading;
     final text = listening
         ? (_partial.isEmpty ? 'Говоріть…' : _partial)
-        : (_message ??
+        : dl != null
+            ? (dl >= 1 ? 'Розпаковую модель…' : 'Скачую модель голосу: ${(dl * 100).round()} %')
+            : (_message ??
             (_focused != null && _isNumeric(_focused!.widget) ? 'Скажіть число' : 'Голосовий ввід'));
     return Material(
       color: AppColors.popupBg,
@@ -248,6 +295,12 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
                   color: listening && _partial.isNotEmpty ? AppColors.text : AppColors.textMuted,
                   fontSize: 14)),
         ),
+        if (_offer && dl == null)
+          TextButton(
+            key: const ValueKey('voice-download'),
+            onPressed: _download,
+            child: Text('Скачати', style: TextStyle(color: AppColors.create, fontWeight: FontWeight.bold)),
+          ),
         GestureDetector(
           key: const ValueKey('voice-mic'),
           behavior: HitTestBehavior.opaque,
@@ -260,14 +313,15 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: listening ? AppColors.danger : AppColors.accent,
+                color: listening || dl != null ? AppColors.danger : AppColors.accent,
                 shape: BoxShape.circle,
               ),
               child: _busy
                   ? const Padding(
                       padding: EdgeInsets.all(10),
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Icon(listening ? Icons.stop : Icons.mic, color: Colors.white, size: 22),
+                  : Icon(listening || dl != null ? Icons.stop : Icons.mic,
+                      color: Colors.white, size: 22),
             ),
           ),
         ),
