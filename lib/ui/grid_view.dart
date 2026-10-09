@@ -424,7 +424,7 @@ class _InfiniteGridState extends State<InfiniteGrid> {
     }
   }
 
-  // Сенсорна панель ноутбука (Windows/macOS): прокрутка двома пальцями й
+  // Сенсорна панель (тачпад): прокрутка двома пальцями й
   // щипок приходять окремими подіями PanZoom, а не колесом миші.
   Offset _pzLastPan = Offset.zero;
   double _pzStartCell = 0;

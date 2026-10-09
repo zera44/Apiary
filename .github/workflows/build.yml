@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tests_only:
-        description: 'Лише аналіз і тести, без збірки APK/Windows (економія хвилин)'
+        description: 'Лише аналіз і тести, без збірки APK (економія хвилин)'
         type: boolean
         default: false
 
@@ -180,8 +180,6 @@ jobs:
           FEEDBACK_URL: ${{ secrets.APIARY_FEEDBACK_URL }}
           # вхід через Google (див. README, «Вхід через Google»)
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_SERVER_CLIENT_ID }}
-          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_DESKTOP_CLIENT_ID }}
-          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.APIARY_GOOGLE_DESKTOP_CLIENT_SECRET }}
         run: |
           set -o pipefail
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
@@ -202,7 +200,7 @@ jobs:
             echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
           fi
           unset KEYSTORE_B64 KEYSTORE_PASSWORD
-          flutter build apk --release --target-platform android-arm,android-arm64 --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID="$GOOGLE_DESKTOP_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET="$GOOGLE_DESKTOP_CLIENT_SECRET" 2>&1 | tee build.log
+          flutter build apk --release --target-platform android-arm,android-arm64 --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash
@@ -294,74 +292,14 @@ jobs:
           # проміжні файли: потрібні лише релізу в цьому ж запуску
           retention-days: 3
 
-  windows:
-    name: Програма для Windows
-    needs: test
-    if: ${{ !inputs.tests_only }}
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0 # уся історія — з неї збирається «Що нового»
-      - name: «Що нового» з історії комітів
-        shell: bash
-        env:
-          PYTHONIOENCODING: utf-8
-        run: python3 tool/whats_new.py 2>/dev/null || python tool/whats_new.py
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          channel: stable
-          flutter-version: 3.47.5
-          cache: true
-      - name: Згенерувати платформні файли
-        run: |
-          flutter pub get --enforce-lockfile
-          flutter create --no-pub --platforms=windows --org org.apiary --project-name apiary .
-          dart run tool/patch_platforms.dart
-      - name: Зібрати для Windows
-        shell: bash
-        env:
-          FEEDBACK_URL: ${{ secrets.APIARY_FEEDBACK_URL }}
-          # вхід через Google (див. README, «Вхід через Google»)
-          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_SERVER_CLIENT_ID }}
-          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_DESKTOP_CLIENT_ID }}
-          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.APIARY_GOOGLE_DESKTOP_CLIENT_SECRET }}
-        run: |
-          set -o pipefail
-          flutter build windows --release --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID="$GOOGLE_DESKTOP_CLIENT_ID" --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET="$GOOGLE_DESKTOP_CLIENT_SECRET" 2>&1 | tee build.log
-      - name: Показати помилку збірки
-        if: failure()
-        shell: bash
-        run: python tool/ci_error_report.py build.log
-      - name: Розмір Windows-збірки (звіт)
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          rows = []
-          root = 'build/windows/x64/runner/Release'
-          for d, _, fs in os.walk(root):
-              for f in fs:
-                  q = os.path.join(d, f)
-                  rows.append((os.path.getsize(q), os.path.relpath(q, root)))
-          rows.sort(reverse=True)
-          out = [f'total = {sum(r[0] for r in rows)}'] + [f'  {a:>10} {b}' for a, b in rows[:12]]
-          print('::notice title=WINSIZE::' + '%0A'.join(out))
-          PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: apiary-windows
-          path: build/windows/x64/runner/Release/
-          retention-days: 3
-
   # Після кожного push у main — оновлює реліз "latest" з готовими файлами,
   # щоб їх можна було скачати за прямим посиланням (і з телефона).
+  # (Ручний запуск з іншої гілки публікує пре-реліз test-<гілка> вже в
+  # кроці «Тестовий APK гілки» збірки APK.)
   release:
     name: Опублікувати реліз
-    needs: [android, windows]
-    # main — реліз «latest»; ручний запуск з іншої гілки — пре-реліз test-<гілка>
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: [android]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -378,44 +316,26 @@ jobs:
       - name: Підготувати файли
         run: |
           mv dist/apiary-apk/app-release.apk apiary.apk
-          (cd dist/apiary-windows && zip -qr9 ../../apiary-windows.zip .)
-          sha256sum apiary.apk apiary-windows.zip > SHA256SUMS.txt
+          sha256sum apiary.apk > SHA256SUMS.txt
           cat SHA256SUMS.txt
-          ls -la apiary.apk apiary-windows.zip
-      - name: Тестовий пре-реліз гілки
-        if: github.ref != 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: test-${{ github.ref_name }}
-        run: |
-          gh release delete "$TAG" --yes --cleanup-tag || true
-          gh release create "$TAG" apiary.apk apiary-windows.zip SHA256SUMS.txt \
-            --target "${{ github.sha }}" --prerelease \
-            --title "Тестова збірка гілки ${{ github.ref_name }}" \
-            --notes "$(cat notes.md)
-
-          Збірка з коміту ${GITHUB_SHA::7} гілки ${{ github.ref_name }} (не основна)."
+          ls -la apiary.apk
       - name: Оновити реліз latest
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest apiary.apk apiary-windows.zip SHA256SUMS.txt \
+          gh release create latest apiary.apk SHA256SUMS.txt \
             --target "${{ github.sha }}" \
             --title "Моя пасіка — остання збірка" \
             --notes "$(cat notes.md)
 
           Автоматична збірка з коміту ${GITHUB_SHA::7}.
           - apiary.apk — для будь-якого Android-телефона (Android 7 і новіші)
-          - apiary-windows.zip — розпакувати й запустити apiary.exe
           - SHA256SUMS.txt — контрольні суми файлів"
       # окремий постійний реліз для кожної версії з pubspec (v0.3.5 тощо):
       # створюється один раз, коли версія вперше потрапила в main
       - name: Реліз версії
-        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -424,7 +344,7 @@ jobs:
           if gh release view "v$V" >/dev/null 2>&1; then
             echo "v$V уже є — пропускаю"
           else
-            gh release create "v$V" apiary.apk apiary-windows.zip SHA256SUMS.txt \
+            gh release create "v$V" apiary.apk SHA256SUMS.txt \
               --target "${{ github.sha }}" \
               --title "Vulyk $V" \
               --notes-file notes.md

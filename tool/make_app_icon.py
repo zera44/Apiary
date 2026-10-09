@@ -11,7 +11,6 @@
   android/res/values/ic_launcher_background.xml    колір тла
   android/res/drawable-*/ic_notification.png       біла іконка сповіщень
   android/res/raw/keep.xml                         щоб її не вирізав shrinker
-  windows/app_icon.ico
 """
 import os
 import subprocess
@@ -90,9 +89,6 @@ def main():
           '<resources xmlns:tools="http://schemas.android.com/tools"\n'
           '    tools:keep="@drawable/ic_notification" />\n',
           'android', 'res', 'raw', 'keep.xml')
-    ico = os.path.join(OUT, 'windows', 'app_icon.ico')
-    os.makedirs(os.path.dirname(ico), exist_ok=True)
-    big_legacy.save(ico, sizes=[(s, s) for s in (16, 24, 32, 48, 64, 128, 256)])
     big_legacy.resize((512, 512), Image.LANCZOS).save(os.path.join(OUT, 'preview.png'))
     print('готово:', OUT)
 

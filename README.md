@@ -8,34 +8,30 @@ SQLite, а фонова синхронізація вивантажує змін
 Це повний переклад Python/Kivy-версії на Flutter. Поведінка екранів та
 сама, схема бази даних сумісна зі старою.
 
-## Запуск на комп'ютері (для перевірки)
+## Розробка
+
+Застосунок лише для Android (версії для Windows більше немає).
 
 1. Встанови **Flutter SDK**: https://docs.flutter.dev/get-started/install
-   (розпакувати архів, додати `flutter\bin` у PATH).
-2. Для запуску у вікні на Windows — **Visual Studio 2022 Community** з
-   компонентом «Desktop development with C++» (саме Visual Studio, не VS Code).
-3. Перевір, чого бракує: `flutter doctor`.
-4. У теці проєкту **один раз** згенеруй платформні файли:
+   і Android Studio (Android SDK); перевір, чого бракує: `flutter doctor`.
+2. У теці проєкту **один раз** згенеруй платформні файли:
 
    ```
-   flutter create --platforms=android,windows --org org.apiary --project-name apiary .
+   flutter create --platforms=android --org org.apiary --project-name apiary .
    dart run tool/patch_platforms.dart
    ```
 
-   (на Mac заміни `windows` на `macos`, на Linux — на `linux`).
-5. Запуск:
+3. Запуск на телефоні чи емуляторі Android:
 
    ```
    flutter pub get
-   flutter run -d windows
+   flutter run
    ```
 
    Під час роботи: `r` — миттєво підхопити зміни в коді (hot reload),
    `R` — перезапуск.
 
-Керування на комп'ютері: перетягування мишею — рух по карті, коліщатко —
-прокрутка (з Shift — вбік), **Ctrl + коліщатко — масштаб**.
-На телефоні — масштаб двома пальцями.
+Масштаб карти — двома пальцями.
 
 ## На телефоні
 
@@ -45,8 +41,8 @@ SQLite, а фонова синхронізація вивантажує змін
   `build/app/outputs/flutter-apk/app-release.apk`.
 - **Без встановлення нічого (GitHub Actions):** залий проєкт у репозиторій
   на GitHub. Workflow `.github/workflows/build.yml` сам перевіряє код,
-  проганяє тести і збирає **APK для Android** та **програму для Windows**
-  (розділ Actions → останній запуск → Artifacts).
+  проганяє тести і збирає **APK для Android** (ручний запуск з гілки —
+  пре-реліз `test-<гілка>`, push у main — реліз `latest`).
 
 ## Тести
 
@@ -75,18 +71,17 @@ flutter test
 Якщо дату не задано, відлік іде від моменту, коли задали періодичність.
 Натискання на нагадування відкриває цей вулик на карті одразу з формою
 «Оглянути» (так само — після сканування QR-коду вулика).
-На Android сповіщення планує система (працює й при закритому застосунку);
-на Windows — застосунок показує їх, поки він запущений (можна згорнути).
+Сповіщення планує система (працює й при закритому застосунку).
 
 ## Назва та іконка застосунку
 
-Назва на телефоні й у заголовку вікна — **Vulyk** (`appName` у
+Назва на телефоні — **Vulyk** (`appName` у
 `tool/patch_platforms.dart`). Іконка — пасічник із рамкою
 (`design/app_icon/app_icon.pdf`). Щоб її змінити, заміни PDF і виконай
 `python3 tool/make_app_icon.py` (потрібні poppler-utils і Pillow): скрипт
 оновить `tool/app_icon/`, а `dart run tool/patch_platforms.dart` скопіює
-файли в платформні теки (Android — звичайна й адаптивна іконка та біла
-іконка сповіщень; Windows — `app_icon.ico`).
+файли в платформну теку Android (звичайна й адаптивна іконка та біла
+іконка сповіщень).
 
 ## Іконки
 
@@ -123,7 +118,7 @@ flutter test
 5. Перевірка інтернету більше не залишає відкриті з'єднання.
 6. Синхронізація не губить зміну, зроблену саме в момент відправки.
 
-Нове: масштаб щипком і Ctrl+коліщатком; у редакторі шаблону є кнопка
+Нове: масштаб щипком; у редакторі шаблону є кнопка
 "назад" з попередженням про незбережені зміни; експорт Excel відкриває
 системний діалог "Зберегти як…" (на Android — без дозволів на сховище).
 
@@ -148,9 +143,7 @@ flutter build apk --dart-define=APIARY_API_URL=https://api.мій-сервер.c
 застосунку), тож далі застосунок відкривається одразу на головному екрані
 й працює без інтернету. «Вийти» — внизу головного екрана.
 
-На Android вхід іде через пакет `google_sign_in`; на Windows цей пакет не
-працює, тому там відкривається браузер (OAuth 2.0 для настільних програм,
-повернення на `http://127.0.0.1:порт`, PKCE) — див. `lib/services/auth.dart`.
+Вхід іде через пакет `google_sign_in` — див. `lib/services/auth.dart`.
 
 Налаштування (один раз, у [Google Cloud Console](https://console.cloud.google.com)):
 
@@ -163,13 +156,11 @@ flutter build apk --dart-define=APIARY_API_URL=https://api.мій-сервер.c
      `0D:E8:20:13:CC:D7:E3:22:EF:FE:AE:A4:BD:90:6B:D8:52:AB:2B:B7`; коли
      з'явиться справжній ключ — додай окремий клієнт і з його SHA-1);
    * **Web application** — його Client ID потрібен Android-входу як
-     `serverClientId`;
-   * **Desktop app** — для Windows (Client ID і Client secret).
+     `serverClientId`.
 3. У репозиторії GitHub → Settings → Secrets and variables → Actions:
-   `APIARY_GOOGLE_SERVER_CLIENT_ID` (Web client ID),
-   `APIARY_GOOGLE_DESKTOP_CLIENT_ID`, `APIARY_GOOGLE_DESKTOP_CLIENT_SECRET`.
+   `APIARY_GOOGLE_SERVER_CLIENT_ID` (Web client ID).
 
-Локально: `flutter run --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID=… --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_ID=… --dart-define=APIARY_GOOGLE_DESKTOP_CLIENT_SECRET=…`.
+Локально: `flutter run --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID=…`.
 Без цих значень екран входу пише «Вхід через Google не налаштовано в цій збірці».
 
 ## Зворотний зв'язок

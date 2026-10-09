@@ -30,7 +30,6 @@ import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/theme.dart';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -661,16 +660,6 @@ void main() {
     final b = (await tester.runAsync(() => repo.attachedParameterIds(EntityRef.group(other), elType: 'hive')))!;
     expect(a, contains(paramId));
     expect(b, a);
-  });
-
-  test('id_token Google → користувач', () {
-    String part(Map<String, Object?> m) => base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
-    final token = '${part({'alg': 'RS256'})}.${part({'sub': '42', 'email': 'a@b.c', 'name': 'Бджоляр'})}.sig';
-    final u = GoogleAuthService.userFromIdToken(token)!;
-    expect(u.id, '42');
-    expect(u.email, 'a@b.c');
-    expect(u.name, 'Бджоляр');
-    expect(GoogleAuthService.userFromIdToken('bad'), isNull);
   });
 
   testWidgets('головний екран: «Навчання» відкриває режим навчання', (tester) async {

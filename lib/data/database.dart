@@ -11,9 +11,10 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart' show sqfliteFfiInit, databa
 class AppDatabase {
   static const fileName = 'apiary.db';
 
-  /// На комп'ютері (Windows/Linux/macOS) SQLite працює через FFI.
+  /// На телефоні - sqflite; на комп'ютері (тести, Linux/macOS) SQLite
+  /// працює через FFI.
   static DatabaseFactory get platformFactory {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       return databaseFactoryFfi;
     }

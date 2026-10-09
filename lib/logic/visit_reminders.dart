@@ -121,8 +121,8 @@ List<PlannedReminder> planReminders(
   return out.length > limit ? out.sublist(0, limit) : out;
 }
 
-/// Найпізніше нагадування, час якого вже настав (для Windows, де система
-/// не вміє відкладені сповіщення: застосунок показує їх сам), або null.
+/// Найпізніше нагадування, час якого вже настав (прострочений обхід на
+/// карті й на головному екрані), або null.
 PlannedReminder? dueReminder(VisitTarget t, {required DateTime now, int hour = 9}) {
   final period = t.periodDays;
   if (period == null || period <= 0 || period > kMaxVisitPeriodDays) return null;

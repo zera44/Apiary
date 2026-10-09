@@ -221,45 +221,6 @@ void _patchAndroidSigning() {
   exit(1);
 }
 
-/// Заголовок вікна Windows ("Vulyk"). Якщо в назві з'явиться кирилиця —
-/// писати її через \u, щоб компілятор не залежав від кодування файлу.
-const _winTitle = r'L"Vulyk"';
-
-/// Windows: лише одна копія програми. Друга (напр., відкрита з меню «Пуск»,
-/// коли вже працює автозапущена) показує вже запущене вікно й виходить —
-/// інакше дві копії давали подвійні/застарілі нагадування й ділили одну
-/// базу. Якщо шаблон flutter create змінився й вставити не вдалося, збірка
-/// ПАДАЄ, щоб це не пройшло непомітно.
-void _patchWindowsSingleInstance() {
-  final f = File('windows/runner/main.cpp');
-  if (!f.existsSync()) return;
-  var s = f.readAsStringSync();
-  if (s.contains('MojaPasika.SingleInstance')) return;
-  final create = RegExp(r'window\.Create\(L"[^"]*"');
-  final entry = RegExp(r'wWinMain\([^)]*\)\s*\{');
-  final m = entry.firstMatch(s);
-  if (m == null || !create.hasMatch(s)) {
-    stderr.writeln('✗ windows/runner/main.cpp: не знайдено, куди вставити «одну копію»');
-    exit(1);
-  }
-  final guard = [
-    '  // одна копія програми: друга лише показує вже запущену й виходить',
-    r'  HANDLE apiary_single = ::CreateMutexW(nullptr, TRUE, L"Local\\MojaPasika.SingleInstance");',
-    '  if (apiary_single != nullptr && ::GetLastError() == ERROR_ALREADY_EXISTS) {',
-    '    HWND existing = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", $_winTitle);',
-    '    if (existing != nullptr) {',
-    '      ::ShowWindow(existing, SW_RESTORE);',
-    '      ::SetForegroundWindow(existing);',
-    '    }',
-    '    return EXIT_SUCCESS;',
-    '  }',
-  ].join('\n');
-  s = '${s.substring(0, m.end)}\n$guard\n${s.substring(m.end)}';
-  s = s.replaceFirst(create, 'window.Create($_winTitle');
-  f.writeAsStringSync(s);
-  stdout.writeln('✓ windows/runner/main.cpp (одна копія, заголовок вікна)');
-}
-
 /// Іконка застосунку: копіює готові файли з tool/app_icon (їх генерує
 /// tool/make_app_icon.py з design/app_icon/app_icon.pdf) поверх типових
 /// іконок Flutter. Для Android — ще й адаптивна іконка (Android 8+) і
@@ -282,17 +243,11 @@ void _copyAppIcon() {
 
   // Без готових файлів збірка тихо брала типову іконку Flutter (а сповіщення —
   // неіснуючу ic_notification), тож їх відсутність — помилка.
-  if (!File('tool/app_icon/android/res/mipmap-anydpi-v26/ic_launcher.xml').existsSync() ||
-      !File('tool/app_icon/windows/app_icon.ico').existsSync()) {
+  if (!File('tool/app_icon/android/res/mipmap-anydpi-v26/ic_launcher.xml').existsSync()) {
     stderr.writeln('✗ немає файлів іконки в tool/app_icon — запустіть python3 tool/make_app_icon.py');
     exit(1);
   }
   copyTree('tool/app_icon/android/res', 'android/app/src/main/res');
-  final ico = File('tool/app_icon/windows/app_icon.ico');
-  if (ico.existsSync() && Directory('windows/runner/resources').existsSync()) {
-    ico.copySync('windows/runner/resources/app_icon.ico');
-    stdout.writeln('✓ windows/runner/resources/app_icon.ico');
-  }
 }
 
 void main() {
@@ -305,13 +260,6 @@ void main() {
   _patchAndroidBackup();
   _patchAndroidSigning();
   _patchGradleProperties();
-  _patchWindowsSingleInstance();
-  // Windows: автозапущений (--autostart) застосунок стартує згорнутим,
-  // без відбирання фокуса
-  patch(
-      'windows/runner/win32_window.cpp',
-      'ShowWindow(window_handle_, SW_SHOWNORMAL)',
-      'ShowWindow(window_handle_, wcsstr(GetCommandLineW(), L"--autostart") ? SW_SHOWMINNOACTIVE : SW_SHOWNORMAL)');
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');
   patch('ios/Runner/Info.plist', '<string>Apiary</string>', '<string>$appName</string>');
   patch('macos/Runner/Configs/AppInfo.xcconfig', 'PRODUCT_NAME = apiary', 'PRODUCT_NAME = $appName');

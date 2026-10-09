@@ -10,7 +10,6 @@ import 'screens/home_screen.dart';
 import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
-import 'services/autostart.dart';
 import 'services/reminders.dart';
 import 'ui/app_drawer.dart';
 import 'ui/theme.dart';
@@ -43,8 +42,6 @@ Future<void> _start() async {
   final sync = SyncService(repo)..start();
   // нагадування про обхід; збій не повинен заважати запуску
   unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
-  // Windows: після оновлення в нову теку автозапуск веде на поточний exe
-  unawaited(Autostart.syncPath());
   runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));
 }
 

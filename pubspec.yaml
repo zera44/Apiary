@@ -14,7 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
   # SQLite: sqflite — на Android/iOS; sqflite_common_ffi + sqlite3_flutter_libs —
-  # на комп'ютері (Windows/Linux/macOS) і в тестах.
+  # на комп'ютері - лише в тестах (Android-збірка CI їх не вкладає).
   sqflite: ^2.3.3
   sqflite_common_ffi: ^2.3.3
   sqlite3_flutter_libs: ^0.6.0+eol
@@ -27,23 +27,24 @@ dependencies:
   file_picker: ^13.0.0
   # відправка змін на сервер (коли його буде налаштовано)
   http: ^1.2.2
-  # вхід через Google (Android; на Windows — через браузер, див. services/auth.dart)
+  # вхід через Google (див. services/auth.dart)
   google_sign_in: ^7.2.0
-  # SHA-256 для PKCE під час входу на Windows
+  # напряму не використовується (лишився від входу на Windows); прибрати разом
+  # з оновленням pubspec.lock
   crypto: ^3.0.7
   # сканер QR-кодів вуликів (камера; лише Android/iOS)
   mobile_scanner: ^7.1.3
-  # фото номенклатури на складі (Android — камера; Windows — вибір файлу)
+  # фото номенклатури на складі (камера або галерея)
   image_picker: ^1.1.2
   # генерація наліпок з QR-кодами вуликів і PDF для друку
   qr: ^3.0.2
   qr_flutter: ^4.1.0
   pdf: ^3.11.3
-  # друк наліпок системним вікном друку (Android, Windows)
+  # друк наліпок системним вікном друку
   printing: ">=5.14.3 <5.15.0"
   # «Поділитися» звітом Excel (Telegram, пошта…)
   share_plus: ^13.3.0
-  # нагадування про обхід вуликів (Android/iOS — відкладені; Windows — поки застосунок запущений)
+  # нагадування про обхід вуликів (відкладені системні сповіщення)
   flutter_local_notifications: ^22.3.1
   timezone: ^0.11.1
   # розпізнавання чеків (Tesseract, українська: assets/tessdata/ukr.traineddata; Android/iOS)

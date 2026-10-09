@@ -4,13 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// Фото номенклатури: знімок камерою (телефон) або вибір файлу (Windows і
-/// «з галереї»). Фото копіюється в теку застосунку, щоб не зникло, коли
+/// Фото номенклатури: знімок камерою або вибір «з галереї». Фото копіюється в теку застосунку, щоб не зникло, коли
 /// користувач прибере його з галереї.
 class StockPhotos {
   StockPhotos._();
 
-  /// Камера є лише на телефоні (на Windows image_picker вміє тільки файли).
+  /// Камера є лише на телефоні (на комп'ютері image_picker вміє тільки файли).
   static bool get cameraSupported => Platform.isAndroid || Platform.isIOS;
 
   /// Зробити/обрати фото й повернути шлях до копії (null — скасовано).
