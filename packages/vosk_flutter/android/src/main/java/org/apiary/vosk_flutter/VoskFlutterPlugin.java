@@ -74,6 +74,8 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
     private Model model;
     private String modelVersion;
     private Session speech;
+    /** Останній запущений потік мікрофона (може ще завершуватись). */
+    private Session lastSession;
     private MethodChannel.Result pendingPermission;
 
     // ------------------------------------------------------------ життєвий цикл
@@ -113,7 +115,8 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-        onDetachedFromActivity();
+        // поворот екрана: запит дозволу ще триває - відповідь прийде в нову activity
+        detachActivity();
     }
 
     @Override
@@ -123,12 +126,16 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
 
     @Override
     public void onDetachedFromActivity() {
-        if (activityBinding != null) activityBinding.removeRequestPermissionsResultListener(this);
-        // відповідь на запит дозволу вже не прийде - не лишати Dart чекати
+        detachActivity();
+        // activity закрито: відповідь на запит дозволу вже не прийде - не лишати Dart чекати
         if (pendingPermission != null) {
             pendingPermission.success(hasPermission());
             pendingPermission = null;
         }
+    }
+
+    private void detachActivity() {
+        if (activityBinding != null) activityBinding.removeRequestPermissionsResultListener(this);
         activityBinding = null;
         activity = null;
     }
@@ -211,12 +218,15 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
                         });
                     }
                 });
-            } catch (Exception e) {
+            } catch (Throwable e) { // і нативні помилки (JNA, брак пам'яті) - відповідь Dart має прийти
                 boolean missing = e instanceof IOException && "NOMODEL".equals(e.getMessage());
-                // розпакована модель не читається (пошкоджена) - прибрати її,
-                // щоб застосунок запропонував скачати заново
-                if (!missing) deleteTree(modelRoot(version));
-                main.post(() -> result.error(missing ? "NOMODEL" : "MODEL", String.valueOf(e.getMessage()), null));
+                // файли моделі не читаються (пошкоджені; Vosk кидає IOException) -
+                // прибрати їх, щоб застосунок запропонував скачати заново. Нативні
+                // помилки (брак пам'яті тощо) файлів не чіпають.
+                boolean broken = !missing && e instanceof IOException;
+                if (broken) deleteTree(modelRoot(version));
+                String code = missing ? "NOMODEL" : broken ? "MODEL" : "LOAD";
+                main.post(() -> result.error(code, String.valueOf(e.getMessage()), null));
             }
         });
     }
@@ -228,6 +238,10 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
      */
     private File unpack(String zipPath, File root) throws IOException {
         File ok = new File(root, ".ok");
+        if (ok.exists() && zipPath != null) {
+            //noinspection ResultOfMethodCallIgnored
+            new File(zipPath).delete(); // модель уже розпакована - архів зайвий
+        }
         if (!ok.exists()) {
             if (zipPath == null || !new File(zipPath).isFile()) throw new IOException("NOMODEL");
             deleteTree(root);
@@ -313,7 +327,7 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
     @SuppressLint("MissingPermission") // дозвіл перевірено нижче (hasPermission)
     private void start(MethodChannel.Result result) {
         if (model == null) {
-            result.error("MODEL", "модель не завантажено", null);
+            result.error("NOTLOADED", "модель не завантажено", null);
             return;
         }
         if (!hasPermission()) {
@@ -321,6 +335,16 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
             return;
         }
         cancelSpeech();
+        // попередній потік ще тримає мікрофон (до 0,2 с) - дочекатися, інакше на
+        // старих Android новий запис не відкриється («мікрофон зайнятий»)
+        Session prev = lastSession;
+        if (prev != null && prev.isAlive()) {
+            try {
+                prev.join(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
         Recognizer rec = null;
         AudioRecord audio = null;
         try {
@@ -336,9 +360,10 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
             }
             Session s = new Session(rec, audio, chunk);
             speech = s;
+            lastSession = s;
             s.start();
             result.success(true);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             if (audio != null) audio.release();
             if (rec != null) rec.close();
             result.error("START", String.valueOf(e.getMessage()), null);

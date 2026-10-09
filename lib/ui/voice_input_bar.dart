@@ -146,6 +146,15 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
         return;
       }
       if (!mounted || !t.mounted) return;
+      // поки готувались, застосунок пішов у фон - мікрофон не вмикаємо
+      // (inactive - це й системне вікно дозволу, тоді вмикаємо)
+      final life = WidgetsBinding.instance.lifecycleState;
+      if (life == AppLifecycleState.paused ||
+          life == AppLifecycleState.hidden ||
+          life == AppLifecycleState.detached) {
+        setState(() => _message = null);
+        return;
+      }
       _sub ??= Vosk.events.listen(_onEvent);
       // ціль - до запуску: перші результати можуть прийти одразу
       setState(() {
