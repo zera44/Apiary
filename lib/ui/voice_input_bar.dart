@@ -139,12 +139,13 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
   bool _keyboardMode = false;
   EditableTextState? _kbField;
 
-  /// Поле перепідключається до системи (перемикання на Gboard): тимчасова
-  /// втрата фокуса - не «перехід на інше поле».
+  /// Поле [_refocusField] перепідключається до системи (перемикання між
+  /// Gboard і панеллю): тимчасова втрата фокуса - не «перехід на інше поле».
   bool _refocusing = false;
+  EditableTextState? _refocusField;
 
-  /// Поле підключене до системи ще зі справжнім типом клавіатури (після
-  /// повернення з Gboard): показ системної клавіатури треба гасити.
+  /// Поле підключене до системи ще зі справжнім типом клавіатури: показ
+  /// системної клавіатури треба гасити (доки поле не перепідключиться).
   bool _staleConfig = false;
 
   _PanelPopEntry? _popEntry;
@@ -222,28 +223,37 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     final t = _focused;
     if (t == null || !t.mounted) return;
     if (_target != null) _stop();
-    final node = t.widget.focusNode;
     setState(() {
       _keyboardMode = true;
       _kbField = t;
       _panelShown = false;
-      _refocusing = true;
     });
     TextInput.restorePlatformInputControl();
+    _reattach(t);
+  }
+
+  /// Перепідключити поле до системи (з типом клавіатури поточного режиму):
+  /// коротко зняти й повернути фокус - окремими циклами, інакше Flutter
+  /// «не помітить» зміни.
+  void _reattach(EditableTextState t) {
+    final node = t.widget.focusNode;
+    _refocusing = true;
+    _refocusField = t;
     node.unfocus();
-    // фокус повертається після того, як зняття застосовано (окремий цикл)
     Timer.run(() {
       if (!mounted) return;
       if (t.mounted && node.canRequestFocus) {
         node.requestFocus();
       } else {
         _refocusing = false;
-        _leaveKeyboardMode();
+        _refocusField = null;
+        _onFocus();
       }
       // запобіжник: фокус так і не повернувся
       Timer(const Duration(milliseconds: 500), () {
-        if (mounted && _refocusing) {
+        if (mounted && _refocusing && _refocusField == t) {
           _refocusing = false;
+          _refocusField = null;
           _onFocus();
         }
       });
@@ -255,10 +265,12 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     if (!_keyboardMode) return;
     _keyboardMode = false;
     _kbField = null;
-    // поле, що вже має фокус, підключене зі справжнім типом - Gboard
-    // ховається, а наступні «показати» гаситимемо
-    _staleConfig = _editable() != null;
+    final f = _editable();
+    // поле, що вже має фокус, підключене зі справжнім типом: Gboard
+    // ховається, а поле перепідключаємо вже з типом «без клавіатури»
+    _staleConfig = f != null;
     TextInput.setInputControl(_control);
+    if (f != null) _reattach(f);
   }
 
   /// «Готово»: як клавіша дії на клавіатурі (однорядкове поле - «готово» /
@@ -321,9 +333,10 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
   void _onFocus() {
     final f = _editable();
     if (_refocusing) {
-      // перемикання на Gboard: чекаємо, доки фокус повернеться на поле
-      if (f == null || f != _kbField) return;
+      // перепідключення: чекаємо, доки фокус повернеться на поле
+      if (f == null || f != _refocusField) return;
       _refocusing = false;
+      _refocusField = null;
     } else if (_keyboardMode && f != _kbField) {
       _leaveKeyboardMode();
     }
