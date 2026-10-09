@@ -100,7 +100,10 @@ class _HiveNotesViewState extends State<HiveNotesView> {
     // у фільтрі - лише мітки, що є в нотатках цього вулика
     final used = <String>{for (final n in visible) if (n.labelId != null) n.labelId!};
     final chips = [for (final l in _labels.values) if (used.contains(l.id)) l];
-    final shown = _filter == null ? visible : [for (final n in visible) if (n.labelId == _filter) n];
+    // мітки фільтра вже немає в нотатках (видалили нотатку чи зняли мітку) -
+    // показуємо всі, інакше решта нотаток «зникла б» без кнопки «Усі»
+    final filter = used.contains(_filter) ? _filter : null;
+    final shown = filter == null ? visible : [for (final n in visible) if (n.labelId == filter) n];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
@@ -117,12 +120,12 @@ class _HiveNotesViewState extends State<HiveNotesView> {
         if (chips.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            _FilterChip(text: 'Усі', on: _filter == null, onTap: () => setState(() => _filter = null)),
+            _FilterChip(text: 'Усі', on: filter == null, onTap: () => setState(() => _filter = null)),
             for (final l in chips)
               _FilterChip(
                   text: l.name,
-                  on: _filter == l.id,
-                  onTap: () => setState(() => _filter = _filter == l.id ? null : l.id)),
+                  on: filter == l.id,
+                  onTap: () => setState(() => _filter = filter == l.id ? null : l.id)),
           ]),
         ],
         const SizedBox(height: 10),
@@ -317,6 +320,11 @@ class _NoteEditorState extends State<_NoteEditor> {
     if (action == 'rename') {
       final name = await showTextPrompt(context, title: 'Мітка', initial: l.name);
       if (name == null || name.trim().isEmpty || name.trim() == l.name) return;
+      final other = await widget.repo.findNoteLabel(name);
+      if (other != null && other.id != l.id) {
+        if (mounted) await showInfo(context, 'Мітка «${other.name}» вже є.');
+        return;
+      }
       await widget.repo.renameNoteLabel(l.id, name);
     } else {
       final ok = await showConfirm(context,

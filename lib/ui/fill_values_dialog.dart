@@ -481,6 +481,7 @@ class _FillDialogState extends State<_FillDialog> {
           row(
             'Скільки, ${feed.unit}',
             TextField(
+              key: const ValueKey('feed-amount'),
               controller: _feedAmount,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: TextStyle(color: AppColors.text, fontSize: 15),

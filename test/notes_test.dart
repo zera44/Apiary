@@ -115,4 +115,32 @@ void main() {
     expect(find.text('Злі бджоли'), findsOneWidget);
     expect(find.text('Сьогодні'), findsOneWidget);
   });
+
+  testWidgets('фільтр за міткою не ховає нотатки, коли мітки в списку не лишилось', (tester) async {
+    late EntityRef hive;
+    late String a;
+    await tester.runAsync(() async {
+      hive = EntityRef.element(await repo.addElement(apiaryId, 0, 0));
+      final x = await repo.addNoteLabel('Хвороби');
+      a = await repo.addHiveNote(hive, 'Вароа', labelId: x);
+      await repo.addHiveNote(hive, 'Без мітки', date: DateTime(2025, 1, 1));
+    });
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(
+        body: SizedBox(width: 240, child: HiveNotesView(repo: repo, entity: hive)),
+      ),
+    ));
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.tap(find.text('Хвороби').first);
+    await tester.pump();
+    expect(find.text('Без мітки'), findsNothing);
+    await tester.runAsync(() async {
+      await repo.deleteHiveNote(a);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pump();
+    expect(find.text('Без мітки'), findsOneWidget);
+  });
 }

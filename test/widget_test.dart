@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/data/notes.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
@@ -530,7 +531,9 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('Цукор (є 5 кг)').last);
     await settle(tester);
-    await tester.enterText(find.byType(TextField).last, '2'); // рядок «Скільки, кг»
+    await tester.enterText(find.byKey(const ValueKey('feed-amount')), '2'); // рядок «Скільки, кг»
+    // нотатка до огляду стає нотаткою вулика з міткою «Огляд»
+    await tester.enterText(find.byKey(const ValueKey('fill-note')), 'Дали сироп');
     await tester.tap(find.byTooltip('Зберегти'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
@@ -539,6 +542,11 @@ void main() {
     expect(item.quantity, 3);
     final moves = (await tester.runAsync(() => repo.stockMoves(sugar)))!;
     expect(moves.last['reason'], 'Підгодівля');
+    final notes = (await tester.runAsync(() => repo.listHiveNotes(hive.entity)))!;
+    expect(notes.single.text, 'Дали сироп');
+    final labels = (await tester.runAsync(() => repo.listNoteLabels()))!;
+    expect(labels.single.name, kInspectionNoteLabel);
+    expect(notes.single.labelId, labels.single.id);
     expect(tester.takeException(), isNull);
   });
 

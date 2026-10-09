@@ -22,6 +22,8 @@ void main() {
       '12': '12',
       '2.5': '2,5',
       'сорок два': '42',
+      'два кома десять': '2,10',
+      'одна ціла дві десятих': '1,2',
     };
     for (final e in cases.entries) {
       test(e.key, () => expect(spokenToNumber(e.key), e.value));

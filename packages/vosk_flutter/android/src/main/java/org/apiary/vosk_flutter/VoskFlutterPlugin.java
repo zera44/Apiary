@@ -1,15 +1,20 @@
 package org.apiary.vosk_flutter;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
 import androidx.annotation.NonNull;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -33,8 +38,6 @@ import io.flutter.plugin.common.PluginRegistry;
 
 import org.vosk.Model;
 import org.vosk.Recognizer;
-import org.vosk.android.RecognitionListener;
-import org.vosk.android.SpeechService;
 
 /**
  * Офлайн-розпізнавання мови Vosk для «Моя пасіка».
@@ -47,13 +50,17 @@ import org.vosk.android.SpeechService;
  *  - start: слухати мікрофон; stop: зупинити (прийде остаточний текст);
  *    cancel: зупинити без результату.
  * Події (канал "vosk_flutter/events"): {type: partial|result|final|error, text}.
+ *
+ * Мікрофон читає власний потік [Session] (а не SpeechService із Vosk SDK: той
+ * на помилці читання мікрофона кидає RuntimeException у своєму потоці, і
+ * застосунок падає). Усі ресурси сеансу звільняє сам потік, коли закінчує.
  */
 public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
         MethodChannel.MethodCallHandler, EventChannel.StreamHandler,
         PluginRegistry.RequestPermissionsResultListener {
 
     private static final int PERMISSION_CODE = 47301;
-    private static final float SAMPLE_RATE = 16000f;
+    private static final int SAMPLE_RATE = 16000;
 
     private MethodChannel channel;
     private EventChannel events;
@@ -82,13 +89,19 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
 
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-        stopSpeech(true);
         channel.setMethodCallHandler(null);
         events.setStreamHandler(null);
-        if (model != null) {
-            model.close();
-            model = null;
-        }
+        sink = null;
+        Session s = speech;
+        speech = null;
+        Model m = model;
+        model = null;
+        // модель звільняється, коли потік мікрофона (якщо був) уже завершився
+        worker.execute(() -> {
+            if (s != null) s.cancelAndWait();
+            if (m != null) m.close();
+        });
+        worker.shutdown();
     }
 
     @Override
@@ -111,6 +124,11 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
     @Override
     public void onDetachedFromActivity() {
         if (activityBinding != null) activityBinding.removeRequestPermissionsResultListener(this);
+        // відповідь на запит дозволу вже не прийде - не лишати Dart чекати
+        if (pendingPermission != null) {
+            pendingPermission.success(hasPermission());
+            pendingPermission = null;
+        }
         activityBinding = null;
         activity = null;
     }
@@ -145,11 +163,11 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
                 start(result);
                 break;
             case "stop":
-                if (speech != null) speech.service.stop(); // остаточний текст прийде в onFinalResult
+                if (speech != null) speech.finishListening(); // остаточний текст прийде подією final
                 result.success(true);
                 break;
             case "cancel":
-                stopSpeech(true);
+                cancelSpeech();
                 result.success(true);
                 break;
             default:
@@ -179,13 +197,26 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
                 File dir = unpack(zip, modelRoot(version));
                 Model m = new Model(dir.getAbsolutePath());
                 main.post(() -> {
-                    if (model != null) model.close();
+                    Model old = model;
                     model = m;
                     modelVersion = version;
                     result.success(true);
+                    if (old != null && !worker.isShutdown()) {
+                        // стара модель могла ще слухати - закрити після сеансу
+                        Session s = speech;
+                        speech = null;
+                        worker.execute(() -> {
+                            if (s != null) s.cancelAndWait();
+                            old.close();
+                        });
+                    }
                 });
             } catch (Exception e) {
-                main.post(() -> result.error("MODEL", String.valueOf(e.getMessage()), null));
+                boolean missing = e instanceof IOException && "NOMODEL".equals(e.getMessage());
+                // розпакована модель не читається (пошкоджена) - прибрати її,
+                // щоб застосунок запропонував скачати заново
+                if (!missing) deleteTree(modelRoot(version));
+                main.post(() -> result.error(missing ? "NOMODEL" : "MODEL", String.valueOf(e.getMessage()), null));
             }
         });
     }
@@ -210,7 +241,7 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
             }
             String canonRoot = root.getCanonicalPath() + File.separator;
             byte[] buf = new byte[1 << 16];
-            try (InputStream in = new FileInputStream(zipPath);
+            try (InputStream in = new BufferedInputStream(new FileInputStream(zipPath), 1 << 16);
                  ZipInputStream zip = new ZipInputStream(in)) {
                 ZipEntry e;
                 while ((e = zip.getNextEntry()) != null) {
@@ -279,6 +310,7 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
         return true;
     }
 
+    @SuppressLint("MissingPermission") // дозвіл перевірено нижче (hasPermission)
     private void start(MethodChannel.Result result) {
         if (model == null) {
             result.error("MODEL", "модель не завантажено", null);
@@ -288,86 +320,122 @@ public class VoskFlutterPlugin implements FlutterPlugin, ActivityAware,
             result.error("PERMISSION", "немає дозволу на мікрофон", null);
             return;
         }
-        stopSpeech(true);
-        Session s = new Session();
+        cancelSpeech();
+        Recognizer rec = null;
+        AudioRecord audio = null;
         try {
-            Recognizer rec = new Recognizer(model, SAMPLE_RATE);
-            s.service = new SpeechService(rec, SAMPLE_RATE);
+            rec = new Recognizer(model, SAMPLE_RATE);
+            int min = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT);
+            int chunk = SAMPLE_RATE / 5; // 0,2 с звуку (у відліках)
+            audio = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                    Math.max(min, chunk * 2 * 2));
+            if (audio.getState() != AudioRecord.STATE_INITIALIZED) {
+                throw new IOException("мікрофон недоступний");
+            }
+            Session s = new Session(rec, audio, chunk);
             speech = s;
-            s.service.startListening(s);
+            s.start();
             result.success(true);
         } catch (Exception e) {
-            stopSpeech(true);
+            if (audio != null) audio.release();
+            if (rec != null) rec.close();
             result.error("START", String.valueOf(e.getMessage()), null);
         }
     }
 
-    private void stopSpeech(boolean cancel) {
+    private void cancelSpeech() {
         Session s = speech;
         speech = null;
-        if (s != null) s.close(cancel);
+        if (s != null) s.cancelListening();
     }
 
-    /** Один сеанс слухання: події старого сеансу нового не чіпають. */
-    private class Session implements RecognitionListener {
-        SpeechService service;
-        boolean closed;
+    private void send(Session from, String type, String text, boolean last) {
+        main.post(() -> {
+            if (speech != from) return; // подія старого сеансу
+            if (last) speech = null;
+            if (sink == null) return;
+            Map<String, Object> m = new HashMap<>();
+            m.put("type", type);
+            m.put("text", text);
+            sink.success(m);
+        });
+    }
 
-        void close(boolean cancel) {
-            if (closed || service == null) return;
-            closed = true;
-            if (cancel) service.cancel();
-            service.shutdown();
+    /**
+     * Один сеанс слухання - окремий потік: читає мікрофон, віддає звук Vosk і
+     * надсилає проміжний/готовий текст. Події старого сеансу нового не чіпають.
+     * Мікрофон і Recognizer звільняє сам потік наприкінці.
+     */
+    private class Session extends Thread {
+        private final Recognizer recognizer;
+        private final AudioRecord audio;
+        private final short[] buffer;
+        private volatile boolean stopRequested;
+        private volatile boolean cancelled;
+
+        Session(Recognizer recognizer, AudioRecord audio, int chunk) {
+            super("vosk-mic");
+            this.recognizer = recognizer;
+            this.audio = audio;
+            this.buffer = new short[chunk];
         }
 
-        private void emit(String type, String text) {
-            main.post(() -> {
-                if (speech != this || sink == null) return;
-                Map<String, Object> m = new HashMap<>();
-                m.put("type", type);
-                m.put("text", text);
-                sink.success(m);
-            });
+        /** Дослухати: потік завершиться й надішле остаточний текст. */
+        void finishListening() {
+            stopRequested = true;
         }
 
-        private void finish(String type, String text, boolean cancel) {
-            main.post(() -> {
-                if (speech == this) {
-                    if (sink != null) {
-                        Map<String, Object> m = new HashMap<>();
-                        m.put("type", type);
-                        m.put("text", text);
-                        sink.success(m);
-                    }
-                    speech = null;
+        /** Перервати без результату. */
+        void cancelListening() {
+            cancelled = true;
+            stopRequested = true;
+        }
+
+        /** Перервати й дочекатися кінця потоку (перед закриттям моделі). */
+        void cancelAndWait() {
+            cancelListening();
+            try {
+                join(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        @Override
+        public void run() {
+            try {
+                audio.startRecording();
+                if (audio.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                    send(this, "error", "мікрофон зайнятий іншою програмою", true);
+                    return;
                 }
-                close(cancel);
-            });
-        }
-
-        @Override
-        public void onPartialResult(String hypothesis) {
-            emit("partial", hypothesis);
-        }
-
-        @Override
-        public void onResult(String hypothesis) {
-            emit("result", hypothesis);
-        }
-
-        @Override
-        public void onFinalResult(String hypothesis) {
-            finish("final", hypothesis, false);
-        }
-
-        @Override
-        public void onError(Exception exception) {
-            finish("error", String.valueOf(exception.getMessage()), true);
-        }
-
-        @Override
-        public void onTimeout() {
-            finish("final", "{\"text\": \"\"}", true);
+                while (!stopRequested) {
+                    int n = audio.read(buffer, 0, buffer.length);
+                    if (n < 0) {
+                        send(this, "error", "помилка читання мікрофона (" + n + ")", true);
+                        return;
+                    }
+                    if (n == 0 || cancelled) continue;
+                    if (recognizer.acceptWaveForm(buffer, n)) {
+                        send(this, "result", recognizer.getResult(), false);
+                    } else {
+                        send(this, "partial", recognizer.getPartialResult(), false);
+                    }
+                }
+                if (!cancelled) send(this, "final", recognizer.getFinalResult(), true);
+            } catch (Throwable t) {
+                send(this, "error", String.valueOf(t.getMessage()), true);
+            } finally {
+                try {
+                    audio.stop();
+                } catch (Throwable ignored) {
+                    // мікрофон і не запускався
+                }
+                audio.release();
+                recognizer.close();
+            }
         }
     }
 }

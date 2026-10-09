@@ -1,7 +1,7 @@
 /// Офлайн-розпізнавання мови Vosk (Android). Коротка копія плагіна
 /// vosk_flutter (Apache-2.0, alphacep): модель (zip, скачує застосунок)
-/// розпаковується один раз, мікрофон слухає Vosk SDK
-/// (`org.vosk.android.SpeechService`).
+/// розпаковується один раз; мікрофон читає власний потік плагіна, текст
+/// розпізнає Vosk SDK (`org.vosk.Recognizer`).
 library;
 
 import 'dart:async';

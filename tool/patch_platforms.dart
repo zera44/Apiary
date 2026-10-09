@@ -53,13 +53,19 @@ void _patchAndroidCompressedLibs() {
     final s = f.readAsStringSync();
     if (s.contains('useLegacyPackaging')) return;
     final kts = name.endsWith('.kts');
-    // плагіни (Tesseract, Vosk) приносять бібліотеки й для x86/x86_64 - у APK лише ARM (як і Flutter)
+    // плагіни (Tesseract, Vosk) приносять бібліотеки й для x86/x86_64, а
+    // збірка CI - лише ARM (як і Flutter у ній): x86 не вкладаємо. Лише в CI:
+    // локальний запуск на емуляторі x86_64 без них не працював би.
     const x86 = ['**/x86/**', '**/x86_64/**'];
+    final ci = Platform.environment['CI'] == 'true';
+    final excl = !ci
+        ? ''
+        : kts
+            ? '            excludes += setOf(${x86.map((e) => '"$e"').join(', ')})\n'
+            : '            excludes += [${x86.map((e) => "'$e'").join(', ')}]\n';
     final block = kts
-        ? '    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n'
-            '            excludes += setOf(${x86.map((e) => '"$e"').join(', ')})\n        }\n    }\n'
-        : '    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n'
-            '            excludes += [${x86.map((e) => "'$e'").join(', ')}]\n        }\n    }\n';
+        ? '    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n$excl        }\n    }\n'
+        : '    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n$excl        }\n    }\n';
     final m = RegExp(r'^android\s*\{\s*\n', multiLine: true).firstMatch(s);
     if (m == null) return;
     f.writeAsStringSync(s.substring(0, m.end) + block + s.substring(m.end));

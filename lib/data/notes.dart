@@ -57,14 +57,23 @@ extension RepositoryNotes on Repository {
     return rows.map(NoteLabel.fromRow).toList();
   }
 
+  /// Мітка з назвою [name] (без урахування регістру й пробілів по краях).
+  Future<NoteLabel?> findNoteLabel(String name) async {
+    final key = name.trim().toLowerCase();
+    for (final l in await listNoteLabels()) {
+      if (l.name.trim().toLowerCase() == key) return l;
+    }
+    return null;
+  }
+
   /// Нова мітка; якщо мітка з такою назвою вже є - повертає її id.
   Future<String> addNoteLabel(String name) async {
     final clean = name.trim();
     if (clean.isEmpty) throw ArgumentError.value(name, 'name', 'порожня назва');
-    final same = await db.rawQuery(
-        'SELECT id FROM note_labels WHERE deleted = 0 AND name = ? COLLATE NOCASE LIMIT 1',
-        [clean]);
-    if (same.isNotEmpty) return same.first['id'] as String;
+    // порівняння без урахування регістру - у Dart: COLLATE NOCASE у SQLite
+    // знає лише латиницю («Матка» і «матка» для нього різні)
+    final same = await findNoteLabel(clean);
+    if (same != null) return same.id;
     final r = await db.rawQuery('SELECT MAX(sort_order) AS m FROM note_labels');
     final id = Repository.newId();
     await db.insert('note_labels', {

@@ -119,12 +119,15 @@ String? spokenToNumber(String text, {bool decimal = true}) {
     if (whole == null || frac.isEmpty) return null;
     int? places;
     final last = frac.last;
-    if (last.startsWith('десят')) {
-      places = 1;
-    } else if (last.startsWith('сот')) {
-      places = 2;
-    } else if (last.startsWith('тисячн')) {
-      places = 3;
+    // «десятих», «сотих», «тисячних» - знаменник; але «десять», «десяти» - число
+    if (!_units.containsKey(last)) {
+      if (last.startsWith('десят')) {
+        places = 1;
+      } else if (last.startsWith('сот')) {
+        places = 2;
+      } else if (last.startsWith('тисячн')) {
+        places = 3;
+      }
     }
     if (places != null) frac = frac.sublist(0, frac.length - 1);
     // провідні нулі після «кома»: «нуль п'ять» -> 05

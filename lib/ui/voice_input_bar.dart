@@ -50,7 +50,7 @@ class VoiceInputHost extends StatefulWidget {
   State<VoiceInputHost> createState() => _VoiceInputHostState();
 }
 
-class _VoiceInputHostState extends State<VoiceInputHost> {
+class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObserver {
   bool _available = false;
   EditableTextState? _focused;
 
@@ -72,6 +72,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     VoiceInput.instance.available().then((ok) {
       if (!mounted || !ok) return;
       setState(() => _available = true);
@@ -82,11 +83,24 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FocusManager.instance.removeListener(_onFocus);
     _sub?.cancel();
     _limit?.cancel();
     if (_target != null) Vosk.cancel();
     super.dispose();
+  }
+
+  /// Застосунок пішов у фон - мікрофон вимикається одразу (без вставки).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.paused || _target == null) return;
+    _limit?.cancel();
+    Vosk.cancel();
+    setState(() {
+      _target = null;
+      _partial = '';
+    });
   }
 
   EditableTextState? _editable() {
@@ -117,32 +131,45 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
     }
     final t = _focused;
     if (t == null || _busy || _target != null) return;
-    if (!await VoiceInput.instance.modelOnPhone()) {
-      _offer = true;
-      _say('Для голосу один раз скачайте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _message = 'Готую розпізнавання…';
-    });
+    // одразу «зайнято»: подвійний дотик не запускає все вдруге
+    setState(() => _busy = true);
     try {
+      if (!await VoiceInput.instance.modelOnPhone()) {
+        _offer = true;
+        _say('Для голосу один раз скачайте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
+        return;
+      }
+      _say('Готую розпізнавання…');
       await VoiceInput.instance.ensureReady();
       if (!await Vosk.permission()) {
         _say('Немає дозволу на мікрофон (Налаштування телефону → Дозволи)');
         return;
       }
+      if (!mounted || !t.mounted) return;
       _sub ??= Vosk.events.listen(_onEvent);
-      await Vosk.start();
-      if (!mounted) return;
+      // ціль - до запуску: перші результати можуть прийти одразу
       setState(() {
         _target = t;
         _partial = '';
         _message = null;
       });
+      try {
+        await Vosk.start();
+      } catch (_) {
+        if (mounted) setState(() => _target = null);
+        rethrow;
+      }
       // запобіжник: мікрофон не лишається увімкненим назавжди
       _limit?.cancel();
       _limit = Timer(const Duration(minutes: 2), _stop);
+    } on PlatformException catch (e) {
+      if (e.code == 'NOMODEL' || e.code == 'MODEL') {
+        // моделі немає або вона пошкоджена (плагін її прибрав) - скачати знову
+        _offer = true;
+        _say('Модель голосу пошкоджена - скачайте її ще раз');
+      } else {
+        _say('Голосовий ввід недоступний: ${e.message ?? e.code}');
+      }
     } catch (e) {
       _say('Голосовий ввід недоступний: $e');
     } finally {
@@ -253,21 +280,28 @@ class _VoiceInputHostState extends State<VoiceInputHost> {
     final kb = mq.viewInsets.bottom;
     final listening = _target != null;
     final show = _available && (listening || (_focused != null && kb > 0));
+    // смужка над клавіатурою - для застосунку клавіатура вища на смужку; без
+    // клавіатури (диктування триває) - смужка внизу як системна панель, щоб
+    // «клавіатура відкрита» (viewInsets) не вмикалось хибно
+    MediaQueryData data = mq;
+    if (show && kb > 0) {
+      data = mq.copyWith(viewInsets: mq.viewInsets.copyWith(bottom: kb + kVoiceBarHeight));
+    } else if (show) {
+      data = mq.copyWith(
+        padding: mq.padding.copyWith(bottom: mq.padding.bottom + kVoiceBarHeight),
+        viewPadding: mq.viewPadding.copyWith(bottom: mq.viewPadding.bottom + kVoiceBarHeight),
+      );
+    }
     // будова завжди та сама (Stack -> MediaQuery -> застосунок): інакше
     // навігатор зі всіма відкритими екранами перебудувався б з нуля
     return Stack(alignment: Alignment.topLeft, children: [
       // застосунок бачить клавіатуру вищою на смужку - нічого не перекривається
-      MediaQuery(
-        data: show
-            ? mq.copyWith(viewInsets: mq.viewInsets.copyWith(bottom: kb + kVoiceBarHeight))
-            : mq,
-        child: widget.child,
-      ),
+      MediaQuery(data: data, child: widget.child),
       if (show)
         Positioned(
           left: 0,
           right: 0,
-          bottom: kb,
+          bottom: kb > 0 ? kb : mq.padding.bottom,
           height: kVoiceBarHeight,
           // торкання смужки - «всередині» поля: фокус не губиться
           child: TextFieldTapRegion(child: _bar(listening)),
