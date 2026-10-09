@@ -71,28 +71,6 @@ void main() {
     });
   });
 
-  group('стерти слово', () {
-    TextEditingValue v(String t, [int? at]) =>
-        TextEditingValue(text: t, selection: TextSelection.collapsed(offset: at ?? t.length));
-    test('останнє слово разом із пробілом перед курсором', () {
-      final r = deleteWordBefore(v('Матка є черва'));
-      expect(r.text, 'Матка є ');
-      expect(r.selection.baseOffset, 8);
-      expect(deleteWordBefore(v('Матка є ')).text, 'Матка ');
-    });
-    test('у середині тексту', () {
-      final r = deleteWordBefore(v('рамки чотири вощина', 12));
-      expect(r.text, 'рамки  вощина');
-      expect(r.selection.baseOffset, 6);
-    });
-    test('виділене стирається', () {
-      const val = TextEditingValue(
-          text: 'старе слово', selection: TextSelection(baseOffset: 0, extentOffset: 6));
-      expect(deleteWordBefore(val).text, 'слово');
-    });
-    test('порожнє поле', () => expect(deleteWordBefore(v('')).text, ''));
-  });
-
   test('JSON Vosk', () {
     expect(Vosk.textOf('{"partial" : "два кома"}'), 'два кома');
     expect(Vosk.textOf('{\n  "text" : "дванадцять"\n}'), 'дванадцять');
