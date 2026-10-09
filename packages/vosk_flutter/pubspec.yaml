@@ -1,0 +1,19 @@
+name: vosk_flutter
+description: "Офлайн-розпізнавання мови (Vosk SDK) для «Моя пасіка»: коротка копія плагіна vosk_flutter, лише Android."
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.38.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: org.apiary.vosk_flutter
+        pluginClass: VoskFlutterPlugin

@@ -18,3 +18,6 @@ build/
 /linux/
 /macos/
 /web/
+
+# модель Vosk (~133 МБ) скачує збірка: tool/get_vosk_model.sh
+/assets/vosk/*.zip

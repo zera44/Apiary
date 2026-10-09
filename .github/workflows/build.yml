@@ -141,6 +141,10 @@ jobs:
           }
           EOF2
           echo "::notice title=GRADLE::патч застосовано до $d"
+      # українська модель голосового вводу Vosk (~133 МБ) - у git її немає
+      - name: Модель голосового вводу (Vosk)
+        shell: bash
+        run: bash tool/get_vosk_model.sh
       - name: Згенерувати платформні файли
         env:
           APIARY_SIGNING: '1'

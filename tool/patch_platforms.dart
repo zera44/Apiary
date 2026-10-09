@@ -17,7 +17,8 @@ void patch(String path, String from, String to) {
 }
 
 /// Дозволи: інтернет (фонова синхронізація), камера (сканер QR вуликів),
-/// сповіщення й автозапуск після перезавантаження (нагадування про обхід).
+/// сповіщення й автозапуск після перезавантаження (нагадування про обхід),
+/// мікрофон (голосовий ввід Vosk).
 /// У release-маніфесті, що генерує flutter create, їх немає. Вставляються
 /// перед <application> лише ті, яких бракує.
 void _patchAndroidPermissions(String path) {
@@ -25,7 +26,7 @@ void _patchAndroidPermissions(String path) {
   if (!f.existsSync()) return;
   final s = f.readAsStringSync();
   final missing = [
-    for (final perm in ['INTERNET', 'CAMERA', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE'])
+    for (final perm in ['INTERNET', 'CAMERA', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE', 'RECORD_AUDIO'])
       if (!s.contains('android.permission.$perm"')) perm
   ];
   if (missing.isEmpty) return;
@@ -52,9 +53,13 @@ void _patchAndroidCompressedLibs() {
     final s = f.readAsStringSync();
     if (s.contains('useLegacyPackaging')) return;
     final kts = name.endsWith('.kts');
+    // Vosk SDK приносить бібліотеки й для x86/x86_64 - у APK лише ARM (як і решта)
+    const x86 = ['lib/x86/**', 'lib/x86_64/**'];
     final block = kts
-        ? '    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }\n'
-        : '    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n        }\n    }\n';
+        ? '    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n'
+            '            excludes += setOf(${x86.map((e) => '"$e"').join(', ')})\n        }\n    }\n'
+        : '    packagingOptions {\n        jniLibs {\n            useLegacyPackaging true\n'
+            '            excludes += [${x86.map((e) => "'$e'").join(', ')}]\n        }\n    }\n';
     final m = RegExp(r'^android\s*\{\s*\n', multiLine: true).firstMatch(s);
     if (m == null) return;
     f.writeAsStringSync(s.substring(0, m.end) + block + s.substring(m.end));

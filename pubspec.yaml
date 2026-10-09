@@ -50,6 +50,10 @@ dependencies:
   flutter_tesseract_ocr: ^0.4.31
   # підготовка фото чека до розпізнавання (сірі тони, адаптивний поріг)
   image: ^4.3.0
+  # голосовий ввід у текстові поля: Vosk SDK (офлайн, українська модель
+  # assets/vosk/model.zip - її скачує збірка, див. assets/vosk/README.md); лише Android
+  vosk_flutter:
+    path: packages/vosk_flutter
 
 dev_dependencies:
   flutter_test:
@@ -71,3 +75,5 @@ flutter:
     - assets/tessdata_config.json
     # «Що нового» — генерується з історії git (tool/whats_new.py)
     - assets/whats_new.json
+    # модель розпізнавання мови Vosk (model.zip; у git її немає - скачує збірка)
+    - assets/vosk/

@@ -14,6 +14,7 @@ import 'services/autostart.dart';
 import 'services/reminders.dart';
 import 'ui/app_drawer.dart';
 import 'ui/theme.dart';
+import 'ui/voice_input_bar.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
 /// пишуться в локальну SQLite, а фонова синхронізація вивантажує зміни,
@@ -104,6 +105,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
       title: 'Vulyk',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      // голосовий ввід (Vosk) над клавіатурою для всіх текстових полів
+      builder: (context, child) => VoiceInputHost(child: child ?? const SizedBox()),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
       // (поки вхід у збірці не налаштовано — одразу головний екран)
       home: !canUseApp(widget.auth)

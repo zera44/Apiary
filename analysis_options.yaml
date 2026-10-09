@@ -1,5 +1,10 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  # власні плагіни аналізуються окремо (у них свій pubspec)
+  exclude:
+    - packages/**
+
 linter:
   rules:
     prefer_single_quotes: true

@@ -1,0 +1,26 @@
+group 'org.apiary.vosk_flutter'
+version '1.0'
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'org.apiary.vosk_flutter'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 21
+        // JNA і Vosk не мають пережити R8 перейменування
+        consumerProguardFiles 'proguard-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    // Vosk SDK (Maven Central); JNA - як у vosk-android-demo
+    implementation 'net.java.dev.jna:jna:5.13.0@aar'
+    implementation 'com.alphacephei:vosk-android:0.3.47@aar'
+}
