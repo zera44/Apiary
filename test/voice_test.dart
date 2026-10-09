@@ -24,6 +24,11 @@ void main() {
       'сорок два': '42',
       'два кома десять': '2,10',
       'одна ціла дві десятих': '1,2',
+      "один і п'ять": '1,5',
+      '1 і 5': '1,5',
+      "два і нуль п'ять": '2,05',
+      "три крапка п'ять": '3,5',
+      "сто й п'ять": '100,5',
     };
     for (final e in cases.entries) {
       test(e.key, () => expect(spokenToNumber(e.key), e.value));
@@ -35,6 +40,7 @@ void main() {
     test('ціле поле не бере дробу', () {
       expect(spokenToNumber('два кома п\'ять', decimal: false), isNull);
       expect(spokenToNumber('сім', decimal: false), '7');
+      expect(spokenToNumber("один і п'ять", decimal: false), isNull);
     });
   });
 
