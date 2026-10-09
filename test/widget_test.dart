@@ -252,6 +252,17 @@ void main() {
     expect(find.text('Навчання'), findsOneWidget);
     expect(find.text('Що нового'), findsOneWidget);
     expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    // логотип над «Vulyk» - пульс і «Що нового»
+    await tester.tap(find.byKey(const ValueKey('logo-whats-new')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(WhatsNewScreen), findsNothing); // ще пульсує
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(WhatsNewScreen), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget);
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));

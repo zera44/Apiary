@@ -143,7 +143,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const AppLogo(size: 104),
+                  // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
+                  _PulseTap(
+                    key: const ValueKey('logo-whats-new'),
+                    label: 'Що нового',
+                    onTap: () => WhatsNewScreen.open(nav),
+                    child: const AppLogo(size: 104),
+                  ),
                   const SizedBox(height: 10),
                   Text('Vulyk',
                       style: TextStyle(
@@ -620,4 +626,53 @@ class _StartupPromptsState extends State<_StartupPrompts> {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+
+/// Дотик: [child] коротко стискається й пружно повертається (пульс), потім
+/// [onTap]. Повторні дотики під час пульсу ігноруються (не відкриє двічі).
+class _PulseTap extends StatefulWidget {
+  const _PulseTap({super.key, required this.child, required this.onTap, required this.label});
+  final Widget child;
+  final VoidCallback onTap;
+  final String label;
+
+  @override
+  State<_PulseTap> createState() => _PulseTapState();
+}
+
+class _PulseTapState extends State<_PulseTap> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.88).chain(CurveTween(curve: Curves.easeOut)), weight: 35),
+    TweenSequenceItem(
+        tween: Tween(begin: 0.88, end: 1.06).chain(CurveTween(curve: Curves.easeOut)), weight: 40),
+    TweenSequenceItem(
+        tween: Tween(begin: 1.06, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 25),
+  ]).animate(_c);
+
+  Future<void> _tap() async {
+    if (_c.isAnimating) return;
+    await _c.forward(from: 0).orCancel.catchError((_) {});
+    if (mounted) widget.onTap();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: widget.label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _tap,
+          child: ScaleTransition(scale: _scale, child: widget.child),
+        ),
+      );
 }
