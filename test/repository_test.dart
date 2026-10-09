@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/finance.dart';
+import 'package:apiary/data/notes.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
@@ -299,6 +300,8 @@ void main() {
         amount: 10,
         date: DateTime.now(),
         lines: const [FinLineInput(name: 'Цукор', qty: 1, unit: 'кг', price: 10)]);
+    // нотатки вулика з міткою
+    await repo.addInspectionNote(EntityRef.element(id), 'Матка сіє');
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }

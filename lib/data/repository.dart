@@ -12,6 +12,7 @@ import '../logic/value_convert.dart';
 import '../logic/visit_reminders.dart';
 import 'finance.dart';
 import 'models.dart';
+import 'notes.dart';
 
 /// Назва базової характеристики "дата останнього обходу" (ключ visit_start;
 /// раніше називалась "Дата початку обходу").
@@ -44,6 +45,8 @@ const kSyncTables = [
   'fin_categories',
   'fin_ops',
   'fin_lines',
+  'note_labels',
+  'hive_notes',
 ];
 
 /// Усі операції з локальною базою (порт db.py).
@@ -64,6 +67,9 @@ class Repository {
   /// Змінився склад (залишки, номенклатура) — напр., «Час докупити» на
   /// головному екрані перераховується.
   final ValueNotifier<int> stockChanges = ValueNotifier<int>(0);
+
+  /// Змінились нотатки вуликів або їхні мітки.
+  final ValueNotifier<int> notesChanges = ValueNotifier<int>(0);
   void _remindersDirty() => remindersChanged.value++;
 
   static const _uuid = Uuid();
@@ -256,7 +262,27 @@ class Repository {
         records.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'synced': 0});
       }
     }
+    // нотатки: мітки зіставляються за назвою (немає - створюються)
+    final labelMap = <String, String?>{};
+    final notes = <Map<String, Object?>>[];
+    for (final r in await src.db.query('hive_notes', where: 'deleted = 0')) {
+      final o = owner(r);
+      if (o == null) continue;
+      final srcLabel = r['label_id'] as String?;
+      String? label;
+      if (srcLabel != null) {
+        if (!labelMap.containsKey(srcLabel)) {
+          final lr = await src.db.query('note_labels', where: 'id = ? AND deleted = 0', whereArgs: [srcLabel]);
+          labelMap[srcLabel] = lr.isEmpty ? null : await addNoteLabel(lr.first['name'] as String);
+        }
+        label = labelMap[srcLabel];
+      }
+      notes.add({...r, ...o, 'id': newId(), 'label_id': label, 'updated_at': t, 'synced': 0});
+    }
     await db.transaction((txn) async {
+      for (final n in notes) {
+        await txn.insert('hive_notes', n);
+      }
       for (final r in elRows) {
         final g = r['group_id'] as String?;
         await txn.insert('elements', {
@@ -676,6 +702,10 @@ class Repository {
         final binds = await txn.rawQuery(
             'SELECT parameter_id, sort_order FROM element_parameters WHERE group_id = ? AND deleted = 0',
             [oldGid]);
+        final notes = await txn.rawQuery(
+            'SELECT text, note_date, label_id, created_at FROM hive_notes '
+            'WHERE group_id = ? AND deleted = 0',
+            [oldGid]);
         for (final comp in comps) {
           final base = comp.first.label;
           final hiveIdx = hives.indexOf(comp);
@@ -707,6 +737,17 @@ class Repository {
               'parameter_id': r['parameter_id'],
               'value': r['value'],
               'created_at': r['created_at'],
+              'synced': 0,
+            });
+          }
+          for (final n in notes) {
+            await txn.insert('hive_notes', {
+              ...n,
+              'id': newId(),
+              'group_id': gid,
+              'element_id': null,
+              'deleted': 0,
+              'updated_at': t,
               'synced': 0,
             });
           }
@@ -2145,6 +2186,10 @@ class Repository {
           'DELETE FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
       await txn.rawDelete(
           'DELETE FROM apiaries WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+      await txn.rawDelete(
+          'DELETE FROM hive_notes WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
+      await txn.rawDelete(
+          'DELETE FROM note_labels WHERE deleted = 1 AND synced = 1 AND updated_at < ?', [cutoff]);
       // коди з номером наліпки не прибираються ніколи (рядки крихітні): інакше
       // MAX(number) "забув" би номер, і нова наліпка отримала б уже
       // надрукований номер

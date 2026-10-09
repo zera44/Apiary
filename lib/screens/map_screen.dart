@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../data/models.dart';
+import '../data/notes.dart';
 import '../data/repository.dart';
 import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
@@ -18,6 +19,7 @@ import '../ui/common.dart';
 import '../ui/date_picker.dart' show formatDdMmYyyy;
 import '../ui/first_hints.dart';
 import '../ui/guide_bubble.dart';
+import '../ui/hive_notes.dart';
 import '../ui/icons.dart';
 import 'settings_screen.dart';
 import '../ui/fill_values_dialog.dart';
@@ -470,11 +472,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   MapElement? panelElement;
   PanelData? panelData;
 
+  /// Вкладка панелі (0 - характеристики, 1 - нотатки) і кількість нотаток вулика.
+  int _panelTab = 0;
+  int _notesCount = 0;
+
+  /// Нотатки - лише для вулика в робочому режимі, не в уроках.
+  bool get _notesOn => !_guided && !selectMode && (panelElement?.isHive ?? false);
+
+  Future<void> _loadNotesCount() async {
+    final el = panelElement;
+    if (el == null || !el.isHive || !repo.db.isOpen) return;
+    final n = await repo.countHiveNotes(el.entity);
+    if (mounted && panelElement?.id == el.id) setState(() => _notesCount = n);
+  }
+
   @override
   void initState() {
     super.initState();
     _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))
       ..addListener(() => setState(() {}));
+    repo.notesChanges.addListener(_loadNotesCount);
     _init();
   }
 
@@ -516,6 +533,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    repo.notesChanges.removeListener(_loadNotesCount);
     _shake.dispose();
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
@@ -1195,8 +1213,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         : await repo.qrForElement(fresh);
     final qrNum = qr == null ? null : await repo.qrNumberOf(qr);
     final groups = await repo.paramGroups();
+    final notesCount = fresh.isHive ? await repo.countHiveNotes(entity) : 0;
     if (!mounted) return;
     setState(() {
+      _notesCount = notesCount;
       panelElement = fresh;
       panelData = PanelData(
         type: fresh.type,
@@ -1431,6 +1451,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       title: first.title,
       offerNext: el.isHive,
       lesson: lesson,
+      withNote: el.isHive && !_guided,
       // «Зберегти» / «Змін немає» / «Пропустити»: записати своє, показати
       // наступний вулик на карті й підставити його дані в ту саму форму
       // (вікно не закривається); далі нікого — огляд закривається
@@ -1439,7 +1460,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           case FillAction.skip:
             skipped.add(ownerKeyOf(cur));
           case FillAction.noChange:
-            await _saveFill(cur, const FillResult({})); // лише дата огляду
+            await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
             _fillSaved = true;
           case FillAction.save:
             await _saveFill(cur, r);
@@ -1506,6 +1527,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (mounted) await showInfo(context, e.message, title: 'Не списано');
       }
     }
+    final note = result.note;
+    if (note != null && el.isHive) await repo.addInspectionNote(entity, note);
     if (el.isHive) {
       // обхід зроблено: дата останнього обходу = сьогодні, якщо її самі
       // не змінювали в цій формі
@@ -2266,6 +2289,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       highlightFill: _lessonInspect && _inspectRead,
                       fillKey: _fillKey,
                       lesson: widget.lesson,
+                      notes: _notesOn
+                          ? HiveNotesView(repo: repo, entity: panelElement!.entity)
+                          : null,
+                      notesCount: _notesCount,
+                      tab: _notesOn ? _panelTab : 0,
+                      onTab: (i) => setState(() => _panelTab = i),
                     ),
             ),
             // урок «Базові поняття»: підсвічена клітинка, «завіса» (поки урок

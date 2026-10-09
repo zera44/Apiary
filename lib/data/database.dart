@@ -259,6 +259,33 @@ class AppDatabase {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_op ON fin_lines(op_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_move ON fin_lines(stock_move_id)');
 
+    // Нотатки вуликів: прив'язка як у parameter_records (група або об'єкт),
+    // дата нотатки (можна заднім числом) і власна мітка (note_labels).
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS note_labels (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS hive_notes (
+        id TEXT PRIMARY KEY,
+        group_id TEXT,
+        element_id TEXT,
+        text TEXT NOT NULL,
+        note_date REAL NOT NULL,
+        label_id TEXT,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_hn_owner ON hive_notes(group_id, element_id)');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

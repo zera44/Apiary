@@ -98,6 +98,16 @@ class CharacteristicsPanel extends StatelessWidget {
   /// QR-код. У режимі редагування вони ховаються.
   final bool inspect;
 
+  /// Вкладка «Нотатки» (лише для розміщеного вулика поза уроками); null - без
+  /// вкладок, лише характеристики.
+  final Widget? notes;
+  final int notesCount;
+
+  /// Відкрита вкладка: 0 - характеристики, 1 - нотатки (тримає власник панелі,
+  /// щоб вона не скидалась при оновленні даних).
+  final int tab;
+  final ValueChanged<int>? onTab;
+
   const CharacteristicsPanel({
     super.key,
     required this.data,
@@ -116,6 +126,10 @@ class CharacteristicsPanel extends StatelessWidget {
     this.onQr,
     this.editable = true,
     this.inspect = true,
+    this.notes,
+    this.notesCount = 0,
+    this.tab = 0,
+    this.onTab,
   });
 
   @override
@@ -138,9 +152,22 @@ class CharacteristicsPanel extends StatelessWidget {
       child: SizedBox(
         width: width,
         child: Stack(children: [
+          if (notes != null)
+            Positioned(
+              top: 50,
+              left: 12,
+              right: 12,
+              child: _tabs(),
+            ),
+          if (notes != null && tab == 1)
+            Positioned.fill(
+              top: 96,
+              child: TabSwipe(index: 1, count: 2, onChanged: (i) => onTab?.call(i), child: notes!),
+            )
+          else
           Positioned.fill(
-            top: 48,
-            child: ListView(
+            top: notes != null ? 96 : 48,
+            child: _swipe(ListView(
               // урок: будуємо все одразу - кнопка уроку внизу панелі має існувати,
               // щоб її підсвітити й прокрутити до неї (на малому екрані вона нижче)
               cacheExtent: lesson != null ? 4000 : null,
@@ -252,7 +279,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 ),
                 ],
               ],
-            ),
+            )),
           ),
           Positioned(
             top: 8,
@@ -267,6 +294,48 @@ class CharacteristicsPanel extends StatelessWidget {
           ),
         ]),
       ),
+    );
+  }
+
+  Widget _swipe(Widget child) => notes == null
+      ? child
+      : TabSwipe(index: 0, count: 2, onChanged: (i) => onTab?.call(i), child: child);
+
+  /// Перемикач «Характеристики | Нотатки N».
+  Widget _tabs() {
+    Widget half(int i, String text) => Expanded(
+          child: GestureDetector(
+            key: ValueKey('panel-tab-$i'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onTab?.call(i),
+            child: Container(
+              height: 34,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: i == tab ? AppColors.create : Colors.transparent,
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(text,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: i == tab ? AppColors.bg : AppColors.textMuted,
+                      fontWeight: i == tab ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 12.5,
+                    )),
+              ),
+            ),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(20)),
+      child: Row(children: [
+        half(0, 'Характеристики'),
+        half(1, notesCount > 0 ? 'Нотатки $notesCount' : 'Нотатки'),
+      ]),
     );
   }
 

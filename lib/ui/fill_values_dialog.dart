@@ -30,6 +30,7 @@ Future<FillResult?> showFillValuesDialog(
   String subtitle = 'Заповнити параметри',
   VoidCallback? onHistory,
   List<(String, String)> infoRows = const [],
+  bool withNote = false,
 }) {
   Widget host() => _FillHost(
         first: FillPage(params: params, latest: latest, stock: stock, title: title),
@@ -39,6 +40,7 @@ Future<FillResult?> showFillValuesDialog(
         subtitle: subtitle,
         onHistory: onHistory,
         infoRows: infoRows,
+        withNote: withNote && lesson == null,
       );
   // урок: пасічник на карті зникає, а в формі з'являється на тому ж місці -
   // без анімації, щоб він не блимав
@@ -94,8 +96,10 @@ class _FillHost extends StatefulWidget {
   final String subtitle;
   final VoidCallback? onHistory;
   final List<(String, String)> infoRows;
+  final bool withNote;
   const _FillHost(
       {this.infoRows = const [],
+      this.withNote = false,
       required this.first,
       required this.offerNext,
       this.onNext,
@@ -123,6 +127,7 @@ class _FillHostState extends State<_FillHost> {
       subtitle: widget.subtitle,
       onHistory: widget.onHistory,
       infoRows: widget.infoRows,
+      withNote: widget.withNote,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
       onNext: onNext == null
           ? null
@@ -155,7 +160,11 @@ class FillResult {
 
   /// Підгодівля зі складу: що й скільки списати (або null).
   final ({String itemId, double amount})? feed;
-  const FillResult(this.values, {this.next = false, this.feed, this.action = FillAction.save});
+
+  /// Нотатка до огляду (стане нотаткою вулика з міткою «Огляд») або null.
+  final String? note;
+  const FillResult(this.values,
+      {this.next = false, this.feed, this.action = FillAction.save, this.note});
 }
 
 class _FillDialog extends StatefulWidget {
@@ -171,9 +180,13 @@ class _FillDialog extends StatefulWidget {
 
   /// Рядки лише для перегляду (назва, значення) - над полями.
   final List<(String, String)> infoRows;
+
+  /// Поле «Нотатка» під таблицею (огляд одного вулика).
+  final bool withNote;
   const _FillDialog(
       {super.key,
       this.infoRows = const [],
+      this.withNote = false,
       this.lesson,
       this.subtitle = 'Заповнити параметри',
       this.onHistory,
@@ -218,11 +231,19 @@ class _FillDialogState extends State<_FillDialog> {
       c.dispose();
     }
     _feedAmount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
   String? _feedItem;
   final _feedAmount = TextEditingController();
+  final _note = TextEditingController();
+
+  String? get _noteText {
+    if (!widget.withNote) return null;
+    final t = _note.text.trim();
+    return t.isEmpty ? null : t;
+  }
 
   bool _saving = false;
 
@@ -313,7 +334,8 @@ class _FillDialogState extends State<_FillDialog> {
   Future<void> _quick(FillAction action) async {
     if (_saving) return;
     final onNext = widget.onNext;
-    final result = FillResult(const {}, next: true, action: action);
+    final result = FillResult(const {},
+        next: true, action: action, note: action == FillAction.noChange ? _noteText : null);
     if (onNext == null) {
       Navigator.pop(context, result);
       return;
@@ -376,7 +398,7 @@ class _FillDialogState extends State<_FillDialog> {
       }
       if (v != (widget.latest[p.id] ?? '')) out[p.id] = v;
     }
-    final result = FillResult(out, next: next, feed: feed);
+    final result = FillResult(out, next: next, feed: feed, note: _noteText);
     final onNext = widget.onNext;
     if (next && onNext != null) {
       setState(() => _saving = true);
@@ -651,7 +673,24 @@ class _FillDialogState extends State<_FillDialog> {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
-          children: [_table()],
+          children: [
+            _table(),
+            if (widget.withNote) ...[
+              const SizedBox(height: 10),
+              TextField(
+                key: const ValueKey('fill-note'),
+                controller: _note,
+                minLines: 2,
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(color: AppColors.text, fontSize: 14.5),
+                decoration: const InputDecoration(
+                  labelText: 'Нотатка',
+                  hintText: 'Необов\'язково: що помітили',
+                ),
+              ),
+            ],
+          ],
         )),
       ),
       actions: [
