@@ -46,11 +46,33 @@ Uint8List binarizeAdaptive(Uint8List gray, int width, int height,
   return out;
 }
 
+/// Фото з камери чи галереї: JPEG, PNG, WebP, GIF або BMP (за підписом
+/// файлу). Лише ці декодери - решта форматів пакета image (TIFF, PSD, EXR,
+/// TGA, ICO…) не потрапляє в застосунок і не збільшує його.
+img.Image? decodeReceiptPhoto(Uint8List b) {
+  bool sig(List<int> head, [int at = 0]) {
+    if (b.length < at + head.length) return false;
+    for (var i = 0; i < head.length; i++) {
+      if (b[at + i] != head[i]) return false;
+    }
+    return true;
+  }
+
+  if (sig(const [0xFF, 0xD8, 0xFF])) return img.decodeJpg(b);
+  if (sig(const [0x89, 0x50, 0x4E, 0x47])) return img.decodePng(b);
+  if (sig(const [0x52, 0x49, 0x46, 0x46]) && sig(const [0x57, 0x45, 0x42, 0x50], 8)) {
+    return img.decodeWebP(b);
+  }
+  if (sig(const [0x47, 0x49, 0x46, 0x38])) return img.decodeGif(b);
+  if (sig(const [0x42, 0x4D])) return img.decodeBmp(b);
+  return null;
+}
+
 /// Фото (байти jpg/png) → png, готовий для Tesseract. null - не вдалося прочитати.
 Uint8List? prepareReceiptImage(Uint8List bytes) {
   img.Image? decoded;
   try {
-    decoded = img.decodeImage(bytes);
+    decoded = decodeReceiptPhoto(bytes);
   } catch (_) {
     return null; // пошкоджений чи невідомий файл
   }

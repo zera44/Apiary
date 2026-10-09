@@ -141,6 +141,10 @@ jobs:
           }
           EOF2
           echo "::notice title=GRADLE::патч застосовано до $d"
+          # зразкове фото з пакета (37 КБ) застосунку не потрібне - лишаємо 1x1
+          if [ -f "${d}images/test_11.jpg" ]; then
+            echo '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/ALtf/9k=' | base64 -d > "${d}images/test_11.jpg"
+          fi
       - name: Згенерувати платформні файли
         env:
           APIARY_SIGNING: '1'

@@ -120,6 +120,23 @@ void main() {
       expect(back.getPixel(52, 60).r, 0);
     });
 
+    test('формати фото: jpg, png, webp-підпис, gif, bmp; інше - null', () {
+      final photo = img.Image(width: 20, height: 10);
+      img.fill(photo, color: img.ColorRgb8(10, 200, 30));
+      for (final bytes in [
+        img.encodeJpg(photo),
+        img.encodePng(photo),
+        img.encodeGif(photo),
+        img.encodeBmp(photo),
+      ]) {
+        final d = decodeReceiptPhoto(bytes);
+        expect(d, isNotNull);
+        expect((d!.width, d.height), (20, 10));
+      }
+      expect(decodeReceiptPhoto(img.encodeTga(photo)), isNull);
+      expect(decodeReceiptPhoto(Uint8List(0)), isNull);
+    });
+
     test('не картинка - null, без винятку', () {
       expect(prepareReceiptImage(Uint8List.fromList([1, 2, 3])), isNull);
     });

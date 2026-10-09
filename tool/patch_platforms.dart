@@ -53,8 +53,8 @@ void _patchAndroidCompressedLibs() {
     final s = f.readAsStringSync();
     if (s.contains('useLegacyPackaging')) return;
     final kts = name.endsWith('.kts');
-    // Vosk SDK приносить бібліотеки й для x86/x86_64 - у APK лише ARM (як і решта)
-    const x86 = ['lib/x86/**', 'lib/x86_64/**'];
+    // плагіни (Tesseract, Vosk) приносять бібліотеки й для x86/x86_64 - у APK лише ARM (як і Flutter)
+    const x86 = ['**/x86/**', '**/x86_64/**'];
     final block = kts
         ? '    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n'
             '            excludes += setOf(${x86.map((e) => '"$e"').join(', ')})\n        }\n    }\n'
