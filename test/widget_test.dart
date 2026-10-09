@@ -258,8 +258,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byType(WhatsNewScreen), findsNothing); // ще пульсує
     await tester.pump(const Duration(milliseconds: 300)); // пульс скінчився - відкриває
-    // «Що нового» читає файл (справжнє очікування), інакше він лишиться
-    // недочитаним у кеші rootBundle і зависне в наступних тестах
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(WhatsNewScreen), findsOneWidget);

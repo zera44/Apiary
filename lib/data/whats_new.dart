@@ -85,7 +85,7 @@ int compareVersions(String a, String b) {
 /// Усі записи з assets/whats_new.json (порожньо, якщо файла немає).
 Future<List<NewsEntry>> loadNews() async {
   try {
-    final raw = jsonDecode(await rootBundle.loadString('assets/whats_new.json'));
+    final raw = jsonDecode(await rootBundle.loadString('assets/whats_new.json', cache: false));
     return [
       for (final e in (raw['entries'] as List)) NewsEntry.fromJson(e as Map<String, dynamic>)
     ];
