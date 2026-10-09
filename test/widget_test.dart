@@ -250,7 +250,8 @@ void main() {
     expect(find.text('Фінанси'), findsOneWidget);
     expect(find.text('Відгук'), findsOneWidget);
     expect(find.text('Навчання'), findsOneWidget);
-    expect(find.text('Що нового'), findsOneWidget);
+    expect(find.text('Склад'), findsOneWidget);
+    expect(find.text('Що нового'), findsNothing); // тепер - дотик до логотипа
     expect(find.text('pasichnyk@example.com'), findsOneWidget);
     // логотип над «Vulyk» - пульс і «Що нового»
     await tester.tap(find.byKey(const ValueKey('logo-whats-new')));

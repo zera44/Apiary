@@ -186,6 +186,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: 'Фінанси',
                             onTap: () => push(FinanceScreen(repo: repo))),
                         _Tile(
+                            icon: AppIcon('box', size: 28, color: AppColors.text),
+                            label: 'Склад',
+                            onTap: () => push(StockScreen(repo: repo))),
+                        _Tile(
                             icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
                             label: 'Навчання',
                             onTap: () => push(TutorialScreen(realRepo: repo))),
@@ -193,11 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
                             onTap: () => push(const FeedbackScreen())),
-                        _Tile(
-                            icon: Icon(Icons.new_releases_outlined,
-                                size: 30, color: AppColors.text),
-                            label: 'Що нового',
-                            onTap: () => WhatsNewScreen.open(nav)),
                       ]),
                     ]),
                   ),
