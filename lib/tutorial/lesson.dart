@@ -40,7 +40,7 @@ class LessonCue {
   final bool allowAll;
   final List<String> deny;
 
-  /// «Продовжити» з табличкою «завершити» під хмаркою.
+  /// «Продовжити» під хмаркою, під нею - менша «Завершити».
   final VoidCallback? onContinue;
 
   /// Фінал уроку: широка кнопка «Завершити».
@@ -278,7 +278,7 @@ List<Widget> lessonPicScene(LessonCue cue,
     ),
   );
   Widget? below;
-  double gap = LessonFinishLink.heightFor(180) + 4;
+  double gap = kLessonNoButtonGap;
   if (cue.onContinue != null) {
     below = LessonContinue(onContinue: cue.onContinue!, onFinish: onFinish);
     gap = 0; // висота - за шириною (див. LessonContinue)

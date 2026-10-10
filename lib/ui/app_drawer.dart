@@ -181,7 +181,7 @@ class _AppDrawerState extends State<AppDrawer> {
         ]),
         const SizedBox(height: 6),
         // пасічник із газетою говорить хмаркою (як у навчанні) і стоїть
-        // руками на кнопці «Далі»
+        // руками на кнопці «Продовжити»
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
           const SizedBox(width: 6),
@@ -207,25 +207,19 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
         ]),
-        PillButton(
-          text: last ? 'Зрозуміло' : 'Далі',
-          bg: AppColors.accent,
-          height: 40,
-          width: double.infinity,
-          onPressed: () {
+        // «Продовжити» - як в уроках; під нею - менша жовта «Завершити»
+        LessonContinue(
+          label: last ? 'Зрозуміло' : 'Продовжити',
+          padding: EdgeInsets.zero,
+          onContinue: () {
             if (last) {
               Navigator.of(context).pop(); // закрити меню
             } else {
               setState(() => _step++);
             }
           },
+          onFinish: widget.tour ? widget.onFinishTutorial : null,
         ),
-        // маленька табличка «завершити» висить під кнопкою, з правого кута
-        if (widget.tour && widget.onFinishTutorial != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
-          ),
       ]),
     );
   }

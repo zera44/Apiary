@@ -883,8 +883,11 @@ void main() {
     expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
+    // у меню - «Продовжити» і під нею менша «Завершити»
+    expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
+        findsOneWidget);
     for (var i = 0; i < 6; i++) {
-      await tester.tap(find.text('Далі'));
+      await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
     await tester.tap(find.text('Зрозуміло'));
@@ -933,7 +936,7 @@ void main() {
     for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
         'час на вітер',
         'спеціалізоване навчання', 'поділитись ідеєю']) {
-      await tester.tap(find.text('Далі'));
+      await tester.tap(find.text('Продовжити'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);
     }

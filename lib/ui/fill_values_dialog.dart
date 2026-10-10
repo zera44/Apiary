@@ -644,7 +644,7 @@ class _FillDialogState extends State<_FillDialog> {
         onContinue: line.tapNext ? () => setState(() => _step = _step == 0 ? 2 : _step + 1) : null,
         bottomInset: MediaQuery.of(context).padding.bottom,
         toggleEditing: false,
-        // табличка висить під кнопкою «Продовжити» (без кнопки - без таблички)
+        // «Завершити» - під кнопкою «Продовжити» (без кнопки - без неї)
         onFinish: () => Navigator.of(context).popUntil((r) => r.isFirst),
       ),
     ]));

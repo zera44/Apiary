@@ -168,8 +168,8 @@ List<Widget> lessonScene({
   bool? toggleEditing,
   VoidCallback? onFinish,
 
-  /// «Продовжити» з табличкою «завершити» на мотузках під хмаркою (малюнок автора);
-  /// [done] - у кінці уроку: широка кнопка «Завершити» без таблички.
+  /// «Продовжити» під хмаркою, під нею - менша жовта «Завершити»;
+  /// [done] - у кінці уроку: лише широка жовта «Завершити».
   VoidCallback? onContinue,
   bool done = false,
 }) {
@@ -182,7 +182,7 @@ List<Widget> lessonScene({
   // «завершити навчання» — посиланням під хмаркою; якщо там уже кнопка
   // («Продовжити», пігулки) — над хмаркою
   final finish = onFinish == null ? null : LessonFinishLink(onPressed: onFinish);
-  // табличка - маленька, у правому нижньому куті (не заважає кнопкам хмарки)
+  // «Завершити» - маленька, у правому нижньому куті (не заважає кнопкам хмарки)
   // з бджолами-пігулками малюнок ширший: менший і зсунутий вправо, щоб бджоли
   // не обрізались, а хмарка починалась після нього
   final pills = pose == LessonPose.pills;
@@ -225,7 +225,7 @@ List<Widget> lessonScene({
           image: null,
           imageLeft: 0,
           below: below,
-          gap: onContinue != null ? 0 : (below == null ? LessonFinishLink.heightFor(180) + 4 : 70));
+          gap: onContinue != null ? 0 : (below == null ? kLessonNoButtonGap : 70));
   return [
     // решта екрана притемнена, крім цілей у медовому ободку (пасічник і хмарка - над нею)
     const Positioned.fill(child: LessonScrim()),
@@ -257,7 +257,8 @@ List<Widget> lessonScene({
                   : IgnorePointer(child: bubble),
         ),
       ),
-    // табличка висить просто під кнопкою «Продовжити»; немає кнопки - немає й таблички
+    // під кнопками хмарки (напр., «Синя» / «Червона») - менша «Завершити»;
+    // немає кнопок - немає й «Завершити»
     if (finish != null && below != null && onContinue == null)
       Positioned(
         left: pills ? 164.0 : kLessonBubbleLeft,
@@ -271,50 +272,43 @@ List<Widget> lessonScene({
   ];
 }
 
-/// «завершити навчання» — дерев'яна табличка на мотузках (малюнок автора,
-/// assets/guide/sign_blank.webp; напис — текстом, щоб був чіткий).
-const kSignBlank = 'assets/guide/sign_blank.webp';
+/// Місце під хмаркою уроку, коли під нею немає кнопок (хмарка стоїть
+/// на тій самій висоті, що й над «Продовжити» / «Завершити»).
+const kLessonNoButtonGap = 112.0;
 
+/// «Завершити» навчання (вийти, поступ лишається) - менша жовта кнопка
+/// під «Продовжити» чи під кнопками хмарки.
 class LessonFinishLink extends StatelessWidget {
   final VoidCallback onPressed;
-  final double width;
-  const LessonFinishLink({super.key, required this.onPressed, this.width = kSignWidth});
+  const LessonFinishLink({super.key, required this.onPressed});
 
-  /// Табличка 5:3; напис — на середній дошці.
-  static const kSignWidth = 90.0;
-  static double heightFor(double w) => w * 0.6;
+  static const height = 36.0;
 
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
         label: 'завершити навчання',
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onPressed,
-          child: SizedBox(
-            width: width,
-            height: heightFor(width),
-            child: Stack(alignment: Alignment.center, children: [
-              Positioned.fill(
-                  child: Image.asset(kSignBlank, fit: BoxFit.contain,
-                      filterQuality: FilterQuality.medium)),
-              // середня дошка — трохи нижче центру малюнка
-              Align(
-                alignment: const Alignment(0, 0.16),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: width * 0.12),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text('завершити',
-                        style: TextStyle(
-                            color: const Color(0xFFFFF3DC),
-                            fontSize: width * 0.11,
-                            fontWeight: FontWeight.w800,
-                            shadows: const [Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))])),
-                  ),
+        excludeSemantics: true,
+        child: Material(
+          color: AppColors.create,
+          shape: const StadiumBorder(),
+          elevation: 2,
+          shadowColor: Colors.black54,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              height: height,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text('Завершити',
+                      style: TextStyle(
+                          color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800)),
                 ),
               ),
-            ]),
+            ),
           ),
         ),
       );
@@ -365,88 +359,80 @@ Rect? rectOfKey(GlobalKey key, RenderBox ref) {
   return topLeft & box.size;
 }
 
-/// Медова кнопка-капсула уроку: «Продовжити ›», «Завершити ✓».
+/// Кнопка-капсула уроку: «Продовжити ›» - кольору «Почати» на головному,
+/// «Завершити ✓» у кінці уроку - жовта.
 class LessonPillButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onPressed;
-  const LessonPillButton({super.key, required this.label, required this.icon, required this.onPressed});
+  final Color? bg, fg;
+  const LessonPillButton(
+      {super.key, required this.label, required this.icon, required this.onPressed, this.bg, this.fg});
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: label,
-        excludeSemantics: true,
-        child: Material(
-          color: AppColors.create,
-          shape: const StadiumBorder(),
-          elevation: 3,
-          shadowColor: Colors.black54,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            child: SizedBox(
-              height: 46,
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const SizedBox(width: 18),
-                Flexible(
-                  child: Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: AppColors.bg, fontSize: 16, fontWeight: FontWeight.w800)),
-                ),
-                const SizedBox(width: 6),
-                Icon(icon, color: AppColors.bg, size: 22),
-                const SizedBox(width: 14),
-              ]),
-            ),
+  Widget build(BuildContext context) {
+    final fg = this.fg ?? Colors.white;
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: bg ?? AppColors.accent,
+        shape: const StadiumBorder(),
+        elevation: 3,
+        shadowColor: Colors.black54,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            height: 46,
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const SizedBox(width: 18),
+              Flexible(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: fg, fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 6),
+              Icon(icon, color: fg, size: 22),
+              const SizedBox(width: 14),
+            ]),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
-/// Урок: «Продовжити» під хмаркою, під нею - тихе посилання «завершити урок»
+/// Урок: «Продовжити» під хмаркою, під нею - менша жовта «Завершити»
 /// (вийти, поступ лишається).
 class LessonContinue extends StatelessWidget {
   final VoidCallback onContinue;
   final VoidCallback? onFinish;
   final String label;
+  final EdgeInsets padding;
   const LessonContinue(
-      {super.key, required this.onContinue, this.onFinish, this.label = 'Продовжити'});
+      {super.key,
+      required this.onContinue,
+      this.onFinish,
+      this.label = 'Продовжити',
+      this.padding = const EdgeInsets.only(left: 10, top: 10)});
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 10, top: 10),
+        padding: padding,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           LessonPillButton(label: label, icon: Icons.chevron_right_rounded, onPressed: onContinue),
-          if (onFinish != null)
-            Semantics(
-              button: true,
-              label: 'завершити навчання',
-              excludeSemantics: true,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onFinish,
-                child: SizedBox(
-                  height: 34,
-                  child: Center(
-                    child: Text('завершити урок',
-                        style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppColors.textMuted)),
-                  ),
-                ),
-              ),
-            ),
+          if (onFinish != null) ...[
+            const SizedBox(height: 8),
+            Center(child: LessonFinishLink(onPressed: onFinish!)),
+          ],
         ]),
       );
 }
 
-/// Фінал уроку: медова кнопка «Завершити» з галочкою.
+/// Фінал уроку: жовта кнопка «Завершити» з галочкою.
 class LessonDoneButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String label;
@@ -455,6 +441,11 @@ class LessonDoneButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(left: 10, top: 10, bottom: 8),
-        child: LessonPillButton(label: label, icon: Icons.check_rounded, onPressed: onPressed),
+        child: LessonPillButton(
+            label: label,
+            icon: Icons.check_rounded,
+            onPressed: onPressed,
+            bg: AppColors.create,
+            fg: AppColors.bg),
       );
 }
