@@ -258,12 +258,22 @@ LessonCue? templatesLessonScript(LessonController c) {
         _h('«+»'),
       ]);
     case 6:
-      return LessonCue(screen: 'editor-picker', pic: LessonPic.scheming, highlight: const ['picker-tabs'], text: [
-        _t('Тут обираєш, що малювати: вулик чи перешкоду. Перемкни на '),
-        _h('«Перешкоди»'),
-      ]);
+      return LessonCue(
+          screen: 'editor-picker',
+          pic: LessonPic.scheming,
+          highlight: const ['picker-pages'],
+          allow: const ['picker-tabs'],
+          text: [
+            _t('Тут обираєш, що малювати. Вулики - одразу тут, а до перешкод '),
+            _h('свайпни картку вліво'),
+          ]);
     case 7:
-      return LessonCue(screen: 'editor-picker', pic: LessonPic.scheming, highlight: const ['picker-obstacle'], text: [
+      return LessonCue(
+          screen: 'editor-picker',
+          pic: LessonPic.scheming,
+          highlight: const ['picker-obstacle'],
+          allow: const ['picker-tabs'],
+          text: [
         _t('Обери будь-яку '),
         _h('перешкоду'),
       ]);

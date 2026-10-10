@@ -320,13 +320,14 @@ void main() {
     expect(find.textContaining('Час малювати'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Додати'));
     await settle(tester);
-    expect(find.textContaining('вулик чи перешкоду'), findsOneWidget, reason: said(tester));
-    // вулик зараз не можна - лише перешкоду
+    expect(find.textContaining('свайпни картку'), findsOneWidget, reason: said(tester));
+    // за замовчуванням - іконки вуликів; вулик зараз не можна - лише перешкоду
+    expect(find.byTooltip('Стільник'), findsOneWidget);
     await tester.tap(find.byTooltip('Вулик'), warnIfMissed: false);
     await settle(tester);
-    expect(find.textContaining('вулик чи перешкоду'), findsOneWidget, reason: said(tester));
-    // перемикач-слайдер «Вулики | Перешкоди»
-    await tester.tap(find.text('Перешкоди'));
+    expect(find.textContaining('свайпни картку'), findsOneWidget, reason: said(tester));
+    // свайп картки вліво - перешкоди
+    await tester.drag(find.byType(PageView), const Offset(-250, 0));
     await settle(tester);
     expect(find.textContaining('Обери будь-яку'), findsOneWidget, reason: said(tester));
     await tester.pump(const Duration(milliseconds: 500)); // вікно доїхало до перешкод

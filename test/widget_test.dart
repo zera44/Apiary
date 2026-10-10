@@ -3,6 +3,7 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
+import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
@@ -1090,6 +1091,42 @@ void main() {
     await tester.pump(const Duration(seconds: 2)); // таймер попередження
     final list = (await tester.runAsync(() => repo.listTemplates()))!;
     expect(list.length, 1); // лише шаблон із setUp
+  });
+
+  testWidgets('тип для малювання: картка вуликів за замовчуванням, перешкоди - свайпом', (tester) async {
+    Future<void> swiped() async {
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50)); // картка догортається
+      }
+    }
+
+    await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Додати'));
+    await settle(tester);
+    expect(find.byTooltip('Стільник'), findsOneWidget);
+    expect(find.byTooltip('Річка'), findsNothing);
+    await tester.drag(find.byType(PageView), const Offset(-250, 0));
+    await swiped();
+    // на картці - перешкоди
+    expect(find.byTooltip('Річка'), findsOneWidget);
+    expect(find.byTooltip('Стільник'), findsNothing);
+    // перемикач угорі теж гортає: назад до вуликів - «Стільник» малює вулик із цією іконкою
+    await tester.tap(find.text('Вулики'));
+    await swiped();
+    await tester.tap(find.byTooltip('Стільник'));
+    await settle(tester);
+    expect(find.textContaining('Додаємо: Вулик - Стільник'), findsOneWidget);
+    await tester.tapAt(tester.getCenter(find.byType(InfiniteGrid)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
+    await settle(tester);
+    final t = (await tester.runAsync(() => repo.listTemplates()))!
+        .singleWhere((t) => t.name == 'Новий шаблон');
+    expect(CellValue.parse(t.cells.values.single).icon, 'hexagon');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('список пасік: видалення з підтвердженням, одразу з бази', (tester) async {

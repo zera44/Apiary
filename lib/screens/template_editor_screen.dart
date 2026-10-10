@@ -69,6 +69,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   bool moveMode = false;
   String mode = 'hive';
   String obstacleVariant = 'mountain';
+
+  /// Іконка вулика, яким малюємо (null - типова).
+  String? hiveIcon;
   final List<_Snapshot> _undo = [];
   // ВИПРАВЛЕНО: раніше це був прапорець, що виставлявся при першій зміні
   // й ніколи не знімався — навіть якщо "Скасувати" повертало шаблон
@@ -286,7 +289,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
           cells.remove(key);
         } else {
           cells[key] = mode == 'hive'
-              ? const CellValue(type: 'hive')
+              ? CellValue(type: 'hive', icon: hiveIcon)
               : CellValue(type: 'obstacle', variant: obstacleVariant);
         }
         selected = {};
@@ -494,26 +497,44 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       return;
     }
     l?.advance(5, 6);
-    // що показувати: вулики чи перешкоди (перемикач-слайдер угорі вікна);
-    // відкриваємо на тому, що малювали востаннє
-    var tab = mode == 'obstacle' ? 1 : 0;
+    // картка «Вулики» (за замовчуванням) і свайпом - «Перешкоди»;
+    // перемикач угорі показує, де ми, і теж гортає
+    var tab = 0;
+    final pages = PageController();
+    final hiveIcons = AppIcons.pickableIn('objects');
     final picked = await showDialog<(String, String?)>(
       context: context,
       barrierDismissible: l == null,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setTab) {
-        Widget choice(String icon, Color bg, String label, (String, String?) result) =>
-            CircleIconButton(
-                icon: icon,
-                bg: bg,
-                size: 52,
-                tooltip: label,
-                onPressed: () => Navigator.pop(ctx, result));
-        final choices = tab == 0
-            ? [choice('beehive', AppColors.hive, 'Вулик', ('hive', null))]
-            : [
-                for (final (key, label) in obstacleVariants)
-                  choice(key, AppColors.obstacle, label, ('obstacle', key)),
-              ];
+        Widget choice(String icon, Color bg, String label, VoidCallback onPressed) =>
+            CircleIconButton(icon: icon, bg: bg, size: 48, tooltip: label, onPressed: onPressed);
+        Widget page(String name, List<Widget> choices) => LessonTarget(
+              lesson: l,
+              name: name,
+              radius: 14,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: choices,
+                ),
+              ),
+            );
+        final hives = [
+          for (final (key, label) in hiveIcons)
+            choice(key, AppColors.hive, label, () {
+              // урок: спершу - до перешкод, вулик зараз не малюємо
+              if (l != null && l.step <= 6) return;
+              // типовий значок вулика - без власної іконки
+              Navigator.pop(ctx, ('hive', key == 'beehive' ? null : key));
+            }),
+        ];
+        final obstacles = [
+          for (final (key, label) in obstacleVariants)
+            choice(key, AppColors.obstacle, label, () => Navigator.pop(ctx, ('obstacle', key))),
+        ];
         return lessonDialog(l, 'editor-picker', AlertDialog(
           title: const Text('Тип для малювання'),
           content: SizedBox(
@@ -530,24 +551,55 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     child: FinSegment(
                       labels: const ['Вулики', 'Перешкоди'],
                       selected: tab,
-                      onChanged: (i) {
-                        setTab(() => tab = i);
-                        if (i == 1) l?.advance(6, 7);
-                      },
+                      onChanged: (i) => pages.animateToPage(i,
+                          duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  LessonTarget(
-                    lesson: l,
-                    name: tab == 0 ? 'picker-hive' : 'picker-obstacle',
-                    radius: 14,
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: choices,
-                    ),
-                  ),
+                  const SizedBox(height: 12),
+                  // висота картки - за найбільшим набором (стільки рядків по 48)
+                  LayoutBuilder(builder: (context, box) {
+                    final perRow = ((box.maxWidth + 8) / 56).floor().clamp(1, 99);
+                    final rows = (obstacles.length / perRow).ceil();
+                    return SizedBox(
+                      height: rows * 56 - 8,
+                      child: LessonTarget(
+                        lesson: l,
+                        name: 'picker-pages',
+                        radius: 14,
+                        child: PageView(
+                          controller: pages,
+                          onPageChanged: (i) {
+                            setTab(() => tab = i);
+                            // урок: гортнули до перешкод - обрати; назад - знову гортати
+                            if (i == 1) {
+                              l?.advance(6, 7);
+                            } else {
+                              l?.advance(7, 6);
+                            }
+                          },
+                          children: [
+                            page('picker-hive', hives),
+                            page('picker-obstacle', obstacles),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  // крапки під карткою - підказка, що є ще одна
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    for (var i = 0; i < 2; i++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: i == tab ? 18 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: i == tab ? AppColors.create : AppColors.textMuted.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                  ]),
                 ],
               ),
             ),
@@ -555,6 +607,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         ), drawToggle: false);
       }),
     );
+    pages.dispose();
     if (picked == null) {
       // урок: вікно закрили - знову «+»
       if (!(l?.advance(6, 5) ?? false)) l?.advance(7, 5);
@@ -563,7 +616,11 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     if (picked.$1 == 'obstacle') l?.advance(7, 8);
     setState(() {
       mode = picked.$1;
-      if (picked.$2 != null) obstacleVariant = picked.$2!;
+      if (picked.$1 == 'obstacle') {
+        obstacleVariant = picked.$2!;
+      } else {
+        hiveIcon = picked.$2;
+      }
       addingMode = true;
       moveMode = false;
       selected = {};
@@ -773,7 +830,11 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   String get _modeText {
     if (addingMode) {
       final what = mode == 'hive'
-          ? 'Вулик'
+          ? [
+              'Вулик',
+              for (final (k, label) in AppIcons.pickableIn('objects'))
+                if (k == hiveIcon && label != 'Вулик') label,
+            ].join(' - ')
           : 'Перешкода - ${obstacleVariantLabel(obstacleVariant)}';
       return 'Додаємо: $what   ·   торкніться клітинки, щоб прибрати';
     }
