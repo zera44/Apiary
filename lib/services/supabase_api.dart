@@ -287,6 +287,15 @@ class SupabaseApi implements SyncApi, SharingApi {
   }
 
   @override
+  Future<bool> hasOwnData() async {
+    for (final t in kOwnDataTables) {
+      final rows = await _select(t, {'select': 'id', 'owner_id': 'eq.$userId', 'deleted': 'eq.0', 'limit': '1'});
+      if (rows.isNotEmpty) return true;
+    }
+    return false;
+  }
+
+  @override
   Future<PullPage> pull(String table, String? after, {int limit = 500}) async {
     final j = await _rpc('sync_pull', {'p_table': table, 'p_after': after, 'p_limit': limit}) as Map;
     return PullPage(

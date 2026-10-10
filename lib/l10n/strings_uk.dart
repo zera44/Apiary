@@ -77,6 +77,46 @@ class AppStringsUk extends AppStrings {
   String get serverRestored => 'Дані завантажено з сервера';
   @override
   String serverRestoreFailed(String details) => 'Не вдалося завантажити: $details';
+  @override
+  String get firstLoginTitle => 'Дані є і на телефоні, і на сервері';
+  @override
+  String get firstLoginText =>
+      'На цьому телефоні вже є пасіки, а у вашому акаунті на сервері - теж. Що з ними зробити?';
+  @override
+  String get firstLoginKeepPhone => 'Залишити дані телефона';
+  @override
+  String get firstLoginKeepPhoneHint => 'Дані з сервера, яких тут немає, буде видалено';
+  @override
+  String get firstLoginKeepServer => 'Залишити дані сервера';
+  @override
+  String get firstLoginKeepServerHint =>
+      'Дані телефона замінить сервер (перед тим - копія тут, у «Резервних копіях»)';
+  @override
+  String get firstLoginMerge => 'Злити все разом';
+  @override
+  String get firstLoginMergeHint => 'Лишиться все з обох боків';
+  @override
+  String get firstLoginKeepPhoneConfirm =>
+      'Дані на сервері, яких немає на цьому телефоні, буде видалено - зокрема на інших '
+      'ваших телефонах після синхронізації. Продовжити?';
+  @override
+  String get firstLoginKeepServerConfirm =>
+      'Дані на цьому телефоні замінять дані з сервера. Поточні дані телефона збережуться '
+      'в «Резервних копіях» - звідти їх можна повернути. Продовжити?';
+  @override
+  String get otherAccountTitle => 'На телефоні - дані іншого акаунта';
+  @override
+  String get otherAccountText =>
+      'Дані на цьому телефоні синхронізувались з іншим акаунтом Google. Змішувати їх з '
+      'цим акаунтом не можна.';
+  @override
+  String get otherAccountReplace => 'Завантажити дані цього акаунта';
+  @override
+  String get otherAccountSignOut => 'Вийти';
+  @override
+  String get firstLoginDone => 'Готово - дані синхронізуються';
+  @override
+  String firstLoginFailed(String details) => 'Не вдалося: $details';
 
   // ---- Загальне ----
   @override

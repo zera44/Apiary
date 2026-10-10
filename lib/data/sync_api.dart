@@ -16,6 +16,10 @@ abstract class SyncApi {
   /// телефоні (історія значень).
   Future<void> markDeleted(String table, List<String> ids, double at);
 
+  /// Чи є на сервері мої власні дані (пасіки, склад, фінанси, нотатки,
+  /// огляди - типові записи на кшталт базових характеристик не рахуються).
+  Future<bool> hasOwnData();
+
   /// Зміни таблиці після курсора [after] (null - від початку).
   Future<PullPage> pull(String table, String? after, {int limit = 500});
 
@@ -33,6 +37,10 @@ abstract class SyncApi {
   Future<List<ServerBackup>> listBackups();
   Future<Uint8List> getBackup(String path);
 }
+
+/// Таблиці, за якими видно, що в людини є «справжні» дані (не лише
+/// типові записи, які застосунок створює сам).
+const kOwnDataTables = ['apiaries', 'stock_items', 'fin_ops', 'hive_notes', 'parameter_records'];
 
 /// Сторінка змін: рядки, курсор після них, чи є ще.
 class PullPage {
@@ -116,4 +124,12 @@ class SyncOtherAccount implements Exception {
   const SyncOtherAccount();
   @override
   String toString() => 'на телефоні дані іншого акаунта Google';
+}
+
+/// Перший вхід на цьому телефоні: дані є і тут, і на сервері - чекаємо
+/// вибору людини («Залишити дані телефона / сервера / Злити все разом»).
+class SyncNeedsChoice implements Exception {
+  const SyncNeedsChoice();
+  @override
+  String toString() => 'чекає вашого вибору: що робити з даними телефона й сервера';
 }

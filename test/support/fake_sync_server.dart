@@ -168,6 +168,12 @@ class _Client implements SyncApi {
   }
 
   @override
+  Future<bool> hasOwnData() async {
+    s._net();
+    return kOwnDataTables.any((t) => s.t(t).values.any((r) => r['owner_id'] == userId && r['deleted'] != 1));
+  }
+
+  @override
   Future<PullPage> pull(String table, String? after, {int limit = 500}) async {
     s._net();
     if (s.offlineTables.contains(table)) throw const SyncOffline();

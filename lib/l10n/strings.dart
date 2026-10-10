@@ -49,6 +49,22 @@ abstract class AppStrings {
   String get serverRestoring;
   String get serverRestored;
   String serverRestoreFailed(String details);
+  String get firstLoginTitle;
+  String get firstLoginText;
+  String get firstLoginKeepPhone;
+  String get firstLoginKeepPhoneHint;
+  String get firstLoginKeepServer;
+  String get firstLoginKeepServerHint;
+  String get firstLoginMerge;
+  String get firstLoginMergeHint;
+  String get firstLoginKeepPhoneConfirm;
+  String get firstLoginKeepServerConfirm;
+  String get otherAccountTitle;
+  String get otherAccountText;
+  String get otherAccountReplace;
+  String get otherAccountSignOut;
+  String get firstLoginDone;
+  String firstLoginFailed(String details);
 
   // ---- Загальне ----
   String get close;

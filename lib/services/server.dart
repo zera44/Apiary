@@ -1,6 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
+
+import '../data/first_login.dart';
 
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -18,6 +20,9 @@ import 'supabase_api.dart';
 /// далі сам оновлюється (його бачить і фонове завдання).
 abstract final class Server {
   static SupabaseApi? _api;
+
+  /// Перший вхід: потрібен вибір людини (головний екран показує вікно).
+  static final ValueNotifier<FirstLoginState?> choice = ValueNotifier(null);
 
   /// Підключений сервер (null - не налаштовано або не увійшли).
   static SupabaseApi? get api => _api;
@@ -38,6 +43,10 @@ abstract final class Server {
         await connect(repo, auth);
       };
       sync.reconnect = auth.user == null ? null : () => connect(repo, auth);
+      sync.onNeedsChoice = () async {
+        final a = _api;
+        if (a != null && choice.value == null) await _firstLogin(repo, a);
+      };
     }
     SharingService.current = SharingService(api, repo);
     unawaited(SyncService.current?.refreshInfo());
@@ -55,7 +64,7 @@ abstract final class Server {
       final restored = await SupabaseApi.restore(config, await sessionStore());
       if (restored != null && restored.session.email == auth.user!.email.toLowerCase()) {
         _attach(repo, restored, auth);
-        unawaited(SyncService.now());
+        await _firstLogin(repo, restored);
         return;
       }
       await connect(repo, auth);
@@ -75,7 +84,7 @@ abstract final class Server {
     try {
       final api = await SupabaseApi.signInWithGoogle(config, await sessionStore(), token);
       _attach(repo, api, auth);
-      unawaited(SyncService.now());
+      await _firstLogin(repo, api);
       return true;
     } on SyncOffline catch (e) {
       debugPrint('Сервер: $e');
@@ -83,10 +92,35 @@ abstract final class Server {
     }
   }
 
+  /// Чи потрібен вибір (дані і тут, і на сервері; інший акаунт). Ні -
+  /// синхронізуватись.
+  static Future<void> _firstLogin(Repository repo, SupabaseApi api) async {
+    final FirstLoginState state;
+    try {
+      state = await FirstLogin(repo, api).prepare();
+    } on SyncOffline catch (e) {
+      // без мережі - синхронізація чекатиме, а перевірку повторить розклад
+      debugPrint('Перший вхід: $e');
+      return;
+    }
+    choice.value = state == FirstLoginState.ready ? null : state;
+    if (state == FirstLoginState.ready) unawaited(SyncService.now());
+  }
+
+  /// Людина вибрала - виконати й синхронізуватись.
+  static Future<void> choose(Repository repo, FirstLoginChoice c) async {
+    final api = _api;
+    if (api == null) return;
+    await FirstLogin(repo, api).apply(c);
+    choice.value = null;
+    await SyncService.current?.syncNow();
+  }
+
   /// Вихід: забути вхід на сервер (дані на телефоні лишаються).
   static Future<void> signOut(Repository repo) async {
     final api = _api;
     _attach(repo, null);
+    choice.value = null;
     // вийшли свідомо - не входити знову самим
     SyncService.current
       ?..reconnect = null

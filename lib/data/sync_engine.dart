@@ -59,6 +59,9 @@ class SyncEngine {
       };
 
   static const userKey = 'sync_user';
+
+  /// Перший вхід: людина ще не вибрала, що робити з даними (див. FirstLogin).
+  static const pendingChoiceKey = 'sync_first_pending';
   static const lastPullKey = 'sync_last_pull';
 
   /// Сервер стирає позначки «видалено», старші за 180 днів. Телефон, що
@@ -99,6 +102,7 @@ class SyncEngine {
 
   /// Дані на телефоні - іншого акаунта (увійшли іншим Google): не змішувати.
   Future<void> _checkUser() async {
+    if (await repo.getMeta(pendingChoiceKey) == '1') throw const SyncNeedsChoice();
     final was = await repo.getMeta(userKey);
     if (was == null || was.isEmpty) {
       await repo.setMeta(userKey, api.userId);

@@ -9,6 +9,7 @@ import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 import '../services/auth.dart';
 import '../services/server.dart';
+import '../ui/first_login_dialog.dart';
 import '../services/sharing.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
@@ -99,6 +100,40 @@ class _HomeScreenState extends State<HomeScreen> {
     // дані змінились без переходу (відновили копію й «Скасувати») - фон теж
     repo.mapChanges.addListener(_onMapChanged);
     _loadBackdrop();
+    // перший вхід: дані і тут, і на сервері - спитати
+    Server.choice.addListener(_onFirstLogin);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstLogin());
+  }
+
+  bool _asking = false;
+
+  Future<void> _onFirstLogin() async {
+    final state = Server.choice.value;
+    if (state == null || _asking || !mounted) return;
+    _asking = true;
+    try {
+      final a = await showFirstLoginDialog(context, state);
+      if (a == null || !mounted) return;
+      if (a.signOut) {
+        await Server.signOut(repo);
+        await auth.signOut();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
+          (_) => false,
+        );
+        return;
+      }
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        await Server.choose(repo, a.choice!);
+        messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginDone)));
+      } catch (e) {
+        messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginFailed('$e'))));
+      }
+    } finally {
+      _asking = false;
+    }
   }
 
   void _onMapChanged() {
@@ -117,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    Server.choice.removeListener(_onFirstLogin);
     repo.mapChanges.removeListener(_onMapChanged);
     _lifecycle.dispose();
     super.dispose();

@@ -111,6 +111,10 @@ class SyncService {
   Future<void> Function()? reconnect;
   DateTime? _reconnectAt;
 
+  /// Синхронізація чекає вибору першого входу, а питання ще не поставлено
+  /// (перевірка не вдалась без мережі) - перевірити знову. Задає [Server].
+  Future<void> Function()? onNeedsChoice;
+
   Timer? _timer;
   StreamSubscription<List<ConnectivityResult>>? _net;
   Future<SyncReport?>? _running;
@@ -269,6 +273,11 @@ class SyncService {
     } on SyncOffline catch (e) {
       await repo.setMeta(offlineKey, '1');
       debugPrint('Синхронізація: $e');
+    } on SyncNeedsChoice catch (e) {
+      await repo.setMeta(offlineKey, '');
+      await repo.setMeta(errorKey, '$e');
+      final f = onNeedsChoice;
+      if (f != null) unawaited(f().catchError((Object _) {}));
     } on SyncSignedOut catch (e) {
       await repo.setMeta(offlineKey, '');
       await repo.setMeta(errorKey, '$e');
