@@ -1770,6 +1770,38 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  /// Під меню головного: яка пасіка (null - соти) і які клітинки карти намальовано.
+  String? backdropId(WidgetTester tester) {
+    final f = find.descendant(of: find.byType(HomeScreen), matching: find.byType(MapScreen));
+    return f.evaluate().isEmpty ? null : tester.widget<MapScreen>(f.first).apiary.id;
+  }
+
+  Set<Object> backdropCells(WidgetTester tester) {
+    final f = find.descendant(of: find.byType(HomeScreen), matching: find.byType(InfiniteGrid));
+    return f.evaluate().isEmpty
+        ? const {}
+        : {for (final c in tester.widget<InfiniteGrid>(f.first).cells) c.id};
+  }
+
+  Future<Set<Object>> elementIds(WidgetTester tester, String apiary) async =>
+      {for (final e in (await tester.runAsync(() => repo.listElements(apiary)))!) e.id};
+
+  /// Застосунок пішов у фон і його знову відкрили (не з нуля).
+  Future<void> reopenFromBackground(WidgetTester tester) async {
+    for (final s in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+  }
+
   testWidgets('під меню - остання відкрита пасіка: після повернення й повторного відкриття', (tester) async {
     HomeScreen.mapBackdrop = true;
     addTearDown(() => HomeScreen.mapBackdrop = false);
@@ -1778,14 +1810,11 @@ void main() {
       await repo.addGroup(b, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1');
       return b;
     }))!;
-    String? shown() => find.byType(MapScreen).evaluate().isEmpty
-        ? null
-        : tester.widget<MapScreen>(find.byType(MapScreen).first).apiary.id;
 
     // пасік дві, жодну ще не відкривали - під меню соти
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
-    expect(shown(), isNull);
+    expect(backdropId(tester), isNull);
 
     // відкрили другу пасіку й повернулись на головний - вона під меню
     await tester.tap(find.text('Почати'));
@@ -1804,24 +1833,81 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Почати'), findsOneWidget);
-    expect(shown(), second);
+    expect(backdropId(tester), second);
+    expect(backdropCells(tester), await elementIds(tester, second));
 
     // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
     // відкрили з нагадування) - знову відкрили: під меню вже вона
     await tester.runAsync(() => repo.setMeta('last_apiary', apiaryId));
-    for (final s in [
-      AppLifecycleState.inactive,
-      AppLifecycleState.hidden,
-      AppLifecycleState.paused,
-      AppLifecycleState.hidden,
-      AppLifecycleState.inactive,
-      AppLifecycleState.resumed,
-    ]) {
-      tester.binding.handleAppLifecycleStateChanged(s);
-    }
+    await reopenFromBackground(tester);
+    expect(backdropId(tester), apiaryId);
+    expect(backdropCells(tester), await elementIds(tester, apiaryId));
+
+    // та сама пасіка, але з'явився вулик (напр., від помічника) - він уже на карті
+    await tester.runAsync(
+        () => repo.addGroup(apiaryId, {'0,0': 'hive'}, 9, 9, groupLabel: 'Новий'));
+    await reopenFromBackground(tester);
+    expect(backdropId(tester), apiaryId);
+    expect(backdropCells(tester), await elementIds(tester, apiaryId));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('під меню: закрили вікно - карта лишається, без «карта змінилась»', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    // пасіка одна - вона й під меню
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(shown(), apiaryId);
+    expect(backdropId(tester), apiaryId);
+    final cells = await elementIds(tester, apiaryId);
+    expect(backdropCells(tester), cells);
+    State<StatefulWidget> mapState() => tester.state(
+        find.descendant(of: find.byType(HomeScreen), matching: find.byType(MapScreen)).first);
+    final before = mapState();
+    final changes = repo.mapChanges.value;
+
+    // вікно над меню (тут - «Вийти?») закрили: карта під меню та сама, без
+    // порожнього кадру, і нагадування не переплановуються
+    await tester.tap(find.text('Вийти'));
+    await settle(tester);
+    await tester.tap(find.text('Скасувати'));
+    for (var i = 0; i < 12; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(backdropCells(tester), cells, reason: 'кадр $i');
+    }
+    expect(identical(mapState(), before), isTrue);
+    expect(repo.mapChanges.value, changes);
+    // фон лише показує пасіку - «останньою відкритою» її не робить
+    expect(await tester.runAsync(() => repo.getMeta('last_apiary')), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('під меню: остання пасіка видалена - соти (а не стара карта)', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    final b = (await tester.runAsync(() async {
+      final b = await repo.addApiary('Друга пасіка');
+      await repo.addApiary('Третя пасіка');
+      await repo.setMeta('last_apiary', b);
+      return b;
+    }))!;
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(backdropId(tester), b);
+
+    await tester.tap(find.text('Фінанси'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.runAsync(() => repo.deleteApiary(b));
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    // лишилось дві пасіки, остання відкрита зникла - під меню соти
+    expect(find.text('Почати'), findsOneWidget);
+    expect(backdropId(tester), isNull);
     expect(tester.takeException(), isNull);
   });
 

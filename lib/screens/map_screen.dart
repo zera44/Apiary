@@ -93,6 +93,15 @@ class MapScreen extends StatefulWidget {
 
   /// Урок із «Навчання» (пісочниця): пасічник веде за сценарієм [LessonController].
   final LessonController? lesson;
+
+  /// Фон під меню головного екрана: карту лише видно - вона не стає «останньою
+  /// відкритою», не показує підказок і, зникаючи, не повідомляє про зміну
+  /// карти (інакше закриття будь-якого вікна над меню перепланувало б
+  /// нагадування й знову питало дозвіл на сповіщення).
+  final bool backdrop;
+
+  /// Фон: інше значення - перечитати вулики на місці (без порожнього кадру).
+  final int refresh;
   const MapScreen(
       {super.key,
       required this.repo,
@@ -104,7 +113,9 @@ class MapScreen extends StatefulWidget {
       this.tutorial = false,
       this.menuTour = false,
       this.lesson,
-      this.onLessonDone});
+      this.onLessonDone,
+      this.backdrop = false,
+      this.refresh = 0});
 
   /// Урок: на карті ще немає вуликів.
   static final tutorialNoHives = <InlineSpan>[
@@ -499,18 +510,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _bindCode = widget.bindCode;
     if (_bindCode != null) _warning = 'Торкніться вулика, до якого прив\'язати код';
     // «Почати» на головному екрані відкриватиме цю пасіку
-    unawaited(repo.setMeta('last_apiary', widget.apiary.id));
+    if (!widget.backdrop) unawaited(repo.setMeta('last_apiary', widget.apiary.id));
     await _reload();
-    if (elements.isNotEmpty) {
-      var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
-      for (final e in elements) {
-        if (e.x < minX) minX = e.x;
-        if (e.x > maxX) maxX = e.x;
-        if (e.y < minY) minY = e.y;
-        if (e.y > maxY) maxY = e.y;
-      }
-      grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
-    }
+    _centerOnElements();
+    if (widget.backdrop) return;
     if (mounted && !_guided) await Hints.show(context, repo, Hints.map);
     if (widget.lesson != null) {
       if (mounted) setState(() {});
@@ -531,6 +534,30 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
   }
 
+  /// Вулики посередині екрана.
+  void _centerOnElements() {
+    if (elements.isEmpty) return;
+    var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
+    for (final e in elements) {
+      if (e.x < minX) minX = e.x;
+      if (e.x > maxX) maxX = e.x;
+      if (e.y < minY) minY = e.y;
+      if (e.y > maxY) maxY = e.y;
+    }
+    grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
+  }
+
+  @override
+  void didUpdateWidget(MapScreen old) {
+    super.didUpdateWidget(old);
+    if (widget.backdrop && widget.refresh != old.refresh) unawaited(_refreshBackdrop());
+  }
+
+  Future<void> _refreshBackdrop() async {
+    await _reload();
+    if (mounted) _centerOnElements();
+  }
+
   @override
   void dispose() {
     repo.notesChanges.removeListener(_loadNotesCount);
@@ -538,8 +565,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
     grid.dispose();
-    // список пасік оновить мініатюру цієї карти
-    repo.mapChanges.value++;
+    // список пасік оновить мініатюру цієї карти (фон нічого не змінює)
+    if (!widget.backdrop) repo.mapChanges.value++;
     super.dispose();
   }
 

@@ -78,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Номер запиту фону: відповідь давнішого не перебиває новішу.
   int _backdropReq = 0;
 
-  /// Номер показаного фону: щоразу карта під меню будується наново (свіжі вулики).
+  /// Номер оновлення фону: карта під меню перечитує вулики на місці.
   int _backdropGen = 0;
 
   /// Чи головний екран зараз нагорі (не під іншою сторінкою чи вікном).
@@ -172,9 +172,11 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
                 child: IgnorePointer(
                     child: MapScreen(
-                        key: ValueKey('backdrop-${_backdrop!.id}-$_backdropGen'),
+                        key: ValueKey('backdrop-${_backdrop!.id}'),
                         repo: repo,
-                        apiary: _backdrop!))),
+                        apiary: _backdrop!,
+                        backdrop: true,
+                        refresh: _backdropGen))),
             Positioned.fill(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
           ],
           Center(
