@@ -359,27 +359,34 @@ class BackupService {
     try {
       await db.transaction((txn) async {
         final stamp = Repository.now();
+        final bkApiaryCols = await _columns(txn, 'bk', 'apiaries');
+        final mainApiaryCols = await _columns(txn, 'main', 'apiaries');
         for (final t in kSyncTables) {
           final mainCols = await _columns(txn, 'main', t);
           final bkCols = await _columns(txn, 'bk', t);
           final cols = [for (final c in mainCols) if (bkCols.contains(c)) c];
           final source = bkCols.isEmpty ? null : 'bk.$t';
+          // відновлюємо лише своє: дані власника, якому я допомагаю, живуть
+          // на сервері - копія не має ні видаляти їх, ні повертати старі
+          final mine = _ownWhere('main', t, mainCols, mainApiaryCols);
           // чого в копії немає - видалено (позначкою, де вона є)
           final missing = source == null ? '' : ' AND id NOT IN (SELECT id FROM $source)';
           if (mainCols.contains('deleted')) {
             await txn.rawUpdate(
                 'UPDATE main.$t SET deleted = 1, synced = 0, updated_at = ? '
-                'WHERE deleted = 0$missing',
+                'WHERE deleted = 0 AND $mine$missing',
                 [stamp]);
           } else {
             // TODO(етап 5): історії значень потрібні позначки видалення
             // (колонка deleted чи окремий журнал), інакше наступне
             // отримання змін із сервера поверне прибрані тут рядки
-            await txn.rawDelete('DELETE FROM main.$t WHERE 1 = 1$missing');
+            await txn.rawDelete('DELETE FROM main.$t WHERE $mine$missing');
           }
           if (source != null && cols.contains('id')) {
             final list = cols.join(', ');
-            await txn.rawInsert('INSERT OR REPLACE INTO main.$t ($list) SELECT $list FROM $source');
+            final bkMine = _ownWhere('bk', t, bkCols, bkApiaryCols);
+            await txn.rawInsert('INSERT OR REPLACE INTO main.$t ($list) SELECT $list FROM $source '
+                'WHERE $bkMine AND id NOT IN (SELECT id FROM main.$t WHERE NOT ($mine))');
           }
         }
         // налаштування з копії (групи «Конструктора» тощо) - крім позначок
@@ -413,10 +420,14 @@ class BackupService {
         }
         // відновлене - у чергу на відправку
         for (final t in kSyncTables) {
-          if ((await _columns(txn, 'main', t)).contains('synced')) {
-            await txn.rawUpdate('UPDATE main.$t SET synced = 0 WHERE synced != 0');
+          final cols = await _columns(txn, 'main', t);
+          if (cols.contains('synced')) {
+            await txn.rawUpdate('UPDATE main.$t SET synced = 0 '
+                'WHERE synced != 0 AND ${_ownWhere('main', t, cols, mainApiaryCols)}');
           }
         }
+        // давня копія: вулики без пасіки - у «Моя пасіка», як при запуску
+        await repo.ensureLegacyApiary(txn);
       });
     } finally {
       await db.execute('DETACH DATABASE bk');
@@ -432,6 +443,20 @@ class BackupService {
     } finally {
       await c.close();
     }
+  }
+
+  /// Умова «рядок мій» (а не власника, якому я допомагаю) для таблиці [t]
+  /// у [schema]. [cols] - колонки таблиці; [apiaryCols] - колонки apiaries
+  /// у цій же схемі (давня копія без owner_id - усе своє).
+  static String _ownWhere(String schema, String t, List<String> cols, List<String> apiaryCols) {
+    if (AppDatabase.ownerTables.contains(t) && cols.contains('owner_id')) return 'owner_id IS NULL';
+    final viaApiary = t == 'elements' || AppDatabase.apiaryLinkedTables.contains(t);
+    if (viaApiary && cols.contains('apiary_id') && apiaryCols.contains('owner_id')) {
+      final foreign = 'SELECT id FROM $schema.apiaries WHERE owner_id IS NOT NULL';
+      return '(apiary_id IS NULL OR (apiary_id NOT IN ($foreign) '
+          'AND apiary_id NOT IN (SELECT id FROM main.apiaries WHERE owner_id IS NOT NULL)))';
+    }
+    return '1 = 1';
   }
 
   static Future<List<String>> _columns(DatabaseExecutor db, String schema, String table) async =>

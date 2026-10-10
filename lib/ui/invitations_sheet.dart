@@ -25,6 +25,9 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
   List<Invitation>? _list;
   bool _busy = false;
 
+  /// Помилка відповіді - у самому вікні (SnackBar сховався б під ним).
+  String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -38,19 +41,29 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
 
   Future<void> _respond(Invitation inv, bool accept) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     final messenger = ScaffoldMessenger.of(context);
+    String? error;
     try {
       await SharingService.current.respond(inv, accept: accept);
-      messenger.showSnackBar(
-          SnackBar(content: Text(accept ? tr.inviteAccepted : tr.inviteDeclined)));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(tr.inviteFailed('$e'))));
+      error = tr.inviteFailed('$e');
     }
     await _load();
     if (!mounted) return;
-    setState(() => _busy = false);
-    if ((_list ?? const []).isEmpty) Navigator.pop(context);
+    setState(() {
+      _busy = false;
+      _error = error;
+    });
+    if (error == null && (_list ?? const []).isEmpty) {
+      Navigator.pop(context);
+      // вікно закрилось - повідомлення вже видно
+      messenger.showSnackBar(
+          SnackBar(content: Text(accept ? tr.inviteAccepted : tr.inviteDeclined)));
+    }
   }
 
   @override
@@ -63,6 +76,10 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
           Text(tr.invitationsTitle,
               style: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
           const SizedBox(height: 10),
+          if (_error != null) ...[
+            Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13.5)),
+            const SizedBox(height: 8),
+          ],
           if (list == null)
             const Center(child: CircularProgressIndicator())
           else if (list.isEmpty)

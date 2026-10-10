@@ -5,6 +5,7 @@ import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/helpers_screen.dart';
 import 'package:apiary/services/sharing.dart';
 import 'package:apiary/ui/common.dart';
+import 'package:apiary/ui/invitations_sheet.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,6 +108,56 @@ void main() {
     // без сервера - ділитися неможливо
     expect((await SharingService(null, null).invite('petro@gmail.com')).$1,
         InviteOutcome.unavailable);
+  });
+
+  test('друге запрошення, поки перше чекає, - не надсилаємо; склад - перемикачем у списку',
+      () async {
+    await olena.invite('petro@gmail.com');
+    expect((await olena.invite('petro@gmail.com')).$1, InviteOutcome.alreadyInvited);
+    expect(server.invitations.length, 1);
+    await petro.respond((await petro.incoming()).single, accept: true);
+    // має всі пасіки без складу; просять склад - підказка, а не новий учасник
+    final a = await olenaPhone.addApiary('Біля річки');
+    expect((await olena.invite('petro@gmail.com', apiaryIds: [a], stockAccess: true)).$1,
+        InviteOutcome.needsStockSwitch);
+    expect((await olena.invite('petro@gmail.com', apiaryIds: [a])).$1,
+        InviteOutcome.alreadyHasAccess);
+    expect(server.members.length, 1);
+  });
+
+  test('одна пасіка зі складом не робить «уже має доступ» до іншої', () async {
+    final a = await olenaPhone.addApiary('Біля річки');
+    final b = await olenaPhone.addApiary('Лісова');
+    await olena.invite('petro@gmail.com', apiaryIds: [a], stockAccess: true);
+    await petro.respond((await petro.incoming()).single, accept: true);
+    expect((await olena.invite('petro@gmail.com', apiaryIds: [b], stockAccess: true)).$1,
+        InviteOutcome.sent);
+  });
+
+  testWidgets('скринька: відповісти не вдалося - помилка в самому вікні', (tester) async {
+    SharingService.current = petro;
+    await tester.runAsync(() => olena.invite('petro@gmail.com'));
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(),
+      home: Scaffold(
+        body: Builder(
+            builder: (c) => TextButton(onPressed: () => showInvitations(c), child: const Text('x'))),
+      ),
+    ));
+    await tester.tap(find.text('x'));
+    for (var i = 0; i < 6; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text(tr.accept), findsOneWidget);
+    server.offline = true;
+    await tester.tap(find.text(tr.accept));
+    for (var i = 0; i < 6; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.textContaining('зв\'язку'), findsOneWidget);
+    expect(find.text(tr.accept), findsOneWidget); // вікно відкрите, можна ще раз
   });
 
   test('скасувати надіслане запрошення', () async {

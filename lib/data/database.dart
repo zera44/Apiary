@@ -76,6 +76,14 @@ class AppDatabase {
   /// (зокрема видаленим - сервер має знати про їхнє видалення); групи
   /// «Конструктора» - у свою таблицю; типовим записам - сталі ключі.
   static Future<void> _sharing(DatabaseExecutor db) async {
+    await backfillApiaryIds(db);
+    await Repository.moveParamGroupsToTable(db);
+    await Repository.assignSeedKeys(db);
+  }
+
+  /// Записам вуликів без пасіки - пасіку з їхнього вулика (групи чи
+  /// об'єкта). Безпечно повторювати: чіпає лише рядки з порожньою пасікою.
+  static Future<void> backfillApiaryIds(DatabaseExecutor db) async {
     for (final t in apiaryLinkedTables) {
       await db.rawUpdate('''
         UPDATE $t SET apiary_id = (
@@ -85,8 +93,6 @@ class AppDatabase {
           LIMIT 1)
         WHERE apiary_id IS NULL''');
     }
-    await Repository.moveParamGroupsToTable(db);
-    await Repository.assignSeedKeys(db);
   }
 
   /// Стара заглушка синхронізації (до етапу 0) позначала всі записи

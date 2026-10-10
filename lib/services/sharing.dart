@@ -42,7 +42,21 @@ abstract class SharingApi {
 }
 
 /// Чим закінчилась спроба запросити.
-enum InviteOutcome { sent, noSuchUser, alreadyHasAccess, self, invalidEmail, unavailable, failed }
+enum InviteOutcome {
+  sent,
+  noSuchUser,
+  alreadyHasAccess,
+
+  /// Пасіки вже доступні, бракує лише складу - вмикається в списку помічників.
+  needsStockSwitch,
+
+  /// Запрошення цій людині вже чекає відповіді.
+  alreadyInvited,
+  self,
+  invalidEmail,
+  unavailable,
+  failed,
+}
 
 /// Спільний доступ: запрошення й помічники. Звертається до сервера й
 /// тримає копію в базі телефона (щоб показати й без інтернету).
@@ -73,13 +87,27 @@ class SharingService {
     try {
       final uid = await api.findUser(to);
       if (uid == null) return (InviteOutcome.noSuchUser, null);
-      // уже має доступ до всіх чи до кожної з обраних
+      // уже чекає відповіді на попереднє - друге не надсилаємо
+      if ((await api.outgoing()).any((i) => i.isPending && normalizeEmail(i.toEmail) == to)) {
+        return (InviteOutcome.alreadyInvited, null);
+      }
+      // уже має доступ: до всіх (рядок без пасіки) чи до кожної з обраних
       final his = [for (final m in await api.members()) if (m.userId == uid) m];
-      final hasAll = his.any((m) => m.apiaryId == null);
-      final hasEach = apiaryIds != null &&
-          apiaryIds.every((a) => his.any((m) => m.apiaryId == a)) &&
-          his.every((m) => m.stockAccess || !stockAccess);
-      if (hasAll || hasEach) return (InviteOutcome.alreadyHasAccess, null);
+      final all = his.where((m) => m.apiaryId == null).toList();
+      List<Member>? covering;
+      if (all.isNotEmpty) {
+        covering = all;
+      } else if (apiaryIds != null) {
+        final each = [
+          for (final a in apiaryIds) his.where((m) => m.apiaryId == a).firstOrNull,
+        ];
+        if (each.every((m) => m != null)) covering = each.cast<Member>();
+      }
+      if (covering != null) {
+        // склад перевіряємо лише в рядках, що дають ці пасіки
+        final stockOk = !stockAccess || covering.every((m) => m.stockAccess);
+        return (stockOk ? InviteOutcome.alreadyHasAccess : InviteOutcome.needsStockSwitch, null);
+      }
       final inv = Invitation(
         id: Repository.newId(),
         fromUserId: api.myUserId,

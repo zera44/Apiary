@@ -95,6 +95,8 @@ class _HelpersScreenState extends State<HelpersScreen> {
       InviteOutcome.sent => tr.inviteSent(e),
       InviteOutcome.noSuchUser => tr.inviteNoSuchUser(e),
       InviteOutcome.alreadyHasAccess => tr.inviteAlready(e),
+      InviteOutcome.needsStockSwitch => tr.inviteNeedsStock(e),
+      InviteOutcome.alreadyInvited => tr.inviteAlreadyPending(e),
       InviteOutcome.self => tr.inviteSelf,
       InviteOutcome.invalidEmail => tr.inviteInvalidEmail,
       InviteOutcome.unavailable => tr.sharingUnavailable,

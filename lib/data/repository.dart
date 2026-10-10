@@ -184,18 +184,34 @@ class Repository {
   /// Стара база (з версії до підтримки кількох пасік) мала елементи без
   /// apiary_id — тут вони один раз переносяться в автоматично створену
   /// пасіку "Моя пасіка", щоб не зникли з очей.
-  Future<void> ensureLegacyApiary() async {
-    final orphans = await db
+  Future<void> ensureLegacyApiary([DatabaseExecutor? executor]) async {
+    final ex = executor ?? db;
+    final orphans = await ex
         .rawQuery('SELECT COUNT(*) c FROM elements WHERE apiary_id IS NULL AND deleted = 0');
-    if (((orphans.first['c'] as num?) ?? 0) == 0) return;
-    final existing =
-        await db.rawQuery('SELECT id FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC LIMIT 1');
-    final apiaryId = existing.isNotEmpty
-        ? existing.first['id'] as String
-        : await addApiary('Моя пасіка');
-    await db.rawUpdate(
-        'UPDATE elements SET apiary_id = ?, synced = 0, updated_at = ? WHERE apiary_id IS NULL',
-        [apiaryId, now()]);
+    if (((orphans.first['c'] as num?) ?? 0) > 0) {
+      // лише своя пасіка - не та, де я помічник
+      final existing = await ex.rawQuery('SELECT id FROM apiaries '
+          'WHERE deleted = 0 AND owner_id IS NULL ORDER BY updated_at ASC LIMIT 1');
+      final String apiaryId;
+      if (existing.isNotEmpty) {
+        apiaryId = existing.first['id'] as String;
+      } else {
+        apiaryId = newId();
+        await ex.insert('apiaries', {
+          'id': apiaryId,
+          'name': 'Моя пасіка',
+          'updated_at': now(),
+          'synced': 0,
+          'deleted': 0,
+        });
+      }
+      await ex.rawUpdate(
+          'UPDATE elements SET apiary_id = ?, synced = 0, updated_at = ? WHERE apiary_id IS NULL',
+          [apiaryId, now()]);
+    }
+    // записам вуликів, що щойно дістали пасіку (і давнім, яким міграція не
+    // мала звідки її взяти), - пасіка прямо
+    await AppDatabase.backfillApiaryIds(ex);
   }
 
   /// Нова пасіка з типовою назвою «Пасіка N» (N — наступний вільний номер);
@@ -267,7 +283,8 @@ class Repository {
       final o = owner(r);
       final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
       if (o != null && pid != null) {
-        bindings.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'updated_at': t, 'synced': 0});
+        bindings.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'apiary_id': apiaryId,
+            'updated_at': t, 'synced': 0});
       }
     }
     final records = <Map<String, Object?>>[];
@@ -275,7 +292,8 @@ class Repository {
       final o = owner(r);
       final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
       if (o != null && pid != null) {
-        records.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'synced': 0});
+        records.add(
+            {...r, ...o, 'id': newId(), 'parameter_id': pid, 'apiary_id': apiaryId, 'synced': 0});
       }
     }
     // нотатки: мітки зіставляються за назвою (немає - створюються)
@@ -293,7 +311,8 @@ class Repository {
         }
         label = labelMap[srcLabel];
       }
-      notes.add({...r, ...o, 'id': newId(), 'label_id': label, 'updated_at': t, 'synced': 0});
+      notes.add({...r, ...o, 'id': newId(), 'label_id': label, 'apiary_id': apiaryId,
+        'updated_at': t, 'synced': 0});
     }
     await db.transaction((txn) async {
       for (final n in notes) {

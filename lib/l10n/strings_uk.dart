@@ -134,6 +134,11 @@ class AppStringsUk extends AppStrings {
   @override
   String inviteAlready(String email) => '$email уже має цей доступ';
   @override
+  String inviteNeedsStock(String email) =>
+      '$email уже має доступ до пасік - склад і фінанси увімкніть у списку помічників нижче';
+  @override
+  String inviteAlreadyPending(String email) => 'Запрошення для $email уже надіслано й чекає відповіді';
+  @override
   String inviteFailed(String details) => 'Не вдалося надіслати запрошення: $details';
   @override
   String get sharingUnavailable =>

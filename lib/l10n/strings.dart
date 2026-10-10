@@ -83,6 +83,8 @@ abstract class AppStrings {
   String get inviteInvalidEmail;
   String get inviteSelf;
   String inviteAlready(String email);
+  String inviteNeedsStock(String email);
+  String inviteAlreadyPending(String email);
   String inviteFailed(String details);
   String get sharingUnavailable;
   String get helpersNone;

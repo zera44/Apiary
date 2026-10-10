@@ -265,4 +265,65 @@ void main() {
     expect([for (final g in await repo.paramGroups()) g.name], ['З копії']);
     expect(await repo.getMeta('param_groups'), isNull);
   });
+
+  test('пасіка з уроку переходить у справжню базу - записи вулика з новою пасікою', () async {
+    final sandbox = Repository(await AppDatabase.open(factory, inMemoryDatabasePath,
+        singleInstance: false));
+    await sandbox.init();
+    final a = await sandbox.addApiary('Урок');
+    final g = await sandbox.addGroup(a, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1');
+    final e = EntityRef.group(g);
+    final pid = await sandbox.addParameter('Сила');
+    await sandbox.setAttachedParameters([pid], e);
+    await sandbox.addParameterRecord(pid, '7', e);
+    await sandbox.addHiveNote(e, 'з уроку');
+    final real = await repo.importApiaryFrom(sandbox, a);
+    await sandbox.db.close();
+    for (final t in ['element_parameters', 'parameter_records', 'hive_notes']) {
+      expect(await count(t, 'apiary_id = ?', [real]), greaterThan(0), reason: t);
+      expect(await count(t, 'apiary_id IS NULL OR apiary_id != ?', [real]), 0, reason: t);
+    }
+  });
+
+  test('давня база: вулики без пасіки - у «Моя пасіка», їхні записи теж дістають пасіку', () async {
+    final h = await hive('Тимчасова');
+    // як у давній базі: ні вулик, ні записи пасіки не знають
+    await repo.db.update('elements', {'apiary_id': null}, where: 'group_id = ?', whereArgs: [h.group]);
+    for (final t in AppDatabase.apiaryLinkedTables) {
+      await repo.db.rawUpdate('UPDATE $t SET apiary_id = NULL');
+    }
+    await repo.ensureLegacyApiary();
+    final el = (await repo.db.query('elements', where: 'group_id = ?', whereArgs: [h.group])).first;
+    expect(el['apiary_id'], isNotNull);
+    for (final t in AppDatabase.apiaryLinkedTables) {
+      expect(await count(t, 'apiary_id IS NULL'), 0, reason: t);
+      expect(await count(t, 'apiary_id = ?', [el['apiary_id']]), greaterThan(0), reason: t);
+    }
+  });
+
+  test('відновлення копії в помічника: дані власника не видаляються й не відкочуються', () async {
+    final mine = await hive('Моя');
+    final backups = BackupService(repo, dir: p.join(dir.path, 'backups'), factory: factory);
+    final copy = await backups.create();
+    // після копії прийняли запрошення: з'явилась пасіка власника X
+    final theirs = await hive('Чужа');
+    await repo.db.update('apiaries', {'owner_id': 'X', 'synced': 1},
+        where: 'id = ?', whereArgs: [theirs.apiary]);
+    await repo.db.update('parameters', {'owner_id': 'X', 'synced': 1},
+        where: 'id = ?', whereArgs: [theirs.param]);
+    for (final t in ['elements', ...AppDatabase.apiaryLinkedTables]) {
+      await repo.db.update(t, {'synced': 1}, where: 'apiary_id = ?', whereArgs: [theirs.apiary]);
+    }
+    await backups.restoreFrom(copy.path);
+    expect(await repo.getApiary(theirs.apiary), isNotNull);
+    expect(await count('parameters', 'id = ? AND deleted = 0', [theirs.param]), 1);
+    for (final t in ['elements', ...AppDatabase.apiaryLinkedTables]) {
+      // не видалено й не поставлено в чергу на відправку
+      final where = 'apiary_id = ? AND (synced = 0${t == 'parameter_records' ? '' : ' OR deleted = 1'})';
+      expect(await count(t, where, [theirs.apiary]), 0, reason: t);
+      expect(await count(t, 'apiary_id = ?', [theirs.apiary]), greaterThan(0), reason: t);
+    }
+    // своє відновлено як звичайно
+    expect(await repo.getApiary(mine.apiary), isNotNull);
+  });
 }
