@@ -36,7 +36,7 @@ class GearButton extends StatelessWidget {
 class SettingsScreen extends StatefulWidget {
   final Repository repo;
 
-  /// Урок «Налаштування (шаблони і параметри)».
+  /// Урок «Шаблони».
   final LessonController? lesson;
   const SettingsScreen({super.key, required this.repo, this.lesson});
 

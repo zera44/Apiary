@@ -113,7 +113,7 @@ void main() {
     await openTutorial(tester);
     expect(find.text('Базові поняття'), findsOneWidget);
     expect(find.text('Групи і параметри обходу'), findsOneWidget);
-    expect(find.text('Налаштування (шаблони і параметри)'), findsOneWidget);
+    expect(find.text('Шаблони'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Історія'), 200,
         scrollable: find.byType(Scrollable).first);
     expect(find.text('скоро'), findsNWidgets(3));
@@ -297,39 +297,43 @@ void main() {
   testWidgets('урок «Налаштування» - шаблон-перешкода 2×2 і він у своїх шаблонах', (tester) async {
     await phone(tester);
     await openTutorial(tester);
-    await startLesson(tester, 'Налаштування (шаблони і параметри)');
+    await startLesson(tester, 'Шаблони');
 
     expect(find.textContaining('це знову ти'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    expect(find.textContaining('Натисни на'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Натисни на шестерню'), findsOneWidget, reason: said(tester));
     expectLit(tester, find.byTooltip('Налаштування'));
     await tester.tap(find.byTooltip('Налаштування'));
     await settle(tester, 8);
 
     expect(find.byType(SettingsScreen), findsOneWidget, reason: said(tester));
     expect(find.text('Характеристики'), findsNothing);
-    expect(find.textContaining('загальні налаштування додатку'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('загальні налаштування застосунку'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    expect(find.textContaining('створимо новий шаблон'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Те, що треба'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Створити шаблон'));
     await settle(tester, 8);
 
     expect(find.byType(TemplateEditorScreen), findsOneWidget, reason: said(tester));
-    expect(find.textContaining('Пора створювати'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Час малювати'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Додати'));
     await settle(tester);
-    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('вулик чи перешкоду'), findsOneWidget, reason: said(tester));
     // вулик зараз не можна - лише перешкоду
     await tester.tap(find.byTooltip('Вулик'), warnIfMissed: false);
     await settle(tester);
-    expect(find.textContaining('тут можна створити як вулик'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('вулик чи перешкоду'), findsOneWidget, reason: said(tester));
+    // перемикач-слайдер «Вулики | Перешкоди»
+    await tester.tap(find.text('Перешкоди'));
+    await settle(tester);
+    expect(find.textContaining('Обери будь-яку'), findsOneWidget, reason: said(tester));
     await tester.pump(const Duration(milliseconds: 500)); // вікно доїхало до перешкод
     await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
     await settle(tester);
 
-    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('постав одну плитку'), findsOneWidget, reason: said(tester));
     // у режимі додавання «+» - червоний хрестик
     expect(find.byTooltip('Завершити додавання'), findsOneWidget);
     final gridRect = tester.getRect(find.byType(InfiniteGrid));
@@ -357,17 +361,29 @@ void main() {
       await tester.tapAt(c);
       await settle(tester, 2);
     }
-    expect(find.textContaining('Заверши створення'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('закінчити малювання'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Завершити додавання'));
     await settle(tester);
-    expect(find.textContaining('А тепер - '), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('можна пересунути'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.byTooltip('Переміщення'));
+    await settle(tester);
+    expect(find.textContaining('Стрілки навколо'), findsOneWidget, reason: said(tester));
+    // перетягуємо квадрат на клітинку вниз
+    final from = r.center;
+    final g = await tester.startGesture(from);
+    await tester.pump(const Duration(milliseconds: 50));
+    await g.moveBy(Offset(0, r.height));
+    await tester.pump(const Duration(milliseconds: 50));
+    await g.up();
+    await settle(tester);
+    expect(find.textContaining('Готово! Тепер'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Зберегти'));
     await settle(tester);
-    expect(find.textContaining('Назви свій шаблон'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Дай шаблону назву'), findsOneWidget, reason: said(tester));
     // системне «назад» - знову крок «зберегти»
     await tester.binding.handlePopRoute();
     await settle(tester);
-    expect(find.textContaining('А тепер - '), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Готово! Тепер'), findsOneWidget, reason: said(tester));
     await tester.tap(find.byTooltip('Зберегти'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Скеля');
@@ -445,7 +461,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await settle(tester, 8);
 
-    await startLesson(tester, 'Налаштування (шаблони і параметри)');
+    await startLesson(tester, 'Шаблони');
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
     await tester.tap(find.byTooltip('Налаштування'));
@@ -456,10 +472,13 @@ void main() {
     await settle(tester, 8);
     await tester.tap(find.byTooltip('Додати'));
     await settle(tester);
+    await tester.tap(find.text('Перешкоди'));
+    await settle(tester);
+    expect(find.textContaining('Обери будь-яку'), findsOneWidget, reason: said(tester));
     await tester.pump(const Duration(milliseconds: 500)); // вікно доїхало до перешкод
     await tester.tap(find.byTooltip(AppIcons.obstacleVariants.first.$2).last);
     await settle(tester);
-    expect(find.textContaining('постав на карту одну плитку'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('постав одну плитку'), findsOneWidget, reason: said(tester));
     expect(tester.takeException(), isNull);
   });
 

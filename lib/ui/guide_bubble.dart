@@ -365,8 +365,49 @@ Rect? rectOfKey(GlobalKey key, RenderBox ref) {
   return topLeft & box.size;
 }
 
-/// «Продовжити» з дерев'яною табличкою «завершити», прибитою під нею
-/// (малюнок автора, assets/guide/continue_with_sign.webp; написи - текстом).
+/// Медова кнопка-капсула уроку: «Продовжити ›», «Завершити ✓».
+class LessonPillButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  const LessonPillButton({super.key, required this.label, required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: label,
+        excludeSemantics: true,
+        child: Material(
+          color: AppColors.create,
+          shape: const StadiumBorder(),
+          elevation: 3,
+          shadowColor: Colors.black54,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: SizedBox(
+              height: 46,
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const SizedBox(width: 18),
+                Flexible(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: AppColors.bg, fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 6),
+                Icon(icon, color: AppColors.bg, size: 22),
+                const SizedBox(width: 14),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Урок: «Продовжити» під хмаркою, під нею - тихе посилання «завершити урок»
+/// (вийти, поступ лишається).
 class LessonContinue extends StatelessWidget {
   final VoidCallback onContinue;
   final VoidCallback? onFinish;
@@ -374,132 +415,46 @@ class LessonContinue extends StatelessWidget {
   const LessonContinue(
       {super.key, required this.onContinue, this.onFinish, this.label = 'Продовжити'});
 
-  static const asset = 'assets/guide/continue_with_sign.webp';
-  static const aspect = 700 / 353;
-
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth.isFinite ? c.maxWidth : 240.0;
-      final h = w / aspect;
-      const shadow = [Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))];
-      return SizedBox(
-        width: w,
-        height: h,
-        child: Stack(children: [
-          Positioned.fill(
-              child: Image.asset(asset, fit: BoxFit.fill, filterQuality: FilterQuality.medium)),
-          // кнопка - верхні ~42% малюнка
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: h * 0.42,
-            child: Semantics(
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 10, top: 10),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          LessonPillButton(label: label, icon: Icons.chevron_right_rounded, onPressed: onContinue),
+          if (onFinish != null)
+            Semantics(
               button: true,
-              label: label,
+              label: 'завершити навчання',
+              excludeSemantics: true,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: onContinue,
-                child: Align(
-                  alignment: const Alignment(0.1, -0.05),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(label,
-                          style: TextStyle(
-                              color: const Color(0xFFFFF3DC),
-                              fontSize: w * 0.075,
-                              fontWeight: FontWeight.w800,
-                              shadows: shadow)),
-                      Icon(Icons.chevron_right, color: const Color(0xFFFFF3DC), size: w * 0.09),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // табличка «завершити» - середня дошка між мотузками
-          if (onFinish != null)
-            Positioned(
-              left: w * 0.24,
-              right: w * 0.24,
-              top: h * 0.5,
-              bottom: 0,
-              child: Semantics(
-                button: true,
-                label: 'завершити навчання',
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onFinish,
-                  child: Align(
-                    alignment: const Alignment(0, 0.12),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: w * 0.05),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text('завершити',
-                            style: TextStyle(
-                                color: const Color(0xFFFFF3DC),
-                                fontSize: w * 0.06,
-                                fontWeight: FontWeight.w800,
-                                shadows: shadow)),
-                      ),
-                    ),
+                onTap: onFinish,
+                child: SizedBox(
+                  height: 34,
+                  child: Center(
+                    child: Text('завершити урок',
+                        style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppColors.textMuted)),
                   ),
                 ),
               ),
             ),
         ]),
       );
-    });
-  }
 }
 
-/// Фінал уроку: широка медова кнопка «Завершити» (assets/guide/button_wide.webp).
+/// Фінал уроку: медова кнопка «Завершити» з галочкою.
 class LessonDoneButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String label;
   const LessonDoneButton({super.key, required this.onPressed, this.label = 'Завершити'});
 
-  static const asset = 'assets/guide/button_wide.webp';
-  static const aspect = 700 / 142;
-
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      final w = c.maxWidth.isFinite ? c.maxWidth : 240.0;
-      final h = w / aspect;
-      return Semantics(
-        button: true,
-        label: label,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onPressed,
-          child: SizedBox(
-            width: w,
-            height: h,
-            child: Stack(children: [
-              Positioned.fill(
-                  child: Image.asset(asset, fit: BoxFit.fill, filterQuality: FilterQuality.medium)),
-              Align(
-                alignment: const Alignment(0.12, -0.1),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(label,
-                      style: TextStyle(
-                          color: const Color(0xFFFFF3DC),
-                          fontSize: w * 0.075,
-                          fontWeight: FontWeight.w800,
-                          shadows: const [
-                            Shadow(color: Color(0xAA3B1F0B), blurRadius: 2, offset: Offset(0, 1))
-                          ])),
-                ),
-              ),
-            ]),
-          ),
-        ),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 10, top: 10, bottom: 8),
+        child: LessonPillButton(label: label, icon: Icons.check_rounded, onPressed: onPressed),
       );
-    });
-  }
 }
