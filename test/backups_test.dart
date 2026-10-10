@@ -90,6 +90,32 @@ void main() {
       await checkCopy(await backups.create(BackupKind.auto), a);
     });
 
+    test('Android 9 (режим WAL, без VACUUM INTO): свіжі зміни з -wal у копії, '
+        'сторонніх файлів немає', () async {
+      expect((await repo.db.rawQuery('PRAGMA journal_mode=WAL')).first.values.first, 'wal');
+      backups.forceFileCopy = true;
+      final a = await repo.addApiary('Пасіка в копії');
+      expect(File('${repo.db.path}-wal').existsSync(), isTrue);
+      final b = await backups.create(BackupKind.auto);
+      await checkCopy(b, a);
+      expect(Directory(backups.dir).listSync().map((e) => p.basename(e.path)),
+          [p.basename(b.path)]);
+    });
+
+    test('копія «з майбутнього» (годинник перевели назад): не рахується; '
+        'з\'явилась звичайна - прибрана', () async {
+      final t = DateTime(2026, 10, 10, 12);
+      final future = await withClock(
+          Clock.fixed(t.add(const Duration(days: 1))), () => backups.create(BackupKind.auto));
+      // лише «майбутня» - вона найсвіжіший стан, але копію все одно робимо
+      final fresh = await withClock(Clock.fixed(t), backups.maybeBackup);
+      expect(fresh, isNotNull);
+      final left = await backups.list();
+      expect(left.map((b) => b.path), [fresh!.path]);
+      expect(left.map((b) => b.path), isNot(contains(future.path)));
+      expect((await withClock(Clock.fixed(t), backups.latest))!.path, fresh.path);
+    });
+
     test('пошкоджену копію не зберігаємо', () async {
       backups.debugAfterSnapshot = (path) async {
         final f = File(path);
@@ -165,6 +191,33 @@ void main() {
       // база й далі працює (копія від'єднана)
       expect((await repo.db.rawQuery('PRAGMA database_list')).map((r) => r['name']),
           isNot(contains('bk')));
+    });
+
+    test('найстаріша копія після 48+ год: прибирання її не видаляє, відновлення вдається',
+        () async {
+      final t0 = DateTime(2026, 10, 1, 9);
+      final a = await withClock(Clock.fixed(t0), () => repo.addApiary('Давня назва'));
+      final oldest = await withClock(Clock.fixed(t0), () => backups.create(BackupKind.auto));
+      await withClock(Clock.fixed(t0.add(const Duration(hours: 6))),
+          () => backups.create(BackupKind.auto));
+      await repo.updateApiary(a, name: 'Нова назва');
+      final later = t0.add(const Duration(hours: 49));
+      final copy = (await withClock(Clock.fixed(later), backups.list))
+          .firstWhere((b) => b.path == oldest.path);
+      final before = await withClock(Clock.fixed(later), () => backups.restore(copy));
+      expect(await apiaryName(a), 'Давня назва');
+      expect(before.kind, BackupKind.beforeRestore);
+      // наступне прибирання - вже звичайне
+      await withClock(Clock.fixed(later), backups.prune);
+      expect((await backups.list()).map((b) => b.path), isNot(contains(oldest.path)));
+    });
+
+    test('копії, з якої відновлюють, уже немає - зрозуміла помилка, дані як були', () async {
+      final a = await repo.addApiary('Як було');
+      final b = await backups.create();
+      await File(b.path).delete();
+      await expectLater(backups.restore(b), throwsA(isA<BackupException>()));
+      expect(await apiaryName(a), 'Як було');
     });
 
     test('копія старішої версії: кроки міграції, фото під новими назвами', () async {
@@ -290,6 +343,67 @@ void main() {
     // на перший екран, з «Скасувати»
     expect(find.byType(BackupsScreen), findsNothing);
     expect(find.text(tr.backupRestored), findsOneWidget);
+
+    // «Скасувати» - як було перед відновленням, з повідомленням
+    await tester.tap(find.text(tr.undo));
+    for (var k = 0; k < 20 && find.text(tr.backupUndone).evaluate().isEmpty; k++) {
+      await settle();
+    }
+    expect(find.text(tr.backupUndone), findsOneWidget);
+    expect(await tester.runAsync(() => apiaryName(a)), 'Нова назва');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Скасувати» не вдалося - повідомлення, а не тиша', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    BackupService.of = (_) async => backups;
+    Future<void> settle() async {
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await tester.runAsync(() async {
+      await repo.addApiary('Пасіка');
+      await backups.create();
+    });
+    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: BackupsScreen(repo: repo)));
+    for (var k = 0; k < 20 && find.text(tr.backupRestore).evaluate().isEmpty; k++) {
+      await settle();
+    }
+    await tester.tap(find.widgetWithText(PillButton, tr.backupRestore).first);
+    await settle();
+    await tester.tap(find.text(tr.backupRestore).last);
+    for (var k = 0; k < 20 && find.text(tr.backupRestored).evaluate().isEmpty; k++) {
+      await settle();
+    }
+    // копію «до відновлення» встигли прибрати
+    await tester.runAsync(() async {
+      for (final b in await backups.list()) {
+        if (b.kind == BackupKind.beforeRestore) await File(b.path).delete();
+      }
+    });
+    await tester.tap(find.text(tr.undo));
+    for (var k = 0; k < 20 && find.textContaining(tr.backupRestoreFailed('')).evaluate().isEmpty;
+        k++) {
+      await settle();
+    }
+    expect(find.textContaining(tr.backupRestoreFailed('')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('теку копій не прочитати - порожній список і пояснення, без вічного завантаження',
+      (tester) async {
+    BackupService.of = (_) async => throw const FileSystemException('немає доступу');
+    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: BackupsScreen(repo: repo)));
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(tr.backupsNone), findsOneWidget);
+    expect(find.textContaining('немає доступу'), findsOneWidget);
   });
 }

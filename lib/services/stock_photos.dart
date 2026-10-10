@@ -93,7 +93,13 @@ class PhotoArgs {
 /// [kPhotoFullSide] і [kPhotoThumbSide] (не збільшуючи) і закодувати в JPEG.
 /// Окремий потік: велике фото розбирається довго.
 PhotoPair preparePhoto(PhotoArgs a) {
-  final src = decodeReceiptPhoto(a.bytes);
+  // будь-який збій розбору - зіпсоване фото (назавжди), а не тимчасова помилка
+  img.Image? src;
+  try {
+    src = decodeReceiptPhoto(a.bytes);
+  } catch (e) {
+    throw FormatException('фото не розбирається: $e');
+  }
   if (src == null) throw const FormatException('файл не є фото');
   var upright = img.bakeOrientation(src);
   // прозоре (PNG, WebP з галереї) - на біле тло (JPEG/WebP-фото прозорості
@@ -233,8 +239,17 @@ class StockPhotos {
     await tmp.rename(f.path);
   }
 
+  /// Тести: замість камери/галереї - свої байти фото (null - скасовано).
+  @visibleForTesting
+  static Future<Uint8List?> Function({required bool camera})? debugPickBytes;
+
   /// Зробити/обрати фото й зберегти (null - скасовано).
   static Future<String?> pick({required bool camera}) async {
+    final fake = debugPickBytes;
+    if (fake != null) {
+      final b = await fake(camera: camera);
+      return b == null ? null : save(b);
+    }
     final x = await ImagePicker().pickImage(
       source: camera && cameraSupported ? ImageSource.camera : ImageSource.gallery,
       // запас для якісного зменшення до 800 px

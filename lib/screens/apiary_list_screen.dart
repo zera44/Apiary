@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/merge_layout.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
+import 'helpers_screen.dart';
 import 'map_screen.dart';
 import 'qr_generate_screen.dart';
 
@@ -144,7 +146,27 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
+            TopBar(
+              title: 'Мої пасіки',
+              onBack: () => Navigator.of(context).pop(),
+              // помічники: запросити, хто вже має доступ (в уроці - ні)
+              trailing: widget.tutorial
+                  ? null
+                  : Tooltip(
+                      message: tr.addHelper,
+                      child: Material(
+                        color: AppColors.roundBtn,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => HelpersScreen.open(context, widget.repo),
+                          child: SizedBox.square(
+                              dimension: 34,
+                              child: Icon(Icons.person_add_alt_1, size: 20, color: AppColors.text)),
+                        ),
+                      ),
+                    ),
+            ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())

@@ -76,6 +76,7 @@ class AppStringsUk extends AppStrings {
       'окремою копією - відновлення можна буде скасувати.';
   @override
   String get backupRestored => 'Дані відновлено з копії';
+  String get backupUndone => 'Повернуто дані, що були до відновлення';
   @override
   String backupRestoreFailed(String details) => 'Не вдалося відновити: $details';
   @override
@@ -100,6 +101,84 @@ class AppStringsUk extends AppStrings {
     if (bytes < 1024 * 1024) return '${(bytes / 1024).ceil()} КБ';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} МБ';
   }
+
+  // ---- Помічники й запрошення ----
+  @override
+  String get helpersTitle => 'Помічники';
+  @override
+  String get addHelper => 'Додати помічника';
+  @override
+  String get helperLogin => 'Логін користувача';
+  @override
+  String get helperLoginHint => 'пошта Google, напр. ivan@gmail.com';
+  @override
+  String get accessAll => 'До всіх пасік';
+  @override
+  String get accessOne => 'Лише до цієї пасіки';
+  @override
+  String get accessStock => 'Також склад і фінанси';
+  @override
+  String get chooseApiary => 'Оберіть пасіку';
+  @override
+  String get sendInvite => 'Надіслати запрошення';
+  @override
+  String inviteSent(String email) => 'Запрошення надіслано: $email';
+  @override
+  String inviteNoSuchUser(String email) =>
+      'Користувача $email ще немає у Vulyk. Попросіть його спершу увійти в застосунок '
+      'через Google - тоді запросіть ще раз.';
+  @override
+  String get inviteInvalidEmail => 'Вкажіть пошту Google, напр. ivan@gmail.com';
+  @override
+  String get inviteSelf => 'Це ваша власна пошта';
+  @override
+  String inviteAlready(String email) => '$email уже має цей доступ';
+  @override
+  String inviteFailed(String details) => 'Не вдалося надіслати запрошення: $details';
+  @override
+  String get sharingUnavailable =>
+      'Запросити помічника можна, коли налаштовано синхронізацію і ви увійшли через Google.';
+  @override
+  String get helpersNone => 'Помічників ще немає';
+  @override
+  String get helperAllApiaries => 'усі пасіки';
+  @override
+  String get helperWithStock => 'склад і фінанси';
+  @override
+  String get revokeAccess => 'Забрати доступ';
+  @override
+  String get revokeTitle => 'Забрати доступ?';
+  @override
+  String revokeText(String email) =>
+      '$email більше не бачитиме цих пасік. Те, що помічник уже записав, лишиться.';
+  @override
+  String get invitesSentTitle => 'Чекають відповіді';
+  @override
+  String get inviteCancel => 'Скасувати запрошення';
+  @override
+  String get invitationsTitle => 'Запрошення';
+  @override
+  String invitationFrom(String who) => 'Від: $who';
+  @override
+  String invitationApiaries(String names) => 'Пасіки: $names';
+  @override
+  String get invitationAllApiaries => 'Усі пасіки';
+  @override
+  String get invitationWithStock => 'разом зі складом і фінансами';
+  @override
+  String get accept => 'Прийняти';
+  @override
+  String get decline => 'Відхилити';
+  @override
+  String invitesMail(int n) =>
+      'Вас запрошують помічником: $n ${plural(n, one: 'запрошення', few: 'запрошення', many: 'запрошень')}';
+  @override
+  String get inviteAccepted =>
+      'Запрошення прийнято - пасіки з\'являться в «Мої пасіки» після синхронізації';
+  @override
+  String get inviteDeclined => 'Запрошення відхилено';
+  @override
+  String get invitationsNone => 'Запрошень немає';
 
   // ---- Дата й час ----
   @override

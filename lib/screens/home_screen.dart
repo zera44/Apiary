@@ -7,12 +7,15 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../data/sync_service.dart';
 import '../logic/visit_reminders.dart';
+import '../l10n/l10n.dart';
 import '../services/auth.dart';
+import '../services/sharing.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/icons.dart';
 import '../ui/hive_postbox.dart';
+import '../ui/invitations_sheet.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
@@ -93,7 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _lifecycle = AppLifecycleListener(onRestart: () {
       if (_onTop) _loadBackdrop();
     });
+    // дані змінились без переходу (відновили копію й «Скасувати») - фон теж
+    repo.mapChanges.addListener(_onMapChanged);
     _loadBackdrop();
+  }
+
+  void _onMapChanged() {
+    if (_onTop) _loadBackdrop();
   }
 
   @override
@@ -108,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    repo.mapChanges.removeListener(_onMapChanged);
     _lifecycle.dispose();
     super.dispose();
   }
@@ -423,13 +433,19 @@ class _AdvisorState extends State<_Advisor> {
   List<String> _low = const [];
   int _i = 0;
 
+  /// Вхідні запрошення помічником (чекають відповіді).
+  int get _invites => SharingService.current.pending.value;
+
   @override
   void initState() {
     super.initState();
     widget.repo.remindersChanged.addListener(_load);
     widget.repo.mapChanges.addListener(_load);
     widget.repo.stockChanges.addListener(_load);
+    SharingService.current.pending.addListener(_onInvites);
     _load();
+    // запрошення - із сервера (без зв'язку - з копії на телефоні)
+    SharingService.current.incoming().ignore();
   }
 
   @override
@@ -437,7 +453,12 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.remindersChanged.removeListener(_load);
     widget.repo.mapChanges.removeListener(_load);
     widget.repo.stockChanges.removeListener(_load);
+    SharingService.current.pending.removeListener(_onInvites);
     super.dispose();
+  }
+
+  void _onInvites() {
+    if (mounted) setState(() => _i = 0); // нове запрошення - одразу на видноті
   }
 
   Future<void> _load() async {
@@ -510,6 +531,7 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
         if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
         if (_low.isNotEmpty)
           (
@@ -520,8 +542,9 @@ class _AdvisorState extends State<_Advisor> {
         for (final t in _tips) (text: t, action: null),
       ];
 
-  // на вулику-поштоматі: скільки вуликів прострочено + позицій, що кінчаються
-  int get _mail => _due.length + _low.length;
+  // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
+  // що кінчаються
+  int get _mail => _invites + _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {

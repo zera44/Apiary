@@ -125,15 +125,28 @@ class BackupService {
         'before' => BackupKind.beforeRestore,
         _ => BackupKind.auto,
       };
-      out.add(LocalBackup(e.path, t, kind, await e.length()));
+      try {
+        out.add(LocalBackup(e.path, t, kind, await e.length()));
+      } on FileSystemException {
+        continue; // копію саме прибрали (паралельно з фону)
+      }
     }
     out.sort((a, b) => b.time.compareTo(a.time));
     return out;
   }
 
-  /// Остання копія (null - ще немає).
+  /// Копія «з майбутнього»: годинник перевели назад після неї.
+  static bool _isFuture(LocalBackup b, DateTime now) =>
+      b.time.isAfter(now.add(const Duration(minutes: 5)));
+
+  /// Остання копія (null - ще немає). Копії «з майбутнього» (годинник
+  /// перевели назад) не рахуються, поки є звичайні.
   Future<LocalBackup?> latest() async {
     final all = await list();
+    final now = clock.now();
+    for (final b in all) {
+      if (!_isFuture(b, now)) return b;
+    }
     return all.isEmpty ? null : all.first;
   }
 
@@ -141,12 +154,17 @@ class BackupService {
 
   /// Зробити копію, якщо пора ([isDue]). Повертає нову копію або null.
   Future<LocalBackup?> maybeBackup() async {
-    if (!isDue((await latest())?.time, clock.now())) return null;
+    final last = await latest();
+    final now = clock.now();
+    if (last != null && _isFuture(last, now)) return create(BackupKind.auto); // лише «майбутні»
+    if (!isDue(last?.time, now)) return null;
     return create(BackupKind.auto);
   }
 
   /// Зробити копію зараз. Пошкоджену не зберігає - кидає [BackupException].
-  Future<LocalBackup> create([BackupKind kind = BackupKind.manual]) async {
+  /// [keep] - копії, яких прибирання цього разу не чіпає (ту, з якої
+  /// саме відновлюють).
+  Future<LocalBackup> create([BackupKind kind = BackupKind.manual, Set<String> keep = const {}]) async {
     // дві копії одночасно не робимо (фонова й «Зробити зараз»)
     while (_running != null) {
       await _running;
@@ -167,7 +185,7 @@ class BackupService {
       }
       await _delete(target);
       await File(tmp).rename(target);
-      await prune();
+      await prune(keep: keep);
       return LocalBackup(target, DateTime(now.year, now.month, now.day, now.hour, now.minute, now.second),
           kind, await File(target).length());
     } finally {
@@ -192,10 +210,22 @@ class BackupService {
       throw const BackupException('база в пам\'яті - копіювати нічого');
     }
     // усе йде через одне з'єднання: поки триває ця транзакція, ніхто не
-    // пише в базу, а журнал (не WAL) уже злитий у файл - копія узгоджена
+    // пише в базу. Якщо база в режимі WAL (Android 9 вмикає його сам),
+    // свіжі зміни лежать у файлі -wal - копіюємо і його
     await db.transaction((txn) async {
       await File(db.path).copy(target);
+      final wal = File('${db.path}-wal');
+      if (await wal.exists()) await wal.copy('$target-wal');
     });
+    // злити журнал у саму копію й перевести її у звичайний режим (без
+    // супутніх файлів -wal/-shm)
+    final c = await factory.openDatabase(target, options: OpenDatabaseOptions(singleInstance: false));
+    try {
+      await c.rawQuery('PRAGMA journal_mode=DELETE');
+    } finally {
+      await c.close();
+    }
+    await _deleteSidecars(target);
   }
 
   /// Чи ціла копія: відкривається, `integrity_check` - ok, є таблиці даних.
@@ -220,23 +250,48 @@ class BackupService {
 
   /// Прибрати копії, давніші за [keepFor] (і понад [maxCount]); найновіша
   /// лишається завжди - навіть якщо застосунком тиждень не користувались.
-  Future<void> prune() async {
-    final all = await list();
+  /// [keep] - копії, яких цього разу не чіпати. Копії «з майбутнього»
+  /// (годинник перевели назад) прибираються, щойно є звичайна - до того
+  /// вони можуть бути найсвіжішим станом.
+  Future<void> prune({Set<String> keep = const {}}) async {
     final now = clock.now();
-    for (var i = 1; i < all.length; i++) {
-      final b = all[i];
-      if (i >= maxCount || now.difference(b.time) > keepFor) await _delete(b.path);
+    final all = await list();
+    final real = [for (final b in all) if (!_isFuture(b, now)) b];
+    for (var i = 1; i < real.length; i++) {
+      final b = real[i];
+      if (keep.contains(b.path)) continue;
+      if (i >= maxCount || now.difference(b.time) > keepFor) await _deleteBackup(b.path);
     }
-    // недороблені знімки (обірвався запис)
-    final d = Directory(dir);
-    if (await d.exists()) {
-      await for (final e in d.list()) {
-        if (e is File && e.path.endsWith('.tmp')) {
-          try {
-            if (now.difference(await e.lastModified()) > const Duration(hours: 1)) await e.delete();
-          } catch (_) {}
-        }
+    if (real.isNotEmpty) {
+      for (final b in all) {
+        if (_isFuture(b, now) && !keep.contains(b.path)) await _deleteBackup(b.path);
       }
+    }
+    // недороблені знімки (обірвався запис) і зайві супутні файли
+    final d = Directory(dir);
+    if (!await d.exists()) return;
+    await for (final e in d.list()) {
+      if (e is! File) continue;
+      final path = e.path;
+      final sidecar = path.endsWith('-wal') || path.endsWith('-shm');
+      final base = sidecar ? path.substring(0, path.length - 4) : path;
+      if (!path.endsWith('.tmp') && !base.endsWith('.tmp') && !(sidecar && !await File(base).exists())) {
+        continue;
+      }
+      try {
+        if (now.difference(await e.lastModified()) > const Duration(hours: 1)) await e.delete();
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> _deleteBackup(String path) async {
+    await _delete(path);
+    await _deleteSidecars(path);
+  }
+
+  static Future<void> _deleteSidecars(String path) async {
+    for (final suffix in const ['-wal', '-shm', '-journal']) {
+      await _delete('$path$suffix');
     }
   }
 
@@ -279,8 +334,10 @@ class BackupService {
   /// Відновити дані з копії [b]. Спершу автоматична копія поточного стану
   /// (її теж видно в списку - так відновлення можна скасувати). Повертає її.
   Future<LocalBackup> restore(LocalBackup b) async {
+    if (!await File(b.path).exists()) throw const BackupException('копії вже немає');
     if (!await verify(b.path)) throw const BackupException('копія пошкоджена');
-    final before = await create(BackupKind.beforeRestore);
+    // прибирання старих копій не має зачепити ту, з якої відновлюємо
+    final before = await create(BackupKind.beforeRestore, {b.path});
     await restoreFrom(b.path);
     return before;
   }
@@ -288,8 +345,10 @@ class BackupService {
   /// Перенести дані з файлу копії в базу (в одній транзакції; збій - дані
   /// як були). Записи, яких у копії не було, стають позначками «видалено»
   /// (сервер дізнається про видалення, і вони не повернуться з іншого
-  /// телефона). Усе відновлене стає в чергу на відправку - далі
-  /// синхронізується звичайним шляхом.
+  /// телефона) - у таблицях, де такі позначки є. Де їх немає (історія
+  /// значень parameter_records - лише дописується), рядки прибираються.
+  /// Усе відновлене стає в чергу на відправку - далі синхронізується
+  /// звичайним шляхом.
   Future<void> restoreFrom(String path) async {
     final db = repo.db;
     final version = await _userVersion(path);
@@ -313,6 +372,9 @@ class BackupService {
                 'WHERE deleted = 0$missing',
                 [stamp]);
           } else {
+            // TODO(етап 5): історії значень потрібні позначки видалення
+            // (колонка deleted чи окремий журнал), інакше наступне
+            // отримання змін із сервера поверне прибрані тут рядки
             await txn.rawDelete('DELETE FROM main.$t WHERE 1 = 1$missing');
           }
           if (source != null && cols.contains('id')) {

@@ -36,6 +36,13 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   void initState() {
     super.initState();
     _load();
+    repo.stockChanges.addListener(_load); // фото перетиснули фоном тощо
+  }
+
+  @override
+  void dispose() {
+    repo.stockChanges.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {

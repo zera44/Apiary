@@ -5,6 +5,7 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -326,6 +327,110 @@ void main() {
     await settle();
     expect(find.byType(InteractiveViewer), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('картка позиції: фото обрали й скасували - файл прибрано; замінене чи прибране чекає прибирання сиріт',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    StockPhotos.debugPickBytes = ({required camera}) async => cameraJpeg(900, 600);
+    addTearDown(() => StockPhotos.debugPickBytes = null);
+    Future<void> settle() async {
+      for (var i = 0; i < 8; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    List<String> files() {
+      final d = Directory(StockPhotos.dir!);
+      return d.existsSync() ? [for (final e in d.listSync()) p.basename(e.path)] : const [];
+    }
+
+    // збереження в базі - асинхронне: чекаємо, доки фото позиції стане іншим
+    Future<String?> savedPhoto(String? old) async {
+      String? now;
+      for (var i = 0; i < 40; i++) {
+        now = (await tester.runAsync(() => repo.listStockItems()))!.single.photo;
+        if (now != old) break;
+        await settle();
+      }
+      return now;
+    }
+
+    // фото кодується в окремому потоці - чекаємо, доки з'явиться
+    String? dialogPhoto() => tester
+        .widget<StockPhoto>(
+            find.descendant(of: find.byType(AlertDialog), matching: find.byType(StockPhoto)))
+        .photo;
+    Future<void> pickAndWait() async {
+      final before = dialogPhoto();
+      await tester.tap(find.text(StockPhotos.cameraSupported ? 'З галереї' : 'Обрати фото'));
+      for (var i = 0; i < 80 && dialogPhoto() == before; i++) {
+        await settle();
+      }
+    }
+
+    final id = (await tester.runAsync(() => repo.addStockItem('Цукор', 'кг')))!;
+    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: StockScreen(repo: repo)));
+    await settle();
+
+    // обрали фото й передумали - файлу не лишилось
+    await tester.tap(find.byType(StockPhoto).first);
+    await settle();
+    await pickAndWait();
+    expect(files().length, 2); // повне й мініатюра
+    await tester.tap(find.widgetWithText(PillButton, 'Скасувати'));
+    await settle();
+    expect(files(), isEmpty);
+
+    // обрали й зберегли
+    await tester.tap(find.byType(StockPhoto).first);
+    await settle();
+    await pickAndWait();
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти'));
+    final first = (await savedPhoto(null))!;
+    await settle();
+    expect(files(), unorderedEquals([first, StockPhotos.thumbName(first)]));
+
+    // замінили - старе фото лишається до прибирання сиріт (на нього можуть
+    // посилатися резервні копії)
+    await tester.tap(find.byType(StockPhoto).first);
+    await settle();
+    await pickAndWait();
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти'));
+    final second = (await savedPhoto(first))!;
+    await settle();
+    expect(second, isNot(first));
+    expect(files(), unorderedEquals(
+        [first, StockPhotos.thumbName(first), second, StockPhotos.thumbName(second)]));
+
+    // прибрали фото
+    await tester.tap(find.byType(StockPhoto).first);
+    await settle();
+    await tester.tap(find.text('Прибрати фото'));
+    await settle();
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти'));
+    expect(await savedPhoto(second), isNull);
+    await settle();
+    expect(files().length, 4);
+    // прибирання сиріт (без порогу давності) - тепер теку звільнено
+    await tester.runAsync(() => StockPhotos.sweepOrphans(repo, olderThan: Duration.zero));
+    expect(files(), isEmpty);
+    expect(id, isNotEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('фото, що падає під час розбору, - зіпсоване назавжди (не повторюємо щоразу)', () async {
+    final f = File(p.join(StockPhotos.dir!, 'photo_9.jpg'));
+    await f.parent.create(recursive: true);
+    // підпис JPEG, а далі - сміття
+    await f.writeAsBytes([0xFF, 0xD8, 0xFF, 0xE0, ...List.filled(64, 0x41)]);
+    final id = await repo.addStockItem('Цукор', 'кг');
+    await repo.updateStockItem(id, photo: (f.path,));
+    expect(await StockPhotos.upgradeOld(repo), 0);
+    expect(await repo.getMeta(StockPhotos.upgradedKey), '1');
+    expect((await repo.listStockItems()).single.photo, f.path);
   });
 
   test('прибрати непотрібні файли: лише давні й ні на що не прив\'язані', () async {

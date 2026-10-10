@@ -36,13 +36,28 @@ class _BackupsScreenState extends State<BackupsScreen> {
   }
 
   Future<void> _init() async {
-    final s = await BackupService.of(widget.repo);
-    _service = s;
+    try {
+      _service = await BackupService.of(widget.repo);
+    } catch (e) {
+      // без теки копій - порожній список і пояснення, а не вічне завантаження
+      if (!mounted) return;
+      setState(() => _list = const []);
+      _say(tr.backupFailed('$e'));
+      return;
+    }
     await _reload();
   }
 
   Future<void> _reload() async {
-    final l = await _service!.list();
+    final s = _service;
+    List<LocalBackup> l = const [];
+    if (s != null) {
+      try {
+        l = await s.list();
+      } catch (e) {
+        if (mounted) _say(tr.backupFailed('$e'));
+      }
+    }
     if (mounted) setState(() => _list = l);
   }
 
@@ -64,7 +79,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
 
   Future<void> _backupNow() => _guard(() async {
         try {
-          await _service!.create();
+          await (_service ??= await BackupService.of(widget.repo)).create();
           _say(tr.backupMade);
         } catch (e) {
           _say(tr.backupFailed('$e'));
@@ -93,7 +108,15 @@ class _BackupsScreenState extends State<BackupsScreen> {
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
                 label: tr.undo,
-                onPressed: () => service.restoreFrom(before.path),
+                onPressed: () async {
+                  try {
+                    await service.restoreFrom(before.path);
+                    messenger.showSnackBar(SnackBar(content: Text(tr.backupUndone)));
+                  } catch (e) {
+                    messenger.showSnackBar(
+                        SnackBar(content: Text(tr.backupRestoreFailed('$e'))));
+                  }
+                },
               ),
             ));
         } catch (e) {

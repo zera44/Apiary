@@ -46,6 +46,8 @@ class _StockScreenState extends State<StockScreen> {
   void initState() {
     super.initState();
     _reload();
+    // склад змінили не тут (фото перетиснули фоном, операція з фінансів)
+    repo.stockChanges.addListener(_reload);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Hints.show(context, repo, Hints.stock);
     });
@@ -116,8 +118,9 @@ class _StockScreenState extends State<StockScreen> {
               _reload();
             },
             commit: () async {
+              // фото лишається до прибирання сиріт: воно знадобиться, якщо
+              // відновлять резервну копію з цією позицією
               await repo.deleteStockItem(it.id);
-              await StockPhotos.remove(it.photo);
               _hiding.remove(it.id);
               if (mounted) await _reload();
             },
@@ -130,7 +133,7 @@ class _StockScreenState extends State<StockScreen> {
               unit: res.unit,
               photo: photoChanged ? (res.photo,) : null,
               minQuantity: res.min != it.minQuantity ? (res.min,) : null);
-          if (photoChanged) await StockPhotos.remove(it.photo);
+          // старе фото прибере sweepOrphans (на нього можуть посилатися копії)
         }
         await _reload();
       });
@@ -169,6 +172,7 @@ class _StockScreenState extends State<StockScreen> {
 
   @override
   void dispose() {
+    repo.stockChanges.removeListener(_reload);
     for (final c in _actual.values) {
       c.dispose();
     }

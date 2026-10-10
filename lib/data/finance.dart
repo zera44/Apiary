@@ -139,6 +139,10 @@ const _seed = <(String, String, bool, String, String)>[
   ('Інший дохід', kFinIncome, false, 'other', 'olive'),
 ];
 
+/// Назви й види типових категорій (для сталих ключів, див.
+/// [Repository.assignSeedKeys]).
+List<(String, String)> get kFinSeedNames => [for (final s in _seed) (s.$1, s.$2)];
+
 /// Густина меду: 1 л = 1,4 кг (продаж у літрах списує кілограми).
 const kHoneyDensity = 1.4;
 

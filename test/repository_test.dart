@@ -303,6 +303,8 @@ void main() {
         lines: const [FinLineInput(name: 'Цукор', qty: 1, unit: 'кг', price: 10)]);
     // нотатки вулика з міткою
     await repo.addInspectionNote(EntityRef.element(id), 'Матка сіє');
+    // групи «Конструктора»
+    await repo.setParamGroups([ParamGroup(id: 'g', name: 'Обходи', ids: [p])]);
     for (final t in kSyncTables) {
       expect(await repo.unsynced(t), isNotEmpty, reason: t);
     }

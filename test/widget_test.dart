@@ -4,6 +4,8 @@ import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/l10n/l10n.dart';
+import 'package:apiary/services/sharing.dart';
+import 'package:apiary/ui/hive_postbox.dart';
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
@@ -37,6 +39,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'support/fake_sharing_server.dart';
 
 /// Димові тести: кожен екран будується без винятків розкладки.
 void main() {
@@ -1923,6 +1927,36 @@ void main() {
     // лишилось дві пасіки, остання відкрита зникла - під меню соти
     expect(find.text('Почати'), findsOneWidget);
     expect(backdropId(tester), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('вулик-скринька: запрошення помічником - значок, список, «Прийняти»', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    await tester.runAsync(() => olena.invite('petro@gmail.com',
+        apiaryIds: [apiaryId], apiaryNames: ['Біля річки'], stockAccess: true));
+    // на телефоні Петра (тут - та сама база, інший користувач)
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() => SharingService.current = SharingService(null, null));
+
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text(tr.invitesMail(1)), findsOneWidget);
+    expect(find.text('1'), findsWidgets); // значок на вулику
+    await tester.tap(find.byType(HivePostbox));
+    await settle(tester);
+    expect(find.text(tr.invitationFrom('olena@gmail.com')), findsOneWidget);
+    expect(find.text(tr.invitationApiaries('Біля річки')), findsOneWidget);
+    expect(find.text(tr.invitationWithStock), findsOneWidget);
+    await tester.tap(find.text(tr.accept));
+    await settle(tester);
+    await settle(tester);
+    expect(server.members.values.single.userId, 'u-petro');
+    expect(find.text(tr.inviteAccepted), findsOneWidget);
+    expect(find.text(tr.invitesMail(1)), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

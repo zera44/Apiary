@@ -6,7 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' show sqfliteFfiInit, databaseFactoryFfi;
 
 import '../l10n/l10n.dart';
-import 'repository.dart' show kSyncTables;
+import 'repository.dart' show Repository, kSyncTables;
 
 /// Крок міграції бази (див. [AppDatabase.migrations]).
 typedef Migration = Future<void> Function(DatabaseExecutor db);
@@ -51,8 +51,11 @@ class AppDatabase {
   /// Версія схеми бази (зберігається в самій базі, PRAGMA user_version).
   /// Нова версія = новий крок у [migrations] з тим самим номером.
   ///  * 1 - схема до етапу 0;
-  ///  * 2 - позначки «відправлено» скинуто (див. [_requeueAll]).
-  static const schemaVersion = 2;
+  ///  * 2 - позначки «відправлено» скинуто (див. [_requeueAll]);
+  ///  * 3 - спільний доступ: пасіка в кожному записі, власник довідників,
+  ///    сталі ключі типових записів, групи «Конструктора» - таблицею
+  ///    (див. [_sharing]).
+  static const schemaVersion = 3;
 
   /// Кроки міграції: версія -> як дійти до неї з попередньої. Кожен крок
   /// виконується рівно один раз для бази, і всі разом - в одній транзакції
@@ -66,7 +69,25 @@ class AppDatabase {
   /// базі, і на повній, і не губити наявні дані.
   static final Map<int, Migration> migrations = {
     2: _requeueAll,
+    3: _sharing,
   };
+
+  /// Версія 3: записам, що належать пасіці через вулик, - пасіка прямо
+  /// (зокрема видаленим - сервер має знати про їхнє видалення); групи
+  /// «Конструктора» - у свою таблицю; типовим записам - сталі ключі.
+  static Future<void> _sharing(DatabaseExecutor db) async {
+    for (final t in apiaryLinkedTables) {
+      await db.rawUpdate('''
+        UPDATE $t SET apiary_id = (
+          SELECT e.apiary_id FROM elements e
+          WHERE ($t.element_id IS NOT NULL AND e.id = $t.element_id)
+             OR ($t.group_id IS NOT NULL AND e.group_id = $t.group_id)
+          LIMIT 1)
+        WHERE apiary_id IS NULL''');
+    }
+    await Repository.moveParamGroupsToTable(db);
+    await Repository.assignSeedKeys(db);
+  }
 
   /// Стара заглушка синхронізації (до етапу 0) позначала всі записи
   /// «відправленими», хоча сервера не було. Скидаємо позначку - сервер
@@ -88,6 +109,10 @@ class AppDatabase {
       options: OpenDatabaseOptions(
         version: target,
         singleInstance: singleInstance,
+        // базу відкривають двоє в одному процесі (застосунок і фонове
+        // завдання): відкриття не має відкочувати чужу незавершену
+        // транзакцію (так sqflite робить у налагоджувальній збірці)
+        rollbackActiveTransactionOnOpen: false,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
@@ -352,6 +377,113 @@ class AppDatabase {
         'CREATE INDEX IF NOT EXISTS idx_ep_owner ON element_parameters(group_id, element_id)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_pr_owner ON parameter_records(parameter_id, group_id, element_id)');
+    await _ensureSharingSchema(db);
+  }
+
+  /// Таблиці, де кожен запис належить пасіці через свій вулик (група чи
+  /// окремий об'єкт): тут пасіка проставляється й прямо (права доступу на
+  /// сервері перевіряються за пасікою).
+  static const apiaryLinkedTables = [
+    'element_parameters',
+    'parameter_records',
+    'qr_codes',
+    'hive_notes',
+  ];
+
+  /// Довідники й облік власника (не прив'язані до однієї пасіки): власник -
+  /// owner_id (NULL - власник цього телефона, тобто «мій»).
+  static const ownerTables = [
+    'apiaries',
+    'parameters',
+    'templates',
+    'note_labels',
+    'stock_items',
+    'stock_moves',
+    'fin_categories',
+    'fin_ops',
+    'fin_lines',
+    'param_groups',
+  ];
+
+  /// Записи, що застосунок створює сам (базові характеристики, типові
+  /// шаблони, категорії фінансів, мітка «Огляд»): seed_key - їхня стала
+  /// «назва», щоб однакові з різних телефонів злились в один.
+  static const seededTables = ['parameters', 'templates', 'fin_categories', 'note_labels'];
+
+  /// Спільний доступ (етап 3): власник, учасники, запрошення; групи
+  /// «Конструктора» - окремою таблицею (раніше - у службових позначках).
+  static Future<void> _ensureSharingSchema(Database db) async {
+    // учасники: помічник [user_id]/[email] бачить пасіку [apiary_id]
+    // власника [owner_id] (apiary_id NULL - усі пасіки власника, зокрема
+    // майбутні); stock_access - ще й склад і фінанси
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS apiary_members (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT,
+        apiary_id TEXT,
+        user_id TEXT,
+        email TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'helper',
+        stock_access INTEGER NOT NULL DEFAULT 0,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    // запрошення: від кого, кому (пошта), на які пасіки (JSON-масив id;
+    // NULL - усі), стан: pending / accepted / declined / revoked
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS invitations (
+        id TEXT PRIMARY KEY,
+        from_user_id TEXT,
+        from_email TEXT,
+        from_name TEXT,
+        to_email TEXT NOT NULL,
+        apiary_ids TEXT,
+        apiary_names TEXT,
+        stock_access INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS param_groups (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT,
+        name TEXT NOT NULL,
+        ids TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    for (final t in ownerTables) {
+      await _ensureColumn(db, t, 'owner_id', 'TEXT');
+    }
+    for (final t in seededTables) {
+      await _ensureColumn(db, t, 'seed_key', 'TEXT');
+    }
+    for (final t in apiaryLinkedTables) {
+      await _ensureColumn(db, t, 'apiary_id', 'TEXT');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_${t}_apiary ON $t(apiary_id)');
+      // пасіку проставляє сама база: з вулика (групи чи об'єкта) запису -
+      // і для нових записів, і коли запис перенесли на інший вулик
+      final fill = '''
+        UPDATE $t SET apiary_id = (
+          SELECT e.apiary_id FROM elements e
+          WHERE (NEW.element_id IS NOT NULL AND e.id = NEW.element_id)
+             OR (NEW.group_id IS NOT NULL AND e.group_id = NEW.group_id)
+          LIMIT 1)
+        WHERE id = NEW.id;''';
+      await db.execute('''
+        CREATE TRIGGER IF NOT EXISTS trg_${t}_apiary_ins AFTER INSERT ON $t
+        WHEN NEW.apiary_id IS NULL BEGIN $fill END''');
+      await db.execute('''
+        CREATE TRIGGER IF NOT EXISTS trg_${t}_apiary_upd AFTER UPDATE OF group_id, element_id ON $t
+        BEGIN $fill END''');
+    }
   }
 
   static Future<void> _ensureColumn(

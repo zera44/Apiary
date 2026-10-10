@@ -54,6 +54,7 @@ abstract class AppStrings {
   String get backupRestoreTitle;
   String backupRestoreText(String when);
   String get backupRestored;
+  String get backupUndone;
   String backupRestoreFailed(String details);
   String get backupSaveToFile;
   String get backupSaveDialog;
@@ -66,6 +67,43 @@ abstract class AppStrings {
 
   /// Розмір файлу: «850 КБ», «1,2 МБ».
   String fileSize(int bytes);
+
+  // ---- Помічники й запрошення ----
+  String get helpersTitle;
+  String get addHelper;
+  String get helperLogin;
+  String get helperLoginHint;
+  String get accessAll;
+  String get accessOne;
+  String get accessStock;
+  String get chooseApiary;
+  String get sendInvite;
+  String inviteSent(String email);
+  String inviteNoSuchUser(String email);
+  String get inviteInvalidEmail;
+  String get inviteSelf;
+  String inviteAlready(String email);
+  String inviteFailed(String details);
+  String get sharingUnavailable;
+  String get helpersNone;
+  String get helperAllApiaries;
+  String get helperWithStock;
+  String get revokeAccess;
+  String get revokeTitle;
+  String revokeText(String email);
+  String get invitesSentTitle;
+  String get inviteCancel;
+  String get invitationsTitle;
+  String invitationFrom(String who);
+  String invitationApiaries(String names);
+  String get invitationAllApiaries;
+  String get invitationWithStock;
+  String get accept;
+  String get decline;
+  String invitesMail(int n);
+  String get inviteAccepted;
+  String get inviteDeclined;
+  String get invitationsNone;
 
   // ---- Дата й час ----
   /// «сьогодні 14:05»

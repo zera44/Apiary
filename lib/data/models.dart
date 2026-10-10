@@ -272,6 +272,10 @@ class Apiary {
   /// власною періодичністю її перекриває.
   final int? visitPeriod;
 
+  /// Власник (id на сервері); null - своя пасіка (власник цього телефона).
+  /// Не null - пасіка, до якої мене запросили помічником.
+  final String? ownerId;
+
   const Apiary({
     required this.id,
     required this.name,
@@ -280,9 +284,13 @@ class Apiary {
     this.deleted = false,
     this.updatedAt = 0,
     this.visitPeriod,
+    this.ownerId,
   });
 
   bool get hasLocation => lat != null && lon != null;
+
+  /// Своя пасіка (а не та, де я помічник).
+  bool get isMine => ownerId == null;
 
   factory Apiary.fromMap(Map<String, Object?> m) => Apiary(
         id: m['id'] as String,
@@ -292,6 +300,7 @@ class Apiary {
         deleted: ((m['deleted'] as num?) ?? 0) != 0,
         updatedAt: ((m['updated_at'] as num?) ?? 0).toDouble(),
         visitPeriod: (m['visit_period'] as num?)?.toInt(),
+        ownerId: m['owner_id'] as String?,
       );
 }
 
