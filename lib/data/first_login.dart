@@ -60,11 +60,18 @@ class FirstLogin {
   /// доки не буде викликано [apply].
   Future<FirstLoginState> prepare() async {
     final was = await _meta(SyncEngine.userKey);
-    if (was == api.userId && await _meta(SyncEngine.pendingChoiceKey) != '1') return FirstLoginState.ready;
-    // поки не з'ясовано - не синхронізуватись (і фоновому завданню теж)
-    await repo.setMeta(SyncEngine.pendingChoiceKey, '1');
-    if (was != null && was.isNotEmpty && was != api.userId) {
-      return await localHasData(repo) ? FirstLoginState.otherAccount : await _accept();
+    // дані телефона - цього ж акаунта: вибір не потрібен (зокрема, коли
+    // питання лишилось від іншого акаунта, з якого потім вийшли)
+    if (was == api.userId) return _accept();
+    // поки не з'ясовано - не синхронізуватись (і фоновому завданню теж);
+    // позначка - для кого саме чекаємо
+    await repo.setMeta(SyncEngine.pendingChoiceKey, api.userId);
+    if (was != null && was.isNotEmpty) {
+      if (await localHasData(repo)) return FirstLoginState.otherAccount;
+      // свого в попереднього акаунта тут не було, але його службові дані
+      // (курсори, типові записи, чужі пасіки, де він помічник) - прибрати
+      await _wipe();
+      return _accept();
     }
     if (!await localHasData(repo) || !await api.hasOwnData()) return _accept();
     return FirstLoginState.ask;
@@ -100,6 +107,11 @@ class FirstLogin {
       debugPrint('Перший вхід: копія перед заміною - $e');
       rethrow; // без копії не стираємо
     }
+    await _wipe();
+  }
+
+  /// Прибрати з телефона всі дані й службові позначки синхронізації.
+  Future<void> _wipe() async {
     await repo.db.transaction((txn) async {
       for (final t in [...kSyncTables, ..._localOnlyTables]) {
         await txn.delete(t);
@@ -118,6 +130,9 @@ class FirstLogin {
   /// все на сервері), і забрати все заново.
   Future<void> _phoneWins() async {
     final now = Repository.now();
+    // спершу все прочитати (обірветься зв'язок - на сервері ще нічого не
+    // змінено), потім позначати
+    final extras = <String, List<String>>{};
     for (final t in kSyncTables) {
       final local = {
         for (final r in await repo.db.query(t, columns: ['id'])) r['id']! as String,
@@ -133,8 +148,12 @@ class FirstLogin {
         cursor = page.next;
         if (!page.more || page.rows.isEmpty) break;
       }
+      extras[t] = extra;
+    }
+    for (final e in extras.entries) {
+      final extra = e.value;
       for (var i = 0; i < extra.length; i += SyncEngine.deletionBatch) {
-        await api.markDeleted(t, extra.sublist(i, (i + SyncEngine.deletionBatch).clamp(0, extra.length)), now);
+        await api.markDeleted(e.key, extra.sublist(i, (i + SyncEngine.deletionBatch).clamp(0, extra.length)), now);
       }
     }
     await repo.db.transaction((txn) async {

@@ -198,6 +198,11 @@ class SyncService {
   /// Повертає 'ok' / 'bad' або null (не пора / не вийшло).
   Future<String?> maybeNightly({Future<BackupService> Function(Repository)? backups}) async {
     if (!enabled) return null;
+    // повна копія - лише коли дані телефона точно цього акаунта
+    if ((await repo.getMeta(SyncEngine.pendingChoiceKey) ?? '').isNotEmpty ||
+        await repo.getMeta(SyncEngine.userKey) != api!.userId) {
+      return null;
+    }
     final now = clock.now();
     if (!SyncSchedule.nightlyDue(await _time(nightlyKey), now)) return null;
     final lastTry = await _time(nightlyTryKey);

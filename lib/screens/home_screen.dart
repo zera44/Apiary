@@ -112,24 +112,29 @@ class _HomeScreenState extends State<HomeScreen> {
     if (state == null || _asking || !mounted) return;
     _asking = true;
     try {
-      final a = await showFirstLoginDialog(context, state);
-      if (a == null || !mounted) return;
-      if (a.signOut) {
-        await Server.signOut(repo);
-        await auth.signOut();
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
-          (_) => false,
-        );
-        return;
-      }
-      final messenger = ScaffoldMessenger.of(context);
-      try {
-        await Server.choose(repo, a.choice!);
-        messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginDone)));
-      } catch (e) {
-        messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginFailed('$e'))));
+      // не вдалося (обірвався зв'язок) - знову вибір: інакше синхронізація
+      // так і чекала б
+      while (mounted && Server.choice.value != null) {
+        final a = await showFirstLoginDialog(context, state);
+        if (a == null || !mounted) return;
+        if (a.signOut) {
+          await Server.signOut(repo);
+          await auth.signOut();
+          if (!mounted) return;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
+            (_) => false,
+          );
+          return;
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        try {
+          await Server.choose(repo, a.choice!);
+          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginDone)));
+          return;
+        } catch (e) {
+          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginFailed('$e'))));
+        }
       }
     } finally {
       _asking = false;

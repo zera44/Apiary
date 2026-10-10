@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_api.dart';
+import 'package:apiary/data/sync_engine.dart';
 import 'package:apiary/data/sync_schedule.dart';
 import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/services/app_config.dart';
@@ -170,6 +171,10 @@ void main() {
       final backups = BackupService(repo, dir: p.join(dir.path, 'bk'), factory: databaseFactoryFfiNoIsolate);
       final s = svc();
       final a = await repo.addApiary('Перша ніч');
+      // до першої синхронізації (поки не ясно, чиї дані на телефоні) - копії немає
+      expect(await withClock(Clock.fixed(DateTime(2026, 10, 1, 1)), () => s.maybeNightly(backups: (_) async => backups)),
+          isNull);
+      await repo.setMeta(SyncEngine.userKey, 'u1');
       for (final (day, name) in [(1, 'Перша ніч'), (2, 'Друга ніч'), (3, 'Третя ніч')]) {
         await repo.updateApiary(a, name: name);
         final status =

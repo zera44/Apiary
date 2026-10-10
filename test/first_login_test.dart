@@ -153,6 +153,57 @@ void main() {
         ['Другого акаунта']);
   });
 
+  test('вийшли з вікна «іншого акаунта» й увійшли знову своїм - жодного питання', () async {
+    final a = await phone();
+    await a.addApiary('Своя');
+    expect(await login(a, 'u1'), FirstLoginState.ready);
+    await sync(a, 'u1');
+    final b = await phone();
+    await b.addApiary('Чужа');
+    await login(b, 'u2');
+    await sync(b, 'u2');
+    expect(await login(a, 'u2'), FirstLoginState.otherAccount);
+    // «Вийти» - і знову своїм акаунтом
+    expect(await login(a, 'u1'), FirstLoginState.ready);
+    await sync(a, 'u1');
+    expect(await names(a), ['Своя']);
+  });
+
+  test('інший акаунт, свого на телефоні не було - службове попереднього прибрано', () async {
+    final owner = await phone();
+    final river = await owner.addApiary('Річка власниці');
+    await login(owner, 'own');
+    await sync(owner, 'own');
+    server.addMember('own', 'u1', apiary: river);
+    final a = await phone();
+    expect(await login(a, 'u1'), FirstLoginState.ready); // u1 лише помічник
+    await sync(a, 'u1');
+    expect(await names(a), ['Річка власниці']);
+    final b = await phone();
+    await b.addApiary('Пасіка u2');
+    await login(b, 'u2');
+    await sync(b, 'u2');
+    expect(await login(a, 'u2'), FirstLoginState.ready);
+    await sync(a, 'u2');
+    expect(await names(a), ['Пасіка u2'], reason: 'чужі пасіки й курсори u1 - прибрано');
+  });
+
+  test('«Залишити дані телефона» без зв\'язку - на сервері нічого не змінено, можна ще раз', () async {
+    await serverHas('З сервера');
+    final a = await phone();
+    await a.addApiary('З телефона');
+    expect(await login(a), FirstLoginState.ask);
+    server.offlineTables.add('parameter_records');
+    await expectLater(FirstLogin(a, server.as('u1')).apply(FirstLoginChoice.keepPhone),
+        throwsA(isA<SyncOffline>()));
+    expect(server.t('apiaries').values.where((r) => r['deleted'] == 1), isEmpty);
+    await expectLater(sync(a), throwsA(isA<SyncNeedsChoice>()));
+    server.offlineTables.clear();
+    await FirstLogin(a, server.as('u1')).apply(FirstLoginChoice.keepPhone);
+    await sync(a);
+    expect(await names(a), ['З телефона']);
+  });
+
   testWidgets('вікно: три варіанти; небезпечний - з підтвердженням, «Скасувати» - знову вибір',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));

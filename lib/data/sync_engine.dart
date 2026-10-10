@@ -102,8 +102,11 @@ class SyncEngine {
 
   /// Дані на телефоні - іншого акаунта (увійшли іншим Google): не змішувати.
   Future<void> _checkUser() async {
-    if (await repo.getMeta(pendingChoiceKey) == '1') throw const SyncNeedsChoice();
     final was = await repo.getMeta(userKey);
+    final pending = await repo.getMeta(pendingChoiceKey) ?? '';
+    // чекаємо вибору саме для цього акаунта (позначка від іншого, з якого
+    // вийшли, своїх даних не блокує)
+    if (pending.isNotEmpty && (pending == api.userId || was != api.userId)) throw const SyncNeedsChoice();
     if (was == null || was.isEmpty) {
       await repo.setMeta(userKey, api.userId);
     } else if (was != api.userId) {
