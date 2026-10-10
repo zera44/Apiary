@@ -99,6 +99,50 @@ void main() {
     await db.close();
   });
 
+  test('версія 2: усе, що стара заглушка позначила «відправленим», знову в черзі', () async {
+    // база версії 1, як у людей до етапу 0: заглушка позначила все відправленим
+    var db = await AppDatabase.open(factory, path, version: 1, steps: const {});
+    var repo = Repository(db);
+    await repo.init();
+    final a = await repo.addApiary('Пасіка');
+    await repo.addGroup(a, {'0,0': 'hive'}, 0, 0);
+    for (final t in kSyncTables) {
+      await repo.markSyncedBatch(t, await repo.unsynced(t));
+    }
+    expect(await repo.countUnsynced(), 0);
+    var total = 0;
+    for (final t in kSyncTables) {
+      total += (await db.rawQuery('SELECT COUNT(*) AS n FROM $t')).first['n']! as int;
+    }
+    await db.close();
+
+    db = await AppDatabase.open(factory, path);
+    repo = Repository(db);
+    expect(await userVersion(db), greaterThanOrEqualTo(2));
+    expect(await repo.countUnsynced(), total); // сервер отримає все
+    await db.close();
+  });
+
+  test('кроки міграції безпечні й для нової порожньої бази (і пісочниці)', () async {
+    final ran = <int>[];
+    final db = await AppDatabase.open(factory, inMemoryDatabasePath,
+        singleInstance: false,
+        steps: {
+          for (final e in AppDatabase.migrations.entries)
+            e.key: (d) async {
+              ran.add(e.key);
+              await e.value(d);
+            },
+        });
+    expect(ran, AppDatabase.migrations.keys.toList()..sort());
+    expect(await Repository(db).countUnsynced(), 0);
+    await db.close();
+    // і справжня пісочниця уроку відкривається
+    final sandbox = await AppDatabase.openSandbox(factory);
+    expect(await userVersion(sandbox), AppDatabase.schemaVersion);
+    await sandbox.close();
+  });
+
   test('базу новішої версії не відкриваємо (зрозуміла помилка)', () async {
     await seed();
     final newer = AppDatabase.schemaVersion + 1;

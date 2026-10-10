@@ -1937,7 +1937,26 @@ class Repository {
     return id;
   }
 
-  /// Змінити назву/одиницю/фото. Для фото: [photo] = ('шлях',) або (null,) — прибрати.
+  /// Фото номенклатури, зокрема видаленої (її фото знадобиться, якщо
+  /// видалення скасують): (id, photo).
+  Future<List<(String, String)>> stockPhotoRefs() async => [
+        for (final r in await db.query('stock_items',
+            columns: ['id', 'photo'], where: "photo IS NOT NULL AND photo != ''"))
+          (r['id'] as String, r['photo'] as String)
+      ];
+
+  /// Службова заміна фото (перетискання у новий формат): лише якщо фото
+  /// позиції досі [old] - інакше його тим часом змінили, і чіпати не можна.
+  /// Час зміни запису не оновлюється (користувач нічого не міняв).
+  /// Повертає, чи замінено.
+  Future<bool> replaceStockPhoto(String id, String old, String? photo) async {
+    final n = await db.update('stock_items', {'photo': photo},
+        where: 'id = ? AND photo = ?', whereArgs: [id, old]);
+    if (n > 0) stockChanges.value++;
+    return n > 0;
+  }
+
+  /// Змінити назву/одиницю/фото. Для фото: [photo] = ('назва',) або (null,) — прибрати.
   Future<void> updateStockItem(String id,
       {String? name, String? unit, (String?,)? photo, (double?,)? minQuantity}) async {
     final fields = <String, Object?>{

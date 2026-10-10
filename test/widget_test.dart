@@ -1616,6 +1616,17 @@ void main() {
     expect(retried, 1);
   });
 
+  testWidgets('база новішої версії: пояснення «оновіть застосунок», без марного повтору',
+      (tester) async {
+    await tester.pumpWidget(StartupErrorApp(
+      error: const DatabaseTooNewException(5, 2),
+      onRetry: () async {},
+    ));
+    expect(find.text('Не вдалося відкрити дані пасіки'), findsOneWidget);
+    expect(find.textContaining('Оновіть застосунок'), findsOneWidget);
+    expect(find.text('Спробувати ще раз'), findsNothing);
+  });
+
   group("зворотний зв'язок", () {
     Widget host(Future<FeedbackResult> Function(String) send) => MaterialApp(
           theme: buildAppTheme(),

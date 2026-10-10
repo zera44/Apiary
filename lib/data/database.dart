@@ -6,10 +6,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' show sqfliteFfiInit, databaseFactoryFfi;
 
 import '../l10n/l10n.dart';
+import 'repository.dart' show kSyncTables;
 
-/// Відкриття локальної SQLite-бази. Усі дані спочатку завжди пишуться
-/// сюди (offline-first); поле `synced` показує, чи запис уже відправлений
-/// на сервер.
 /// Крок міграції бази (див. [AppDatabase.migrations]).
 typedef Migration = Future<void> Function(Database db);
 
@@ -23,6 +21,9 @@ class DatabaseTooNewException implements Exception {
   String toString() => tr.dbTooNew(found, supported);
 }
 
+/// Відкриття локальної SQLite-бази. Усі дані спочатку завжди пишуться
+/// сюди (offline-first); поле `synced` показує, чи запис уже відправлений
+/// на сервер.
 class AppDatabase {
   static const fileName = 'apiary.db';
 
@@ -49,14 +50,32 @@ class AppDatabase {
 
   /// Версія схеми бази (зберігається в самій базі, PRAGMA user_version).
   /// Нова версія = новий крок у [migrations] з тим самим номером.
-  static const schemaVersion = 1;
+  ///  * 1 - схема до етапу 0;
+  ///  * 2 - позначки «відправлено» скинуто (див. [_requeueAll]).
+  static const schemaVersion = 2;
 
-  /// Кроки міграції: версія -> як дійти до неї з попередньої. Крок має
-  /// зберігати всі наявні дані (лише доповнювати чи перетворювати) і
-  /// виконується рівно один раз - коли базу вперше відкриває новіша версія.
-  /// Нові таблиці й колонки окремого кроку не потребують: їх доповнює
-  /// [ensureSchema] (він виконується до кроків і після них).
-  static final Map<int, Migration> migrations = {};
+  /// Кроки міграції: версія -> як дійти до неї з попередньої. Кожен крок
+  /// виконується рівно один раз для бази, і всі разом - в одній транзакції
+  /// (збій - база лишається попередньої версії).
+  ///
+  /// Крок завжди бачить уже найновішу схему: таблиці й колонки доповнює
+  /// [ensureSchema] перед кроками, тож крок лише перетворює дані. Кроки
+  /// виконуються й для зовсім нової бази (і пісочниці уроку) - там вони
+  /// нічого не знаходять і нічого не роблять, - і для старої бази з
+  /// Python-версії (версія 0). Тому крок має бути безпечним і на порожній
+  /// базі, і на повній, і не губити наявні дані.
+  static final Map<int, Migration> migrations = {
+    2: _requeueAll,
+  };
+
+  /// Стара заглушка синхронізації (до етапу 0) позначала всі записи
+  /// «відправленими», хоча сервера не було. Скидаємо позначку - сервер
+  /// отримає все, коли синхронізацію буде налаштовано.
+  static Future<void> _requeueAll(Database db) async {
+    for (final t in kSyncTables) {
+      await db.rawUpdate('UPDATE $t SET synced = 0 WHERE synced != 0');
+    }
+  }
 
   /// [path] може бути [inMemoryDatabasePath] (тести). [version] і
   /// [steps] - лише для тестів міграцій.
@@ -72,8 +91,9 @@ class AppDatabase {
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
-        // база старішої версії: спершу доповнити схему, потім по черзі
-        // кроки від її версії до поточної (усе в одній транзакції)
+        // база старішої версії (зокрема нова - її версія 0): спершу
+        // доповнити схему, потім по черзі кроки від її версії до поточної
+        // (усе в одній транзакції)
         onUpgrade: (db, from, to) async {
           await ensureSchema(db);
           for (var v = from + 1; v <= to; v++) {
@@ -83,9 +103,7 @@ class AppDatabase {
         // база новішої версії (напр., відновили копію з новішого
         // застосунку): не відкриваємо, щоб не зіпсувати незнайомі дані
         onDowngrade: (db, from, to) => throw DatabaseTooNewException(from, to),
-        // схему доповнюємо при КОЖНОМУ відкритті (як і раніше) — так само
-        // відкривається і стара база з Python-версії; нова база одразу
-        // отримує найновішу схему, кроки міграції їй не потрібні
+        // схему доповнюємо й при КОЖНОМУ відкритті (як і раніше)
         onOpen: ensureSchema,
       ),
     );

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
 import '../ui/common.dart';
@@ -398,7 +399,7 @@ class _StockScreenState extends State<StockScreen> {
                 child: InkWell(
                   onTap: () => _edit(it),
                   child: Stack(children: [
-                    Positioned.fill(child: StockPhoto(path: it.photo)),
+                    Positioned.fill(child: StockPhoto(photo: it.photo)),
                     if (it.low)
                       Positioned(
                         left: 0,
@@ -495,10 +496,12 @@ class _StockScreenState extends State<StockScreen> {
 /// Вкладки/операції складу.
 enum StockOp { receive, writeOff, inventory }
 
-/// Фото номенклатури або заглушка.
+/// Фото номенклатури або заглушка. [thumb] - мініатюра (маленькі списки);
+/// інакше повне фото (плитки складу, перегляд).
 class StockPhoto extends StatelessWidget {
-  final String? path;
-  const StockPhoto({super.key, required this.path});
+  final String? photo;
+  final bool thumb;
+  const StockPhoto({super.key, required this.photo, this.thumb = false});
 
   @override
   Widget build(BuildContext context) {
@@ -507,11 +510,50 @@ class StockPhoto extends StatelessWidget {
       alignment: Alignment.center,
       child: AppIcon('box', color: AppColors.textMuted, size: 44),
     );
-    final p = path;
-    if (p == null) return placeholder;
-    return Image.file(File(p),
-        fit: BoxFit.cover, cacheWidth: 400, errorBuilder: (_, __, ___) => placeholder);
+    final path = thumb ? StockPhotos.thumbPath(photo) : StockPhotos.fullPath(photo);
+    if (path == null) return placeholder;
+    return Image.file(File(path),
+        fit: BoxFit.cover,
+        cacheWidth: thumb ? 200 : 400,
+        errorBuilder: (_, _, _) => placeholder);
   }
+}
+
+/// Повне фото на весь екран (масштаб пальцями).
+Future<void> showStockPhoto(BuildContext context, String photo) {
+  final path = StockPhotos.fullPath(photo);
+  if (path == null) return Future.value();
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black87,
+    builder: (ctx) => Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(children: [
+        Positioned.fill(
+          child: InteractiveViewer(
+            maxScale: 4,
+            child: Center(
+              child: Image.file(File(path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) =>
+                      Icon(Icons.broken_image_outlined, color: AppColors.textMuted, size: 64)),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: SafeArea(
+            child: IconButton(
+              tooltip: tr.close,
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+        ),
+      ]),
+    ),
+  );
 }
 
 Widget _buttons(List<Widget> buttons) => Row(children: [
@@ -583,7 +625,7 @@ class _ItemDialogState extends State<_ItemDialog> {
         _fresh = path;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = 'Не вдалося отримати фото: $e');
+      if (mounted) setState(() => _error = tr.photoFailed('$e'));
     } finally {
       if (mounted) setState(() => _picking = false);
     }
@@ -744,7 +786,18 @@ class _ItemDialogState extends State<_ItemDialog> {
             Row(children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: SizedBox(width: 72, height: 72, child: StockPhoto(path: _photo)),
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  // дотик - повне фото
+                  child: GestureDetector(
+                    onTap: _photo == null ? null : () => showStockPhoto(context, _photo!),
+                    child: Tooltip(
+                      message: _photo == null ? '' : tr.photoOpen,
+                      child: StockPhoto(photo: _photo, thumb: true),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(

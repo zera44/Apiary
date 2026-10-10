@@ -431,9 +431,8 @@ void main() {
     final sync = SyncService(repo,
         config: const AppConfig(supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'k'));
     expect(sync.configured, isTrue);
-    expect(await sync.syncOnce(), (0, before));
-    expect(SyncService.info.value.pending, before);
-    expect(SyncService.info.value.disabled, isFalse);
+    expect(await sync.syncOnce(), (0, 0));
+    expect(SyncService.info.value.disabled, isTrue);
     expect(await repo.countUnsynced(), before);
   });
 

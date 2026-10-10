@@ -63,15 +63,12 @@ class SyncService {
   }
 
   /// Одна спроба. Повертає (успішно відправлено, всього в черзі).
+  ///
+  /// Обміну із сервером ще немає (етап 5), тож навіть із налаштованим
+  /// сервером - «вимкнено»: дані лишаються в черзі, нічого не позначається
+  /// і не стирається.
   Future<(int, int)> syncOnce() async {
-    if (!configured) {
-      info.value = const SyncInfo(disabled: true);
-      return (0, 0);
-    }
-    // сервер налаштовано, але обмін ще не реалізовано (етап 5): дані
-    // лишаються в черзі, нічого не позначається і не стирається
-    final pending = await repo.countUnsynced();
-    info.value = SyncInfo(pending: pending);
-    return (0, pending);
+    info.value = const SyncInfo(disabled: true);
+    return (0, 0);
   }
 }

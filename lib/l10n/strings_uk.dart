@@ -34,11 +34,31 @@ class AppStringsUk extends AppStrings {
   @override
   String syncError(String details) => 'Помилка синхронізації: $details';
 
+  // ---- Загальне ----
+  @override
+  String get close => 'Закрити';
+
+  // ---- Фото складу ----
+  @override
+  String get photoOpen => 'Відкрити фото';
+  @override
+  String photoFailed(String details) => 'Не вдалося отримати фото: $details';
+
   // ---- Дата й час ----
   @override
   String todayAt(String hm) => 'сьогодні $hm';
 
   // ---- База даних ----
+  @override
+  String get startupErrorTitle => 'Не вдалося відкрити дані пасіки';
+  @override
+  String get startupErrorHint =>
+      'Можливі причини: програму вже запущено в іншому вікні, закінчилось місце на диску '
+      'або файл даних пошкоджено. Закрийте інші копії програми й спробуйте ще раз.';
+  @override
+  String get startupOpening => 'Відкриваємо…';
+  @override
+  String get retry => 'Спробувати ще раз';
   @override
   String dbTooNew(int found, int supported) =>
       'Дані збережено новішою версією застосунку (версія бази $found, ця версія '

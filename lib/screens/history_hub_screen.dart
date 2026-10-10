@@ -142,7 +142,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
           subtitle: it.quantity == null ? 'Ще не було приходу' : 'Залишок: ${formatAmount(it.quantity!)} ${it.unit}',
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(width: 44, height: 44, child: StockPhoto(path: it.photo)),
+            child: SizedBox(width: 44, height: 44, child: StockPhoto(photo: it.photo, thumb: true)),
           ),
           onTap: () async {
             await Navigator.of(context).push(MaterialPageRoute(

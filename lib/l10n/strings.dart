@@ -32,12 +32,23 @@ abstract class AppStrings {
   String syncLastOk(String when);
   String syncError(String details);
 
+  // ---- Загальне ----
+  String get close;
+
+  // ---- Фото складу ----
+  String get photoOpen;
+  String photoFailed(String details);
+
   // ---- Дата й час ----
   /// «сьогодні 14:05»
   String todayAt(String hm);
 
   // ---- База даних ----
   String dbTooNew(int found, int supported);
+  String get startupErrorTitle;
+  String get startupErrorHint;
+  String get startupOpening;
+  String get retry;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].
