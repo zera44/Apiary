@@ -25,5 +25,5 @@ jobs:
           node-version: '22'
       - name: Міграції й правила доступу (PostgreSQL)
         run: supabase/tests/run.sh
-      - name: Функція backup-commit
-        run: node --test supabase/tests/backup_commit.test.ts
+      - name: Функції (backup-commit, delete-account)
+        run: node --test supabase/tests/*.test.ts

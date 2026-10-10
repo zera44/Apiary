@@ -117,6 +117,39 @@ class AppStringsUk extends AppStrings {
   String get firstLoginDone => 'Готово - дані синхронізуються';
   @override
   String firstLoginFailed(String details) => 'Не вдалося: $details';
+  @override
+  String get accountSection => 'Акаунт';
+  @override
+  String accountSignedInAs(String email) => 'Ви увійшли як $email';
+  @override
+  String get accountDelete => 'Видалити акаунт і всі дані';
+  @override
+  String get accountDeleteTitle => 'Видалити акаунт?';
+  @override
+  String get accountDeleteText =>
+      'Буде видалено назавжди: ваш акаунт, усі пасіки, вулики, огляди, нотатки, склад, '
+      'фінанси, фото складу й нічні копії - на сервері й на цьому телефоні, а також '
+      'резервні копії на телефоні. Ваші помічники втратять доступ. Записи, які ви '
+      'робили як помічник у чужих пасіках, лишаються в їхніх власників.';
+  @override
+  String get accountDeleteContinue => 'Далі';
+  @override
+  String get accountDeleteFinalTitle => 'Точно видалити?';
+  @override
+  String get accountDeleteFinalText =>
+      'Повернути буде неможливо. Щоб підтвердити, напишіть слово ВИДАЛИТИ.';
+  @override
+  String get accountDeleteWord => 'ВИДАЛИТИ';
+  @override
+  String get accountDeleting => 'Видалення…';
+  @override
+  String get accountDeleted => 'Акаунт і всі дані видалено';
+  @override
+  String accountDeleteFailed(String details) => 'Не вдалося видалити: $details';
+  @override
+  String get privacyPolicy => 'Політика конфіденційності';
+  @override
+  String get privacySoon => 'Текст політики конфіденційності скоро з\'явиться тут.';
 
   // ---- Загальне ----
   @override

@@ -14,6 +14,7 @@ import '../ui/common.dart';
 import '../ui/sync_status.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
+import 'splash_screen.dart';
 
 /// Налаштування → «Головне». Тут - усе про дані користувача: синхронізація,
 /// резервні копії (а далі - мобільний інтернет, акаунт, політика
@@ -262,6 +263,128 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
                 ),
               ],
             ),
+          if (!widget.lesson)
+            SettingsSection(
+              title: tr.accountSection,
+              children: [
+                if (Server.auth?.user case final u?) ...[
+                  Text(tr.accountSignedInAs(u.email),
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+                  const SizedBox(height: 10),
+                ],
+                PillButton(
+                  text: tr.privacyPolicy,
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 40,
+                  width: double.infinity,
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.popupBg,
+                      title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
+                      content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (Server.auth?.user != null) ...[
+                  const SizedBox(height: 8),
+                  PillButton(
+                    text: tr.accountDelete,
+                    bg: AppColors.danger,
+                    height: 40,
+                    width: double.infinity,
+                    onPressed: _busy ? null : _deleteAccount,
+                  ),
+                ],
+              ],
+            ),
+        ],
+      );
+
+  /// «Видалити акаунт і всі дані»: два підтвердження (друге - написати
+  /// слово), потім сервер, телефон і вихід.
+  Future<void> _deleteAccount() async {
+    final first = await showConfirm(context,
+        title: tr.accountDeleteTitle,
+        text: tr.accountDeleteText,
+        confirmText: tr.accountDeleteContinue,
+        cancelText: tr.cancel);
+    if (!first || !mounted) return;
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _TypeToConfirm(),
+    );
+    if (second != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
+    setState(() => _busy = true);
+    messenger.showSnackBar(SnackBar(content: Text(tr.accountDeleting)));
+    try {
+      await Server.deleteAccount(widget.repo);
+      final auth = Server.auth;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(tr.accountDeleted)));
+      if (auth != null) {
+        nav.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => SplashScreen(repo: widget.repo, auth: auth)),
+          (_) => false,
+        );
+      }
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(tr.accountDeleteFailed('$e'))));
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// Друге підтвердження: написати слово [AppStrings.accountDeleteWord].
+class _TypeToConfirm extends StatefulWidget {
+  const _TypeToConfirm();
+  @override
+  State<_TypeToConfirm> createState() => _TypeToConfirmState();
+}
+
+class _TypeToConfirmState extends State<_TypeToConfirm> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  bool get _ok => _c.text.trim().toUpperCase() == tr.accountDeleteWord;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        backgroundColor: AppColors.popupBg,
+        title: Text(tr.accountDeleteFinalTitle, style: TextStyle(color: AppColors.text)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(tr.accountDeleteFinalText, style: TextStyle(color: AppColors.text)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _c,
+            autofocus: true,
+            style: TextStyle(color: AppColors.text),
+            decoration: InputDecoration(hintText: tr.accountDeleteWord),
+            onChanged: (_) => setState(() {}),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr.cancel)),
+          PillButton(
+            text: tr.accountDelete,
+            bg: AppColors.danger,
+            height: 38,
+            onPressed: _ok ? () => Navigator.pop(context, true) : null,
+          ),
         ],
       );
 }

@@ -65,6 +65,20 @@ abstract class AppStrings {
   String get otherAccountSignOut;
   String get firstLoginDone;
   String firstLoginFailed(String details);
+  String get accountSection;
+  String accountSignedInAs(String email);
+  String get accountDelete;
+  String get accountDeleteTitle;
+  String get accountDeleteText;
+  String get accountDeleteContinue;
+  String get accountDeleteFinalTitle;
+  String get accountDeleteFinalText;
+  String get accountDeleteWord;
+  String get accountDeleting;
+  String get accountDeleted;
+  String accountDeleteFailed(String details);
+  String get privacyPolicy;
+  String get privacySoon;
 
   // ---- Загальне ----
   String get close;

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import '../data/first_login.dart';
 
 import '../data/repository.dart';
+import 'account_deletion.dart';
 import '../data/sync_api.dart';
 import '../data/sync_service.dart';
 import 'app_config.dart';
@@ -20,6 +21,13 @@ import 'supabase_api.dart';
 /// далі сам оновлюється (його бачить і фонове завдання).
 abstract final class Server {
   static SupabaseApi? _api;
+  static AuthService? _auth;
+
+  /// Вхід у застосунок (для налаштувань: пошта, «Видалити акаунт»).
+  static AuthService? get auth => _auth;
+
+  /// Тести: вхід без [start].
+  static set debugAuth(AuthService? a) => _auth = a;
 
   /// Перший вхід: потрібен вибір людини (головний екран показує вікно).
   static final ValueNotifier<FirstLoginState?> choice = ValueNotifier(null);
@@ -55,6 +63,7 @@ abstract final class Server {
   /// Під час запуску: збережений вхід на сервер. Якщо його немає, а в
   /// Google ми увійшли (оновились із версії без сервера), - тихо увійти.
   static Future<void> start(Repository repo, AuthService auth) async {
+    _auth = auth;
     final config = AppConfig.current;
     if (!config.syncConfigured || auth.user == null) {
       _attach(repo, null, auth);
@@ -77,6 +86,7 @@ abstract final class Server {
   /// Після входу Google: увійти на сервер і одразу синхронізуватись.
   /// Без токена чи без зв'язку - тихо (спробуємо при наступному запуску).
   static Future<bool> connect(Repository repo, AuthService auth) async {
+    _auth = auth;
     final config = AppConfig.current;
     if (!config.syncConfigured) return false;
     final token = await auth.idToken();
@@ -114,6 +124,19 @@ abstract final class Server {
     await FirstLogin(repo, api).apply(c);
     choice.value = null;
     await SyncService.current?.syncNow();
+  }
+
+  /// «Видалити акаунт і всі дані»: сервер, потім телефон, потім вихід.
+  static Future<void> deleteAccount(Repository repo) async {
+    final api = _api;
+    if (api == null) throw const SyncOffline('немає зв\'язку із сервером - спробуйте пізніше');
+    await deleteAccountAndData(repo: repo, deleteOnServer: api.deleteAccount);
+    _attach(repo, null);
+    choice.value = null;
+    SyncService.current
+      ?..reconnect = null
+      ..onSignedOut = null;
+    await _auth?.signOut();
   }
 
   /// Вихід: забути вхід на сервер (дані на телефоні лишаються).

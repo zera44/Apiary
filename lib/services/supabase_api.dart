@@ -374,6 +374,14 @@ class SupabaseApi implements SyncApi, SharingApi {
     return r.bodyBytes;
   }
 
+  /// Видалити акаунт і всі його дані на сервері (функція delete-account).
+  Future<void> deleteAccount() async {
+    await _send(
+        (h) => _http.post(_u('/functions/v1/delete-account'), headers: h, body: '{}').timeout(bigTimeout),
+        headers: {'Content-Type': 'application/json'});
+    await store.write(null);
+  }
+
   // ── спільний доступ ────────────────────────────────────────────────────
 
   /// Рядок сервера - як рядок на телефоні (списки - JSON-рядком).

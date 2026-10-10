@@ -50,15 +50,17 @@ for t in "$here"/*.test.sql; do
   fi
 done
 if command -v node >/dev/null && node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)'; then
-  if node --test "$here/backup_commit.test.ts" >"$tmp/out" 2>&1; then
-    echo "  ok  backup_commit.test.ts"
-  else
-    echo "  FAIL backup_commit.test.ts"
-    sed 's/^/       /' "$tmp/out"
-    failed=1
-  fi
+  for t in "$here"/*.test.ts; do
+    if node --test "$t" >"$tmp/out" 2>&1; then
+      echo "  ok  $(basename "$t")"
+    else
+      echo "  FAIL $(basename "$t")"
+      sed 's/^/       /' "$tmp/out"
+      failed=1
+    fi
+  done
 else
-  echo "  (backup_commit.test.ts пропущено: потрібен Node 22+)"
+  echo "  (функції не перевірено: потрібен Node 22+)"
 fi
 [ "$failed" = 0 ] && echo "Усі перевірки сервера пройшли"
 exit "$failed"

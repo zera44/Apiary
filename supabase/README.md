@@ -87,15 +87,18 @@ Supabase (`tests/`).
      через Google ID-токен);
    * *Skip nonce check* — увімкнути, лише якщо вхід із телефона падає з
      помилкою про nonce.
-5. **Функція нічних копій.** *Edge Functions → Deploy a new function → Via
-   Editor*:
-   * назва — рівно `backup-commit`;
-   * вставити вміст `functions/backup-commit/index.ts` → *Deploy*;
-   * *Verify JWT* лишити увімкненим.
+5. **Функції.** *Edge Functions → Deploy a new function → Via Editor* — дві
+   функції, кожна під своєю назвою, *Verify JWT* лишити увімкненим:
+   * `backup-commit` — вміст `functions/backup-commit/index.ts` (перевірка
+     нічних копій);
+   * `delete-account` — вміст `functions/delete-account/index.ts`
+     («Видалити акаунт і всі дані»: файли, запрошення, акаунт; решту рядків
+     база видаляє разом з акаунтом).
 
    Або з комп'ютера:
    ```
    npx supabase functions deploy backup-commit --project-ref <ref>
+   npx supabase functions deploy delete-account --project-ref <ref>
    ```
    (`<ref>` — частина адреси `https://<ref>.supabase.co`).
 6. **Ключі для застосунку.** *Project Settings → API Keys*:
@@ -133,8 +136,8 @@ supabase/tests/run.sh
 імені трьох людей перевіряють, хто що бачить і може змінити, запрошення,
 правила синхронізації, сховище й прибирання.
 
-Функцію копій перевіряє `node --test supabase/tests/backup_commit.test.ts`
-(Node 22+) на справжній базі SQLite і фейковому сервері. На GitHub усе це
+Функції перевіряє `node --test supabase/tests/*.test.ts` (Node 22+): копій —
+на справжній базі SQLite, видалення акаунта — на фейковому сервері. На GitHub усе це
 запускає workflow `Supabase` при кожній зміні в `supabase/`.
 
 ## Обмеження безкоштовного тарифу
