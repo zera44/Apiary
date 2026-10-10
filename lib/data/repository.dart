@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -76,7 +77,8 @@ class Repository {
   static String newId() => _uuid.v4();
 
   /// Unix-час у секундах (дробовий) — так само, як у старій версії.
-  static double now() => DateTime.now().microsecondsSinceEpoch / 1e6;
+  /// Час зміни запису (секунди Unix). Через [clock] - тести підставляють свій час.
+  static double now() => clock.now().microsecondsSinceEpoch / 1e6;
 
   /// Одноразова ініціалізація після відкриття бази.
   Future<void> init() async {
@@ -2109,6 +2111,16 @@ class Repository {
   Future<List<Map<String, Object?>>> unsynced(String table) async {
     _checkSyncTable(table);
     return db.rawQuery('SELECT * FROM $table WHERE synced = 0');
+  }
+
+  /// Скільки змін чекає відправки (усі таблиці синхронізації).
+  Future<int> countUnsynced() async {
+    var n = 0;
+    for (final t in kSyncTables) {
+      final r = await db.rawQuery('SELECT COUNT(*) AS n FROM $t WHERE synced = 0');
+      n += (r.first['n'] as int?) ?? 0;
+    }
+    return n;
   }
 
   /// Позначити рядок синхронізованим — лише якщо його не змінили, поки він

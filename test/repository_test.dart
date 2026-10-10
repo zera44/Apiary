@@ -6,6 +6,7 @@ import 'package:apiary/data/notes.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sync_service.dart';
+import 'package:apiary/services/app_config.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/logic/value_convert.dart';
 import 'package:apiary/logic/visit_reminders.dart';
@@ -405,14 +406,35 @@ void main() {
     expect(left.map((r) => r['id']), [a]);
   });
 
-  test('syncOnce (заглушка без сервера) позначає все синхронізованим', () async {
-    await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
-    final (ok, total) = await SyncService(repo).syncOnce();
-    expect(total, greaterThan(0));
-    expect(ok, total);
-    for (final t in kSyncTables) {
-      expect(await repo.unsynced(t), isEmpty, reason: t);
-    }
+  test('без сервера синхронізація вимкнена: черга й позначки «видалено» лишаються', () async {
+    final gid = await repo.addGroup(apiaryId, {'0,0': 'hive', '1,0': 'hive'}, 0, 0);
+    await repo.deleteGroup(gid);
+    final before = await repo.countUnsynced();
+    expect(before, greaterThan(0));
+    final sync = SyncService(repo, config: const AppConfig());
+    expect(sync.configured, isFalse);
+    final (ok, total) = await sync.syncOnce();
+    expect((ok, total), (0, 0));
+    expect(SyncService.info.value.disabled, isTrue);
+    // нічого не позначено відправленим і не стерто: сервер отримає все,
+    // коли синхронізацію буде налаштовано
+    expect(await repo.countUnsynced(), before);
+    await repo.purgeDeleted(grace: Duration.zero);
+    final rows = await repo.db.query('elements', where: 'group_id = ?', whereArgs: [gid]);
+    expect(rows, isNotEmpty);
+    expect(rows.every((r) => r['deleted'] == 1), isTrue);
+  });
+
+  test('сервер налаштовано, але обмін ще не готовий - теж нічого не чіпає', () async {
+    await repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, 0);
+    final before = await repo.countUnsynced();
+    final sync = SyncService(repo,
+        config: const AppConfig(supabaseUrl: 'https://x.supabase.co', supabaseAnonKey: 'k'));
+    expect(sync.configured, isTrue);
+    expect(await sync.syncOnce(), (0, before));
+    expect(SyncService.info.value.pending, before);
+    expect(SyncService.info.value.disabled, isFalse);
+    expect(await repo.countUnsynced(), before);
   });
 
   test('listElementsByApiary дає те саме, що listElements, для кожної пасіки', () async {
@@ -465,7 +487,10 @@ void main() {
 
     // позначається до синхронізації, а після неї й пільгового терміну зникає
     expect((await repo.unsynced('apiaries')).map((r) => r['id']), contains(apiaryId));
-    await SyncService(repo).syncOnce();
+    // сервер прийняв усе
+    for (final t in kSyncTables) {
+      await repo.markSyncedBatch(t, await repo.unsynced(t));
+    }
     await repo.purgeDeleted(grace: Duration.zero);
     expect(await repo.getApiary(apiaryId), isNull);
     expect(await repo.getApiary(other), isNotNull);

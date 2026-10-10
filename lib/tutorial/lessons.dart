@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/cell_value.dart';
 import '../ui/guide_bubble.dart';
 import 'lesson.dart';
@@ -244,7 +245,7 @@ LessonCue? templatesLessonScript(LessonController c) {
     case 3:
       return LessonCue(screen: 'settings', onContinue: () => c.go(4), text: [
         _t('Це вкладка '),
-        _h('«Головна»'),
+        _h('«${tr.settingsTabMain}»'),
         _t(' - тут загальні налаштування застосунку.'),
       ]);
     case 4:

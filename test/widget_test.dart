@@ -3,6 +3,7 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
+import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
@@ -1929,7 +1930,11 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);
-    expect(find.text('Головна'), findsOneWidget);
+    expect(find.text('Головне'), findsOneWidget);
+    // «Головне»: розділ синхронізації; без сервера - вона вимкнена
+    expect(find.text('Синхронізація'), findsOneWidget);
+    expect(find.text(tr.syncDisabled), findsOneWidget);
+    expect(find.textContaining('з\'являться тут згодом'), findsNothing);
     expect(find.text('Історія'), findsNothing); // історія - лише по картах
     await tester.tap(find.text('Шаблони'));
     await settle(tester);

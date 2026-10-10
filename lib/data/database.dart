@@ -5,9 +5,24 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' show sqfliteFfiInit, databaseFactoryFfi;
 
+import '../l10n/l10n.dart';
+
 /// Відкриття локальної SQLite-бази. Усі дані спочатку завжди пишуться
 /// сюди (offline-first); поле `synced` показує, чи запис уже відправлений
 /// на сервер.
+/// Крок міграції бази (див. [AppDatabase.migrations]).
+typedef Migration = Future<void> Function(Database db);
+
+/// Базу збережено новішою версією застосунку, ніж ця.
+class DatabaseTooNewException implements Exception {
+  final int found;
+  final int supported;
+  const DatabaseTooNewException(this.found, this.supported);
+
+  @override
+  String toString() => tr.dbTooNew(found, supported);
+}
+
 class AppDatabase {
   static const fileName = 'apiary.db';
 
@@ -32,19 +47,45 @@ class AppDatabase {
   static Future<Database> openSandbox([DatabaseFactory? factory]) =>
       open(factory ?? platformFactory, inMemoryDatabasePath, singleInstance: false);
 
-  /// [path] може бути [inMemoryDatabasePath] (тести).
+  /// Версія схеми бази (зберігається в самій базі, PRAGMA user_version).
+  /// Нова версія = новий крок у [migrations] з тим самим номером.
+  static const schemaVersion = 1;
+
+  /// Кроки міграції: версія -> як дійти до неї з попередньої. Крок має
+  /// зберігати всі наявні дані (лише доповнювати чи перетворювати) і
+  /// виконується рівно один раз - коли базу вперше відкриває новіша версія.
+  /// Нові таблиці й колонки окремого кроку не потребують: їх доповнює
+  /// [ensureSchema] (він виконується до кроків і після них).
+  static final Map<int, Migration> migrations = {};
+
+  /// [path] може бути [inMemoryDatabasePath] (тести). [version] і
+  /// [steps] - лише для тестів міграцій.
   static Future<Database> open(DatabaseFactory factory, String path,
-      {bool singleInstance = true}) async {
+      {bool singleInstance = true, int? version, Map<int, Migration>? steps}) async {
+    final target = version ?? schemaVersion;
+    final plan = steps ?? migrations;
     final db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: target,
         singleInstance: singleInstance,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
         },
-        // Схему створюємо/доповнюємо при КОЖНОМУ відкритті (як і стара
-        // версія) — так само відкривається і стара база з Python-версії.
+        // база старішої версії: спершу доповнити схему, потім по черзі
+        // кроки від її версії до поточної (усе в одній транзакції)
+        onUpgrade: (db, from, to) async {
+          await ensureSchema(db);
+          for (var v = from + 1; v <= to; v++) {
+            await plan[v]?.call(db);
+          }
+        },
+        // база новішої версії (напр., відновили копію з новішого
+        // застосунку): не відкриваємо, щоб не зіпсувати незнайомі дані
+        onDowngrade: (db, from, to) => throw DatabaseTooNewException(from, to),
+        // схему доповнюємо при КОЖНОМУ відкритті (як і раніше) — так само
+        // відкривається і стара база з Python-версії; нова база одразу
+        // отримує найновішу схему, кроки міграції їй не потрібні
         onOpen: ensureSchema,
       ),
     );
