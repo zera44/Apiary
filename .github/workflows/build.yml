@@ -224,7 +224,8 @@ jobs:
               exit 1
             fi
           done
-          echo "::notice title=ПІДПИС::APK підписано ключем «$EXPECTED_CERT»"
+          sha1=$(echo "$out" | grep 'certificate SHA-1 digest' | grep -v -i 'stamp' | awk '{print $NF}' | sort -u | head -1 | sed 's/../&:/g; s/:$//' | tr a-f A-F)
+          echo "::notice title=ПІДПИС::APK підписано ключем «$EXPECTED_CERT»; SHA-1 (для входу Google): $sha1"
       # Запобіжник «Програму не встановлено»: новий APK має ставитись ПОВЕРХ
       # опублікованого (той самий ключ підпису і не менший versionCode) —
       # інакше в людей оновлення не встановиться, а видалення стирає дані.
