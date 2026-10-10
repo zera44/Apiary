@@ -54,8 +54,9 @@ class AppDatabase {
   ///  * 2 - позначки «відправлено» скинуто (див. [_requeueAll]);
   ///  * 3 - спільний доступ: пасіка в кожному записі, власник довідників,
   ///    сталі ключі типових записів, групи «Конструктора» - таблицею
-  ///    (див. [_sharing]).
-  static const schemaVersion = 3;
+  ///    (див. [_sharing]);
+  ///  * 4 - журнали синхронізації (sync_deletions, sync_photos).
+  static const schemaVersion = 4;
 
   /// Кроки міграції: версія -> як дійти до неї з попередньої. Кожен крок
   /// виконується рівно один раз для бази, і всі разом - в одній транзакції
@@ -70,6 +71,7 @@ class AppDatabase {
   static final Map<int, Migration> migrations = {
     2: _requeueAll,
     3: _sharing,
+    4: _noop, // журнали синхронізації (sync_deletions, sync_photos) - у ensureSchema
   };
 
   /// Версія 3: записам, що належать пасіці через вулик, - пасіка прямо
@@ -94,6 +96,8 @@ class AppDatabase {
         WHERE apiary_id IS NULL''');
     }
   }
+
+  static Future<void> _noop(DatabaseExecutor db) async {}
 
   /// Стара заглушка синхронізації (до етапу 0) позначала всі записи
   /// «відправленими», хоча сервера не було. Скидаємо позначку - сервер
@@ -384,6 +388,7 @@ class AppDatabase {
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_pr_owner ON parameter_records(parameter_id, group_id, element_id)');
     await _ensureSharingSchema(db);
+    await _ensureSyncSchema(db);
   }
 
   /// Таблиці, де кожен запис належить пасіці через свій вулик (група чи
@@ -415,6 +420,22 @@ class AppDatabase {
   /// шаблони, категорії фінансів, мітка «Огляд»): seed_key - їхня стала
   /// «назва», щоб однакові з різних телефонів злились в один.
   static const seededTables = ['parameters', 'templates', 'fin_categories', 'note_labels'];
+
+  /// Службове для синхронізації (етап 5) - лише на цьому телефоні, на
+  /// сервер саме не йде й у резервних копіях нічого не важить:
+  ///   sync_deletions - записи історії значень, прибрані з телефона
+  ///       (відновлення копії): сервер позначить їх видаленими;
+  ///   sync_photos - фото складу, вже вивантажені на сервер.
+  static Future<void> _ensureSyncSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_deletions (
+        tbl TEXT NOT NULL,
+        id TEXT NOT NULL,
+        at REAL NOT NULL,
+        PRIMARY KEY (tbl, id)
+      )''');
+    await db.execute('CREATE TABLE IF NOT EXISTS sync_photos (name TEXT PRIMARY KEY)');
+  }
 
   /// Спільний доступ (етап 3): власник, учасники, запрошення; групи
   /// «Конструктора» - окремою таблицею (раніше - у службових позначках).

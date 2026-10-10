@@ -232,6 +232,15 @@ class StockPhotos {
     }
   }
 
+  /// Фото (чи мініатюра) [name], отримане із сервера: записати в теку (через
+  /// тимчасовий файл). Без теки (тести без неї) - нічого.
+  static Future<void> writeDownloaded(String name, Uint8List bytes) async {
+    final d = _dir;
+    if (d == null || isLegacy(name) || name.contains('/') || name.contains('\\')) return;
+    await Directory(d).create(recursive: true);
+    await _writeAtomic(File(p.join(d, name)), bytes);
+  }
+
   /// Запис через тимчасовий файл: обірваний запис не лишає половину фото.
   static Future<void> _writeAtomic(File f, Uint8List bytes) async {
     final tmp = File('${f.path}.tmp');

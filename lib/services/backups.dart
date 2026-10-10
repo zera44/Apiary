@@ -377,9 +377,13 @@ class BackupService {
                 'WHERE deleted = 0 AND $mine$missing',
                 [stamp]);
           } else {
-            // TODO(етап 5): історії значень потрібні позначки видалення
-            // (колонка deleted чи окремий журнал), інакше наступне
-            // отримання змін із сервера поверне прибрані тут рядки
+            // історія значень позначок «видалено» не має: прибране
+            // записуємо в журнал - сервер позначить і в себе (інакше
+            // наступне забирання змін повернуло б ці рядки)
+            await txn.rawInsert(
+                'INSERT OR REPLACE INTO main.sync_deletions (tbl, id, at) '
+                'SELECT ?, id, ? FROM main.$t WHERE $mine$missing',
+                [t, stamp]);
             await txn.rawDelete('DELETE FROM main.$t WHERE $mine$missing');
           }
           if (source != null && cols.contains('id')) {

@@ -31,8 +31,7 @@ dependencies:
   http: ^1.2.2
   # вхід через Google (див. services/auth.dart)
   google_sign_in: ^7.2.0
-  # напряму не використовується (лишився від входу на Windows); прибрати разом
-  # з оновленням pubspec.lock
+  # SHA-256 нічних копій бази (сервер перевіряє, що файл дійшов цілим)
   crypto: ^3.0.7
   # сканер QR-кодів вуликів (камера; лише Android/iOS)
   mobile_scanner: ^7.1.3
@@ -60,6 +59,9 @@ dependencies:
   vosk_flutter:
     path: packages/vosk_flutter
   workmanager: ^0.10.10
+  # чи телефон на мобільному інтернеті (перемикач «Синхронізувати через
+  # мобільний інтернет»)
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:
