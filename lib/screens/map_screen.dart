@@ -2279,6 +2279,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: IgnorePointer(
                     child: HoneyRing(on: true, child: GearButton(size: 48, onPressed: () {}))),
               ),
+            // зум і перемикач режимів - не на фоні головного екрана (там лише
+            // видно карту, а знизу - пошта й «Вийти»)
+            if (!widget.backdrop) ...[
             // зум
             Positioned(
               right: 14,
@@ -2294,6 +2297,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               bottom: _toggleBottom,
               child: _modeToggle(),
             ),
+            ],
             // редагування: «Додати» — поруч із перемикачем, під пальцем
             if (selectMode)
               Positioned(
