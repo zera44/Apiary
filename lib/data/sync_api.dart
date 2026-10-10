@@ -109,3 +109,11 @@ class SyncSignedOut implements Exception {
   @override
   String toString() => 'потрібно знову увійти';
 }
+
+/// На телефоні - дані іншого акаунта (увійшли іншим Google): синхронізувати
+/// їх із цим акаунтом не можна, поки людина не вирішить, що з ними робити.
+class SyncOtherAccount implements Exception {
+  const SyncOtherAccount();
+  @override
+  String toString() => 'на телефоні дані іншого акаунта Google';
+}

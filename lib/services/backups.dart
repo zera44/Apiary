@@ -447,8 +447,15 @@ class BackupService {
         for (final t in kSyncTables) {
           final cols = await _columns(txn, 'main', t);
           if (cols.contains('synced')) {
-            await txn.rawUpdate('UPDATE main.$t SET synced = 0 '
-                'WHERE synced != 0 AND ${_ownWhere('main', t, cols, mainApiaryCols)}');
+            // відновлення - нова зміна, зроблена зараз: інакше видалення на
+            // сервері, зроблене вже після копії, знову стерло б відновлене
+            // (а «Скасувати» не повернуло б того, що було до відновлення)
+            final mine = _ownWhere('main', t, cols, mainApiaryCols);
+            if (cols.contains('updated_at')) {
+              await txn.rawUpdate('UPDATE main.$t SET synced = 0, updated_at = ? WHERE $mine', [stamp]);
+            } else {
+              await txn.rawUpdate('UPDATE main.$t SET synced = 0 WHERE synced != 0 AND $mine');
+            }
           }
         }
         // давня копія: вулики без пасіки - у «Моя пасіка», як при запуску

@@ -73,6 +73,8 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
         _say(tr.syncWaitingWifi);
       } else if (i.offline) {
         _say(tr.syncOffline);
+      } else {
+        _say(tr.syncRunning); // саме синхронізує фонове завдання
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -230,7 +232,14 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
             title: tr.syncSection,
             children: [
               const SyncStatusLine(textAlign: TextAlign.start, fontSize: 13.5),
-              ..._syncControls(),
+              // вхід на сервер міг завершитися вже після відкриття вкладки
+              ValueListenableBuilder<SyncInfo>(
+                valueListenable: SyncService.info,
+                builder: (_, _, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _syncControls(),
+                ),
+              ),
             ],
           ),
           if (!widget.lesson)

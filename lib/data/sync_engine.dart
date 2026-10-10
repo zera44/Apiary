@@ -58,15 +58,34 @@ class SyncEngine {
         for (final r in await repo.db.rawQuery('PRAGMA table_info($table)')) r['name']! as String,
       };
 
+  static const userKey = 'sync_user';
+  static const lastPullKey = 'sync_last_pull';
+
+  /// Сервер стирає позначки «видалено», старші за 180 днів. Телефон, що
+  /// не забирав змін довше за це (з запасом), забирає все заново й прибирає
+  /// те, чого на сервері вже немає (інакше видалене ожило б).
+  static const fullResyncAfter = Duration(days: 150);
+
   Future<SyncReport> run() async {
+    await _checkUser();
     final r = SyncReport();
+    final full = await _fullResyncDue();
+    if (full) {
+      for (final t in pullTables) {
+        await repo.setMeta(cursorKey(t), '');
+      }
+    }
     await repo.adoptForeignRefs();
     await _pushDeletions(r);
+    // спершу файли фото, потім рядки, що на них посилаються
+    await _pushPhotos(r);
     for (final t in kSyncTables) {
       await _push(t, r);
     }
-    await _pushPhotos(r);
-    await _pullAll(r);
+    final seen = full ? <String, Set<String>>{} : null;
+    await _pullAll(r, seen: seen);
+    if (seen != null) await _dropUnseen(seen);
+    await repo.setMeta(lastPullKey, '${Repository.now()}');
     // злиття однакових типових записів (другий телефон, перевстановлення)
     // і переведення записів помічника дали нові зміни - одразу їх і відправити
     if (await repo.countUnsynced() > 0) {
@@ -76,6 +95,37 @@ class SyncEngine {
       }
     }
     return r;
+  }
+
+  /// Дані на телефоні - іншого акаунта (увійшли іншим Google): не змішувати.
+  Future<void> _checkUser() async {
+    final was = await repo.getMeta(userKey);
+    if (was == null || was.isEmpty) {
+      await repo.setMeta(userKey, api.userId);
+    } else if (was != api.userId) {
+      throw const SyncOtherAccount();
+    }
+  }
+
+  Future<bool> _fullResyncDue() async {
+    final last = double.tryParse(await repo.getMeta(lastPullKey) ?? '');
+    return last != null && Repository.now() - last > fullResyncAfter.inSeconds;
+  }
+
+  /// Після повного забирання: рядки, які сервер колись мав (synced = 1), а
+  /// тепер не повернув, - стерто на сервері; прибрати й тут.
+  Future<void> _dropUnseen(Map<String, Set<String>> seen) async {
+    await repo.db.transaction((txn) async {
+      for (final t in pullTables) {
+        final have = seen[t] ?? const <String>{};
+        final local = await txn.query(t, columns: ['id'], where: 'synced = 1');
+        for (final row in local) {
+          final id = row['id']! as String;
+          if (!have.contains(id)) await txn.delete(t, where: 'id = ?', whereArgs: [id]);
+        }
+      }
+    });
+    repo.notifyAllChanged();
   }
 
   // ── відправка ──────────────────────────────────────────────────────────
@@ -118,6 +168,9 @@ class SyncEngine {
     }
   }
 
+  /// Малими пакетами: id ідуть в адресі запиту.
+  static const deletionBatch = 50;
+
   Future<void> _pushDeletions(SyncReport r) async {
     final rows = await repo.db.query('sync_deletions', orderBy: 'tbl, id');
     final byTable = <String, List<Map<String, Object?>>>{};
@@ -125,18 +178,33 @@ class SyncEngine {
       byTable.putIfAbsent(row['tbl']! as String, () => []).add(row);
     }
     for (final e in byTable.entries) {
-      for (var i = 0; i < e.value.length; i += batchSize) {
-        final part = e.value.sublist(i, (i + batchSize).clamp(0, e.value.length));
-        final at = part.map((x) => (x['at'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
-        await api.markDeleted(e.key, [for (final x in part) x['id']! as String], at);
-        await repo.db.transaction((txn) async {
-          for (final x in part) {
-            await txn.delete('sync_deletions', where: 'tbl = ? AND id = ?', whereArgs: [e.key, x['id']]);
-          }
-        });
-        r.sent += part.length;
+      for (var i = 0; i < e.value.length; i += deletionBatch) {
+        await _sendDeletions(e.key, e.value.sublist(i, (i + deletionBatch).clamp(0, e.value.length)), r);
       }
     }
+  }
+
+  Future<void> _sendDeletions(String table, List<Map<String, Object?>> part, SyncReport r) async {
+    final at = part.map((x) => (x['at'] as num).toDouble()).reduce((a, b) => a > b ? a : b);
+    try {
+      await api.markDeleted(table, [for (final x in part) x['id']! as String], at);
+    } on SyncRejected catch (e) {
+      if (part.length > 1) {
+        for (final x in part) {
+          await _sendDeletions(table, [x], r);
+        }
+        return;
+      }
+      // сервер не дає (чужий запис, доступ забрали) - більше не пробуємо
+      debugPrint('Синхронізація: видалення $table ${part.single['id']} - $e');
+      r.rejected++;
+    }
+    await repo.db.transaction((txn) async {
+      for (final x in part) {
+        await txn.delete('sync_deletions', where: 'tbl = ? AND id = ?', whereArgs: [table, x['id']]);
+      }
+    });
+    r.sent += part.length;
   }
 
   Future<void> _pushPhotos(SyncReport r) async {
@@ -167,11 +235,9 @@ class SyncEngine {
 
   // ── забирання ──────────────────────────────────────────────────────────
 
-  Future<void> _pullAll(SyncReport r, {bool again = false}) async {
-    final stockItems = <String>{};
-    final photos = <(String, String)>{}; // (власник, назва)
+  Future<void> _pullAll(SyncReport r, {Map<String, Set<String>>? seen}) async {
     for (final t in pullTables) {
-      await _pull(t, r, stockItems, photos);
+      await _pull(t, r, seen);
       if (t == 'apiary_members') {
         final before = await repo.getMeta(accessKey);
         final now = await repo.applyAccess(api.userId);
@@ -179,7 +245,7 @@ class SyncEngine {
           await repo.setMeta(accessKey, now);
           // новий доступ: давні рядки власника лежать «до» курсора - заново
           // все (свого це не зачепить: отримане співпаде з наявним)
-          if (!again && _gained(before ?? '', now)) {
+          if (seen == null && _gained(before ?? '', now)) {
             for (final x in pullTables.skip(1)) {
               await repo.setMeta(cursorKey(x), '');
             }
@@ -187,9 +253,8 @@ class SyncEngine {
         }
       }
     }
-    if (stockItems.isNotEmpty) await repo.recomputeStock(stockItems);
     await repo.mergeSeedDuplicates();
-    await _pullPhotos(photos, r);
+    await _pullPhotos(r);
     if (r.received > 0) repo.notifyAllChanged();
   }
 
@@ -198,28 +263,27 @@ class SyncEngine {
     return now.split(',').any((x) => x.isNotEmpty && !b.contains(x));
   }
 
-  Future<void> _pull(String table, SyncReport r, Set<String> stockItems, Set<(String, String)> photos) async {
+  Future<void> _pull(String table, SyncReport r, Map<String, Set<String>>? seen) async {
     final cols = await _columns(table);
     var cursor = await repo.getMeta(cursorKey(table));
     for (;;) {
       final page = await api.pull(table, (cursor == null || cursor.isEmpty) ? null : cursor);
+      final stockItems = <String>{};
       await repo.db.transaction((txn) async {
         for (final row in page.rows) {
           if (await _apply(txn, table, row, cols)) r.received++;
+          seen?.putIfAbsent(table, () => {}).add(row['id']! as String);
           if (table == 'stock_moves') stockItems.add(row['item_id']! as String);
-          if (table == 'stock_items') {
-            stockItems.add(row['id']! as String);
-            final ph = row['photo'] as String?;
-            if (ph != null && ph.isNotEmpty && row['deleted'] != 1) {
-              photos.add(((row['owner_id'] as String?) ?? api.userId, ph));
-            }
-          }
+          if (table == 'stock_items') stockItems.add(row['id']! as String);
         }
         if (page.next != null) {
           await txn.insert('app_meta', {'key': cursorKey(table), 'value': page.next},
               conflictAlgorithm: ConflictAlgorithm.replace);
         }
       });
+      // залишок - одразу (обірвалась синхронізація після цієї сторінки - він
+      // уже правильний)
+      if (stockItems.isNotEmpty) await repo.recomputeStock(stockItems);
       cursor = page.next;
       if (!page.more || page.rows.isEmpty) break;
     }
@@ -254,13 +318,20 @@ class SyncEngine {
     return true;
   }
 
-  Future<void> _pullPhotos(Set<(String, String)> photos, SyncReport r) async {
+  /// Фото складу, яких на телефоні ще немає (зокрема ті, що раніше не
+  /// вдалось отримати: файл ще не дійшов на сервер, обірвався зв'язок), -
+  /// щоразу, доки не з'являться.
+  Future<void> _pullPhotos(SyncReport r) async {
     if (StockPhotos.dir == null) return;
-    for (final (owner, name) in photos) {
+    final rows = await repo.db.rawQuery(
+        "SELECT photo, owner_id FROM stock_items WHERE deleted = 0 AND photo IS NOT NULL AND photo != ''");
+    for (final row in rows) {
+      final name = row['photo']! as String;
       if (StockPhotos.isLegacy(name) || await File(StockPhotos.fullPath(name)!).exists()) continue;
+      final owner = (row['owner_id'] as String?) ?? api.userId;
       try {
         final bytes = await api.getPhoto(owner, name);
-        if (bytes == null) continue;
+        if (bytes == null) continue; // ще не вивантажене - наступного разу
         await StockPhotos.writeDownloaded(name, bytes);
         final thumb = await api.getPhoto(owner, StockPhotos.thumbName(name));
         if (thumb != null) await StockPhotos.writeDownloaded(StockPhotos.thumbName(name), thumb);

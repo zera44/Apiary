@@ -90,6 +90,29 @@ void main() {
       expect(SyncService.info.value.needsSignIn, isTrue);
     });
 
+    test('вхід на сервері відкликали - служба просить увійти знову', () async {
+      await repo.addApiary('Перша');
+      final s = svc(api: _SignedOutApi(server.as('u1')));
+      var asked = 0;
+      s.onSignedOut = () async => asked++;
+      expect(await s.syncNow(), isNull);
+      await Future<void>.delayed(Duration.zero);
+      expect(asked, 1);
+      expect(s.api, isNull);
+      expect(SyncService.info.value.disabled, isTrue);
+    });
+
+    test('сервер налаштовано, а вхід не вдався - повтор не частіше, ніж раз на 5 хв', () async {
+      final s = SyncService(repo, config: _config, mobileOnly: () async => false);
+      var tries = 0;
+      s.reconnect = () async => tries++;
+      final t = DateTime(2026, 10, 10, 12);
+      await withClock(Clock.fixed(t), s.tick);
+      await withClock(Clock.fixed(t.add(const Duration(minutes: 1))), s.tick);
+      await withClock(Clock.fixed(t.add(const Duration(minutes: 6))), s.tick);
+      expect(tries, 2);
+    });
+
     test('синхронізація: черга порожня, стан «остання синхронізація»', () async {
       await repo.addApiary('Перша');
       final s = svc();
@@ -355,4 +378,16 @@ void main() {
       expect(await a.getPhoto('owner-1', 'none.webp'), isNull);
     });
   });
+}
+
+/// Сервер, що вважає вхід відкликаним.
+class _SignedOutApi implements SyncApi {
+  final SyncApi inner;
+  _SignedOutApi(this.inner);
+  @override
+  String get userId => inner.userId;
+  @override
+  Future<void> upsert(String table, List<Map<String, Object?>> rows) => throw const SyncSignedOut();
+  @override
+  dynamic noSuchMethod(Invocation i) => throw const SyncSignedOut();
 }

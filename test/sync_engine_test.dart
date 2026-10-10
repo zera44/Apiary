@@ -4,7 +4,10 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/data/sync_api.dart';
 import 'package:apiary/data/sync_engine.dart';
+import 'package:apiary/services/stock_photos.dart';
+import 'dart:typed_data';
 import 'package:apiary/data/sync_repo.dart';
 import 'package:apiary/services/backups.dart';
 import 'package:clock/clock.dart';
@@ -257,6 +260,112 @@ void main() {
       expect(again.rejected, 0);
       // уночі - ще спроба (раптом дозвіл з'явився)
       expect(await SyncEngine(petro, server.as('petro')).retryRejected(), 1);
+    });
+  });
+
+  group('після перевірки', () {
+    test('власниця забрала одну пасіку й дала іншу між синхронізаціями - нова лишається', () async {
+      final olena = await phone(), petro = await phone();
+      final river = await olena.addApiary('Річка');
+      final forest = await olena.addApiary('Ліс');
+      await sync(olena, 'olena');
+      final m1 = server.addMember('olena', 'petro', apiary: river);
+      await sync(petro, 'petro');
+      server.removeMember(m1);
+      server.addMember('olena', 'petro', apiary: forest);
+      for (var i = 0; i < 3; i++) {
+        await sync(petro, 'petro');
+        expect(await petro.getApiary(river), isNull, reason: 'хід $i');
+        expect(await petro.getApiary(forest), isNotNull, reason: 'хід $i');
+      }
+    });
+
+    test('фото: ще не дійшло на сервер - отримаємо наступного разу', () async {
+      final dir = Directory.systemTemp.createTempSync('apiary_photos_');
+      addTearDown(() {
+        StockPhotos.debugDir = null;
+        dir.deleteSync(recursive: true);
+      });
+      StockPhotos.debugDir = dir.path;
+      final a = await phone(), b = await phone();
+      final item = await a.addStockItem('Цукор', 'кг');
+      File(p.join(dir.path, 'ph.webp')).writeAsBytesSync([1, 2, 3]);
+      await a.updateStockItem(item, photo: ('ph.webp',));
+      await sync(a, 'u1');
+      expect(server.photos.keys, contains('u1/ph.webp'));
+      // на телефоні Б тієї ж теки немає - імітуємо: файл прибрано, на сервері ще нема
+      final onServer = server.photos.remove('u1/ph.webp')!;
+      File(p.join(dir.path, 'ph.webp')).deleteSync();
+      final r1 = await sync(b, 'u1');
+      expect(r1.photosDown, 0);
+      server.photos['u1/ph.webp'] = onServer;
+      final r2 = await sync(b, 'u1');
+      expect(r2.photosDown, 1);
+      expect(File(p.join(dir.path, 'ph.webp')).readAsBytesSync(), Uint8List.fromList([1, 2, 3]));
+    });
+
+    test('зв\'язок обірвався після складу - залишок усе одно правильний', () async {
+      final a = await phone(), b = await phone();
+      final item = await a.addStockItem('Цукор', 'кг');
+      await sync(a, 'u1');
+      await sync(b, 'u1');
+      await later(() => a.receiveStock(item, 5, total: 0));
+      await later(() => b.receiveStock(item, 3, total: 0));
+      await sync(b, 'u1');
+      server.offlineTables.add('fin_categories');
+      await expectLater(sync(a, 'u1'), throwsA(isA<SyncOffline>()));
+      expect((await a.db.query('stock_items', where: 'id = ?', whereArgs: [item])).single['quantity'], 8);
+    });
+
+    test('сервер не дає позначити запис історії видаленим - решта синхронізації йде далі', () async {
+      final a = await phone();
+      await a.db.insert('sync_deletions', {'tbl': 'parameter_records', 'id': 'r-bad', 'at': 1.0});
+      server.rejectDeletes.add('r-bad');
+      await a.addApiary('Перша');
+      final r = await sync(a, 'u1');
+      expect(r.rejected, 1);
+      expect(await n(a, 'sync_deletions'), 0);
+      expect(await a.countUnsynced(), 0);
+    });
+
+    test('понад 150 днів без синхронізації - усе заново, стерте на сервері прибрано', () async {
+      final a = await phone();
+      final ap = await a.addApiary('Давно стерта');
+      await sync(a, 'u1');
+      server.t('apiaries').remove(ap); // сервер давно прибрав позначку
+      await a.setMeta(SyncEngine.lastPullKey, '${Repository.now() - 200 * 86400}');
+      await sync(a, 'u1');
+      expect(await n(a, 'apiaries', 'id = ?', [ap]), 0);
+    });
+
+    test('інший акаунт Google на тому ж телефоні - не змішуємо дані', () async {
+      final a = await phone();
+      await a.addApiary('Пасіка першого');
+      await sync(a, 'u1');
+      await expectLater(sync(a, 'u2'), throwsA(isA<SyncOtherAccount>()));
+      expect(server.t('apiaries').values.where((r) => r['owner_id'] == 'u2'), isEmpty);
+    });
+
+    test('відновили копію, синхронізували, «Скасувати» - нове після копії повертається', () async {
+      final dir = Directory.systemTemp.createTempSync('apiary_undo_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final a = Repository(await AppDatabase.open(databaseFactoryFfiNoIsolate, p.join(dir.path, 'a.db')));
+      await a.init();
+      opened.add(a);
+      final b = await phone();
+      final backups = BackupService(a, dir: p.join(dir.path, 'bk'), factory: databaseFactoryFfiNoIsolate);
+      final copy = await later(() => backups.create());
+      final fresh = await later(() => a.addApiary('Нова після копії'));
+      await later(() => sync(a, 'u1'));
+      final before = await later(() => backups.restore(copy));
+      await later(() => sync(a, 'u1'));
+      await later(() => sync(b, 'u1'));
+      expect(await n(b, 'apiaries', 'id = ? AND deleted = 0', [fresh]), 0);
+      await later(() => backups.restoreFrom(before.path)); // «Скасувати»
+      await later(() => sync(a, 'u1'));
+      await later(() => sync(b, 'u1'));
+      expect(await n(a, 'apiaries', 'id = ? AND deleted = 0', [fresh]), 1);
+      expect(await n(b, 'apiaries', 'id = ? AND deleted = 0', [fresh]), 1);
     });
   });
 

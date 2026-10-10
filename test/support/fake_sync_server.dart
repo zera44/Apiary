@@ -20,6 +20,12 @@ class FakeSyncServer {
   /// Зв'язку немає - кожен запит падає.
   bool offline = false;
 
+  /// Зв'язок обривається на забиранні цих таблиць.
+  final offlineTables = <String>{};
+
+  /// Сервер не дає позначати видаленими ці id.
+  final rejectDeletes = <String>{};
+
   /// Скільки запитів upsert прийшло (перевірка пакетів).
   int upserts = 0;
 
@@ -153,6 +159,7 @@ class _Client implements SyncApi {
   @override
   Future<void> markDeleted(String table, List<String> ids, double at) async {
     s._net();
+    if (ids.any(s.rejectDeletes.contains)) throw const SyncRejected(403, 'не можна');
     for (final id in ids) {
       final old = s.t(table)[id];
       if (old == null || !s._canWrite(userId, table, old)) continue;
@@ -163,6 +170,7 @@ class _Client implements SyncApi {
   @override
   Future<PullPage> pull(String table, String? after, {int limit = 500}) async {
     s._net();
+    if (s.offlineTables.contains(table)) throw const SyncOffline();
     final from = after == null ? 0 : int.parse(after);
     final rows = [
       for (final r in s.t(table).values)

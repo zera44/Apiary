@@ -102,6 +102,15 @@ class SyncService {
   /// Чи телефон зараз лише на мобільному інтернеті (тести підставляють своє).
   final Future<bool> Function() _mobileOnly;
 
+  /// Вхід на сервер закінчився (відкликали, довго не відкривали) - увійти
+  /// знову (тихо через Google). Задає [Server].
+  Future<void> Function()? onSignedOut;
+
+  /// Сервер налаштовано, а вхід ще не вдався (не було мережі) - спробувати
+  /// знову. Задає [Server].
+  Future<void> Function()? reconnect;
+  DateTime? _reconnectAt;
+
   Timer? _timer;
   StreamSubscription<List<ConnectivityResult>>? _net;
   Future<SyncReport?>? _running;
@@ -210,6 +219,17 @@ class SyncService {
   /// Один хід розкладу (фонове завдання, таймер застосунку): зміни, якщо
   /// пора, і нічна копія, якщо пора.
   Future<void> tick() async {
+    final f = reconnect;
+    if (!enabled && configured && f != null) {
+      final now = clock.now();
+      final at = _reconnectAt;
+      if (at == null || now.difference(at) > const Duration(minutes: 5) || at.isAfter(now)) {
+        _reconnectAt = now;
+        try {
+          await f();
+        } catch (_) {}
+      }
+    }
     await maybeSync();
     await maybeNightly();
   }
@@ -249,6 +269,12 @@ class SyncService {
     } on SyncOffline catch (e) {
       await repo.setMeta(offlineKey, '1');
       debugPrint('Синхронізація: $e');
+    } on SyncSignedOut catch (e) {
+      await repo.setMeta(offlineKey, '');
+      await repo.setMeta(errorKey, '$e');
+      this.api = null;
+      final f = onSignedOut;
+      if (f != null) unawaited(f().catchError((Object _) {}));
     } catch (e) {
       await repo.setMeta(offlineKey, '');
       await repo.setMeta(errorKey, '$e');

@@ -25,9 +25,20 @@ abstract final class Server {
   /// Тести: інший сховок входу.
   static Future<SessionStore> Function() sessionStore = SessionStore.forApp;
 
-  static void _attach(Repository repo, SupabaseApi? api) {
+  static void _attach(Repository repo, SupabaseApi? api, [AuthService? auth]) {
     _api = api;
-    SyncService.current?.api = api;
+    final sync = SyncService.current;
+    sync?.api = api;
+    if (sync != null && auth != null) {
+      // вхід на сервер відкликали - тихо увійти знову; не було мережі - знову
+      // спробувати, коли застосунок перевірятиме розклад
+      sync.onSignedOut = () async {
+        await (await sessionStore()).write(null);
+        _attach(repo, null, auth);
+        await connect(repo, auth);
+      };
+      sync.reconnect = auth.user == null ? null : () => connect(repo, auth);
+    }
     SharingService.current = SharingService(api, repo);
     unawaited(SyncService.current?.refreshInfo());
   }
@@ -37,20 +48,20 @@ abstract final class Server {
   static Future<void> start(Repository repo, AuthService auth) async {
     final config = AppConfig.current;
     if (!config.syncConfigured || auth.user == null) {
-      _attach(repo, null);
+      _attach(repo, null, auth);
       return;
     }
     try {
       final restored = await SupabaseApi.restore(config, await sessionStore());
       if (restored != null && restored.session.email == auth.user!.email.toLowerCase()) {
-        _attach(repo, restored);
+        _attach(repo, restored, auth);
         unawaited(SyncService.now());
         return;
       }
       await connect(repo, auth);
     } catch (e) {
       debugPrint('Сервер: $e');
-      _attach(repo, null);
+      _attach(repo, null, auth);
     }
   }
 
@@ -63,7 +74,7 @@ abstract final class Server {
     if (token == null) return false;
     try {
       final api = await SupabaseApi.signInWithGoogle(config, await sessionStore(), token);
-      _attach(repo, api);
+      _attach(repo, api, auth);
       unawaited(SyncService.now());
       return true;
     } on SyncOffline catch (e) {
@@ -76,6 +87,10 @@ abstract final class Server {
   static Future<void> signOut(Repository repo) async {
     final api = _api;
     _attach(repo, null);
+    // вийшли свідомо - не входити знову самим
+    SyncService.current
+      ?..reconnect = null
+      ..onSignedOut = null;
     try {
       if (api != null) {
         await api.signOut();

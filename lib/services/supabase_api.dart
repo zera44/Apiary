@@ -158,7 +158,8 @@ class SupabaseApi implements SyncApi, SharingApi {
   Future<void> signOut() async {
     try {
       await _http
-          .post(_join(base, '/auth/v1/logout'), headers: await _headers())
+          // лише цей телефон (інакше вийшли б і всі інші пристрої акаунта)
+          .post(_join(base, '/auth/v1/logout', {'scope': 'local'}), headers: await _headers())
           .timeout(const Duration(seconds: 10));
     } catch (_) {
       // без зв'язку - просто забуваємо локально
@@ -233,6 +234,8 @@ class SupabaseApi implements SyncApi, SharingApi {
     if (s >= 500 || s == 408 || s == 429) throw SyncOffline('сервер тимчасово недоступний ($s)');
     throw SyncRejected(s, msg);
   }
+
+  static final _notFound = RegExp(r'not.?found|404', caseSensitive: false);
 
   static String _message(String body) {
     try {
@@ -313,7 +316,8 @@ class SupabaseApi implements SyncApi, SharingApi {
           .timeout(timeout));
       return r.bodyBytes;
     } on SyncRejected catch (e) {
-      if (e.status == 404 || e.status == 400) return null; // фото ще не вивантажене
+      // Storage на «немає такого файлу» відповідає 400 або 404 з not_found
+      if (e.status == 404 || (e.status == 400 && _notFound.hasMatch(e.message))) return null;
       rethrow;
     }
   }

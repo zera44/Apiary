@@ -2470,12 +2470,18 @@ class Repository {
         await txn.delete(t, where: 'apiary_id = ?', whereArgs: [apiaryId]);
       }
       await txn.delete('elements', where: 'apiary_id = ?', whereArgs: [apiaryId]);
-      await txn.delete('apiary_members', where: 'apiary_id = ?', whereArgs: [apiaryId]);
+      // записи про доступ - лише вже забраний (чинний, скажімо, до іншої
+      // пасіки цього власника, ще знадобиться: інакше його вже не отримати)
+      await txn.delete('apiary_members', where: 'apiary_id = ? AND deleted = 1', whereArgs: [apiaryId]);
       await txn.delete('apiaries', where: 'id = ?', whereArgs: [apiaryId]);
       // свої дані (власник - цей телефон) так не прибираються ніколи
       if (owner == null) return;
       final left = await txn.query('apiaries', where: 'owner_id = ?', whereArgs: [owner], limit: 1);
       if (left.isNotEmpty) return;
+      // доступ до цього власника ще є (до іншої пасіки) - довідники лишаються
+      final live = await txn.query('apiary_members',
+          where: 'owner_id = ? AND deleted = 0', whereArgs: [owner], limit: 1);
+      if (live.isNotEmpty) return;
       for (final t in AppDatabase.ownerTables) {
         await txn.delete(t, where: 'owner_id = ?', whereArgs: [owner]);
       }
