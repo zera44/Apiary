@@ -33,6 +33,7 @@ import 'package:apiary/screens/whats_new_screen.dart';
 import 'package:apiary/ui/characteristics_panel.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/grid_view.dart';
+import 'package:apiary/ui/mode_toggle.dart';
 import 'package:apiary/ui/theme.dart';
 import 'dart:io';
 
@@ -1854,6 +1855,12 @@ void main() {
     expect(find.text('Почати'), findsOneWidget);
     expect(backdropId(tester), second);
     expect(backdropCells(tester), await elementIds(tester, second));
+    // карта на фоні - лише видно: без перемикача режимів і зуму (не налазять
+    // на пошту й «Вийти»); стан синхронізації - у Налаштуваннях, не тут
+    expect(find.byType(ModeToggle), findsNothing);
+    expect(find.byType(ZoomButtons), findsNothing);
+    expect(find.text(tr.syncDisabled), findsNothing);
+    expect(find.text('pasichnyk@example.com'), findsOneWidget);
 
     // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
     // відкрили з нагадування) - знову відкрили: під меню вже вона

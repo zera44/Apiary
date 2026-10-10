@@ -26,7 +26,6 @@ import 'splash_screen.dart';
 import 'finance_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
-import '../ui/sync_status.dart';
 import 'tutorial_screen.dart';
 import 'whats_new_screen.dart';
 
@@ -297,9 +296,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   if (user != null) ...[
                     const SizedBox(height: 14),
+                    // стан синхронізації - у Налаштуваннях → «Головне»
                     Text(user.email,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                    const SyncStatusLine(),
                     TextButton(
                       onPressed: () => _signOut(context),
                       child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
