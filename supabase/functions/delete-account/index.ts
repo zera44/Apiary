@@ -2,8 +2,9 @@
 //
 // Видаляє все, що належить користувачу, який викликає функцію:
 //   * файли: stock-photos/<user>/..., backups/<user>/...;
-//   * запрошення, надіслані на його пошту (решту його рядків бази видаляє
-//     сама база разом з акаунтом: owner_id ... on delete cascade);
+//   * записи про доступ - позначками «видалено» (телефони помічників і
+//     власників дізнаються й приберуть чужі дані), запрошення від нього й
+//     на його пошту - геть (delete_account_prepare);
 //   * сам акаунт (Auth) - а з ним пасіки, вулики, огляди, склад, фінанси,
 //     помічники, облік копій.
 // Записи, які він робив як помічник у чужих пасіках, належать власникам
@@ -40,7 +41,22 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
 
   const admin = { apikey: env.serviceKey, Authorization: `Bearer ${env.serviceKey}` };
 
-  // 1. файли (сторінками: список - видалити - знову, доки не порожньо)
+  // 1. доступ (помічники й власники) - позначками «видалено», щоб їхні
+  //    телефони прибрали чужі дані; запрошення - геть
+  const prep = await fetchFn(`${env.url}/rest/v1/rpc/delete_account_prepare`, {
+    method: 'POST',
+    headers: { ...admin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_user: id }),
+  });
+  if (!prep.ok) return json({ error: `доступ: ${prep.status}` }, 502);
+
+  // 2. акаунт - а з ним усі його рядки бази. Після цього нові файли від
+  //    нього сховище не прийме (правило account_alive), тож прибирання файлів
+  //    нижче - остаточне
+  const gone = await fetchFn(`${env.url}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers: admin });
+  if (!gone.ok && gone.status !== 404) return json({ error: `акаунт: ${gone.status}` }, 502);
+
+  // 3. файли (сторінками: список - видалити - знову, доки не порожньо)
   for (const bucket of BUCKETS) {
     for (let round = 0; round < 1000; round++) {
       const list = await fetchFn(`${env.url}/storage/v1/object/list/${bucket}`, {
@@ -59,19 +75,6 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
       if (!del.ok) return json({ error: `файли (${bucket}): ${del.status}` }, 502);
     }
   }
-
-  // 2. запрошення на його пошту (у них - пошта)
-  if (user.email) {
-    const inv = await fetchFn(
-      `${env.url}/rest/v1/invitations?to_email=eq.${encodeURIComponent(user.email.trim().toLowerCase())}`,
-      { method: 'DELETE', headers: { ...admin, Prefer: 'return=minimal' } },
-    );
-    if (!inv.ok) return json({ error: `запрошення: ${inv.status}` }, 502);
-  }
-
-  // 3. акаунт - а з ним усі його рядки бази
-  const gone = await fetchFn(`${env.url}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers: admin });
-  if (!gone.ok && gone.status !== 404) return json({ error: `акаунт: ${gone.status}` }, 502);
   return json({ status: 'deleted' });
 }
 

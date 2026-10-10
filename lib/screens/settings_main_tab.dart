@@ -186,11 +186,46 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
     }
   }
 
+  bool _signInAgain = false;
+
+  Future<void> _loadSignInAgain() async {
+    final v = await Server.needsSignInAgain(widget.repo);
+    if (mounted && v != _signInAgain) setState(() => _signInAgain = v);
+  }
+
+  Future<void> _doSignInAgain() async {
+    final auth = Server.auth;
+    if (auth == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await auth.signIn();
+      await Server.connect(widget.repo, auth);
+    } catch (e) {
+      if (mounted) _say(tr.syncError('$e'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+      await _loadSignInAgain();
+    }
+  }
+
   List<Widget> _syncControls() {
     final s = _sync;
     if (widget.lesson || s == null || !s.configured) return const [];
+    unawaited(_loadSignInAgain());
     final on = s.enabled && !_busy;
     return [
+      if (_signInAgain && !s.enabled) ...[
+        const SizedBox(height: 8),
+        Text(tr.syncSignInAgainHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        const SizedBox(height: 8),
+        PillButton(
+          text: tr.syncSignInAgain,
+          bg: AppColors.accent,
+          height: 40,
+          width: double.infinity,
+          onPressed: _busy ? null : _doSignInAgain,
+        ),
+      ],
       const SizedBox(height: 10),
       PillButton(
         text: tr.syncNow,

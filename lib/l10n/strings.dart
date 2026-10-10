@@ -36,6 +36,8 @@ abstract class AppStrings {
   String syncRejected(int n);
   String get syncNeedsSignIn;
   String get syncNow;
+  String get syncSignInAgain;
+  String get syncSignInAgainHint;
   String get syncDone;
   String get syncMobile;
   String get syncMobileWarnTitle;

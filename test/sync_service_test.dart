@@ -11,6 +11,8 @@ import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/services/app_config.dart';
 import 'package:apiary/services/backups.dart';
 import 'package:apiary/services/server_backups.dart';
+import 'package:apiary/services/server.dart';
+import 'widget_test.dart' show FakeAuth;
 import 'package:apiary/services/supabase_api.dart';
 import 'package:apiary/screens/settings_main_tab.dart';
 import 'package:apiary/l10n/l10n.dart';
@@ -112,6 +114,28 @@ void main() {
       await withClock(Clock.fixed(t.add(const Duration(minutes: 1))), s.tick);
       await withClock(Clock.fixed(t.add(const Duration(minutes: 6))), s.tick);
       expect(tries, 2);
+    });
+
+    test('вхід на сервер відкликали (акаунт видалили з іншого телефона) - тихо не входимо', () async {
+      final prev = AppConfig.current;
+      AppConfig.current = _config;
+      addTearDown(() => AppConfig.current = prev);
+      await repo.setMeta(Server.signInAgainKey, '1');
+      final auth = FakeAuth(signedIn: true);
+      expect(await Server.connect(repo, auth, silent: true), isFalse);
+      expect(await Server.needsSignInAgain(repo), isTrue);
+    });
+
+    test('замок для видалення акаунта: чекає, доки фонова синхронізація закінчить', () async {
+      final s = svc();
+      await repo.setMeta(SyncService.lockKey,
+          '${clock.now().add(const Duration(minutes: 5)).microsecondsSinceEpoch / 1e6}');
+      expect(await s.holdLock(wait: const Duration(milliseconds: 1500)), isFalse);
+      await repo.setMeta(SyncService.lockKey, '');
+      expect(await s.holdLock(), isTrue);
+      expect(await s.syncNow(), isNull, reason: 'поки замок у видалення - синхронізації немає');
+      await s.releaseLock();
+      expect(await s.syncNow(), isNotNull);
     });
 
     test('синхронізація: черга порожня, стан «остання синхронізація»', () async {

@@ -45,6 +45,12 @@ class AppStringsUk extends AppStrings {
   @override
   String get syncNow => 'Синхронізувати зараз';
   @override
+  String get syncSignInAgain => 'Увійти знову';
+  @override
+  String get syncSignInAgainHint =>
+      'Вхід на сервер закінчився (зокрема, якщо акаунт видалили з іншого телефона). '
+      'Щоб синхронізувати далі, увійдіть знову.';
+  @override
   String get syncDone => 'Синхронізовано';
   @override
   String get syncMobile => 'Синхронізувати через мобільний інтернет';

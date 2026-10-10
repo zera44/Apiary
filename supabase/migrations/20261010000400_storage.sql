@@ -33,13 +33,25 @@ drop policy if exists "vulyk photos remove" on storage.objects;
 drop policy if exists "vulyk backups read" on storage.objects;
 drop policy if exists "vulyk backups add" on storage.objects;
 
+-- Акаунт ще існує (токен входу живе до години й після видалення акаунта -
+-- файли від видаленого акаунта не приймаємо, інакше вони лишились би
+-- назавжди).
+create or replace function public.account_alive() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from auth.users u where u.id = auth.uid())
+$$;
+revoke execute on function public.account_alive() from public, anon;
+grant execute on function public.account_alive() to authenticated;
+
 create policy "vulyk photos read" on storage.objects for select to authenticated
   using (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name)));
 create policy "vulyk photos add" on storage.objects for insert to authenticated
-  with check (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name)));
+  with check (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name))
+              and public.account_alive());
 create policy "vulyk photos change" on storage.objects for update to authenticated
   using (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name)))
-  with check (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name)));
+  with check (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name))
+              and public.account_alive());
 create policy "vulyk photos remove" on storage.objects for delete to authenticated
   using (bucket_id = 'stock-photos' and public.can_stock(public.path_owner(name)));
 
@@ -48,7 +60,7 @@ create policy "vulyk photos remove" on storage.objects for delete to authenticat
 create policy "vulyk backups read" on storage.objects for select to authenticated
   using (bucket_id = 'backups' and public.path_owner(name) = auth.uid());
 create policy "vulyk backups add" on storage.objects for insert to authenticated
-  with check (bucket_id = 'backups' and public.path_owner(name) = auth.uid());
+  with check (bucket_id = 'backups' and public.path_owner(name) = auth.uid() and public.account_alive());
 
 -- ── облік нічних копій ──────────────────────────────────────────────────
 create table if not exists public.device_backups (

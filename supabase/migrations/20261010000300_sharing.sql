@@ -92,6 +92,24 @@ begin
 end
 $$;
 
+-- Перед видаленням акаунта [p_user] (функція delete-account, ключ
+-- сервера): його записи про доступ - позначками «видалено» (без пошти), щоб
+-- телефони помічників і власників прибрали чужі дані; його запрошення -
+-- геть.
+create or replace function public.delete_account_prepare(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.apiary_members
+    set deleted = 1, stock_access = 0, email = '', updated_at = extract(epoch from now())
+    where (owner_id = p_user or user_id = p_user) and (deleted = 0 or email <> '');
+  delete from public.invitations
+    where from_user_id = p_user
+       or to_email = (select lower(trim(email)) from auth.users where id = p_user);
+end
+$$;
+revoke execute on function public.delete_account_prepare(uuid) from public, anon, authenticated;
+grant execute on function public.delete_account_prepare(uuid) to service_role;
+
 revoke execute on function public.find_user(text), public.respond_invitation(text, boolean),
   public.cancel_invitation(text), public.set_member_stock_access(text, boolean),
   public.remove_member(text) from public, anon;

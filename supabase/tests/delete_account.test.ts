@@ -22,6 +22,7 @@ function fakeServer() {
     backups: new Set(Array.from({ length: 150 }, (_, i) => `${OLENA}/n${i}.db.gz`).concat([`${IVAN}/x.db.gz`])),
   };
   const invitations = [{ to_email: 'olena@gmail.com' }, { to_email: 'ivan@gmail.com' }];
+  const prepared: string[] = [];
   const fetchFn = (async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = new URL(String(input));
     const h = new Headers(init.headers);
@@ -42,9 +43,11 @@ function fakeServer() {
       for (const p of (JSON.parse(String(init.body)) as { prefixes: string[] }).prefixes) files[del[1]].delete(p);
       return Response.json([]);
     }
-    if (url.pathname === '/rest/v1/invitations' && method === 'DELETE') {
-      const e = url.searchParams.get('to_email')!.replace(/^eq\./, '');
+    if (url.pathname === '/rest/v1/rpc/delete_account_prepare' && method === 'POST') {
+      const uid = (JSON.parse(String(init.body)) as { p_user: string }).p_user;
+      const e = uid === OLENA ? 'olena@gmail.com' : 'ivan@gmail.com';
       for (let i = invitations.length - 1; i >= 0; i--) if (invitations[i].to_email === e) invitations.splice(i, 1);
+      prepared.push(uid);
       return new Response(null, { status: 204 });
     }
     const acc = url.pathname.match(/^\/auth\/v1\/admin\/users\/(.+)$/);
@@ -53,7 +56,7 @@ function fakeServer() {
     }
     throw new Error(`неочікуваний запит ${method} ${url}`);
   }) as typeof fetch;
-  return { fetchFn, accounts, files, invitations };
+  return { fetchFn, accounts, files, invitations, prepared };
 }
 
 const call = (s: ReturnType<typeof fakeServer>, token: string) =>
@@ -69,6 +72,7 @@ test('видаляє файли, запрошення й акаунт лише �
   assert.deepEqual([...s.files['stock-photos']], [`${IVAN}/b.webp`]);
   assert.deepEqual([...s.files.backups], [`${IVAN}/x.db.gz`]); // 150 копій - сторінками
   assert.deepEqual(s.invitations, [{ to_email: 'ivan@gmail.com' }]);
+  assert.deepEqual(s.prepared, [OLENA]); // доступ - позначками, до видалення акаунта
 });
 
 test('без входу - нічого не видаляє; повторний виклик після видалення - без шкоди', async () => {

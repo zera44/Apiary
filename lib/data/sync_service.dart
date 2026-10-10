@@ -316,6 +316,20 @@ class SyncService {
 
   Future<void> _unlock() => repo.setMeta(lockKey, '');
 
+  /// Для видалення акаунта: дочекатися поточної синхронізації (і фонової -
+  /// до [wait]) і взяти замок, щоб нова не почалась. false - не вийшло.
+  Future<bool> holdLock({Duration wait = const Duration(seconds: 30)}) async {
+    await _running?.catchError((Object _) => null);
+    final until = clock.now().add(wait);
+    while (!await _lock()) {
+      if (clock.now().isAfter(until)) return false;
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    return true;
+  }
+
+  Future<void> releaseLock() => _unlock();
+
   /// Оновити рядок стану з бази.
   Future<SyncInfo> refreshInfo({bool waitingWifi = false}) async {
     if (!enabled) return info.value = SyncInfo(disabled: true, needsSignIn: configured);

@@ -31,8 +31,30 @@ select tests.ok(public.purge_tombstones() = 1, 'стерто одну давню
 select tests.ok((select array_agg(id order by id) from public.apiaries) = array['ap-live', 'ap-new', 'ap-old-notes'],
   'свіжа позначка, живий запис і пасіка з живою нотаткою лишились');
 
--- видалення акаунта (етап 7) стирає все користувача
+-- видалення акаунта (етап 7): доступ - позначками «видалено» (без пошти),
+-- запрошення - геть; далі видалення акаунта стирає все користувача
+set role authenticated;
+select tests.login('00000000-0000-0000-0000-00000000000a', 'olena@gmail.com');
+insert into public.apiaries (id, name) values ('ap-shared', 'Спільна');
+insert into public.invitations (id, to_email) values ('i-p', 'petro@gmail.com');
+select tests.login('00000000-0000-0000-0000-00000000000b', 'petro@gmail.com');
+select public.respond_invitation('i-p', true);
+select tests.fails($q$select public.delete_account_prepare('00000000-0000-0000-0000-00000000000a')$q$);
+reset role;
+select public.delete_account_prepare('00000000-0000-0000-0000-00000000000a');
 delete from auth.users where id = '00000000-0000-0000-0000-00000000000a';
+select tests.ok((select count(*) from public.apiary_members where deleted = 1 and email = '') = 1,
+  'доступ помічника - позначкою «видалено», без пошти');
+select tests.login('00000000-0000-0000-0000-00000000000b', 'petro@gmail.com');
+set role authenticated;
+select tests.ok(tests.n('public.apiary_members', 'deleted = 1') = 1, 'помічник бачить, що доступу немає');
+reset role;
+-- токен видаленого ще живий - але файлів від нього сховище не приймає
+select tests.login('00000000-0000-0000-0000-00000000000a', 'olena@gmail.com');
+set role authenticated;
+select tests.fails($q$insert into storage.objects (bucket_id, name) values
+  ('backups', '00000000-0000-0000-0000-00000000000a/late.db.gz')$q$);
+reset role;
 select tests.ok((select count(*) from public.apiaries) = 0 and (select count(*) from public.profiles
   where id = '00000000-0000-0000-0000-00000000000a') = 0, 'дані користувача стерто разом з акаунтом');
 rollback;

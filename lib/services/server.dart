@@ -38,6 +38,13 @@ abstract final class Server {
   /// Тести: інший сховок входу.
   static Future<SessionStore> Function() sessionStore = SessionStore.forApp;
 
+  /// Вхід на сервер відкликано - лише свідомий вхід (кнопка «Увійти знову»).
+  static const signInAgainKey = 'sync_sign_in_again';
+
+  /// Чи треба людині увійти знову (налаштування показують кнопку).
+  static Future<bool> needsSignInAgain(Repository repo) async =>
+      AppConfig.current.syncConfigured && _api == null && await repo.getMeta(signInAgainKey) == '1';
+
   static void _attach(Repository repo, SupabaseApi? api, [AuthService? auth]) {
     _api = api;
     final sync = SyncService.current;
@@ -45,12 +52,16 @@ abstract final class Server {
     if (sync != null && auth != null) {
       // вхід на сервер відкликали - тихо увійти знову; не було мережі - знову
       // спробувати, коли застосунок перевірятиме розклад
+      // вхід на сервер відкликали (зокрема, акаунт видалили з іншого
+      // телефона) - НЕ входити тихо (це створило б акаунт знову), а
+      // попросити людину увійти ще раз
       sync.onSignedOut = () async {
+        await repo.setMeta(signInAgainKey, '1');
         await (await sessionStore()).write(null);
         _attach(repo, null, auth);
-        await connect(repo, auth);
+        sync.reconnect = null;
       };
-      sync.reconnect = auth.user == null ? null : () => connect(repo, auth);
+      sync.reconnect = auth.user == null ? null : () => connect(repo, auth, silent: true);
       sync.onNeedsChoice = () async {
         final a = _api;
         if (a != null && choice.value == null) await _firstLogin(repo, a);
@@ -76,7 +87,7 @@ abstract final class Server {
         await _firstLogin(repo, restored);
         return;
       }
-      await connect(repo, auth);
+      await connect(repo, auth, silent: true);
     } catch (e) {
       debugPrint('Сервер: $e');
       _attach(repo, null, auth);
@@ -85,14 +96,18 @@ abstract final class Server {
 
   /// Після входу Google: увійти на сервер і одразу синхронізуватись.
   /// Без токена чи без зв'язку - тихо (спробуємо при наступному запуску).
-  static Future<bool> connect(Repository repo, AuthService auth) async {
+  /// [silent] - без участі людини (запуск, повтор): не входить, якщо вхід
+  /// на сервер колись відкликали.
+  static Future<bool> connect(Repository repo, AuthService auth, {bool silent = false}) async {
     _auth = auth;
     final config = AppConfig.current;
     if (!config.syncConfigured) return false;
+    if (silent && await repo.getMeta(signInAgainKey) == '1') return false;
     final token = await auth.idToken();
     if (token == null) return false;
     try {
       final api = await SupabaseApi.signInWithGoogle(config, await sessionStore(), token);
+      await repo.setMeta(signInAgainKey, '');
       _attach(repo, api, auth);
       await _firstLogin(repo, api);
       return true;
@@ -130,7 +145,24 @@ abstract final class Server {
   static Future<void> deleteAccount(Repository repo) async {
     final api = _api;
     if (api == null) throw const SyncOffline('немає зв\'язку із сервером - спробуйте пізніше');
-    await deleteAccountAndData(repo: repo, deleteOnServer: api.deleteAccount);
+    // синхронізацію - зупинити й дочекатись (інакше вона повернула б дані
+    // в щойно очищену базу), фоновому завданню - забрати вхід і замок
+    final sync = SyncService.current;
+    sync
+      ?..api = null
+      ..reconnect = null
+      ..onSignedOut = null;
+    if (!await (sync ?? SyncService(repo)).holdLock()) {
+      sync?.api = api;
+      throw const SyncOffline('саме йде синхронізація - спробуйте за хвилину');
+    }
+    try {
+      await deleteAccountAndData(repo: repo, deleteOnServer: api.deleteAccount);
+    } catch (e) {
+      sync?.api = api;
+      await sync?.releaseLock();
+      rethrow;
+    }
     _attach(repo, null);
     choice.value = null;
     SyncService.current

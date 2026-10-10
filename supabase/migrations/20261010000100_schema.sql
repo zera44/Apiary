@@ -299,11 +299,15 @@ create table if not exists public.fin_lines (
 -- ── спільний доступ ─────────────────────────────────────────────────────
 -- помічник [user_id] бачить пасіку [apiary_id] власника [owner_id]
 -- (apiary_id NULL - усі пасіки власника, зокрема майбутні)
+-- Без зв'язку з auth.users: коли акаунт видаляють, записи про доступ стають
+-- позначками «видалено» (див. delete_account_prepare) - так телефони
+-- помічника й власника дізнаються, що доступу більше немає. Позначки
+-- стирає нічне прибирання.
 create table if not exists public.apiary_members (
   id text primary key default gen_random_uuid()::text,
-  owner_id uuid not null references auth.users (id) on delete cascade,
+  owner_id uuid not null,
   apiary_id text,
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid not null,
   email text not null,
   role text not null default 'helper',
   stock_access integer not null default 0 check (stock_access in (0, 1)),
