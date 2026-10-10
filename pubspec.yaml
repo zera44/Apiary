@@ -59,6 +59,7 @@ dependencies:
   # застосунок скачує один раз при першому голосовому вводі); лише Android
   vosk_flutter:
     path: packages/vosk_flutter
+  workmanager: ^0.10.10
 
 dev_dependencies:
   flutter_test:

@@ -44,6 +44,63 @@ class AppStringsUk extends AppStrings {
   @override
   String photoFailed(String details) => 'Не вдалося отримати фото: $details';
 
+  // ---- Резервні копії ----
+  @override
+  String get backupsSection => 'Резервні копії';
+  @override
+  String get backupsHint => 'Копія даних робиться сама кожні 6 годин і зберігається на цьому '
+      'телефоні 2 дні. Фото в копію не входять - вони лишаються на телефоні.';
+  @override
+  String backupsLast(String when) => 'Остання копія: $when';
+  @override
+  String get backupsNone => 'Ще немає жодної копії';
+  @override
+  String get backupNow => 'Зробити копію зараз';
+  @override
+  String get backupMade => 'Копію зроблено';
+  @override
+  String backupFailed(String details) => 'Не вдалося зробити копію: $details';
+  @override
+  String get backupKindAuto => 'автоматична';
+  @override
+  String get backupKindManual => 'зроблена вручну';
+  @override
+  String get backupKindBeforeRestore => 'стан перед відновленням';
+  @override
+  String get backupRestore => 'Відновити';
+  @override
+  String get backupRestoreTitle => 'Відновити дані з копії?';
+  @override
+  String backupRestoreText(String when) =>
+      'Дані на цьому телефоні замінить копія від $when. Поточний стан спершу збережеться '
+      'окремою копією - відновлення можна буде скасувати.';
+  @override
+  String get backupRestored => 'Дані відновлено з копії';
+  @override
+  String backupRestoreFailed(String details) => 'Не вдалося відновити: $details';
+  @override
+  String get backupSaveToFile => 'Зберегти у файл';
+  @override
+  String get backupSaveDialog => 'Зберегти резервну копію';
+  @override
+  String get backupShare => 'Поділитися';
+  @override
+  String get backupSaved => 'Копію збережено у файл';
+  @override
+  String get backupSaveCancelled => 'Збереження скасовано';
+  @override
+  String backupSaveFailed(String details) => 'Не вдалося зберегти файл: $details';
+  @override
+  String get undo => 'Скасувати';
+  @override
+  String get cancel => 'Скасувати';
+
+  @override
+  String fileSize(int bytes) {
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).ceil()} КБ';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1).replaceAll('.', ',')} МБ';
+  }
+
   // ---- Дата й час ----
   @override
   String todayAt(String hm) => 'сьогодні $hm';

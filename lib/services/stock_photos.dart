@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -94,7 +95,14 @@ class PhotoArgs {
 PhotoPair preparePhoto(PhotoArgs a) {
   final src = decodeReceiptPhoto(a.bytes);
   if (src == null) throw const FormatException('файл не є фото');
-  final upright = img.bakeOrientation(src);
+  var upright = img.bakeOrientation(src);
+  // прозоре (PNG, WebP з галереї) - на біле тло (JPEG/WebP-фото прозорості
+  // не мають, без цього тло стало б чорним)
+  if (upright.hasAlpha) {
+    final bg = img.Image(width: upright.width, height: upright.height)
+      ..clear(img.ColorRgb8(255, 255, 255));
+    upright = img.compositeImage(bg, upright);
+  }
   // жодних метаданих: ні GPS (де зроблено фото), ні моделі телефона
   upright.exif = img.ExifData();
   final full = _fit(upright, kPhotoFullSide);
@@ -189,8 +197,10 @@ class StockPhotos {
     final d = _dir;
     if (d == null) throw StateError('тека фото невідома (StockPhotos.init)');
     final pair = await encoder.encode(source);
-    _check(pair.full, pair.width, pair.height, kPhotoFullSide);
-    _check(pair.thumb, pair.thumbWidth, pair.thumbHeight, kPhotoThumbSide);
+    // перевірка - розібрати назад (в окремому потоці: це не швидко)
+    _check(await compute(photoSize, pair.full), pair.full, pair.width, pair.height, kPhotoFullSide);
+    _check(await compute(photoSize, pair.thumb), pair.thumb, pair.thumbWidth, pair.thumbHeight,
+        kPhotoThumbSide);
     await Directory(d).create(recursive: true);
     final name = '${const Uuid().v4()}.${encoder.ext}';
     final full = File(p.join(d, name));
@@ -209,8 +219,7 @@ class StockPhotos {
     return name;
   }
 
-  static void _check(Uint8List bytes, int w, int h, int side) {
-    final size = photoSize(bytes);
+  static void _check((int, int)? size, Uint8List bytes, int w, int h, int side) {
     if (bytes.isEmpty || size == null) throw const FormatException('фото не вдалося стиснути');
     if (size.$1 != w || size.$2 != h || math.max(w, h) > side || w <= 0 || h <= 0) {
       throw FormatException('неочікуваний розмір фото ${size.$1}×${size.$2}');
@@ -254,14 +263,22 @@ class StockPhotos {
   /// Позначка: старі фото вже перетиснуто.
   static const upgradedKey = 'stock_photos_v2';
 
+  /// Які старі фото якими новими стали ({старий шлях: нова назва}) - щоб
+  /// резервна копія, зроблена до перетискання, після відновлення показала фото.
+  static const upgradeMapKey = 'stock_photos_v2_map';
+
   /// Один раз після оновлення: перетиснути старі фото (повний шлях у базі) у
   /// новий формат. Кожне перевіряється; запис у базі змінюється, лише якщо
   /// фото тим часом не міняли, і лише тоді старий файл видаляється. Зіпсоване
-  /// чи нечитне фото лишається як було (воно й далі показується). Фото, якого
-  /// вже немає на диску, прибирається із запису. Повертає скільки перетиснуто.
+  /// фото (не розбирається) лишається як було (воно й далі показується).
+  /// Фото, якого вже немає на диску, прибирається із запису. Тимчасовий збій
+  /// (немає місця, файл зайнятий) - спробуємо при наступному запуску.
+  /// Повертає скільки перетиснуто.
   static Future<int> upgradeOld(Repository repo) async {
     if (await repo.getMeta(upgradedKey) != null) return 0;
     var done = 0;
+    var retryLater = false;
+    final renamed = <String, String>{};
     for (final (id, photo) in await repo.stockPhotoRefs()) {
       if (!isLegacy(photo)) continue;
       final f = File(photo);
@@ -272,28 +289,44 @@ class StockPhotos {
         }
         final name = await save(await f.readAsBytes());
         if (await repo.replaceStockPhoto(id, photo, name)) {
+          renamed[photo] = name;
           await remove(photo);
           done++;
         } else {
           await remove(name); // запис уже змінили - нове фото не знадобилось
         }
+      } on FormatException catch (e) {
+        debugPrint('Фото складу $id зіпсоване - лишається як було: $e');
       } catch (e) {
-        debugPrint('Фото складу $id не перетиснуто: $e');
+        debugPrint('Фото складу $id не перетиснуто (повторимо): $e');
+        retryLater = true;
       }
     }
-    await repo.setMeta(upgradedKey, '1');
+    if (renamed.isNotEmpty) {
+      // доповнюємо (між спробами могли перетиснути частину)
+      final prev = await repo.getMeta(upgradeMapKey);
+      final all = <String, String>{
+        if (prev != null) ...(jsonDecode(prev) as Map).cast<String, String>(),
+        ...renamed,
+      };
+      await repo.setMeta(upgradeMapKey, jsonEncode(all));
+    }
+    if (!retryLater) await repo.setMeta(upgradedKey, '1');
     return done;
   }
 
   /// Прибрати з теки файли, на які не посилається жоден запис (зокрема
   /// видалений: його фото знадобиться, якщо видалення скасують). Лише давні
   /// файли - щойно зроблене фото може ще не бути збережене в записі.
+  ///
+  /// [alsoKeep] - фото, на які посилаються резервні копії бази (після
+  /// відновлення вони знадобляться).
   static Future<int> sweepOrphans(Repository repo,
-      {Duration olderThan = const Duration(days: 1)}) async {
+      {Duration olderThan = const Duration(days: 1), Iterable<String> alsoKeep = const []}) async {
     final d = _dir;
     if (d == null || !await Directory(d).exists()) return 0;
     final keep = <String>{};
-    for (final (_, photo) in await repo.stockPhotoRefs()) {
+    for (final photo in [for (final (_, ph) in await repo.stockPhotoRefs()) ph, ...alsoKeep]) {
       if (isLegacy(photo)) {
         keep.add(p.basename(photo));
       } else {

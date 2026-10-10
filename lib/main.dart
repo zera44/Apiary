@@ -11,6 +11,8 @@ import 'screens/home_screen.dart';
 import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
+import 'services/background.dart';
+import 'services/backups.dart';
 import 'services/reminders.dart';
 import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
@@ -47,14 +49,27 @@ Future<void> _start() async {
   // нагадування про обхід; збій не повинен заважати запуску
   unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
   runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));
-  // один раз після оновлення - старі фото складу у новий формат; потім
-  // прибрати файли, на які вже ніщо не посилається (фоном, не заважаючи)
-  unawaited(StockPhotos.upgradeOld(repo)
-      .then((_) => StockPhotos.sweepOrphans(repo))
-      .catchError((Object e) {
-    debugPrint('Фото складу: $e');
-    return 0;
-  }));
+  unawaited(_startJobs(repo));
+}
+
+/// Після запуску, фоном (не заважаючи інтерфейсу): резервна копія, якщо
+/// пора (і далі щогодини перевірка); фонові завдання Android; один раз після
+/// оновлення - старі фото складу у новий формат і прибирання непотрібних
+/// файлів (крім тих, на які посилаються резервні копії).
+Future<void> _startJobs(Repository repo) async {
+  try {
+    final backups = await BackupService.of(repo);
+    final jobs = ForegroundJobs(backups);
+    await jobs.tick(); // копія - раніше за перетискання фото
+    jobs.start();
+    unawaited(BackgroundTasks.register().catchError((Object e) {
+      debugPrint('Фонові завдання: $e');
+    }));
+    await StockPhotos.upgradeOld(repo);
+    await StockPhotos.sweepOrphans(repo, alsoKeep: await backups.photoRefs());
+  } catch (e) {
+    debugPrint('Службові завдання: $e');
+  }
 }
 
 /// Чи можна одразу на головний екран: увійшли, обрали «без входу», або вхід

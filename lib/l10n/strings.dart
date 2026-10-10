@@ -39,6 +39,34 @@ abstract class AppStrings {
   String get photoOpen;
   String photoFailed(String details);
 
+  // ---- Резервні копії ----
+  String get backupsSection;
+  String get backupsHint;
+  String backupsLast(String when);
+  String get backupsNone;
+  String get backupNow;
+  String get backupMade;
+  String backupFailed(String details);
+  String get backupKindAuto;
+  String get backupKindManual;
+  String get backupKindBeforeRestore;
+  String get backupRestore;
+  String get backupRestoreTitle;
+  String backupRestoreText(String when);
+  String get backupRestored;
+  String backupRestoreFailed(String details);
+  String get backupSaveToFile;
+  String get backupSaveDialog;
+  String get backupShare;
+  String get backupSaved;
+  String get backupSaveCancelled;
+  String backupSaveFailed(String details);
+  String get undo;
+  String get cancel;
+
+  /// Розмір файлу: «850 КБ», «1,2 МБ».
+  String fileSize(int bytes);
+
   // ---- Дата й час ----
   /// «сьогодні 14:05»
   String todayAt(String hm);

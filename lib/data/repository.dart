@@ -73,6 +73,15 @@ class Repository {
   final ValueNotifier<int> notesChanges = ValueNotifier<int>(0);
   void _remindersDirty() => remindersChanged.value++;
 
+  /// Дані змінились цілком (відновлення з копії, завантаження з сервера):
+  /// усі екрани й нагадування перечитують своє.
+  void notifyAllChanged() {
+    mapChanges.value++;
+    remindersChanged.value++;
+    stockChanges.value++;
+    notesChanges.value++;
+  }
+
   static const _uuid = Uuid();
   static String newId() => _uuid.v4();
 
@@ -1947,10 +1956,10 @@ class Repository {
 
   /// Службова заміна фото (перетискання у новий формат): лише якщо фото
   /// позиції досі [old] - інакше його тим часом змінили, і чіпати не можна.
-  /// Час зміни запису не оновлюється (користувач нічого не міняв).
+  /// Запис стає в чергу на відправку (сервер має отримати нову назву).
   /// Повертає, чи замінено.
   Future<bool> replaceStockPhoto(String id, String old, String? photo) async {
-    final n = await db.update('stock_items', {'photo': photo},
+    final n = await db.update('stock_items', {'photo': photo, 'updated_at': now(), 'synced': 0},
         where: 'id = ? AND photo = ?', whereArgs: [id, old]);
     if (n > 0) stockChanges.value++;
     return n > 0;

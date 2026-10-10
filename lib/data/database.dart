@@ -9,7 +9,7 @@ import '../l10n/l10n.dart';
 import 'repository.dart' show kSyncTables;
 
 /// Крок міграції бази (див. [AppDatabase.migrations]).
-typedef Migration = Future<void> Function(Database db);
+typedef Migration = Future<void> Function(DatabaseExecutor db);
 
 /// Базу збережено новішою версією застосунку, ніж ця.
 class DatabaseTooNewException implements Exception {
@@ -71,7 +71,7 @@ class AppDatabase {
   /// Стара заглушка синхронізації (до етапу 0) позначала всі записи
   /// «відправленими», хоча сервера не було. Скидаємо позначку - сервер
   /// отримає все, коли синхронізацію буде налаштовано.
-  static Future<void> _requeueAll(Database db) async {
+  static Future<void> _requeueAll(DatabaseExecutor db) async {
     for (final t in kSyncTables) {
       await db.rawUpdate('UPDATE $t SET synced = 0 WHERE synced != 0');
     }

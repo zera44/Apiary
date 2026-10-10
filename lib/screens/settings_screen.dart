@@ -130,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (l == null) setState(() => _tab = i);
                   },
                   child: _tab == 0
-                      ? MainSettingsTab(lesson: l != null)
+                      ? MainSettingsTab(repo: widget.repo, lesson: l != null)
                       : TemplatesScreen(
                           key: _templates, repo: widget.repo, embedded: true, lesson: l),
                 ),

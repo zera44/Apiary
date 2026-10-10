@@ -7,6 +7,7 @@ import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:apiary/services/stock_photos.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -37,6 +38,38 @@ class _BrokenEncoder implements PhotoEncoder {
   @override
   Future<PhotoPair> encode(Uint8List source) async =>
       PhotoPair(Uint8List(0), Uint8List(0), 800, 600, 200, 150);
+}
+
+/// Кодувальник, що падає не через фото (немає місця тощо).
+class _FailingEncoder implements PhotoEncoder {
+  @override
+  String get ext => 'jpg';
+  @override
+  Future<PhotoPair> encode(Uint8List source) async =>
+      throw const FileSystemException('немає місця на диску');
+}
+
+/// Системний модуль стиснення (як на Android): запам'ятовує, що попросили,
+/// і віддає справжній WebP потрібного розміру.
+class _FakeCompress extends FlutterImageCompressPlatform {
+  final calls = <(int, int, int, CompressFormat, bool)>[];
+
+  @override
+  Future<Uint8List> compressWithList(Uint8List image,
+      {int minWidth = 1920,
+      int minHeight = 1080,
+      int quality = 95,
+      int rotate = 0,
+      int inSampleSize = 1,
+      bool autoCorrectionAngle = true,
+      CompressFormat format = CompressFormat.jpeg,
+      bool keepExif = false}) async {
+    calls.add((minWidth, minHeight, quality, format, keepExif));
+    return File('test/fixtures/photo_${minWidth}x$minHeight.webp').readAsBytesSync();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// «WebP»-кодувальник (у тестах системного WebP немає - підміна з тими самими
@@ -93,6 +126,24 @@ void main() {
       expect((r.thumbWidth, r.thumbHeight), (120, 90));
     });
 
+    test('прозоре фото (PNG) - на білому тлі, а не на чорному', () {
+      final im = img.Image(width: 300, height: 200, numChannels: 4); // усе прозоре
+      img.fillRect(im, x1: 0, y1: 0, x2: 99, y2: 199, color: img.ColorRgba8(200, 0, 0, 255));
+      final r = preparePhoto(PhotoArgs(img.encodePng(im), fullQuality: 95, thumbQuality: 90));
+      final out = img.decodeJpg(r.full)!;
+      final clear = out.getPixel(250, 100); // була прозора частина
+      expect(clear.r, greaterThan(240));
+      expect(clear.g, greaterThan(240));
+      final red = out.getPixel(20, 100);
+      expect(red.r, greaterThan(170));
+      expect(red.g, lessThan(60));
+    });
+
+    test('справжній WebP (з втратами, як від Android) розбирається для перевірки', () {
+      expect(photoSize(File('test/fixtures/photo_800x600.webp').readAsBytesSync()), (800, 600));
+      expect(photoSize(File('test/fixtures/photo_200x150.webp').readAsBytesSync()), (200, 150));
+    });
+
     test('не фото - зрозуміла помилка', () {
       expect(() => preparePhoto(PhotoArgs(Uint8List.fromList([1, 2, 3, 4, 5]),
           fullQuality: 82, thumbQuality: 78)), throwsFormatException);
@@ -120,6 +171,22 @@ void main() {
       await StockPhotos.remove(name);
       expect(await full.exists(), isFalse);
       expect(await thumb.exists(), isFalse);
+    });
+
+    test('WebP-кодувальник телефона: системному модулю - точні розміри, без EXIF', () async {
+      final fake = _FakeCompress();
+      final saved = FlutterImageCompressPlatform.instance;
+      FlutterImageCompressPlatform.instance = fake;
+      addTearDown(() => FlutterImageCompressPlatform.instance = saved);
+      StockPhotos.encoder = const WebpPhotoEncoder();
+      final name = await StockPhotos.save(cameraJpeg(1600, 1200, orientation: 1));
+      expect(name, endsWith('.webp'));
+      expect(fake.calls, [
+        (800, 600, 80, CompressFormat.webp, false),
+        (200, 150, 75, CompressFormat.webp, false),
+      ]);
+      expect(photoSize(await File(StockPhotos.fullPath(name)!).readAsBytes()), (800, 600));
+      expect(photoSize(await File(StockPhotos.thumbPath(name)!).readAsBytes()), (200, 150));
     });
 
     test('на телефоні - WebP (назви .webp, мініатюра _t.webp)', () async {
@@ -179,8 +246,9 @@ void main() {
       expect(StockPhotos.isLegacy(newName), isFalse);
       expect(photoSize(await File(StockPhotos.fullPath(newName)!).readAsBytes()), (800, 600));
       expect(await File(okPath).exists(), isFalse);
-      // службова зміна: час зміни запису той самий
-      expect(okRow['updated_at'], stamp);
+      // нова назва - у черзі на відправку (сервер має її отримати)
+      expect(okRow['synced'], 0);
+      expect(okRow['updated_at'], isNot(stamp));
       // файлу вже не було - запис без фото
       expect((await row(gone))['photo'], isNull);
       // зіпсоване лишається як було
@@ -191,6 +259,20 @@ void main() {
 
       expect(await repo.getMeta(StockPhotos.upgradedKey), '1');
       expect(await StockPhotos.upgradeOld(repo), 0);
+    });
+
+    test('тимчасовий збій - повторимо при наступному запуску', () async {
+      final id = await repo.addStockItem('Цукор', 'кг');
+      final path = await legacyFile('photo_1.jpg', cameraJpeg(900, 600));
+      await repo.updateStockItem(id, photo: (path,));
+      StockPhotos.encoder = _FailingEncoder();
+      expect(await StockPhotos.upgradeOld(repo), 0);
+      expect(await repo.getMeta(StockPhotos.upgradedKey), isNull); // не позначено «готово»
+      expect((await row(id))['photo'], path);
+      StockPhotos.encoder = const JpegPhotoEncoder();
+      expect(await StockPhotos.upgradeOld(repo), 1);
+      expect(await repo.getMeta(StockPhotos.upgradedKey), '1');
+      expect(StockPhotos.isLegacy((await row(id))['photo'] as String), isFalse);
     });
 
     test('фото змінили, поки перетискали - чіпати не можна', () async {
