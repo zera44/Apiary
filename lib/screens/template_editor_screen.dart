@@ -470,7 +470,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   void _showWarning(String text) {
     _warnTimer?.cancel();
     setState(() => _warning = text);
-    _warnTimer = Timer(const Duration(seconds: 1), () {
+    _warnTimer = Timer(const Duration(milliseconds: 2800), () {
       if (mounted) setState(() => _warning = null);
     });
   }
@@ -803,7 +803,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     child: GestureDetector(
                       onTap: _renameTemplate,
                       child: Text(title,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
@@ -853,10 +853,12 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                 }),
               ),
               Container(
-                height: 26,
+                constraints: const BoxConstraints(minHeight: 26),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 alignment: Alignment.center,
                 child: Text(_modeText,
-                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               ),
@@ -938,6 +940,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   lesson: _lesson!,
                   screen: 'editor',
                   bottomInset: 96,
+                  // у редакторі шаблону перемикача «око / олівець» немає
+                  drawToggle: false,
                   regions: {
                     'grid': (ref) => rectOfKey(_gridKey, ref),
                     'square': _lessonSquareRect,

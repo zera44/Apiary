@@ -861,12 +861,19 @@ void main() {
     expect(find.textContaining('В тебе матка'), findsOneWidget);
     await tester.tap(find.byTooltip('Білий'));
     await settle(tester);
-    expect(find.textContaining('Заглянеш сам через'), findsOneWidget);
-    await tester.enterText(
-        find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)).first, '3');
+    // періодичності у формі немає (як і в справжньому огляді) — дата огляду
+    expect(find.text('Періодичність обходу (днів)'), findsNothing);
+    expect(find.textContaining('Оглянув сьогодні?'), findsOneWidget);
+    await tester.tap(find.text('Обрати дату'));
+    await settle(tester);
+    await tester.tap(find.text('Сьогодні'));
     await settle(tester);
     expect(find.textContaining('Збережи, бо я більше'), findsOneWidget);
-    await tester.tap(find.text('Зберегти'));
+    // ті самі кнопки, що й у справжній формі: дискета «Зберегти»
+    expect(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Змін немає')),
+        findsOneWidget);
+    await tester.tap(find.byTooltip('Зберегти'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
@@ -875,7 +882,7 @@ void main() {
     expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 6; i++) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
     }
@@ -901,10 +908,13 @@ void main() {
     final moved = apiaries.firstWhere((a) => a.id != apiaryId);
     final els = (await tester.runAsync(() => repo.listElements(moved.id)))!;
     expect(els.where((e) => e.isHive), isNotEmpty);
-    final period = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_period')))!;
+    final date = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_start')))!;
+    final mark = (await tester.runAsync(() => repo.baseParameterId('hive', 'queen_mark')))!;
     final hive = els.firstWhere((e) => e.isHive);
     final latest = (await tester.runAsync(() => repo.latestParameterValues(hive.entity)))!;
-    expect(latest[period], '3');
+    // у формі огляду урок записує дату огляду («Сьогодні») і мітку матки
+    expect((latest[date] ?? '').isNotEmpty, isTrue);
+    expect(latest[mark], 'Білий');
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
     // меню вже показали - більше пасічник не з'являється
@@ -919,7 +929,8 @@ void main() {
     await tester.pumpWidget(wrap(AppDrawer(repo: repo, currentApiary: a, tour: true)));
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
-    for (final t in ['рамки, корми, ліки', 'зміни показників', 'час на вітер',
+    for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
+        'час на вітер',
         'спеціалізоване навчання', 'поділитись ідеєю']) {
       await tester.tap(find.text('Далі'));
       await settle(tester);
@@ -1081,31 +1092,25 @@ void main() {
     expect(list.length, 1); // лише шаблон із setUp
   });
 
-  testWidgets('список пасік: видалення без підтвердження, з «Відмінити»', (tester) async {
+  testWidgets('список пасік: видалення з підтвердженням, одразу з бази', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
 
-    // видалили — зникла одразу; «Відмінити» — повернулась
+    // «Скасувати» в підтвердженні — пасіка лишається
     await tester.tap(find.byTooltip('Видалити'));
     await settle(tester);
-    expect(find.text('Тестова пасіка'), findsNothing);
-    expect(find.text('Пасіку «Тестова пасіка» видалено'), findsOneWidget);
-    await tester.tap(find.text('Відмінити'));
-    for (var i = 0; i < 3; i++) {
-      await settle(tester);
-    }
+    expect(find.text('Видалити пасіку?'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
 
-    // видалили й не відмінили — повідомлення зникло, пасіку видалено з бази
+    // підтвердили — пасіку видалено з бази одразу
     await tester.tap(find.byTooltip('Видалити'));
     await settle(tester);
-    // таймер повідомлення стартує після його появи — час іде кроками
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
+    await tester.tap(find.widgetWithText(PillButton, 'Видалити'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }

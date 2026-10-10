@@ -12,6 +12,7 @@ import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/reminders.dart';
 import 'ui/app_drawer.dart';
+import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
 import 'ui/voice_input_bar.dart';
 
@@ -67,6 +68,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
   void initState() {
     super.initState();
     _reminders.addListener(_openFromReminder);
+    ReminderService.instance.beforeAskPermission = _explainNotifications;
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
   }
@@ -74,8 +76,22 @@ class _ApiaryAppState extends State<ApiaryApp> {
   @override
   void dispose() {
     _reminders.removeListener(_openFromReminder);
+    ReminderService.instance.beforeAskPermission = null;
     widget.sync?.stop();
     super.dispose();
+  }
+
+  /// Перед системним запитом: навіщо застосунку сповіщення.
+  Future<bool> _explainNotifications() async {
+    final ctx = _nav.currentContext;
+    if (ctx == null || !ctx.mounted) return false;
+    return showConfirm(ctx,
+        title: 'Нагадування про обхід',
+        text: 'Дозвольте сповіщення, щоб застосунок нагадував оглянути вулик, коли '
+            'настав час обходу. Без них нагадувань не буде.',
+        confirmText: 'Далі',
+        cancelText: 'Не зараз',
+        danger: false);
   }
 
   /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей

@@ -231,7 +231,7 @@ class _LabelTag extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(text,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: AppColors.hive, fontSize: 11.5, fontWeight: FontWeight.bold)),
       );

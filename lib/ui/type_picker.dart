@@ -63,7 +63,7 @@ class DataTypePicker extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(label,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: fg,

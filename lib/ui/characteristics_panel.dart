@@ -396,7 +396,7 @@ class CharacteristicsPanel extends StatelessWidget {
           decoration: BoxDecoration(
               color: AppColors.hive, borderRadius: BorderRadius.circular(10)),
           child: Text(name,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   color: Color(0xFF2B1A08), fontSize: 14, fontWeight: FontWeight.bold)),

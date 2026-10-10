@@ -198,6 +198,13 @@ class _StockScreenState extends State<StockScreen> {
             }
             return;
           }
+          if (!amountFitsUnit(v, it.unit)) {
+            if (mounted) {
+              await showInfo(context, '«${it.name}»: для «${it.unit}» вкажіть ціле число',
+                  title: 'Не збережено');
+            }
+            return;
+          }
         }
         var changed = 0;
         for (final it in list) {
@@ -229,7 +236,7 @@ class _StockScreenState extends State<StockScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text(it.name,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
                   Text('За обліком: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
@@ -370,7 +377,7 @@ class _StockScreenState extends State<StockScreen> {
     };
     return Column(children: [
       Text(it.name,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
       const SizedBox(height: 5),
@@ -432,7 +439,7 @@ class _StockScreenState extends State<StockScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
                         child: Text(qty,
                             textAlign: TextAlign.center,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
@@ -643,7 +650,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                 color: selected ? AppColors.create : AppColors.hive.withValues(alpha: 0.25)),
           ),
           child: Text(label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: fg, fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
@@ -857,6 +864,10 @@ class _MoveDialogState extends State<_MoveDialog> {
       setState(() => _error = op == StockOp.inventory
           ? 'Введіть фактичну кількість (0 або більше)'
           : 'Введіть кількість більше 0');
+      return;
+    }
+    if (!amountFitsUnit(v, it.unit)) {
+      setState(() => _error = 'Для «${it.unit}» вкажіть ціле число');
       return;
     }
     if (op == StockOp.writeOff) {

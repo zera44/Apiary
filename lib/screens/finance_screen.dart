@@ -49,7 +49,7 @@ class FinEntryTile extends StatelessWidget {
                     if (entry.title.isNotEmpty) entry.title,
                     if (muted) 'скасовано',
                   ].join(' · '),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
             ]),
@@ -324,7 +324,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
   Widget build(BuildContext context) {
     final s = FinSummary.of(_entries);
     final by = _expense ? s.expenseByCategory : s.incomeByCategory;
-    final items = by.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    // категорії з нульовою сумою (напр. прихід на склад без вартості) не показуємо
+    final items = by.entries.where((e) => e.value > 0.0).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     final total = items.fold(0.0, (a, e) => a + e.value);
     Color colorOf(String? id) => id == null ? finColor('olive') : finColor(_cats[id]?.color ?? 'nut');
     return Scaffold(
@@ -457,7 +459,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Text(name,
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(color: AppColors.text, fontSize: 16)),
                                   ),

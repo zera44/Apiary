@@ -106,30 +106,32 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
   }
 
-  /// Видалення без підтвердження: пасіка зникає одразу, внизу «Відмінити».
-  Future<void> _delete(Apiary a) => deleteWithUndo(
-        context,
-        message: 'Пасіку «${a.name}» видалено',
-        hide: () {
-          _hiding.add(a.id);
-          setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
-        },
-        restore: () {
-          _hiding.remove(a.id);
-          _reload();
-        },
-        commit: () async {
-          // урок: пісочницю могли закрити, поки висіло «Відмінити»
-          try {
-            await widget.repo.deleteApiary(a.id);
-          } catch (_) {
-            if (widget.repo.db.isOpen) rethrow;
-            return;
-          }
-          _hiding.remove(a.id);
-          if (mounted) await _reload();
-        },
-      );
+  /// Видалення пасіки — з підтвердженням (зникає вся карта з вуликами й
+  /// записами), після «Видалити» — одразу й остаточно.
+  Future<void> _delete(Apiary a) async {
+    final ok = await showConfirm(context,
+        title: 'Видалити пасіку?',
+        text: 'Пасіку «${a.name}» буде видалено разом з усіма вуликами, '
+            'перешкодами й записами. Цю дію не можна скасувати.');
+    if (!ok || !mounted) return;
+    _hiding.add(a.id);
+    setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
+    // урок: пісочницю могли закрити, поки висіло підтвердження
+    try {
+      await widget.repo.deleteApiary(a.id);
+    } catch (_) {
+      if (widget.repo.db.isOpen) rethrow;
+      return;
+    }
+    _hiding.remove(a.id);
+    if (!mounted) return;
+    await _reload();
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Пасіку «${a.name}» видалено')));
+    }
+  }
 
 
   @override
@@ -200,7 +202,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     final cells = _cells[a.id] ?? const <SceneCell>[];
     return Column(children: [
       Text(a.name,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
       const SizedBox(height: 5),

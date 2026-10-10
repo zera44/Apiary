@@ -960,7 +960,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 child: Row(children: [
                   Expanded(
                     child: Text(g.name,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: honeyDark, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1014,7 +1014,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(right: 14),
                               child: Text(p.nameWithUnit,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: AppColors.text, fontSize: 14)),
                             ),
@@ -1345,7 +1345,7 @@ class ApplyScopeSwitch extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: Text(labels[s]!,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     color: s == value ? Colors.white : AppColors.text,

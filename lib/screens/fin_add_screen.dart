@@ -55,7 +55,11 @@ class _FLine {
   /// Порожній рядок (нічого не введено) - ігнорується.
   bool get empty => name.text.trim().isEmpty && price.text.trim().isEmpty;
 
-  bool get valid => name.text.trim().isNotEmpty && (qtyValue ?? 0) > 0 && priceValue != null;
+  bool get valid =>
+      name.text.trim().isNotEmpty &&
+      (qtyValue ?? 0) > 0 &&
+      priceValue != null &&
+      amountFitsUnit(qtyValue!, unit);
 
   double get total => valid ? qtyValue! * priceValue! : 0;
 
@@ -305,7 +309,13 @@ class _FinAddScreenState extends State<FinAddScreen> {
       await showInfo(
           context,
           'У ${bad.length == 1 ? 'одному рядку' : '${bad.length} рядках'} не вистачає назви, '
-          'кількості (більше 0) або ціни. Виправте їх чи видаліть рядок.',
+          'кількості (більше 0; для «шт» — ціле) або ціни. Виправте їх чи видаліть рядок.',
+          title: 'Не записано');
+      return;
+    }
+    final typed = _sum.text.trim();
+    if (typed.startsWith('-')) {
+      await showInfo(context, "Сума не може бути від'ємною. Введіть додатне число.",
           title: 'Не записано');
       return;
     }
@@ -801,13 +811,37 @@ class _FinAddScreenState extends State<FinAddScreen> {
     );
   }
 
+  /// Щось уже введено (сума, рядки таблиці чи розпізнаний чек).
+  bool get _dirty =>
+      (parseAmount(_sum.text) ?? 0) != 0 || _hasReceipt || _lines.any((l) => !l.empty);
+
+  /// Вихід без збереження: якщо щось введено — спершу перепитати.
+  Future<void> _leave() async {
+    if (_saving) return;
+    if (_dirty) {
+      final ok = await showConfirm(context,
+          title: 'Вийти без збереження?',
+          text: 'Введені дані не буде записано.',
+          confirmText: 'Вийти',
+          cancelText: 'Залишитись');
+      if (!ok || !mounted) return;
+    }
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      // рішення — у _leave (дані могли змінитись без перебудови екрана)
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
+      child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: _expense ? 'Нова витрата' : 'Новий дохід', onBack: () => Navigator.pop(context)),
+            TopBar(title: _expense ? 'Нова витрата' : 'Новий дохід', onBack: _leave),
             Expanded(
               child: ListView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -843,6 +877,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
           ]),
           const Positioned.fill(child: ScreenFrame()),
         ]),
+      ),
       ),
     );
   }

@@ -220,7 +220,7 @@ void main() {
     await settle(tester);
 
     // 12. вимкнути зайве - свій параметр
-    expect(find.textContaining('Вимкни все лишнє'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('Вимкни все зайве'), findsOneWidget, reason: said(tester));
     await tester.pump(const Duration(milliseconds: 500)); // список доїхав до параметра
     final check = find.descendant(
         of: find.widgetWithText(ListCard, 'Сила сім\'ї'), matching: find.byType(CheckToggle));
@@ -235,7 +235,7 @@ void main() {
 
     // 14. таблиця на панелі - з групою «Обходи»; «Завершити»
     expect(find.byType(ParametersScreen), findsNothing, reason: said(tester));
-    expect(find.textContaining('Вона ідеальна'), findsOneWidget, reason: said(tester));
+    expect(find.textContaining('вона ідеальна'), findsOneWidget, reason: said(tester));
     expect(find.text('Обходи'), findsWidgets);
     expect(find.text('Сила сім\'ї'), findsNothing);
     await tester.tap(find.text('Завершити'));

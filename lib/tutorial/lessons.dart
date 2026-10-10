@@ -100,7 +100,7 @@ LessonCue? paramsLessonScript(LessonController c) {
         allowAll: true,
         deny: const ['form-cancel'],
         highlight: const ['form-save'],
-        text: [_t('Не забудь '), _h('зберегти'), _t('!!!')],
+        text: [_t('Не забудь '), _h('зберегти'), _t('!')],
       );
     case 7:
       return LessonCue(screen: 'params', pic: LessonPic.scheming, highlight: const ['tab-constructor'], text: [
@@ -110,7 +110,7 @@ LessonCue? paramsLessonScript(LessonController c) {
       ]);
     case 8:
       return LessonCue(screen: 'params', pic: LessonPic.surprised, highlight: const ['new-group'], text: [
-        _t('Боже, який безлад!!! Швиденько створи '),
+        _t('Боже, який безлад! Швиденько створи '),
         _h('нову групу'),
         _t('.'),
       ]);
@@ -153,7 +153,7 @@ LessonCue? paramsLessonScript(LessonController c) {
           allow: const ['list'],
           text: [
         _t('Бачив, ми не все використали? '),
-        _h('Вимкни все лишнє'),
+        _h('Вимкни все зайве'),
       ]);
     case 13:
       return LessonCue(screen: 'params', pic: LessonPic.thinking, highlight: const ['params-back'], text: [
@@ -166,7 +166,7 @@ LessonCue? paramsLessonScript(LessonController c) {
         pic: LessonPic.surprised,
         allow: const ['panel'],
         onDone: c.complete,
-        text: [_t('Ого! Глянь на таблицю!!! Вона ідеальна!!!')],
+        text: [_t('Ого! Глянь на таблицю — вона ідеальна!')],
       );
   }
   return null;
@@ -254,7 +254,7 @@ LessonCue? templatesLessonScript(LessonController c) {
       ]);
     case 5:
       return LessonCue(screen: 'editor', pic: LessonPic.blueprint, highlight: const ['editor-add'], text: [
-        _t('Пора створювати щось нове!!! Натисни на '),
+        _t('Пора створювати щось нове! Натисни на '),
         _h('«+»'),
       ]);
     case 6:

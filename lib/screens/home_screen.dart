@@ -307,7 +307,7 @@ class _Tile extends StatelessWidget {
                   IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
                   const SizedBox(height: 6),
                   Text(label,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: AppColors.text, fontSize: 12)),
                 ]),

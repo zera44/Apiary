@@ -23,6 +23,21 @@ String hiveLabelName(MapElement el, List<MapElement> all) {
   return '$base · ${objs.indexWhere((o) => o.any((e) => e.id == el.id)) + 1}';
 }
 
+/// Порівняння рядків із числами «по-людськи»: «Вулик 2» < «Вулик 10».
+int naturalCompare(String a, String b) {
+  final re = RegExp(r'(\d+)|(\D+)');
+  final pa = re.allMatches(a.toLowerCase()).toList();
+  final pb = re.allMatches(b.toLowerCase()).toList();
+  for (var i = 0; i < pa.length && i < pb.length; i++) {
+    final x = pa[i], y = pb[i];
+    final c = x.group(1) != null && y.group(1) != null
+        ? BigInt.parse(x.group(1)!).compareTo(BigInt.parse(y.group(1)!))
+        : x.group(0)!.compareTo(y.group(0)!);
+    if (c != 0) return c;
+  }
+  return pa.length.compareTo(pb.length);
+}
+
 /// "Генерувати QR-коди": карта пасіки, де вулики з кодом мають зелений
 /// ободок. Тап обирає/знімає вулики (кілька; вулик на кілька клітинок —
 /// цілком), "Згенерувати" створює НОВИЙ код для кожного обраного (старий
@@ -152,8 +167,16 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     }
     setState(() => _busy = true);
     try {
-      // objects уже впорядковані зверху вниз, зліва направо
+      // номери кодів ідуть за назвами вуликів («Вулик 2» раніше за «Вулик 10»),
+      // щоб № на наліпці зростав разом із назвою; без назви — порядок на карті
+      // (objects уже впорядковані зверху вниз, зліва направо)
       final chosen = [for (final o in objects) if (selected.contains(o.first.id)) o];
+      final order = {for (var i = 0; i < chosen.length; i++) chosen[i].first.id: i};
+      chosen.sort((a, b) {
+        final c = naturalCompare(
+            hiveLabelName(a.first, elements), hiveLabelName(b.first, elements));
+        return c != 0 ? c : order[a.first.id]!.compareTo(order[b.first.id]!);
+      });
       final codes = await widget.repo.generateQrForObjects(chosen);
       final byId = {for (final o in chosen) o.first.id: o.first};
       final labels = [
