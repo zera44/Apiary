@@ -176,6 +176,14 @@ void main() {
       expect(await repo.mergeSeedDuplicates(), 0);
     });
 
+    test('дублікати власника, якому я допомагаю, не чіпаю - їх зіллє його телефон', () async {
+      final tpl = (await repo.db.query('templates', where: "seed_key = 'tpl:hive'")).single;
+      await repo.db.insert('templates', {...tpl, 'id': 'x-1', 'owner_id': 'X', 'synced': 1});
+      await repo.db.insert('templates', {...tpl, 'id': 'x-2', 'owner_id': 'X', 'synced': 1});
+      expect(await repo.mergeSeedDuplicates(), 0);
+      expect(await count('templates', "owner_id = 'X' AND (deleted = 1 OR synced = 0)"), 0);
+    });
+
     test('свій однойменний шаблон користувача не зливається з типовим', () async {
       await repo.addTemplate('Вулик', 1, 1, {'0,0': 'hive'}); // свій, пізніше за типовий
       await Repository.assignSeedKeys(repo.db);

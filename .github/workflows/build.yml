@@ -182,11 +182,23 @@ jobs:
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_SERVER_CLIENT_ID }}
           # сервер синхронізації (supabase/README.md); без них - вимкнена.
           # Реліз із main - робочий проєкт, усе інше (тестові збірки гілок) -
-          # тестовий, щоб випробування не чіпали справжніх даних
-          SUPABASE_URL: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.SUPABASE_URL_PROD || secrets.SUPABASE_URL_TEST }}
-          SUPABASE_ANON_KEY: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && secrets.SUPABASE_ANON_KEY_PROD || secrets.SUPABASE_ANON_KEY_TEST }}
+          # тестовий, щоб випробування не чіпали справжніх даних. Вибір - у
+          # скрипті нижче: реліз без робочих секретів НЕ бере тестові
+          IS_RELEASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          SUPABASE_URL_PROD: ${{ secrets.SUPABASE_URL_PROD }}
+          SUPABASE_ANON_KEY_PROD: ${{ secrets.SUPABASE_ANON_KEY_PROD }}
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_ANON_KEY_TEST: ${{ secrets.SUPABASE_ANON_KEY_TEST }}
         run: |
           set -o pipefail
+          if [ "$IS_RELEASE" = "true" ]; then
+            SUPABASE_URL="$SUPABASE_URL_PROD"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_PROD"
+          else
+            SUPABASE_URL="$SUPABASE_URL_TEST"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_TEST"
+          fi
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Секретів Supabase для цієї збірки немає - синхронізація в APK вимкнена"
+          fi
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
             key="$RUNNER_TEMP/apiary-release.p12"
             trap 'rm -f "$key"' EXIT

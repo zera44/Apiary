@@ -8,7 +8,11 @@
 --                сервер бере власника з пасіки сам;
 --   schema_v   - версією схеми якого застосунку записано рядок;
 --   server_at  - час сервера останнього запису («перемагає пізніший»);
---   server_seq - наскрізний номер зміни: телефон забирає зміни «після N».
+--   server_seq - наскрізний номер зміни;
+--   server_xid - транзакція, що записала рядок. Телефон забирає зміни
+--                функцією sync_pull за курсором (server_xid, server_seq) -
+--                лише із завершених транзакцій, тож рядок довгої транзакції
+--                не «проскочить» повз курсор.
 -- Позначки 0/1 - integer, як на телефоні (рядок іде на сервер без перетворень).
 
 create sequence if not exists public.sync_seq;
@@ -35,13 +39,14 @@ create table if not exists public.apiaries (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.elements (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
-  apiary_id text not null,
+  apiary_id text,
   group_id text,
   x integer not null,
   y integer not null,
@@ -56,7 +61,8 @@ create table if not exists public.elements (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.templates (
@@ -72,7 +78,8 @@ create table if not exists public.templates (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.parameters (
@@ -90,13 +97,14 @@ create table if not exists public.parameters (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.element_parameters (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
-  apiary_id text not null,
+  apiary_id text,
   group_id text,
   element_id text,
   parameter_id text not null,
@@ -105,14 +113,15 @@ create table if not exists public.element_parameters (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- історія значень: лише дописується (змінити можна тільки позначку «видалено»)
 create table if not exists public.parameter_records (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
-  apiary_id text not null,
+  apiary_id text,
   group_id text,
   element_id text,
   parameter_id text not null,
@@ -122,13 +131,14 @@ create table if not exists public.parameter_records (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.qr_codes (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
-  apiary_id text not null,
+  apiary_id text,
   code text not null,
   number integer,
   group_id text,
@@ -137,7 +147,8 @@ create table if not exists public.qr_codes (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.note_labels (
@@ -150,13 +161,14 @@ create table if not exists public.note_labels (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.hive_notes (
   id text primary key,
   owner_id uuid not null references auth.users (id) on delete cascade,
-  apiary_id text not null,
+  apiary_id text,
   group_id text,
   element_id text,
   text text not null,
@@ -167,7 +179,8 @@ create table if not exists public.hive_notes (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- групи «Конструктора»
@@ -181,7 +194,8 @@ create table if not exists public.param_groups (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- ── склад ───────────────────────────────────────────────────────────────
@@ -198,7 +212,8 @@ create table if not exists public.stock_items (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- рухи складу: лише дописуються (змінити можна тільки «скасовано»/«видалено»)
@@ -221,7 +236,8 @@ create table if not exists public.stock_moves (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- ── фінанси ─────────────────────────────────────────────────────────────
@@ -239,7 +255,8 @@ create table if not exists public.fin_categories (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.fin_ops (
@@ -256,7 +273,8 @@ create table if not exists public.fin_ops (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 create table if not exists public.fin_lines (
@@ -274,7 +292,8 @@ create table if not exists public.fin_lines (
   updated_at double precision not null default 0,
   schema_v integer,
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 
 -- ── спільний доступ ─────────────────────────────────────────────────────
@@ -292,7 +311,8 @@ create table if not exists public.apiary_members (
   deleted integer not null default 0 check (deleted in (0, 1)),
   updated_at double precision not null default extract(epoch from now()),
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 -- одна людина - один запис на пасіку (повторне запрошення оновлює його)
 create unique index if not exists apiary_members_one
@@ -314,7 +334,8 @@ create table if not exists public.invitations (
   deleted integer not null default 0 check (deleted in (0, 1)),
   updated_at double precision not null default extract(epoch from now()),
   server_at timestamptz not null default now(),
-  server_seq bigint not null default nextval('public.sync_seq')
+  server_seq bigint not null default nextval('public.sync_seq'),
+  server_xid xid8 not null default pg_current_xact_id()
 );
 create index if not exists invitations_to on public.invitations (to_email);
 create index if not exists invitations_from on public.invitations (from_user_id);
@@ -330,7 +351,7 @@ begin
     'stock_items', 'stock_moves', 'fin_categories', 'fin_ops', 'fin_lines',
     'apiary_members', 'invitations']
   loop
-    execute format('create index if not exists %I on public.%I (server_seq)', t || '_seq', t);
+    execute format('create index if not exists %I on public.%I (server_xid, server_seq)', t || '_seq', t);
   end loop;
   foreach t in array array[
     'apiaries', 'templates', 'parameters', 'note_labels', 'param_groups',

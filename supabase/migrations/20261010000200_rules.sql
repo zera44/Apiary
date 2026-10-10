@@ -52,21 +52,52 @@ $$;
 
 create or replace function public.can_apiary(owner uuid, apiary text) returns boolean
 language sql stable as $$
-  select owner = auth.uid() or public.is_member(owner, apiary)
+  select owner = auth.uid() or (apiary is not null and public.is_member(owner, apiary))
 $$;
 
 -- ── тригери запису ──────────────────────────────────────────────────────
 
--- Вулики й записи вуликів: власник - власник пасіки. Перенести запис до
--- пасіки іншого власника не можна.
+-- Вулики й записи вуликів: власник - власник пасіки. Записам вулика
+-- пасіку бере сам сервер - з вулика (об'єкта чи групи), тож помічник однієї
+-- пасіки не допише нічого у вулик іншої. Запис не перенести до пасіки
+-- іншого власника. Давні записи без пасіки (вулик давно стерто) - лише
+-- власника, що їх надіслав.
 create or replace function public.trg_owner_from_apiary() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
   o uuid;
+  a text;
 begin
-  select a.owner_id into o from public.apiaries a where a.id = new.apiary_id;
+  if tg_table_name = 'elements' then
+    -- група (вулик з кількох клітинок) - лише в одній пасіці
+    if new.group_id is not null and exists (
+        select 1 from public.elements e
+        where e.group_id = new.group_id and e.id <> new.id
+          and e.apiary_id is distinct from new.apiary_id) then
+      raise exception 'вулик % належить іншій пасіці', new.group_id using errcode = '42501';
+    end if;
+  else
+    select e.apiary_id into a from public.elements e
+    where (new.element_id is not null and e.id = new.element_id)
+       or (new.group_id is not null and e.group_id = new.group_id)
+    order by e.deleted, e.id
+    limit 1;
+    if a is not null then
+      new.apiary_id := a;
+    end if;
+  end if;
+  if new.apiary_id is not null then
+    select p.owner_id into o from public.apiaries p where p.id = new.apiary_id;
+  end if;
   if o is null then
-    raise exception 'пасіки % на сервері немає', new.apiary_id using errcode = '23503';
+    -- пасіки на сервері немає: оновлення лишає власника, новий запис - того,
+    -- хто пише (бачитиме лише він)
+    if tg_op = 'UPDATE' then
+      new.owner_id := old.owner_id;
+    else
+      new.owner_id := auth.uid();
+    end if;
+    return new;
   end if;
   if tg_op = 'UPDATE' and o <> old.owner_id then
     raise exception 'запис не можна перенести до чужої пасіки' using errcode = '42501';
@@ -92,23 +123,30 @@ begin
   new.id := old.id;
   new.owner_id := old.owner_id;
   if old.deleted = 1 and new.deleted = 0 and new.updated_at <= old.updated_at then
-    return null; -- видалення новіше - лишаємо як є
+    -- видалення новіше - лишаємо як є, але з новим номером зміни: телефон,
+    -- що надіслав давню версію (скажімо, після відновлення копії), отримає
+    -- позначку «видалено» при наступному забиранні змін
+    new := old;
   end if;
   return new;
 end
 $$;
 
--- Лише дописуються: змінити можна тільки колонки з аргументів тригера
--- (позначки й службові поля).
+-- Лише дописуються: колонки з аргументів тригера (суть запису) не
+-- змінюються; решту (позначки, дату операції, характеристику після злиття
+-- однакових) телефон змінювати може.
 create or replace function public.trg_append_only() returns trigger
 language plpgsql as $$
 declare
-  free text[] := array['updated_at', 'schema_v', 'server_at', 'server_seq'] || tg_argv;
+  c text;
+  n jsonb := to_jsonb(new);
+  o jsonb := to_jsonb(old);
 begin
-  if (to_jsonb(new) - free) is distinct from (to_jsonb(old) - free) then
-    raise exception '% лише дописуються: змінити можна тільки %', tg_table_name,
-      array_to_string(tg_argv, ', ') using errcode = '42501';
-  end if;
+  foreach c in array tg_argv loop
+    if (n -> c) is distinct from (o -> c) then
+      raise exception '% лише дописуються: «%» не змінити', tg_table_name, c using errcode = '42501';
+    end if;
+  end loop;
   return new;
 end
 $$;
@@ -119,6 +157,7 @@ language plpgsql as $$
 begin
   new.server_at := now();
   new.server_seq := nextval('public.sync_seq');
+  new.server_xid := pg_current_xact_id();
   return new;
 end
 $$;
@@ -158,10 +197,10 @@ $$;
 
 drop trigger if exists t30_append_only on public.stock_moves;
 create trigger t30_append_only before update on public.stock_moves
-  for each row execute function public.trg_append_only('cancelled', 'deleted');
+  for each row execute function public.trg_append_only('item_id', 'kind', 'amount', 'quantity_after', 'created_at', 'ref_id');
 drop trigger if exists t30_append_only on public.parameter_records;
 create trigger t30_append_only before update on public.parameter_records
-  for each row execute function public.trg_append_only('deleted');
+  for each row execute function public.trg_append_only('group_id', 'element_id', 'value', 'created_at');
 
 -- ── профілі: з'являються при першому вході ──────────────────────────────
 create or replace function public.trg_profile_from_user() returns trigger

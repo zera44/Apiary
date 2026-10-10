@@ -1748,8 +1748,10 @@ class Repository {
         }
       }
       // шаблони: згадки старого параметра -> новий
+      // лише свої шаблони: чужі (власника, якому допомагаю) змінює він сам
       final tpls = await txn.rawQuery(
-          "SELECT id, cells FROM templates WHERE deleted = 0 AND cells LIKE ?", ['%$fromId%']);
+          "SELECT id, cells FROM templates WHERE deleted = 0 AND owner_id IS NULL AND cells LIKE ?",
+          ['%$fromId%']);
       for (final tpl in tpls) {
         final raw = tpl['cells'] as String?;
         if (raw == null) continue;
@@ -2386,15 +2388,18 @@ class Repository {
     final t = now();
     await db.transaction((txn) async {
       for (final table in AppDatabase.seededTables) {
+        // лише свої: дублікати власника, якому я допомагаю, зливає його
+        // телефон (сервер не дає помічнику змінювати його шаблони й групи)
         final groups = await txn.rawQuery(
-            'SELECT COALESCE(owner_id, \'\') AS o, seed_key AS k FROM $table '
-            'WHERE seed_key IS NOT NULL AND deleted = 0 GROUP BY o, k HAVING COUNT(*) > 1');
+            'SELECT seed_key AS k FROM $table '
+            'WHERE seed_key IS NOT NULL AND deleted = 0 AND owner_id IS NULL '
+            'GROUP BY k HAVING COUNT(*) > 1');
         for (final g in groups) {
           final ids = [
             for (final r in await txn.rawQuery(
-                'SELECT id FROM $table WHERE seed_key = ? AND COALESCE(owner_id, \'\') = ? '
+                'SELECT id FROM $table WHERE seed_key = ? AND owner_id IS NULL '
                 'AND deleted = 0 ORDER BY id',
-                [g['k'], g['o']]))
+                [g['k']]))
               r['id']! as String
           ];
           final keep = ids.first;
@@ -2428,7 +2433,7 @@ class Repository {
         for (final (tbl, col) in const [('templates', 'cells'), ('param_groups', 'ids')]) {
           await txn.rawUpdate(
               'UPDATE $tbl SET $col = REPLACE($col, ?, ?), updated_at = ?, synced = 0 '
-              'WHERE INSTR($col, ?) > 0',
+              'WHERE INSTR($col, ?) > 0 AND owner_id IS NULL',
               ['"$from"', '"$to"', t, '"$from"']);
         }
       case 'fin_categories':

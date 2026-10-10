@@ -23,9 +23,14 @@ jobs:
     steps:
       - name: Пінг ${{ matrix.project }}
         env:
-          URL: ${{ matrix.project == 'PROD' && secrets.SUPABASE_URL_PROD || secrets.SUPABASE_URL_TEST }}
-          KEY: ${{ matrix.project == 'PROD' && secrets.SUPABASE_ANON_KEY_PROD || secrets.SUPABASE_ANON_KEY_TEST }}
+          PROJECT: ${{ matrix.project }}
+          URL_PROD: ${{ secrets.SUPABASE_URL_PROD }}
+          KEY_PROD: ${{ secrets.SUPABASE_ANON_KEY_PROD }}
+          URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          KEY_TEST: ${{ secrets.SUPABASE_ANON_KEY_TEST }}
         run: |
+          # порожній секрет одного проєкту не підмінюється іншим
+          if [ "$PROJECT" = PROD ]; then URL="$URL_PROD"; KEY="$KEY_PROD"; else URL="$URL_TEST"; KEY="$KEY_TEST"; fi
           if [ -z "$URL" ] || [ -z "$KEY" ]; then
             echo "::notice::Секретів для ${{ matrix.project }} немає - пропускаю"
             exit 0

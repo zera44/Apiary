@@ -35,8 +35,19 @@ declare
   n bigint;
   total bigint := 0;
 begin
+  -- спершу пасіки: лише ті, в яких не лишилось живих записів (інакше
+  -- записи, що ще живуть на телефонах, втратили б пасіку)
+  delete from public.apiaries p
+  where p.deleted = 1 and p.server_at < now() - keep
+    and not exists (select 1 from public.elements x where x.apiary_id = p.id and x.deleted = 0)
+    and not exists (select 1 from public.element_parameters x where x.apiary_id = p.id and x.deleted = 0)
+    and not exists (select 1 from public.parameter_records x where x.apiary_id = p.id and x.deleted = 0)
+    and not exists (select 1 from public.qr_codes x where x.apiary_id = p.id and x.deleted = 0)
+    and not exists (select 1 from public.hive_notes x where x.apiary_id = p.id and x.deleted = 0);
+  get diagnostics n = row_count;
+  total := total + n;
   foreach t in array array[
-    'apiaries', 'elements', 'templates', 'parameters', 'element_parameters',
+    'elements', 'templates', 'parameters', 'element_parameters',
     'parameter_records', 'qr_codes', 'note_labels', 'hive_notes', 'param_groups',
     'stock_items', 'stock_moves', 'fin_categories', 'fin_ops', 'fin_lines', 'apiary_members']
   loop

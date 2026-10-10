@@ -35,8 +35,13 @@ select tests.ok((select owner_id from public.elements where id = 'el-r1') = auth
 select tests.ok((select server_seq from public.apiaries where id = 'ap-forest')
               > (select server_seq from public.apiaries where id = 'ap-river'), 'номери змін зростають');
 
--- запис до пасіки, якої немає, - зрозуміла помилка
-select tests.fails($q$insert into public.elements (id, apiary_id, x, y) values ('el-x', 'ap-none', 0, 0)$q$, '23503');
+-- давній запис, чиєї пасіки на сервері немає, - приймається як свій
+insert into public.hive_notes (id, apiary_id, text, note_date, created_at) values ('n-orphan', 'ap-none', 'давня', 1, 1);
+insert into public.parameter_records (id, apiary_id, element_id, parameter_id, value, created_at) values
+  ('pr-orphan', null, 'el-gone', 'p-power', '1', 1);
+select tests.ok((select owner_id from public.hive_notes where id = 'n-orphan') = auth.uid(), 'запис без пасіки - свій');
+-- одна група (вулик) - лише в одній пасіці
+select tests.fails($q$insert into public.elements (id, apiary_id, group_id, x, y) values ('el-r2', 'ap-forest', 'g-r1', 1, 0)$q$);
 
 -- ── Петро без запрошення бачить нічого ─────────────────────────────────
 select tests.login('00000000-0000-0000-0000-00000000000b', 'petro@gmail.com');
@@ -87,6 +92,14 @@ insert into public.parameters (id, owner_id, name, updated_at) values
 -- вулик можна переставити в межах пасіки
 update public.elements set x = 3, updated_at = 2 where id = 'el-r1';
 select tests.ok((select x from public.elements where id = 'el-r1') = 3, 'помічник змінює вулик');
+-- у вулик «Лісу» не дописати, навіть вказавши свою пасіку: пасіку сервер
+-- бере з вулика
+select tests.fails($q$insert into public.parameter_records (id, apiary_id, element_id, parameter_id, value, created_at)
+  values ('pr-inj', 'ap-river', 'el-f1', 'p-power', '1', 3)$q$);
+select tests.fails($q$insert into public.qr_codes (id, apiary_id, group_id, code, updated_at)
+  values ('q-inj', 'ap-river', 'g-f1', 'QR-1', 3)$q$);
+-- записів без пасіки власниці не видно (вони лише її)
+select tests.ok(tests.n('public.hive_notes', $w$id = 'n-orphan'$w$) = 0, 'записи без пасіки помічнику не видно');
 -- але не в «Ліс» (чужа для нього пасіка) і не змінює саму пасіку чи шаблони
 select tests.fails($q$insert into public.hive_notes (id, apiary_id, text, note_date, created_at) values
   ('n-p2', 'ap-forest', 'х', 2, 2)$q$);
