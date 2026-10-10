@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../ui/common.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/mode_toggle.dart';
-import '../ui/theme.dart';
 
 /// Малюнки пасічника для уроків (assets/guide). Усі в одному масштабі з
 /// beekeeper_on_toggle.webp: голова на тому самому місці, змінюється лише поза.

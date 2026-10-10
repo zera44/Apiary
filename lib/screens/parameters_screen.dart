@@ -276,7 +276,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     var nameError = false;
     var optionsError = false;
     // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
-    final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
+    final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param.id));
     if (!mounted) return null;
     final l = isEdit ? null : _lesson;
     l?.advance(3, 4);
@@ -478,9 +478,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
     String? created;
     if (isEdit) {
       // тип даних — лише поки немає записів
-      await repo.updateParameter(param!.id, {
+      await repo.updateParameter(param.id, {
         if (!isBase) 'name': name,
-        if (!typeLocked && type != param!.dataType) 'data_type': type,
+        if (!typeLocked && type != param.dataType) 'data_type': type,
         'unit': unit.isEmpty ? null : unit,
         if (type == DataTypes.choice) 'options': Parameter.encodeOptions(options),
       });

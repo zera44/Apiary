@@ -1618,13 +1618,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _revealBesidePanel(el);
   }
 
-  /// Показати вулик на цій карті й одразу відкрити його форму.
-  Future<void> _focusAndFill(MapElement el) async {
-    await _showOnMap(el);
-    if (!mounted) return;
-    await _panelFill();
-  }
-
   /// «Зберегти й далі»: наступний вулик за [MapScreen.next] — на цій карті
   /// ([here]) чи на іншій пасіці ([away]); null — далі нікого.
   Future<({MapElement? here, ({Apiary apiary, String elementId})? away})?> _nextTarget(

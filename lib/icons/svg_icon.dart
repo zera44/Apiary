@@ -386,7 +386,7 @@ Path parseSvgPathData(String d) {
         x = nx;
         y = ny;
       case 'S':
-        final x1 = lcx == null ? x : 2 * x - lcx, y1 = lcy == null ? y : 2 * y - lcy!;
+        final x1 = lcx == null ? x : 2 * x - lcx, y1 = lcy == null ? y : 2 * y - lcy;
         final x2 = ax(sc.number()), y2 = ay(sc.number());
         final nx = ax(sc.number()), ny = ay(sc.number());
         path.cubicTo(x1, y1, x2, y2, nx, ny);
@@ -403,7 +403,7 @@ Path parseSvgPathData(String d) {
         x = nx;
         y = ny;
       case 'T':
-        final x1 = lcx == null ? x : 2 * x - lcx, y1 = lcy == null ? y : 2 * y - lcy!;
+        final x1 = lcx == null ? x : 2 * x - lcx, y1 = lcy == null ? y : 2 * y - lcy;
         final nx = ax(sc.number()), ny = ay(sc.number());
         path.quadraticBezierTo(x1, y1, nx, ny);
         lcx = x1;
