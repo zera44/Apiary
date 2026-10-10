@@ -1,0 +1,29 @@
+name: Supabase
+
+# Перевірка сервера без Supabase: міграції й правила доступу - на тимчасовій
+# PostgreSQL (supabase/tests/run.sh), функція нічних копій - на Node.
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'supabase/**', '.github/workflows/supabase.yml' ]
+  pull_request:
+    paths: [ 'supabase/**', '.github/workflows/supabase.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Міграції, правила доступу, функції
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Міграції й правила доступу (PostgreSQL)
+        run: supabase/tests/run.sh
+      - name: Функції (backup-commit, delete-account)
+        run: node --test supabase/tests/*.test.ts

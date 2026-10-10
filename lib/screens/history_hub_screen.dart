@@ -36,6 +36,13 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   void initState() {
     super.initState();
     _load();
+    repo.stockChanges.addListener(_load); // фото перетиснули фоном тощо
+  }
+
+  @override
+  void dispose() {
+    repo.stockChanges.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -142,7 +149,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
           subtitle: it.quantity == null ? 'Ще не було приходу' : 'Залишок: ${formatAmount(it.quantity!)} ${it.unit}',
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(width: 44, height: 44, child: StockPhoto(path: it.photo)),
+            child: SizedBox(width: 44, height: 44, child: StockPhoto(photo: it.photo, thumb: true)),
           ),
           onTap: () async {
             await Navigator.of(context).push(MaterialPageRoute(
@@ -171,12 +178,12 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
                   if (subtitle != null)
                     Text(subtitle,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
@@ -223,7 +230,8 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
         title: 'Скасувати запис?',
         text: '«$title» від ${_date(r)} буде позначено як скасований, а залишок '
             'повернеться назад. Запис лишиться в історії.',
-        confirmText: 'Скасувати запис');
+        confirmText: 'Скасувати запис',
+        cancelText: 'Закрити');
     if (!ok) return;
     _busy = true;
     try {
@@ -278,12 +286,12 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: color, fontSize: 14, fontWeight: FontWeight.bold, decoration: strike)),
               Text(details,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
             ],

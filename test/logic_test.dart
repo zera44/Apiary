@@ -1,4 +1,4 @@
-import 'package:apiary/data/sync_service.dart';
+import 'package:apiary/services/app_config.dart';
 import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/geometry.dart';
 import 'package:apiary/logic/merge_layout.dart';
@@ -226,15 +226,30 @@ void main() {
 
   group('безпека', () {
     test('синхронізація лише через https (http - тільки локальний сервер розробки)', () {
-      expect(SyncService.serverBase('https://api.example.com/v1/').toString(),
+      expect(AppConfig.secureBase('https://api.example.com/v1/').toString(),
           'https://api.example.com/v1');
-      expect(SyncService.serverBase('http://api.example.com'), isNull);
-      expect(SyncService.serverBase('ftp://api.example.com'), isNull);
-      expect(SyncService.serverBase('https://user:pass@api.example.com'), isNull);
-      expect(SyncService.serverBase('не адреса'), isNull);
-      expect(SyncService.serverBase('http://localhost:8080'), isNotNull);
-      expect(SyncService.serverBase('https://h.example/api?k=v#x').toString(), 'https://h.example/api');
-      expect(SyncService.serverBase('https://h.example:8443').toString(), 'https://h.example:8443');
+      expect(AppConfig.secureBase('http://api.example.com'), isNull);
+      expect(AppConfig.secureBase('ftp://api.example.com'), isNull);
+      expect(AppConfig.secureBase('https://user:pass@api.example.com'), isNull);
+      expect(AppConfig.secureBase('не адреса'), isNull);
+      expect(AppConfig.secureBase('http://localhost:8080'), isNotNull);
+      expect(AppConfig.secureBase('https://h.example/api?k=v#x').toString(), 'https://h.example/api');
+      expect(AppConfig.secureBase('https://h.example:8443').toString(), 'https://h.example:8443');
+    });
+
+    test('Supabase: без адреси чи ключа синхронізацію вимкнено', () {
+      expect(const AppConfig().syncConfigured, isFalse);
+      expect(const AppConfig(supabaseUrl: 'https://x.supabase.co').syncConfigured, isFalse);
+      expect(const AppConfig(supabaseAnonKey: 'key').syncConfigured, isFalse);
+      // небезпечна адреса - теж вимкнено
+      expect(const AppConfig(supabaseUrl: 'http://x.supabase.co', supabaseAnonKey: 'key')
+          .syncConfigured, isFalse);
+      expect(const AppConfig(supabaseUrl: ' ', supabaseAnonKey: 'key').syncConfigured, isFalse);
+      const ok = AppConfig(supabaseUrl: 'https://x.supabase.co/', supabaseAnonKey: 'key');
+      expect(ok.syncConfigured, isTrue);
+      expect(ok.supabaseBase.toString(), 'https://x.supabase.co');
+      // у тестовій збірці адреси й ключа немає
+      expect(AppConfig.fromEnvironment.syncConfigured, isFalse);
     });
   });
 

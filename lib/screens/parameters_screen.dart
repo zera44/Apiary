@@ -276,7 +276,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     var nameError = false;
     var optionsError = false;
     // тип можна змінити, поки в параметра немає жодного запису (базовим — ніколи)
-    final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param!.id));
+    final typeLocked = isEdit && (isBase || await repo.parameterHasRecords(param.id));
     if (!mounted) return null;
     final l = isEdit ? null : _lesson;
     l?.advance(3, 4);
@@ -478,9 +478,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
     String? created;
     if (isEdit) {
       // тип даних — лише поки немає записів
-      await repo.updateParameter(param!.id, {
+      await repo.updateParameter(param.id, {
         if (!isBase) 'name': name,
-        if (!typeLocked && type != param!.dataType) 'data_type': type,
+        if (!typeLocked && type != param.dataType) 'data_type': type,
         'unit': unit.isEmpty ? null : unit,
         if (type == DataTypes.choice) 'options': Parameter.encodeOptions(options),
       });
@@ -960,7 +960,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 child: Row(children: [
                   Expanded(
                     child: Text(g.name,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: honeyDark, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1014,7 +1014,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                               alignment: Alignment.centerLeft,
                               padding: const EdgeInsets.only(right: 14),
                               child: Text(p.nameWithUnit,
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: AppColors.text, fontSize: 14)),
                             ),
@@ -1181,7 +1181,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final locked = _lockedBase(p);
     var subtitle = DataTypes.label(p.dataType);
     if (p.unit != null && p.unit!.isNotEmpty) subtitle += ' · ${p.unit}';
-    if (locked) subtitle += " · Базова характеристика (обов'язкова)";
+    if (locked) subtitle += " · обов'язкова";
     return ListCard(
       height: 66,
       child: Row(children: [
@@ -1233,13 +1233,14 @@ class _ParametersScreenState extends State<ParametersScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(p.name,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: AppColors.text, fontSize: 14, height: 1.05, fontWeight: FontWeight.bold)),
               Text(subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, height: 1.05)),
             ],
           ),
           ),
@@ -1345,7 +1346,7 @@ class ApplyScopeSwitch extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: Text(labels[s]!,
-                                maxLines: 1,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                     color: s == value ? Colors.white : AppColors.text,

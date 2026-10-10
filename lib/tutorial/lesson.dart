@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../ui/common.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/mode_toggle.dart';
-import '../ui/theme.dart';
 
 /// Малюнки пасічника для уроків (assets/guide). Усі в одному масштабі з
 /// beekeeper_on_toggle.webp: голова на тому самому місці, змінюється лише поза.
@@ -41,7 +40,7 @@ class LessonCue {
   final bool allowAll;
   final List<String> deny;
 
-  /// «Продовжити» з табличкою «завершити» під хмаркою.
+  /// «Продовжити» під хмаркою, під нею - менша «Завершити».
   final VoidCallback? onContinue;
 
   /// Фінал уроку: широка кнопка «Завершити».
@@ -279,7 +278,7 @@ List<Widget> lessonPicScene(LessonCue cue,
     ),
   );
   Widget? below;
-  double gap = LessonFinishLink.heightFor(180) + 4;
+  double gap = kLessonNoButtonGap;
   if (cue.onContinue != null) {
     below = LessonContinue(onContinue: cue.onContinue!, onFinish: onFinish);
     gap = 0; // висота - за шириною (див. LessonContinue)
@@ -312,7 +311,8 @@ List<Widget> lessonPicScene(LessonCue cue,
 
 /// Вікно (діалог) під час уроку: вікно вище, щоб пасічник унизу його не
 /// закривав, і шар уроку зі своїм кроком [screen].
-Widget lessonDialog(LessonController? lesson, String screen, Widget dialog) {
+Widget lessonDialog(LessonController? lesson, String screen, Widget dialog,
+    {bool drawToggle = true}) {
   if (lesson == null) return dialog;
   return Stack(children: [
     // вікно над пасічником; коли відкрита клавіатура (вона й так закриває
@@ -326,7 +326,7 @@ Widget lessonDialog(LessonController? lesson, String screen, Widget dialog) {
         );
       }),
     ),
-    Positioned.fill(child: LessonLayer(lesson: lesson, screen: screen)),
+    Positioned.fill(child: LessonLayer(lesson: lesson, screen: screen, drawToggle: drawToggle)),
   ]);
 }
 

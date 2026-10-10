@@ -3,6 +3,10 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
+import 'package:apiary/l10n/l10n.dart';
+import 'package:apiary/services/sharing.dart';
+import 'package:apiary/ui/hive_postbox.dart';
+import 'package:apiary/logic/cell_value.dart';
 import 'package:apiary/logic/hive_objects.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/main.dart';
@@ -35,6 +39,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'support/fake_sharing_server.dart';
 
 /// Димові тести: кожен екран будується без винятків розкладки.
 void main() {
@@ -250,8 +256,21 @@ void main() {
     expect(find.text('Фінанси'), findsOneWidget);
     expect(find.text('Відгук'), findsOneWidget);
     expect(find.text('Навчання'), findsOneWidget);
-    expect(find.text('Що нового'), findsOneWidget);
+    expect(find.text('Склад'), findsOneWidget);
+    expect(find.text('Що нового'), findsNothing); // тепер - дотик до логотипа
     expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    // логотип над «Vulyk» - пульс і «Що нового»
+    await tester.tap(find.byKey(const ValueKey('logo-whats-new')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(WhatsNewScreen), findsNothing); // ще пульсує
+    await tester.pump(const Duration(milliseconds: 300)); // пульс скінчився - відкриває
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(WhatsNewScreen), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HomeScreen), findsOneWidget);
     await tester.tap(find.text('Почати'));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
@@ -848,12 +867,19 @@ void main() {
     expect(find.textContaining('В тебе матка'), findsOneWidget);
     await tester.tap(find.byTooltip('Білий'));
     await settle(tester);
-    expect(find.textContaining('Заглянеш сам через'), findsOneWidget);
-    await tester.enterText(
-        find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)).first, '3');
+    // періодичності у формі немає (як і в справжньому огляді) — дата огляду
+    expect(find.text('Періодичність обходу (днів)'), findsNothing);
+    expect(find.textContaining('Оглянув сьогодні?'), findsOneWidget);
+    await tester.tap(find.text('Обрати дату'));
+    await settle(tester);
+    await tester.tap(find.text('Сьогодні'));
     await settle(tester);
     expect(find.textContaining('Збережи, бо я більше'), findsOneWidget);
-    await tester.tap(find.text('Зберегти'));
+    // ті самі кнопки, що й у справжній формі: дискета «Зберегти»
+    expect(
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('Змін немає')),
+        findsOneWidget);
+    await tester.tap(find.byTooltip('Зберегти'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
@@ -862,8 +888,11 @@ void main() {
     expect(find.textContaining('Відкрий меню навігації'), findsOneWidget);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    for (var i = 0; i < 5; i++) {
-      await tester.tap(find.text('Далі'));
+    // у меню - «Продовжити» і під нею менша «Завершити»
+    expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
+        findsOneWidget);
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
     await tester.tap(find.text('Зрозуміло'));
@@ -888,10 +917,13 @@ void main() {
     final moved = apiaries.firstWhere((a) => a.id != apiaryId);
     final els = (await tester.runAsync(() => repo.listElements(moved.id)))!;
     expect(els.where((e) => e.isHive), isNotEmpty);
-    final period = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_period')))!;
+    final date = (await tester.runAsync(() => repo.baseParameterId('hive', 'visit_start')))!;
+    final mark = (await tester.runAsync(() => repo.baseParameterId('hive', 'queen_mark')))!;
     final hive = els.firstWhere((e) => e.isHive);
     final latest = (await tester.runAsync(() => repo.latestParameterValues(hive.entity)))!;
-    expect(latest[period], '3');
+    // у формі огляду урок записує дату огляду («Сьогодні») і мітку матки
+    expect((latest[date] ?? '').isNotEmpty, isTrue);
+    expect(latest[mark], 'Білий');
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.byTooltip('Меню'), findsOneWidget); // уже справжня карта, не урок
     // меню вже показали - більше пасічник не з'являється
@@ -906,9 +938,10 @@ void main() {
     await tester.pumpWidget(wrap(AppDrawer(repo: repo, currentApiary: a, tour: true)));
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
-    for (final t in ['рамки, корми, ліки', 'зміни показників', 'час на вітер',
+    for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
+        'час на вітер',
         'спеціалізоване навчання', 'поділитись ідеєю']) {
-      await tester.tap(find.text('Далі'));
+      await tester.tap(find.text('Продовжити'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);
     }
@@ -1068,31 +1101,61 @@ void main() {
     expect(list.length, 1); // лише шаблон із setUp
   });
 
-  testWidgets('список пасік: видалення без підтвердження, з «Відмінити»', (tester) async {
+  testWidgets('тип для малювання: картка вуликів за замовчуванням, перешкоди - свайпом', (tester) async {
+    Future<void> swiped() async {
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50)); // картка догортається
+      }
+    }
+
+    await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Додати'));
+    await settle(tester);
+    expect(find.byTooltip('Стільник'), findsOneWidget);
+    expect(find.byTooltip('Річка'), findsNothing);
+    await tester.drag(find.byType(PageView), const Offset(-250, 0));
+    await swiped();
+    // на картці - перешкоди
+    expect(find.byTooltip('Річка'), findsOneWidget);
+    expect(find.byTooltip('Стільник'), findsNothing);
+    // перемикач угорі теж гортає: назад до вуликів - «Стільник» малює вулик із цією іконкою
+    await tester.tap(find.text('Вулики'));
+    await swiped();
+    await tester.tap(find.byTooltip('Стільник'));
+    await settle(tester);
+    expect(find.textContaining('Додаємо: Вулик - Стільник'), findsOneWidget);
+    await tester.tapAt(tester.getCenter(find.byType(InfiniteGrid)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Зберегти'));
+    await settle(tester);
+    await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
+    await settle(tester);
+    final t = (await tester.runAsync(() => repo.listTemplates()))!
+        .singleWhere((t) => t.name == 'Новий шаблон');
+    expect(CellValue.parse(t.cells.values.single).icon, 'hexagon');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('список пасік: видалення з підтвердженням, одразу з бази', (tester) async {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
 
-    // видалили — зникла одразу; «Відмінити» — повернулась
+    // «Скасувати» в підтвердженні — пасіка лишається
     await tester.tap(find.byTooltip('Видалити'));
     await settle(tester);
-    expect(find.text('Тестова пасіка'), findsNothing);
-    expect(find.text('Пасіку «Тестова пасіка» видалено'), findsOneWidget);
-    await tester.tap(find.text('Відмінити'));
-    for (var i = 0; i < 3; i++) {
-      await settle(tester);
-    }
+    expect(find.text('Видалити пасіку?'), findsOneWidget);
+    await tester.tap(find.text('Скасувати'));
+    await settle(tester);
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
 
-    // видалили й не відмінили — повідомлення зникло, пасіку видалено з бази
+    // підтвердили — пасіку видалено з бази одразу
     await tester.tap(find.byTooltip('Видалити'));
     await settle(tester);
-    // таймер повідомлення стартує після його появи — час іде кроками
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(seconds: 1));
-    }
+    await tester.tap(find.widgetWithText(PillButton, 'Видалити'));
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
@@ -1557,6 +1620,17 @@ void main() {
     expect(retried, 1);
   });
 
+  testWidgets('база новішої версії: пояснення «оновіть застосунок», без марного повтору',
+      (tester) async {
+    await tester.pumpWidget(StartupErrorApp(
+      error: const DatabaseTooNewException(5, 2),
+      onRetry: () async {},
+    ));
+    expect(find.text('Не вдалося відкрити дані пасіки'), findsOneWidget);
+    expect(find.textContaining('Оновіть застосунок'), findsOneWidget);
+    expect(find.text('Спробувати ще раз'), findsNothing);
+  });
+
   group("зворотний зв'язок", () {
     Widget host(Future<FeedbackResult> Function(String) send) => MaterialApp(
           theme: buildAppTheme(),
@@ -1715,6 +1789,177 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  /// Під меню головного: яка пасіка (null - соти) і які клітинки карти намальовано.
+  String? backdropId(WidgetTester tester) {
+    final f = find.descendant(of: find.byType(HomeScreen), matching: find.byType(MapScreen));
+    return f.evaluate().isEmpty ? null : tester.widget<MapScreen>(f.first).apiary.id;
+  }
+
+  Set<Object> backdropCells(WidgetTester tester) {
+    final f = find.descendant(of: find.byType(HomeScreen), matching: find.byType(InfiniteGrid));
+    return f.evaluate().isEmpty
+        ? const {}
+        : {for (final c in tester.widget<InfiniteGrid>(f.first).cells) c.id};
+  }
+
+  Future<Set<Object>> elementIds(WidgetTester tester, String apiary) async =>
+      {for (final e in (await tester.runAsync(() => repo.listElements(apiary)))!) e.id};
+
+  /// Застосунок пішов у фон і його знову відкрили (не з нуля).
+  Future<void> reopenFromBackground(WidgetTester tester) async {
+    for (final s in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  testWidgets('під меню - остання відкрита пасіка: після повернення й повторного відкриття', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    final second = (await tester.runAsync(() async {
+      final b = await repo.addApiary('Друга пасіка');
+      await repo.addGroup(b, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1');
+      return b;
+    }))!;
+
+    // пасік дві, жодну ще не відкривали - під меню соти
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    expect(backdropId(tester), isNull);
+
+    // відкрили другу пасіку й повернулись на головний - вона під меню
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.descendant(
+        of: find.ancestor(of: find.text('Друга пасіка'), matching: find.byType(Column)).first,
+        matching: find.byTooltip('Відкрити')));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byTooltip('Меню'), findsWidgets);
+    await tester.binding.handlePopRoute(); // карта -> список
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.binding.handlePopRoute(); // список -> головний
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Почати'), findsOneWidget);
+    expect(backdropId(tester), second);
+    expect(backdropCells(tester), await elementIds(tester, second));
+
+    // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
+    // відкрили з нагадування) - знову відкрили: під меню вже вона
+    await tester.runAsync(() => repo.setMeta('last_apiary', apiaryId));
+    await reopenFromBackground(tester);
+    expect(backdropId(tester), apiaryId);
+    expect(backdropCells(tester), await elementIds(tester, apiaryId));
+
+    // та сама пасіка, але з'явився вулик (напр., від помічника) - він уже на карті
+    await tester.runAsync(
+        () => repo.addGroup(apiaryId, {'0,0': 'hive'}, 9, 9, groupLabel: 'Новий'));
+    await reopenFromBackground(tester);
+    expect(backdropId(tester), apiaryId);
+    expect(backdropCells(tester), await elementIds(tester, apiaryId));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('під меню: закрили вікно - карта лишається, без «карта змінилась»', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    // пасіка одна - вона й під меню
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(backdropId(tester), apiaryId);
+    final cells = await elementIds(tester, apiaryId);
+    expect(backdropCells(tester), cells);
+    State<StatefulWidget> mapState() => tester.state(
+        find.descendant(of: find.byType(HomeScreen), matching: find.byType(MapScreen)).first);
+    final before = mapState();
+    final changes = repo.mapChanges.value;
+
+    // вікно над меню (тут - «Вийти?») закрили: карта під меню та сама, без
+    // порожнього кадру, і нагадування не переплановуються
+    await tester.tap(find.text('Вийти'));
+    await settle(tester);
+    await tester.tap(find.text('Скасувати'));
+    for (var i = 0; i < 12; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(backdropCells(tester), cells, reason: 'кадр $i');
+    }
+    expect(identical(mapState(), before), isTrue);
+    expect(repo.mapChanges.value, changes);
+    // фон лише показує пасіку - «останньою відкритою» її не робить
+    expect(await tester.runAsync(() => repo.getMeta('last_apiary')), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('під меню: остання пасіка видалена - соти (а не стара карта)', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    final b = (await tester.runAsync(() async {
+      final b = await repo.addApiary('Друга пасіка');
+      await repo.addApiary('Третя пасіка');
+      await repo.setMeta('last_apiary', b);
+      return b;
+    }))!;
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(backdropId(tester), b);
+
+    await tester.tap(find.text('Фінанси'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.runAsync(() => repo.deleteApiary(b));
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    // лишилось дві пасіки, остання відкрита зникла - під меню соти
+    expect(find.text('Почати'), findsOneWidget);
+    expect(backdropId(tester), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('вулик-скринька: запрошення помічником - значок, список, «Прийняти»', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    await tester.runAsync(() => olena.invite('petro@gmail.com',
+        apiaryIds: [apiaryId], apiaryNames: ['Біля річки'], stockAccess: true));
+    // на телефоні Петра (тут - та сама база, інший користувач)
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() => SharingService.current = SharingService(null, null));
+
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text(tr.invitesMail(1)), findsOneWidget);
+    expect(find.text('1'), findsWidgets); // значок на вулику
+    await tester.tap(find.byType(HivePostbox));
+    await settle(tester);
+    expect(find.text(tr.invitationFrom('olena@gmail.com')), findsOneWidget);
+    expect(find.text(tr.invitationApiaries('Біля річки')), findsOneWidget);
+    expect(find.text(tr.invitationWithStock), findsOneWidget);
+    await tester.tap(find.text(tr.accept));
+    await settle(tester);
+    await settle(tester);
+    expect(server.members.values.single.userId, 'u-petro');
+    expect(find.text(tr.inviteAccepted), findsOneWidget);
+    expect(find.text(tr.invitesMail(1)), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
@@ -1730,7 +1975,11 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);
-    expect(find.text('Головна'), findsOneWidget);
+    expect(find.text('Головне'), findsOneWidget);
+    // «Головне»: розділ синхронізації; без сервера - вона вимкнена
+    expect(find.text('Синхронізація'), findsOneWidget);
+    expect(find.text(tr.syncDisabled), findsOneWidget);
+    expect(find.textContaining('з\'являться тут згодом'), findsNothing);
     expect(find.text('Історія'), findsNothing); // історія - лише по картах
     await tester.tap(find.text('Шаблони'));
     await settle(tester);
@@ -1774,6 +2023,9 @@ class FakeAuth implements AuthService {
 
   @override
   Future<void> continueAsGuest() async => _guest = true;
+
+  @override
+  Future<String?> idToken() async => null;
 
   @override
   Future<void> signOut() async {

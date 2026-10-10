@@ -41,6 +41,28 @@ def released_in(sha: str, current: str) -> str:
     return min(tags, key=_vkey) if tags else current
 
 
+def _apply_fixes(entries: list[dict]) -> list[dict]:
+    """Виправлення тексту з tool/whats_new_fixes.txt («старий => новий»)."""
+    path = ROOT / 'tool' / 'whats_new_fixes.txt'
+    if not path.exists():
+        return entries
+    fixes: dict[str, str] = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=>' not in line:
+            continue
+        old, _, new = line.partition('=>')
+        fixes[old.strip().replace('—', '-')] = new.strip().replace('—', '-')
+    out = []
+    for e in entries:
+        if e['text'] in fixes:
+            if not fixes[e['text']]:
+                continue
+            e = {**e, 'text': fixes[e['text']]}
+        out.append(e)
+    return out
+
+
 def collect() -> list[dict]:
     log = git('log', '--reverse', '--format=%H%x1f%B%x1e', 'HEAD')
     entries: list[dict] = []
@@ -62,6 +84,7 @@ def collect() -> list[dict]:
                 # у застосунку — звичайний дефіс замість довгого тире
                 'text': text.replace('—', '-'),
             })
+    entries = _apply_fixes(entries)
     # той самий текст пізніше — лишаємо найновіший запис
     seen: dict = {}
     for e in entries:

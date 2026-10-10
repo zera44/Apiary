@@ -6,12 +6,18 @@ import 'data/database.dart';
 import 'data/repository.dart';
 import 'data/sync_service.dart';
 import 'icons/app_icons.dart';
+import 'l10n/l10n.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
+import 'services/background.dart';
+import 'services/backups.dart';
 import 'services/reminders.dart';
+import 'services/server.dart';
+import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
+import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
 import 'ui/voice_input_bar.dart';
 
@@ -35,14 +41,38 @@ Future<void> _start() async {
     repo = Repository(db);
     await repo.prepareLikeFreshInstall();
     auth = await GoogleAuthService.open();
+    await StockPhotos.init();
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
   }
   final sync = SyncService(repo)..start();
+  // вхід на сервер (збережений або тихо через Google); без мережі - пізніше
+  unawaited(Server.start(repo, auth).catchError((Object _) {}));
   // нагадування про обхід; збій не повинен заважати запуску
   unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
   runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));
+  unawaited(_startJobs(repo));
+}
+
+/// Після запуску, фоном (не заважаючи інтерфейсу): резервна копія, якщо
+/// пора (і далі щогодини перевірка); фонові завдання Android; один раз після
+/// оновлення - старі фото складу у новий формат і прибирання непотрібних
+/// файлів (крім тих, на які посилаються резервні копії).
+Future<void> _startJobs(Repository repo) async {
+  try {
+    final backups = await BackupService.of(repo);
+    final jobs = ForegroundJobs(backups);
+    await jobs.tick(); // копія - раніше за перетискання фото
+    jobs.start();
+    unawaited(BackgroundTasks.register().catchError((Object e) {
+      debugPrint('Фонові завдання: $e');
+    }));
+    await StockPhotos.upgradeOld(repo);
+    await StockPhotos.sweepOrphans(repo, alsoKeep: await backups.photoRefs());
+  } catch (e) {
+    debugPrint('Службові завдання: $e');
+  }
 }
 
 /// Чи можна одразу на головний екран: увійшли, обрали «без входу», або вхід
@@ -67,6 +97,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
   void initState() {
     super.initState();
     _reminders.addListener(_openFromReminder);
+    ReminderService.instance.beforeAskPermission = _explainNotifications;
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
   }
@@ -74,8 +105,22 @@ class _ApiaryAppState extends State<ApiaryApp> {
   @override
   void dispose() {
     _reminders.removeListener(_openFromReminder);
+    ReminderService.instance.beforeAskPermission = null;
     widget.sync?.stop();
     super.dispose();
+  }
+
+  /// Перед системним запитом: навіщо застосунку сповіщення.
+  Future<bool> _explainNotifications() async {
+    final ctx = _nav.currentContext;
+    if (ctx == null || !ctx.mounted) return false;
+    return showConfirm(ctx,
+        title: 'Нагадування про обхід',
+        text: 'Дозвольте сповіщення, щоб застосунок нагадував оглянути вулик, коли '
+            'настав час обходу. Без них нагадувань не буде.',
+        confirmText: 'Далі',
+        cancelText: 'Не зараз',
+        danger: false);
   }
 
   /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей
@@ -128,6 +173,8 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
 
   @override
   Widget build(BuildContext context) {
+    // базу збережено новішою версією: повтор не допоможе - треба оновитись
+    final tooNew = widget.error is DatabaseTooNewException;
     return MaterialApp(
       title: 'Vulyk',
       debugShowCheckedModeBanner: false,
@@ -138,33 +185,33 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('Не вдалося відкрити дані пасіки',
+                Text(tr.startupErrorTitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: AppColors.text, fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 Text(
-                  'Можливі причини: програму вже запущено в іншому вікні, закінчилось '
-                  'місце на диску або файл даних пошкоджено. Закрийте інші копії '
-                  'програми й спробуйте ще раз.',
+                  tooNew ? '${widget.error}' : tr.startupErrorHint,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                 ),
-                const SizedBox(height: 12),
-                SelectableText('${widget.error}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: _busy
-                      ? null
-                      : () async {
-                          setState(() => _busy = true);
-                          await widget.onRetry();
-                          if (mounted) setState(() => _busy = false);
-                        },
-                  child: Text(_busy ? 'Відкриваємо…' : 'Спробувати ще раз'),
-                ),
+                if (!tooNew) ...[
+                  const SizedBox(height: 12),
+                  SelectableText('${widget.error}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _busy
+                        ? null
+                        : () async {
+                            setState(() => _busy = true);
+                            await widget.onRetry();
+                            if (mounted) setState(() => _busy = false);
+                          },
+                    child: Text(_busy ? tr.startupOpening : tr.retry),
+                  ),
+                ],
               ]),
             ),
           ),

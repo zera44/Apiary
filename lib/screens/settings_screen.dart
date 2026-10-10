@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
+import 'settings_main_tab.dart';
 import 'templates_screen.dart';
 
 /// Шестерня «Налаштування» (карта й головний екран).
@@ -15,7 +17,7 @@ class GearButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: 'Налаштування',
+        message: tr.settingsTitle,
         child: Material(
           color: bg ?? AppColors.roundBtn,
           shape: const CircleBorder(),
@@ -30,13 +32,13 @@ class GearButton extends StatelessWidget {
       );
 }
 
-/// «Налаштування»: вкладки «Головна» (поки порожня) і «Шаблони» (свайпом
-/// теж). Параметри створюються й перейменовуються в «Таблиці параметрів»
-/// вулика. Історії тут немає - вона лише по картах.
+/// «Налаштування»: вкладки «Головне» (синхронізація та інше про дані) і
+/// «Шаблони» (свайпом теж). Параметри створюються й перейменовуються в
+/// «Таблиці параметрів» вулика. Історії тут немає - вона лише по картах.
 class SettingsScreen extends StatefulWidget {
   final Repository repo;
 
-  /// Урок «Налаштування (шаблони і параметри)».
+  /// Урок «Шаблони».
   final LessonController? lesson;
   const SettingsScreen({super.key, required this.repo, this.lesson});
 
@@ -73,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  /// Урок сам гортає вкладки: «Головна» → «Шаблони».
+  /// Урок сам гортає вкладки: «Головне» → «Шаблони».
   void _onLesson() {
     final want = (_lesson?.step ?? 0) >= 4 ? 1 : 0;
     if (mounted && want != _tab) setState(() => _tab = want);
@@ -110,13 +112,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         body: SafeArea(
           child: Stack(children: [
             Column(children: [
-              TopBar(title: 'Налаштування', onBack: _back),
+              TopBar(title: tr.settingsTitle, onBack: _back),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                 child: Row(children: [
-                  _tabButton('Головна', 0),
+                  _tabButton(tr.settingsTabMain, 0),
                   const SizedBox(width: 8),
-                  _tabButton('Шаблони', 1),
+                  _tabButton(tr.settingsTabTemplates, 1),
                 ]),
               ),
               Expanded(
@@ -128,14 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (l == null) setState(() => _tab = i);
                   },
                   child: _tab == 0
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text('Загальні налаштування з\'являться тут згодом.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.textMuted)),
-                          ),
-                        )
+                      ? MainSettingsTab(repo: widget.repo, lesson: l != null)
                       : TemplatesScreen(
                           key: _templates, repo: widget.repo, embedded: true, lesson: l),
                 ),

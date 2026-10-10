@@ -4,6 +4,8 @@ analyzer:
   # власні плагіни аналізуються окремо (у них свій pubspec)
   exclude:
     - packages/**
+    - build/**
+    - android/**
 
 linter:
   rules:

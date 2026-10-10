@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
 import '../ui/common.dart';
@@ -45,6 +46,8 @@ class _StockScreenState extends State<StockScreen> {
   void initState() {
     super.initState();
     _reload();
+    // склад змінили не тут (фото перетиснули фоном, операція з фінансів)
+    repo.stockChanges.addListener(_reload);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Hints.show(context, repo, Hints.stock);
     });
@@ -115,8 +118,9 @@ class _StockScreenState extends State<StockScreen> {
               _reload();
             },
             commit: () async {
+              // фото лишається до прибирання сиріт: воно знадобиться, якщо
+              // відновлять резервну копію з цією позицією
               await repo.deleteStockItem(it.id);
-              await StockPhotos.remove(it.photo);
               _hiding.remove(it.id);
               if (mounted) await _reload();
             },
@@ -129,7 +133,7 @@ class _StockScreenState extends State<StockScreen> {
               unit: res.unit,
               photo: photoChanged ? (res.photo,) : null,
               minQuantity: res.min != it.minQuantity ? (res.min,) : null);
-          if (photoChanged) await StockPhotos.remove(it.photo);
+          // старе фото прибере sweepOrphans (на нього можуть посилатися копії)
         }
         await _reload();
       });
@@ -168,6 +172,7 @@ class _StockScreenState extends State<StockScreen> {
 
   @override
   void dispose() {
+    repo.stockChanges.removeListener(_reload);
     for (final c in _actual.values) {
       c.dispose();
     }
@@ -194,6 +199,13 @@ class _StockScreenState extends State<StockScreen> {
           if (v == null) {
             if (mounted) {
               await showInfo(context, '«${it.name}»: фактична кількість - число, не менше 0',
+                  title: 'Не збережено');
+            }
+            return;
+          }
+          if (!amountFitsUnit(v, it.unit)) {
+            if (mounted) {
+              await showInfo(context, '«${it.name}»: для «${it.unit}» вкажіть ціле число',
                   title: 'Не збережено');
             }
             return;
@@ -229,7 +241,7 @@ class _StockScreenState extends State<StockScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                   Text(it.name,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
                   Text('За обліком: ${formatAmount(it.quantity ?? 0)} ${it.unit}',
@@ -370,7 +382,7 @@ class _StockScreenState extends State<StockScreen> {
     };
     return Column(children: [
       Text(it.name,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
       const SizedBox(height: 5),
@@ -391,7 +403,7 @@ class _StockScreenState extends State<StockScreen> {
                 child: InkWell(
                   onTap: () => _edit(it),
                   child: Stack(children: [
-                    Positioned.fill(child: StockPhoto(path: it.photo)),
+                    Positioned.fill(child: StockPhoto(photo: it.photo)),
                     if (it.low)
                       Positioned(
                         left: 0,
@@ -432,7 +444,7 @@ class _StockScreenState extends State<StockScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
                         child: Text(qty,
                             textAlign: TextAlign.center,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                                 color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
@@ -488,10 +500,12 @@ class _StockScreenState extends State<StockScreen> {
 /// Вкладки/операції складу.
 enum StockOp { receive, writeOff, inventory }
 
-/// Фото номенклатури або заглушка.
+/// Фото номенклатури або заглушка. [thumb] - мініатюра (маленькі списки);
+/// інакше повне фото (плитки складу, перегляд).
 class StockPhoto extends StatelessWidget {
-  final String? path;
-  const StockPhoto({super.key, required this.path});
+  final String? photo;
+  final bool thumb;
+  const StockPhoto({super.key, required this.photo, this.thumb = false});
 
   @override
   Widget build(BuildContext context) {
@@ -500,11 +514,50 @@ class StockPhoto extends StatelessWidget {
       alignment: Alignment.center,
       child: AppIcon('box', color: AppColors.textMuted, size: 44),
     );
-    final p = path;
-    if (p == null) return placeholder;
-    return Image.file(File(p),
-        fit: BoxFit.cover, cacheWidth: 400, errorBuilder: (_, __, ___) => placeholder);
+    final path = thumb ? StockPhotos.thumbPath(photo) : StockPhotos.fullPath(photo);
+    if (path == null) return placeholder;
+    return Image.file(File(path),
+        fit: BoxFit.cover,
+        cacheWidth: thumb ? 200 : 400,
+        errorBuilder: (_, _, _) => placeholder);
   }
+}
+
+/// Повне фото на весь екран (масштаб пальцями).
+Future<void> showStockPhoto(BuildContext context, String photo) {
+  final path = StockPhotos.fullPath(photo);
+  if (path == null) return Future.value();
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black87,
+    builder: (ctx) => Dialog.fullscreen(
+      backgroundColor: Colors.black,
+      child: Stack(children: [
+        Positioned.fill(
+          child: InteractiveViewer(
+            maxScale: 4,
+            child: Center(
+              child: Image.file(File(path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) =>
+                      Icon(Icons.broken_image_outlined, color: AppColors.textMuted, size: 64)),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: SafeArea(
+            child: IconButton(
+              tooltip: tr.close,
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+        ),
+      ]),
+    ),
+  );
 }
 
 Widget _buttons(List<Widget> buttons) => Row(children: [
@@ -576,7 +629,7 @@ class _ItemDialogState extends State<_ItemDialog> {
         _fresh = path;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = 'Не вдалося отримати фото: $e');
+      if (mounted) setState(() => _error = tr.photoFailed('$e'));
     } finally {
       if (mounted) setState(() => _picking = false);
     }
@@ -643,7 +696,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                 color: selected ? AppColors.create : AppColors.hive.withValues(alpha: 0.25)),
           ),
           child: Text(label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: fg, fontSize: 14, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
@@ -737,7 +790,18 @@ class _ItemDialogState extends State<_ItemDialog> {
             Row(children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: SizedBox(width: 72, height: 72, child: StockPhoto(path: _photo)),
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  // дотик - повне фото
+                  child: GestureDetector(
+                    onTap: _photo == null ? null : () => showStockPhoto(context, _photo!),
+                    child: Tooltip(
+                      message: _photo == null ? '' : tr.photoOpen,
+                      child: StockPhoto(photo: _photo, thumb: true),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -857,6 +921,10 @@ class _MoveDialogState extends State<_MoveDialog> {
       setState(() => _error = op == StockOp.inventory
           ? 'Введіть фактичну кількість (0 або більше)'
           : 'Введіть кількість більше 0');
+      return;
+    }
+    if (!amountFitsUnit(v, it.unit)) {
+      setState(() => _error = 'Для «${it.unit}» вкажіть ціле число');
       return;
     }
     if (op == StockOp.writeOff) {

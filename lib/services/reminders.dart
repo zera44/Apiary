@@ -109,8 +109,20 @@ class ReminderService {
     return _ready;
   }
 
+  /// Застосунок підставляє сюди пояснення перед системним запитом про
+  /// сповіщення: true — питати, false — не питати зараз.
+  Future<bool> Function()? beforeAskPermission;
+
   Future<void> _requestPermission() async {
     if (_askedPermission) return;
+    final explain = beforeAskPermission;
+    if (explain != null) {
+      var go = true;
+      try {
+        go = await explain();
+      } catch (_) {}
+      if (!go) return; // не зараз — запитаємо наступного разу
+    }
     _askedPermission = true;
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()

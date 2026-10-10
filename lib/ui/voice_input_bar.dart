@@ -62,7 +62,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
   StreamSubscription<VoskEvent>? _sub;
   Timer? _limit;
 
-  /// Моделі ще немає на телефоні - на смужці кнопка «Скачати».
+  /// Моделі ще немає на телефоні - на смужці кнопка «Завантажити».
   bool _offer = false;
 
   /// Скачування моделі: частка 0..1 (null - не скачуємо).
@@ -136,7 +136,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     try {
       if (!await VoiceInput.instance.modelOnPhone()) {
         _offer = true;
-        _say('Для голосу один раз скачайте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
+        _say('Для голосу один раз завантажте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
         return;
       }
       _say('Готую розпізнавання…');
@@ -175,7 +175,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
       if (e.code == 'NOMODEL' || e.code == 'MODEL') {
         // моделі немає або вона пошкоджена (плагін її прибрав) - скачати знову
         _offer = true;
-        _say('Модель голосу пошкоджена - скачайте її ще раз');
+        _say('Модель голосу пошкоджена - завантажте її ще раз');
       } else {
         _say('Голосовий ввід недоступний: ${e.message ?? e.code}');
       }
@@ -323,7 +323,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     final text = listening
         ? (_partial.isEmpty ? 'Говоріть…' : _partial)
         : dl != null
-            ? (dl >= 1 ? 'Розпаковую модель…' : 'Скачую модель голосу: ${(dl * 100).round()} %')
+            ? (dl >= 1 ? 'Розпаковую модель…' : 'Завантажую модель голосу: ${(dl * 100).round()} %')
             : (_message ??
             (_focused != null && _isNumeric(_focused!.widget) ? 'Скажіть число' : 'Голосовий ввід'));
     return Material(
@@ -332,7 +332,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
         const SizedBox(width: 14),
         Expanded(
           child: Text(text,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                   color: listening && _partial.isNotEmpty ? AppColors.text : AppColors.textMuted,
@@ -342,7 +342,8 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
           TextButton(
             key: const ValueKey('voice-download'),
             onPressed: _download,
-            child: Text('Скачати', style: TextStyle(color: AppColors.create, fontWeight: FontWeight.bold)),
+            child: Text('Завантажити',
+                style: TextStyle(color: AppColors.create, fontWeight: FontWeight.bold)),
           ),
         GestureDetector(
           key: const ValueKey('voice-mic'),

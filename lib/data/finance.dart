@@ -139,6 +139,10 @@ const _seed = <(String, String, bool, String, String)>[
   ('Інший дохід', kFinIncome, false, 'other', 'olive'),
 ];
 
+/// Назви й види типових категорій (для сталих ключів, див.
+/// [Repository.assignSeedKeys]).
+List<(String, String)> get kFinSeedNames => [for (final s in _seed) (s.$1, s.$2)];
+
 /// Густина меду: 1 л = 1,4 кг (продаж у літрах списує кілограми).
 const kHoneyDensity = 1.4;
 
@@ -390,6 +394,54 @@ extension RepositoryFinance on Repository {
     });
     if (touchedStock) stockChanges.value++;
     return opId;
+  }
+
+  /// Змінити власну операцію: категорію, дату, суму, коментар. Якщо в операції
+  /// є рядки таблиці, суму змінити не можна (вона з рядків); дата тоді
+  /// змінюється й у пов'язаних приходах на складі. Скасовану не змінюють.
+  Future<void> updateFinOp(
+    String id, {
+    required String? categoryId,
+    required DateTime date,
+    required double amount,
+    String? comment,
+  }) async {
+    if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
+    var touched = false;
+    await db.transaction((txn) async {
+      final ops = await txn.query('fin_ops', where: 'id = ?', whereArgs: [id], limit: 1);
+      if (ops.isEmpty) throw StateError('Запис не знайдено');
+      final op = ops.first;
+      if ((op['cancelled'] as int? ?? 0) == 1) throw StateError('Скасований запис не змінюють');
+      final lines = await txn.query('fin_lines',
+          where: 'op_id = ? AND deleted = 0', whereArgs: [id]);
+      final old = (op['amount'] as num?)?.toDouble() ?? 0;
+      if (lines.isNotEmpty && (amount - old).abs() > 0.005) {
+        throw StateError('Суму не можна змінити: вона складається з рядків таблиці. '
+            'Скасуйте запис і внесіть новий.');
+      }
+      final t = Repository.now();
+      await txn.update(
+          'fin_ops',
+          {
+            'category_id': categoryId,
+            'amount': amount,
+            'op_date': _secs(date),
+            'comment': (comment ?? '').trim().isEmpty ? null : comment!.trim(),
+            'updated_at': t,
+            'synced': 0,
+          },
+          where: 'id = ?',
+          whereArgs: [id]);
+      for (final l in lines) {
+        final mid = l['stock_move_id'] as String?;
+        if (mid == null) continue;
+        await txn.update('stock_moves', {'op_date': _secs(date), 'updated_at': t, 'synced': 0},
+            where: 'id = ?', whereArgs: [mid]);
+        touched = true;
+      }
+    });
+    if (touched) stockChanges.value++;
   }
 
   /// Скасувати запис журналу. Власна операція: скасовуються і її приходи на

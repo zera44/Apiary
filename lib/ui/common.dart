@@ -103,12 +103,30 @@ class PillButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: icon != null
                   ? Tooltip(message: text, child: Icon(icon, color: fg, size: 26))
-                  : Text(
-                      text,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
-                    ),
+                  // вузька кнопка: кілька слів - переноситься на другий рядок, одне
+                  // слово - стискається (без «…» і без розриву слова навпіл)
+                  : (text.trim().contains(RegExp(r'\s'))
+                      ? Text(
+                          text,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: fg,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w500,
+                              height: 1.1),
+                        )
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            text,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                                color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
+                          ),
+                        )),
             ),
           ),
         ),
@@ -136,7 +154,7 @@ class CapsuleLabel extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(text,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: fg ?? AppColors.text, fontSize: 12)),
       ),
@@ -207,7 +225,7 @@ class TopBar extends StatelessWidget {
             child: Row(children: [
               Expanded(
                 child: Text(title,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -260,7 +278,7 @@ class TopBar extends StatelessWidget {
             child: Text(
               title,
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -473,7 +491,9 @@ Future<String?> showTextPrompt(BuildContext context,
     Widget Function(Widget dialog)? wrap,
     Widget Function(String which, Widget button)? decorate,
     bool dismissible = true}) {
-  final ctrl = TextEditingController(text: initial);
+  // початкова назва виділена: перше ж натискання клавіші замінює її
+  final ctrl = TextEditingController(text: initial)
+    ..selection = TextSelection(baseOffset: 0, extentOffset: initial.length);
   String? error;
   return showDialog<String>(
     context: context,

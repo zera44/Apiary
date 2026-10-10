@@ -45,12 +45,12 @@ jobs:
           set -o pipefail
           # точно ті версії й вміст пакетів, що в pubspec.lock (без тихих оновлень)
           flutter pub get --enforce-lockfile 2>&1 | tee build.log
-      # падає лише на помилках (попередження й підказки — не критичні)
+      # падає на помилках і попередженнях (підказки стилю — не критичні)
       - name: Аналіз коду
         shell: bash
         run: |
           set -o pipefail
-          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee build.log
+          flutter analyze --no-fatal-infos 2>&1 | tee build.log
       - name: Тести
         shell: bash
         run: |
@@ -180,8 +180,25 @@ jobs:
           FEEDBACK_URL: ${{ secrets.APIARY_FEEDBACK_URL }}
           # вхід через Google (див. README, «Вхід через Google»)
           GOOGLE_SERVER_CLIENT_ID: ${{ secrets.APIARY_GOOGLE_SERVER_CLIENT_ID }}
+          # сервер синхронізації (supabase/README.md); без них - вимкнена.
+          # Реліз із main - робочий проєкт, усе інше (тестові збірки гілок) -
+          # тестовий, щоб випробування не чіпали справжніх даних. Вибір - у
+          # скрипті нижче: реліз без робочих секретів НЕ бере тестові
+          IS_RELEASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          SUPABASE_URL_PROD: ${{ secrets.SUPABASE_URL_PROD }}
+          SUPABASE_ANON_KEY_PROD: ${{ secrets.SUPABASE_ANON_KEY_PROD }}
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_ANON_KEY_TEST: ${{ secrets.SUPABASE_ANON_KEY_TEST }}
         run: |
           set -o pipefail
+          if [ "$IS_RELEASE" = "true" ]; then
+            SUPABASE_URL="$SUPABASE_URL_PROD"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_PROD"
+          else
+            SUPABASE_URL="$SUPABASE_URL_TEST"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_TEST"
+          fi
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Секретів Supabase для цієї збірки немає - синхронізація в APK вимкнена"
+          fi
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
             key="$RUNNER_TEMP/apiary-release.p12"
             trap 'rm -f "$key"' EXIT
@@ -200,7 +217,7 @@ jobs:
             echo "EXPECTED_CERT=legacy" >> "$GITHUB_ENV"
           fi
           unset KEYSTORE_B64 KEYSTORE_PASSWORD
-          flutter build apk --release --target-platform android-arm,android-arm64 --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" 2>&1 | tee build.log
+          flutter build apk --release --target-platform android-arm,android-arm64 --obfuscate --split-debug-info=build/symbols --dart-define=APIARY_FEEDBACK_URL="$FEEDBACK_URL" --dart-define=APIARY_GOOGLE_SERVER_CLIENT_ID="$GOOGLE_SERVER_CLIENT_ID" --dart-define=SUPABASE_URL="$SUPABASE_URL" --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" 2>&1 | tee build.log
       - name: Показати помилку збірки
         if: failure()
         shell: bash

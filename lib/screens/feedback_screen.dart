@@ -68,7 +68,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Не надіслано'),
         content: Text(
-          '$reason\n\nАбо скопіюйте текст і надішліть його на ${FeedbackService.email}',
+          '$reason\n\n${notConfigured ? 'Скопіюйте' : 'Або скопіюйте'} текст і надішліть його на ${FeedbackService.email}',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.text),
         ),

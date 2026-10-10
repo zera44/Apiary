@@ -1,8 +1,11 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+
+import 'database.dart' show AppDatabase;
 
 import '../logic/cell_value.dart';
 import '../logic/geometry.dart';
@@ -47,6 +50,7 @@ const kSyncTables = [
   'fin_lines',
   'note_labels',
   'hive_notes',
+  'param_groups',
 ];
 
 /// Усі операції з локальною базою (порт db.py).
@@ -72,11 +76,21 @@ class Repository {
   final ValueNotifier<int> notesChanges = ValueNotifier<int>(0);
   void _remindersDirty() => remindersChanged.value++;
 
+  /// Дані змінились цілком (відновлення з копії, завантаження з сервера):
+  /// усі екрани й нагадування перечитують своє.
+  void notifyAllChanged() {
+    mapChanges.value++;
+    remindersChanged.value++;
+    stockChanges.value++;
+    notesChanges.value++;
+  }
+
   static const _uuid = Uuid();
   static String newId() => _uuid.v4();
 
   /// Unix-час у секундах (дробовий) — так само, як у старій версії.
-  static double now() => DateTime.now().microsecondsSinceEpoch / 1e6;
+  /// Час зміни запису (секунди Unix). Через [clock] - тести підставляють свій час.
+  static double now() => clock.now().microsecondsSinceEpoch / 1e6;
 
   /// Одноразова ініціалізація після відкриття бази.
   Future<void> init() async {
@@ -84,6 +98,7 @@ class Repository {
     await ensureLegacyApiary();
     await splitMultiObjectGroups();
     await seedFinanceCategories();
+    await assignSeedKeys(db);
   }
 
   /// Усе, що отримує людина, яка щойно встановила застосунок: базові
@@ -93,6 +108,7 @@ class Repository {
     await init();
     await seedDefaultTemplates(); // «Вулик» і «Лежак» — один раз
     await seedBeeFramesParameter();
+    await assignSeedKeys(db);
   }
 
   /// Назва необов'язкової характеристики «скільки вуличок зайняли бджоли».
@@ -168,18 +184,34 @@ class Repository {
   /// Стара база (з версії до підтримки кількох пасік) мала елементи без
   /// apiary_id — тут вони один раз переносяться в автоматично створену
   /// пасіку "Моя пасіка", щоб не зникли з очей.
-  Future<void> ensureLegacyApiary() async {
-    final orphans = await db
+  Future<void> ensureLegacyApiary([DatabaseExecutor? executor]) async {
+    final ex = executor ?? db;
+    final orphans = await ex
         .rawQuery('SELECT COUNT(*) c FROM elements WHERE apiary_id IS NULL AND deleted = 0');
-    if (((orphans.first['c'] as num?) ?? 0) == 0) return;
-    final existing =
-        await db.rawQuery('SELECT id FROM apiaries WHERE deleted = 0 ORDER BY updated_at ASC LIMIT 1');
-    final apiaryId = existing.isNotEmpty
-        ? existing.first['id'] as String
-        : await addApiary('Моя пасіка');
-    await db.rawUpdate(
-        'UPDATE elements SET apiary_id = ?, synced = 0, updated_at = ? WHERE apiary_id IS NULL',
-        [apiaryId, now()]);
+    if (((orphans.first['c'] as num?) ?? 0) > 0) {
+      // лише своя пасіка - не та, де я помічник
+      final existing = await ex.rawQuery('SELECT id FROM apiaries '
+          'WHERE deleted = 0 AND owner_id IS NULL ORDER BY updated_at ASC LIMIT 1');
+      final String apiaryId;
+      if (existing.isNotEmpty) {
+        apiaryId = existing.first['id'] as String;
+      } else {
+        apiaryId = newId();
+        await ex.insert('apiaries', {
+          'id': apiaryId,
+          'name': 'Моя пасіка',
+          'updated_at': now(),
+          'synced': 0,
+          'deleted': 0,
+        });
+      }
+      await ex.rawUpdate(
+          'UPDATE elements SET apiary_id = ?, synced = 0, updated_at = ? WHERE apiary_id IS NULL',
+          [apiaryId, now()]);
+    }
+    // записам вуликів, що щойно дістали пасіку (і давнім, яким міграція не
+    // мала звідки її взяти), - пасіка прямо
+    await AppDatabase.backfillApiaryIds(ex);
   }
 
   /// Нова пасіка з типовою назвою «Пасіка N» (N — наступний вільний номер);
@@ -251,7 +283,8 @@ class Repository {
       final o = owner(r);
       final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
       if (o != null && pid != null) {
-        bindings.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'updated_at': t, 'synced': 0});
+        bindings.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'apiary_id': apiaryId,
+            'updated_at': t, 'synced': 0});
       }
     }
     final records = <Map<String, Object?>>[];
@@ -259,7 +292,8 @@ class Repository {
       final o = owner(r);
       final pid = o == null ? null : await mapParam(r['parameter_id'] as String);
       if (o != null && pid != null) {
-        records.add({...r, ...o, 'id': newId(), 'parameter_id': pid, 'synced': 0});
+        records.add(
+            {...r, ...o, 'id': newId(), 'parameter_id': pid, 'apiary_id': apiaryId, 'synced': 0});
       }
     }
     // нотатки: мітки зіставляються за назвою (немає - створюються)
@@ -277,7 +311,8 @@ class Repository {
         }
         label = labelMap[srcLabel];
       }
-      notes.add({...r, ...o, 'id': newId(), 'label_id': label, 'updated_at': t, 'synced': 0});
+      notes.add({...r, ...o, 'id': newId(), 'label_id': label, 'apiary_id': apiaryId,
+        'updated_at': t, 'synced': 0});
     }
     await db.transaction((txn) async {
       for (final n in notes) {
@@ -1210,22 +1245,131 @@ class Repository {
   // Шаблони
   // ---------------------------------------------------------------------
 
-  /// Групи параметрів («Конструктор»): зберігаються в app_meta одним JSON.
+  /// Групи параметрів («Конструктор») - свої (власника цього телефона).
   Future<List<ParamGroup>> paramGroups() async {
-    final raw = await getMeta('param_groups');
-    if (raw == null || raw.isEmpty) return [];
+    final rows = await db.query('param_groups',
+        where: 'deleted = 0 AND owner_id IS NULL', orderBy: 'sort_order, rowid');
+    return [
+      for (final r in rows)
+        ParamGroup(
+          id: r['id']! as String,
+          name: r['name']! as String,
+          ids: _decodeIds(r['ids'] as String?),
+        ),
+    ];
+  }
+
+  static List<String> _decodeIds(String? raw) {
     try {
-      return [
-        for (final j in jsonDecode(raw) as List) ParamGroup.fromJson(Map<String, dynamic>.from(j as Map))
-      ];
+      return [for (final x in (jsonDecode(raw ?? '[]') as List)) x as String];
     } catch (_) {
       return [];
     }
   }
 
+  /// Зберегти групи в цьому порядку; яких у списку немає - видалено
+  /// (позначкою, щоб видалення дійшло й до інших телефонів).
   Future<void> setParamGroups(List<ParamGroup> groups) async {
-    await setMeta('param_groups',
-        groups.isEmpty ? null : jsonEncode([for (final g in groups) g.toJson()]));
+    final t = now();
+    await db.transaction((txn) async {
+      final existing = {
+        for (final r in await txn.query('param_groups', where: 'owner_id IS NULL'))
+          r['id']! as String: r
+      };
+      for (var i = 0; i < groups.length; i++) {
+        final g = groups[i];
+        final ids = jsonEncode(g.ids);
+        final old = existing[g.id];
+        if (old != null &&
+            old['name'] == g.name &&
+            old['ids'] == ids &&
+            old['sort_order'] == i &&
+            old['deleted'] == 0) {
+          continue; // без змін - не відправляти зайвого
+        }
+        await txn.insert(
+            'param_groups',
+            {
+              'id': g.id,
+              'name': g.name,
+              'ids': ids,
+              'sort_order': i,
+              'deleted': 0,
+              'updated_at': t,
+              'synced': 0,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      final keep = {for (final g in groups) g.id};
+      for (final id in existing.keys) {
+        if (keep.contains(id) || existing[id]!['deleted'] == 1) continue;
+        await txn.update('param_groups', {'deleted': 1, 'updated_at': t, 'synced': 0},
+            where: 'id = ?', whereArgs: [id]);
+      }
+    });
+  }
+
+  /// Перенести групи «Конструктора» зі службових позначок (до версії 3
+  /// бази) у свою таблицю. Лише якщо живих груп у таблиці ще немає.
+  static Future<void> moveParamGroupsToTable(DatabaseExecutor db) async {
+    final meta = await db.query('app_meta', where: 'key = ?', whereArgs: ['param_groups']);
+    if (meta.isEmpty) return;
+    final live = await db.rawQuery('SELECT COUNT(*) AS n FROM param_groups WHERE deleted = 0');
+    if (((live.first['n'] as int?) ?? 0) == 0) {
+      try {
+        final list = jsonDecode((meta.first['value'] as String?) ?? '[]') as List;
+        final t = now();
+        for (var i = 0; i < list.length; i++) {
+          final g = ParamGroup.fromJson(Map<String, dynamic>.from(list[i] as Map));
+          await db.insert(
+              'param_groups',
+              {
+                'id': g.id,
+                'name': g.name,
+                'ids': jsonEncode(g.ids),
+                'sort_order': i,
+                'deleted': 0,
+                'updated_at': t,
+                'synced': 0,
+              },
+              conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      } catch (_) {
+        return; // зіпсований JSON - лишаємо як було
+      }
+    }
+    await db.delete('app_meta', where: 'key = ?', whereArgs: ['param_groups']);
+  }
+
+  /// Сталі ключі ([AppDatabase.seededTables]) для записів, які застосунок
+  /// створює сам. Лише найдавнішому з однакових своїх записів і лише якщо
+  /// такого ключа ще немає: дві власні однойменні речі користувача не
+  /// зіллються, зливаються лише копії того самого з різних телефонів.
+  static Future<void> assignSeedKeys(DatabaseExecutor db) async {
+    Future<void> key(String table, String seedKey, String cond, List<Object?> args) async {
+      await db.rawUpdate(
+          'UPDATE $table SET seed_key = ?, synced = 0 WHERE id = ('
+          'SELECT id FROM $table WHERE $cond AND deleted = 0 AND owner_id IS NULL '
+          'AND seed_key IS NULL ORDER BY rowid LIMIT 1) '
+          'AND NOT EXISTS (SELECT 1 FROM $table WHERE seed_key = ? AND owner_id IS NULL '
+          'AND deleted = 0)',
+          [seedKey, ...args, seedKey]);
+    }
+
+    for (final entry in kBaseParameters.entries) {
+      for (final (k, _, _, _) in entry.value) {
+        await key('parameters', 'base:${entry.key}:$k', 'is_base = 1 AND base_type = ? AND base_key = ?',
+            [entry.key, k]);
+      }
+    }
+    await key('parameters', 'param:bee_frames', 'name = ? AND data_type = ?',
+        [kBeeFramesName, DataTypes.int_]);
+    await key('templates', 'tpl:hive', 'name = ? AND width = 1 AND height = 1', ['Вулик']);
+    await key('templates', 'tpl:lezhak', 'name = ? AND width = 2 AND height = 1', ['Лежак']);
+    for (final (name, kind) in kFinSeedNames) {
+      await key('fin_categories', 'fin:$kind:$name', 'name = ? AND kind = ?', [name, kind]);
+    }
+    await key('note_labels', 'label:inspection', 'name = ?', [kInspectionNoteLabel]);
   }
 
   /// Службова позначка застосунку (таблиця app_meta, не синхронізується).
@@ -1604,8 +1748,10 @@ class Repository {
         }
       }
       // шаблони: згадки старого параметра -> новий
+      // лише свої шаблони: чужі (власника, якому допомагаю) змінює він сам
       final tpls = await txn.rawQuery(
-          "SELECT id, cells FROM templates WHERE deleted = 0 AND cells LIKE ?", ['%$fromId%']);
+          "SELECT id, cells FROM templates WHERE deleted = 0 AND owner_id IS NULL AND cells LIKE ?",
+          ['%$fromId%']);
       for (final tpl in tpls) {
         final raw = tpl['cells'] as String?;
         if (raw == null) continue;
@@ -1935,7 +2081,26 @@ class Repository {
     return id;
   }
 
-  /// Змінити назву/одиницю/фото. Для фото: [photo] = ('шлях',) або (null,) — прибрати.
+  /// Фото номенклатури, зокрема видаленої (її фото знадобиться, якщо
+  /// видалення скасують): (id, photo).
+  Future<List<(String, String)>> stockPhotoRefs() async => [
+        for (final r in await db.query('stock_items',
+            columns: ['id', 'photo'], where: "photo IS NOT NULL AND photo != ''"))
+          (r['id'] as String, r['photo'] as String)
+      ];
+
+  /// Службова заміна фото (перетискання у новий формат): лише якщо фото
+  /// позиції досі [old] - інакше його тим часом змінили, і чіпати не можна.
+  /// Запис стає в чергу на відправку (сервер має отримати нову назву).
+  /// Повертає, чи замінено.
+  Future<bool> replaceStockPhoto(String id, String old, String? photo) async {
+    final n = await db.update('stock_items', {'photo': photo, 'updated_at': now(), 'synced': 0},
+        where: 'id = ? AND photo = ?', whereArgs: [id, old]);
+    if (n > 0) stockChanges.value++;
+    return n > 0;
+  }
+
+  /// Змінити назву/одиницю/фото. Для фото: [photo] = ('назва',) або (null,) — прибрати.
   Future<void> updateStockItem(String id,
       {String? name, String? unit, (String?,)? photo, (double?,)? minQuantity}) async {
     final fields = <String, Object?>{
@@ -2111,6 +2276,16 @@ class Repository {
     return db.rawQuery('SELECT * FROM $table WHERE synced = 0');
   }
 
+  /// Скільки змін чекає відправки (усі таблиці синхронізації).
+  Future<int> countUnsynced() async {
+    var n = 0;
+    for (final t in kSyncTables) {
+      final r = await db.rawQuery('SELECT COUNT(*) AS n FROM $t WHERE synced = 0');
+      n += (r.first['n'] as int?) ?? 0;
+    }
+    return n;
+  }
+
   /// Позначити рядок синхронізованим — лише якщо його не змінили, поки він
   /// відправлявся (інакше нова зміна загубилась би).
   Future<void> markSynced(String table, Map<String, Object?> sentRow) async {
@@ -2145,22 +2320,25 @@ class Repository {
     });
   }
 
-  /// Остаточно прибрати рядки, позначені deleted, що вже синхронізовані
-  /// й видалені давніше за [grace]. (Раніше прибирались одразу — і
-  /// "крок назад" після видалення переставав працювати.)
+  /// Остаточно прибрати рядки, позначені deleted, які сервер уже отримав
+  /// (synced = 1) і які видалені давніше за [grace]. Не підтверджені
+  /// сервером позначки не чіпаємо ніколи: інакше він не дізнався б про
+  /// видалення, і запис «воскрес» би з іншого телефона. Залежні рядки
+  /// (прив'язки, історія видаленого параметра) - теж лише ті, що вже на
+  /// сервері (там вони лишаються, тут - зайві).
   /// Історію значень видалених об'єктів НЕ чіпаємо — вона лишається
   /// доступною з каталогу параметрів як "Видалений об'єкт".
-  Future<void> purgeDeleted({Duration grace = const Duration(days: 7)}) async {
+  Future<void> purgeDeleted({Duration grace = const Duration(days: 30)}) async {
     final cutoff = now() - grace.inSeconds;
     await db.transaction((txn) async {
       // прив'язки параметрів до об'єктів, які зараз будуть прибрані
       await txn.rawDelete(
-        'DELETE FROM element_parameters WHERE element_id IN '
+        'DELETE FROM element_parameters WHERE synced = 1 AND element_id IN '
         '(SELECT id FROM elements WHERE deleted = 1 AND synced = 1 AND updated_at < ?)',
         [cutoff],
       );
       await txn.rawDelete(
-        'DELETE FROM element_parameters WHERE group_id IS NOT NULL AND group_id NOT IN '
+        'DELETE FROM element_parameters WHERE synced = 1 AND group_id IS NOT NULL AND group_id NOT IN '
         '(SELECT DISTINCT group_id FROM elements WHERE group_id IS NOT NULL AND '
         'NOT (deleted = 1 AND synced = 1 AND updated_at < ?))',
         [cutoff],
@@ -2173,12 +2351,12 @@ class Repository {
           'DELETE FROM element_parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?',
           [cutoff]);
       await txn.rawDelete(
-        'DELETE FROM element_parameters WHERE parameter_id IN '
+        'DELETE FROM element_parameters WHERE synced = 1 AND parameter_id IN '
         '(SELECT id FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?)',
         [cutoff],
       );
       await txn.rawDelete(
-        'DELETE FROM parameter_records WHERE parameter_id IN '
+        'DELETE FROM parameter_records WHERE synced = 1 AND parameter_id IN '
         '(SELECT id FROM parameters WHERE deleted = 1 AND synced = 1 AND updated_at < ?)',
         [cutoff],
       );
@@ -2198,5 +2376,117 @@ class Repository {
           'AND number IS NULL',
           [cutoff]);
     });
+  }
+
+  /// Однакові типові записи (той самий [AppDatabase.seededTables]-ключ і
+  /// власник) - після синхронізації з кількох телефонів: лишається один
+  /// (з найменшим id - так само вирішать усі телефони), посилання на інші
+  /// переписуються на нього, а інші стають позначками «видалено».
+  /// Повертає скільки злито.
+  Future<int> mergeSeedDuplicates() async {
+    var merged = 0;
+    final t = now();
+    await db.transaction((txn) async {
+      for (final table in AppDatabase.seededTables) {
+        // лише свої: дублікати власника, якому я допомагаю, зливає його
+        // телефон (сервер не дає помічнику змінювати його шаблони й групи)
+        final groups = await txn.rawQuery(
+            'SELECT seed_key AS k FROM $table '
+            'WHERE seed_key IS NOT NULL AND deleted = 0 AND owner_id IS NULL '
+            'GROUP BY k HAVING COUNT(*) > 1');
+        for (final g in groups) {
+          final ids = [
+            for (final r in await txn.rawQuery(
+                'SELECT id FROM $table WHERE seed_key = ? AND owner_id IS NULL '
+                'AND deleted = 0 ORDER BY id',
+                [g['k']]))
+              r['id']! as String
+          ];
+          final keep = ids.first;
+          for (final dup in ids.skip(1)) {
+            await _repoint(txn, table, dup, keep, t);
+            await txn.update(table, {'deleted': 1, 'updated_at': t, 'synced': 0},
+                where: 'id = ?', whereArgs: [dup]);
+            merged++;
+          }
+        }
+      }
+      if (merged > 0) await _dedupeBindings(txn, t);
+    });
+    if (merged > 0) notifyAllChanged();
+    return merged;
+  }
+
+  /// Посилання на [from] у інших таблицях - на [to].
+  static Future<void> _repoint(
+      DatabaseExecutor txn, String table, String from, String to, double t) async {
+    switch (table) {
+      case 'parameters':
+        await txn.rawUpdate(
+            'UPDATE element_parameters SET parameter_id = ?, updated_at = ?, synced = 0 '
+            'WHERE parameter_id = ?',
+            [to, t, from]);
+        await txn.rawUpdate(
+            'UPDATE parameter_records SET parameter_id = ?, synced = 0 WHERE parameter_id = ?',
+            [to, from]);
+        // id параметрів усередині JSON (клітинки шаблонів, групи «Конструктора»)
+        for (final (tbl, col) in const [('templates', 'cells'), ('param_groups', 'ids')]) {
+          await txn.rawUpdate(
+              'UPDATE $tbl SET $col = REPLACE($col, ?, ?), updated_at = ?, synced = 0 '
+              'WHERE INSTR($col, ?) > 0 AND owner_id IS NULL',
+              ['"$from"', '"$to"', t, '"$from"']);
+        }
+      case 'fin_categories':
+        await txn.rawUpdate(
+            'UPDATE fin_ops SET category_id = ?, updated_at = ?, synced = 0 WHERE category_id = ?',
+            [to, t, from]);
+      case 'note_labels':
+        await txn.rawUpdate(
+            'UPDATE hive_notes SET label_id = ?, updated_at = ?, synced = 0 WHERE label_id = ?',
+            [to, t, from]);
+    }
+  }
+
+  /// Після злиття параметрів у вулика могли опинитись дві однакові
+  /// прив'язки - зайва стає позначкою «видалено».
+  static Future<void> _dedupeBindings(DatabaseExecutor txn, double t) async {
+    await txn.rawUpdate(
+        'UPDATE element_parameters SET deleted = 1, updated_at = ?, synced = 0 '
+        'WHERE deleted = 0 AND id NOT IN ('
+        'SELECT MIN(id) FROM element_parameters WHERE deleted = 0 '
+        "GROUP BY COALESCE(group_id, ''), COALESCE(element_id, ''), parameter_id)",
+        [t]);
+  }
+
+  /// Прибрати з ЦЬОГО телефона пасіку [apiaryId] з усім, що до неї належить
+  /// (помічнику закрили доступ чи він сам вийшов). Без позначок «видалено»:
+  /// у власника на сервері все лишається. Якщо пасік цього власника на
+  /// телефоні більше немає - прибираються й його довідники, склад, фінанси.
+  Future<void> evictApiary(String apiaryId) async {
+    await db.transaction((txn) async {
+      final row = await txn.query('apiaries', columns: ['owner_id'], where: 'id = ?', whereArgs: [apiaryId]);
+      final owner = row.isEmpty ? null : row.first['owner_id'] as String?;
+      for (final t in AppDatabase.apiaryLinkedTables) {
+        await txn.delete(t, where: 'apiary_id = ?', whereArgs: [apiaryId]);
+      }
+      await txn.delete('elements', where: 'apiary_id = ?', whereArgs: [apiaryId]);
+      // записи про доступ - лише вже забраний (чинний, скажімо, до іншої
+      // пасіки цього власника, ще знадобиться: інакше його вже не отримати)
+      await txn.delete('apiary_members', where: 'apiary_id = ? AND deleted = 1', whereArgs: [apiaryId]);
+      await txn.delete('apiaries', where: 'id = ?', whereArgs: [apiaryId]);
+      // свої дані (власник - цей телефон) так не прибираються ніколи
+      if (owner == null) return;
+      final left = await txn.query('apiaries', where: 'owner_id = ?', whereArgs: [owner], limit: 1);
+      if (left.isNotEmpty) return;
+      // доступ до цього власника ще є (до іншої пасіки) - довідники лишаються
+      final live = await txn.query('apiary_members',
+          where: 'owner_id = ? AND deleted = 0', whereArgs: [owner], limit: 1);
+      if (live.isNotEmpty) return;
+      for (final t in AppDatabase.ownerTables) {
+        await txn.delete(t, where: 'owner_id = ?', whereArgs: [owner]);
+      }
+      await txn.delete('apiary_members', where: 'owner_id = ?', whereArgs: [owner]);
+    });
+    notifyAllChanged();
   }
 }

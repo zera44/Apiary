@@ -14,7 +14,7 @@
     {"id": "lake", "file": "obstacles/lake.svg", "label": "Озеро", "category": "obstacles", "pickable": true, "variantLabel": "Озеро"},
     {"id": "trees", "file": "obstacles/trees.svg", "label": "Дерева", "category": "obstacles", "pickable": true, "variantLabel": "Дерева"},
     {"id": "houses", "file": "obstacles/houses.svg", "label": "Домівки", "category": "obstacles", "pickable": true, "variantLabel": "Домівки"},
-    {"id": "fence", "file": "obstacles/fence.svg", "label": "Забор", "category": "obstacles", "pickable": true, "variantLabel": "Забор"},
+    {"id": "fence", "file": "obstacles/fence.svg", "label": "Паркан", "category": "obstacles", "pickable": true, "variantLabel": "Паркан"},
     {"id": "road", "file": "obstacles/road.svg", "label": "Дорога", "category": "obstacles", "pickable": true, "variantLabel": "Дорога"},
     {"id": "menu", "file": "ui/menu.svg", "label": "Меню", "category": "ui"},
     {"id": "qr", "file": "ui/qr.svg", "label": "QR-код", "category": "ui"},

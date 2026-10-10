@@ -50,6 +50,10 @@ abstract class AuthService {
   Future<AppUser> signIn();
 
   Future<void> signOut();
+
+  /// ID-токен Google для входу на сервер синхронізації: після [signIn] -
+  /// той, що видав вхід; інакше - тихо, без вікон (null - не вийшло).
+  Future<String?> idToken();
 }
 
 /// Вхід через Google: пакет google_sign_in (системне вікно вибору акаунта).
@@ -64,6 +68,7 @@ class GoogleAuthService implements AuthService {
   AppUser? _user;
   bool _guest = false;
   bool _googleReady = false;
+  String? _idToken;
 
   GoogleAuthService._(this._store);
 
@@ -117,6 +122,7 @@ class GoogleAuthService implements AuthService {
   Future<void> signOut() async {
     _user = null;
     _guest = false;
+    _idToken = null;
     try {
       if (_store.existsSync()) await _store.delete();
     } catch (_) {}
@@ -124,6 +130,27 @@ class GoogleAuthService implements AuthService {
       try {
         await GoogleSignIn.instance.signOut();
       } catch (_) {}
+    }
+  }
+
+  @override
+  Future<String?> idToken() async {
+    final t = _idToken;
+    if (t != null) {
+      _idToken = null; // токен Google живе годину - вдруге беремо свіжий
+      return t;
+    }
+    if (_user == null || serverClientId.isEmpty) return null;
+    try {
+      final g = GoogleSignIn.instance;
+      if (!_googleReady) {
+        await g.initialize(serverClientId: serverClientId);
+        _googleReady = true;
+      }
+      final acc = await g.attemptLightweightAuthentication();
+      return acc?.authentication.idToken;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -138,6 +165,7 @@ class GoogleAuthService implements AuthService {
     }
     try {
       final acc = await g.authenticate();
+      _idToken = acc.authentication.idToken;
       return AppUser(id: acc.id, email: acc.email, name: acc.displayName ?? acc.email);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) throw const SignInCancelled();

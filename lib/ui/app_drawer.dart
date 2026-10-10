@@ -114,7 +114,11 @@ final List<List<InlineSpan>> kDrawerTour = [
   ],
   [
     GuideBubble.highlight('Склад'),
-    const TextSpan(text: ' - рамки, корми, ліки: прихід, списання й переоблік. А як ще керувати запасами?'),
+    const TextSpan(text: ' - рамки, корми, ліки: прихід, списання й переоблік.'),
+  ],
+  [
+    GuideBubble.highlight('Фінанси'),
+    const TextSpan(text: ' - витрати й доходи пасіки: записуй вручну або фотографуй чек.'),
   ],
   [
     GuideBubble.highlight('Історія'),
@@ -131,7 +135,7 @@ final List<List<InlineSpan>> kDrawerTour = [
   ],
   [
     GuideBubble.highlight('Зворотний зв\'язок'),
-    const TextSpan(text: ' - хочеш поділитись ідеєю чи дати зворотній зв\'язок? Тобі сюди.'),
+    const TextSpan(text: ' - хочеш поділитись ідеєю чи дати зворотний зв\'язок? Тобі сюди.'),
   ],
 ];
 
@@ -148,7 +152,7 @@ class _AppDrawerState extends State<AppDrawer> {
       ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
       // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
       : widget.hint != null
-          ? HoneyRing(on: i == 4, radius: 12, child: child)
+          ? HoneyRing(on: i == 5, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -177,7 +181,7 @@ class _AppDrawerState extends State<AppDrawer> {
         ]),
         const SizedBox(height: 6),
         // пасічник із газетою говорить хмаркою (як у навчанні) і стоїть
-        // руками на кнопці «Далі»
+        // руками на кнопці «Продовжити»
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
           const SizedBox(width: 6),
@@ -203,25 +207,19 @@ class _AppDrawerState extends State<AppDrawer> {
             ),
           ),
         ]),
-        PillButton(
-          text: last ? 'Зрозуміло' : 'Далі',
-          bg: AppColors.accent,
-          height: 40,
-          width: double.infinity,
-          onPressed: () {
+        // «Продовжити» - як в уроках; під нею - менша жовта «Завершити»
+        LessonContinue(
+          label: last ? 'Зрозуміло' : 'Продовжити',
+          padding: EdgeInsets.zero,
+          onContinue: () {
             if (last) {
               Navigator.of(context).pop(); // закрити меню
             } else {
               setState(() => _step++);
             }
           },
+          onFinish: widget.tour ? widget.onFinishTutorial : null,
         ),
-        // маленька табличка «завершити» висить під кнопкою, з правого кута
-        if (widget.tour && widget.onFinishTutorial != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: LessonFinishLink(onPressed: widget.onFinishTutorial!, width: 90),
-          ),
       ]),
     );
   }
@@ -254,18 +252,14 @@ class _AppDrawerState extends State<AppDrawer> {
           })),
           _t(1, _item(context, 'box', 'Склад',
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
-          // фінанси: окремий пункт, не входить в екскурсію по меню
-          widget.tour
-              ? IgnorePointer(
-                  child: _item(context, '', 'Фінанси', () {},
-                      iconData: Icons.account_balance_wallet_outlined))
-              : _item(context, '', 'Фінанси', () => _open(nav, FinanceScreen(repo: repo)),
-                  iconData: Icons.account_balance_wallet_outlined),
+          _t(2, _item(context, '', 'Фінанси',
+              widget.tour ? () {} : () => _open(nav, FinanceScreen(repo: repo)),
+              iconData: Icons.account_balance_wallet_outlined)),
           // «Звіт по пасіці (Excel)» — усередині «Історії»
-          _t(2, _item(context, 'history', 'Історія',
+          _t(3, _item(context, 'history', 'Історія',
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
           // QR — одним пунктом; натиснули — розкрились дії
-          _t(3, _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
+          _t(4, _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
             _item(context, 'qr', 'Сканувати', () {
               nav.pop();
               AppDrawer.openHiveByQr(nav, repo);
@@ -278,10 +272,10 @@ class _AppDrawerState extends State<AppDrawer> {
                 onBindQrRow!();
               }),
           ])),
-          _t(4, _item(context, '', 'Навчання',
+          _t(5, _item(context, '', 'Навчання',
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined)),
-          _t(5, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
+          _t(6, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
           })),

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/merge_layout.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
+import 'helpers_screen.dart';
 import 'map_screen.dart';
 import 'qr_generate_screen.dart';
 
@@ -106,30 +108,32 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     }
   }
 
-  /// Видалення без підтвердження: пасіка зникає одразу, внизу «Відмінити».
-  Future<void> _delete(Apiary a) => deleteWithUndo(
-        context,
-        message: 'Пасіку «${a.name}» видалено',
-        hide: () {
-          _hiding.add(a.id);
-          setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
-        },
-        restore: () {
-          _hiding.remove(a.id);
-          _reload();
-        },
-        commit: () async {
-          // урок: пісочницю могли закрити, поки висіло «Відмінити»
-          try {
-            await widget.repo.deleteApiary(a.id);
-          } catch (_) {
-            if (widget.repo.db.isOpen) rethrow;
-            return;
-          }
-          _hiding.remove(a.id);
-          if (mounted) await _reload();
-        },
-      );
+  /// Видалення пасіки — з підтвердженням (зникає вся карта з вуликами й
+  /// записами), після «Видалити» — одразу й остаточно.
+  Future<void> _delete(Apiary a) async {
+    final ok = await showConfirm(context,
+        title: 'Видалити пасіку?',
+        text: 'Пасіку «${a.name}» буде видалено разом з усіма вуликами, '
+            'перешкодами й записами. Цю дію не можна скасувати.');
+    if (!ok || !mounted) return;
+    _hiding.add(a.id);
+    setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
+    // урок: пісочницю могли закрити, поки висіло підтвердження
+    try {
+      await widget.repo.deleteApiary(a.id);
+    } catch (_) {
+      if (widget.repo.db.isOpen) rethrow;
+      return;
+    }
+    _hiding.remove(a.id);
+    if (!mounted) return;
+    await _reload();
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text('Пасіку «${a.name}» видалено')));
+    }
+  }
 
 
   @override
@@ -142,7 +146,27 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
+            TopBar(
+              title: 'Мої пасіки',
+              onBack: () => Navigator.of(context).pop(),
+              // помічники: запросити, хто вже має доступ (в уроці - ні)
+              trailing: widget.tutorial
+                  ? null
+                  : Tooltip(
+                      message: tr.addHelper,
+                      child: Material(
+                        color: AppColors.roundBtn,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () => HelpersScreen.open(context, widget.repo),
+                          child: SizedBox.square(
+                              dimension: 34,
+                              child: Icon(Icons.person_add_alt_1, size: 20, color: AppColors.text)),
+                        ),
+                      ),
+                    ),
+            ),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
@@ -200,7 +224,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     final cells = _cells[a.id] ?? const <SceneCell>[];
     return Column(children: [
       Text(a.name,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
       const SizedBox(height: 5),

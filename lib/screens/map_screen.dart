@@ -93,6 +93,15 @@ class MapScreen extends StatefulWidget {
 
   /// Урок із «Навчання» (пісочниця): пасічник веде за сценарієм [LessonController].
   final LessonController? lesson;
+
+  /// Фон під меню головного екрана: карту лише видно - вона не стає «останньою
+  /// відкритою», не показує підказок і, зникаючи, не повідомляє про зміну
+  /// карти (інакше закриття будь-якого вікна над меню перепланувало б
+  /// нагадування й знову питало дозвіл на сповіщення).
+  final bool backdrop;
+
+  /// Фон: інше значення - перечитати вулики на місці (без порожнього кадру).
+  final int refresh;
   const MapScreen(
       {super.key,
       required this.repo,
@@ -104,7 +113,9 @@ class MapScreen extends StatefulWidget {
       this.tutorial = false,
       this.menuTour = false,
       this.lesson,
-      this.onLessonDone});
+      this.onLessonDone,
+      this.backdrop = false,
+      this.refresh = 0});
 
   /// Урок: на карті ще немає вуликів.
   static final tutorialNoHives = <InlineSpan>[
@@ -314,7 +325,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final pose = _lesson == _Lesson.gear ? LessonPose.newspaper : LessonPose.leaning;
     final msg = _lessonMessage();
     const up = 0.0;
-    // табличка висить під кнопкою «Продовжити» (без кнопки - без таблички)
+    // «Завершити» - під кнопкою «Продовжити» (без кнопки - без неї)
     final VoidCallback? finish = _lesson == _Lesson.congrats ? null : _finishLesson;
     if (msg == null) {
       return lessonScene(pose: pose, bottomInset: selectMode ? 0 : up, onFinish: finish);
@@ -499,18 +510,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _bindCode = widget.bindCode;
     if (_bindCode != null) _warning = 'Торкніться вулика, до якого прив\'язати код';
     // «Почати» на головному екрані відкриватиме цю пасіку
-    unawaited(repo.setMeta('last_apiary', widget.apiary.id));
+    if (!widget.backdrop) unawaited(repo.setMeta('last_apiary', widget.apiary.id));
     await _reload();
-    if (elements.isNotEmpty) {
-      var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
-      for (final e in elements) {
-        if (e.x < minX) minX = e.x;
-        if (e.x > maxX) maxX = e.x;
-        if (e.y < minY) minY = e.y;
-        if (e.y > maxY) maxY = e.y;
-      }
-      grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
-    }
+    _centerOnElements();
+    if (widget.backdrop) return;
     if (mounted && !_guided) await Hints.show(context, repo, Hints.map);
     if (widget.lesson != null) {
       if (mounted) setState(() {});
@@ -531,6 +534,30 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
   }
 
+  /// Вулики посередині екрана.
+  void _centerOnElements() {
+    if (elements.isEmpty) return;
+    var minX = elements.first.x, maxX = minX, minY = elements.first.y, maxY = minY;
+    for (final e in elements) {
+      if (e.x < minX) minX = e.x;
+      if (e.x > maxX) maxX = e.x;
+      if (e.y < minY) minY = e.y;
+      if (e.y > maxY) maxY = e.y;
+    }
+    grid.centerOnGrid((minX + maxX + 1) / 2, (minY + maxY + 1) / 2);
+  }
+
+  @override
+  void didUpdateWidget(MapScreen old) {
+    super.didUpdateWidget(old);
+    if (widget.backdrop && widget.refresh != old.refresh) unawaited(_refreshBackdrop());
+  }
+
+  Future<void> _refreshBackdrop() async {
+    await _reload();
+    if (mounted) _centerOnElements();
+  }
+
   @override
   void dispose() {
     repo.notesChanges.removeListener(_loadNotesCount);
@@ -538,8 +565,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
     grid.dispose();
-    // список пасік оновить мініатюру цієї карти
-    repo.mapChanges.value++;
+    // список пасік оновить мініатюру цієї карти (фон нічого не змінює)
+    if (!widget.backdrop) repo.mapChanges.value++;
     super.dispose();
   }
 
@@ -756,7 +783,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       return;
     }
     final tpl = pendingTemplate;
-    if (tpl == null || _busy) return;
+    if (_busy) return;
+    if (tpl == null) {
+      // тап по стрілці біля обраного (сусідня клітинка) — зсув на клітинку
+      final step = _nudgeStep(p.cell);
+      if (step != null) await _nudge(step.$1, step.$2);
+      return;
+    }
     // порожній шаблон (без жодної клітинки) не має що розміщувати
     if (!tpl.cells.keys.any((k) => parseCellKey(k) != null)) {
       _showWarning('Шаблон порожній', duration: const Duration(seconds: 1));
@@ -789,6 +822,56 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final occupied = {for (final e in elements) (e.x, e.y)};
         _lessonTarget = [(gx + 1, gy), (gx - 1, gy), (gx, gy + 1), (gx, gy - 1)]
             .firstWhere((c) => !occupied.contains(c), orElse: () => (gx + 2, gy));
+      }
+      await _reload();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Напрямок зсуву, якщо [cell] — сусідня клітинка збоку від обраного
+  /// (там, де намальовано стрілку); інакше null.
+  (int, int)? _nudgeStep(Cell cell) {
+    final sel = selection;
+    if (sel.isEmpty) return null;
+    var minX = sel.first.x, maxX = minX, minY = sel.first.y, maxY = minY;
+    for (final e in sel) {
+      if (e.x < minX) minX = e.x;
+      if (e.x > maxX) maxX = e.x;
+      if (e.y < minY) minY = e.y;
+      if (e.y > maxY) maxY = e.y;
+    }
+    final (cx, cy) = cell;
+    final inRows = cy >= minY && cy <= maxY, inCols = cx >= minX && cx <= maxX;
+    if (inRows && cx == maxX + 1) return (1, 0);
+    if (inRows && cx == minX - 1) return (-1, 0);
+    if (inCols && cy == maxY + 1) return (0, 1);
+    if (inCols && cy == minY - 1) return (0, -1);
+    return null;
+  }
+
+  /// Зсув обраного на одну клітинку (стрілки біля об'єкта).
+  Future<void> _nudge(int dx, int dy) async {
+    final sel = selection;
+    if (sel.isEmpty) return;
+    final ids = {for (final e in sel) e.id};
+    final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
+    if (sel.any((e) => occupied.contains((e.x + dx, e.y + dy)))) {
+      _flashBlocked();
+      _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 2));
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      if (selectedGroupId != null) {
+        _pushUndo(_Undo.restore(sel));
+        for (final gid in _selGids) {
+          await repo.moveGroup(gid, dx, dy);
+        }
+      } else if (selectedId != null) {
+        final el = sel.first;
+        _pushUndo(_Undo.restore([el]));
+        await repo.moveElement(el.id, el.x + dx, el.y + dy);
       }
       await _reload();
     } finally {
@@ -1421,16 +1504,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // урок: у формі пасічник і ведмежа ведуть по комірках
     FillLesson? lesson;
     if (widget.tutorial && _lesson == _Lesson.inspect && el.isHive) {
-      final period = await repo.baseParameterId(el.type, 'visit_period');
+      final date = await repo.baseParameterId(el.type, 'visit_start');
       final mark = await repo.baseParameterId(el.type, 'queen_mark');
-      if (period != null && mark != null) {
-        lesson = FillLesson(periodParamId: period, colorParamId: mark);
+      if (date != null && mark != null) {
+        lesson = FillLesson(dateParamId: date, colorParamId: mark);
       }
       if (!mounted) return;
     }
     // періодичність обходу — налаштування вулика, не показник огляду: у формі
-    // її немає (змінюють тапом по значенню на панелі); урок її ще заповнює
-    final periodId = lesson == null ? await repo.baseParameterId(el.type, 'visit_period') : null;
+    // її немає (змінюють тапом по значенню на панелі) — і в уроці теж
+    final periodId = await repo.baseParameterId(el.type, 'visit_period');
     final leftId = el.isHive ? await repo.baseParameterId('hive', 'visit_left') : null;
     FillPage formPage(FillPage pg) => periodId == null && leftId == null
         ? pg
@@ -1560,13 +1643,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (!mounted || !openPanel) return;
     setState(() => panelOpen = true);
     _revealBesidePanel(el);
-  }
-
-  /// Показати вулик на цій карті й одразу відкрити його форму.
-  Future<void> _focusAndFill(MapElement el) async {
-    await _showOnMap(el);
-    if (!mounted) return;
-    await _panelFill();
   }
 
   /// «Зберегти й далі»: наступний вулик за [MapScreen.next] — на цій карті
@@ -2060,6 +2136,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 onPressUp: _onPressUp,
                 onTap: _onTap,
                 onLongPress: _onLongPress,
+                // поки обрано шаблон, тап ставить новий об'єкт — стрілки біля
+                // обраного там лише вводили б в оману
+                showMoveHints: pendingTemplate == null,
               ),
             ),
             // над обраним об'єктом у редагуванні — "Повернути"/"Видалити"
@@ -2086,7 +2165,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(
                         child: Text(_apiaryName,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 color: AppColors.text,

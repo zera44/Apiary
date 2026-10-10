@@ -176,7 +176,7 @@ class TemplateTile extends StatelessWidget {
     final scene = cells ?? templateSceneCells(t);
     return Column(children: [
       Text(t.name,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
       const SizedBox(height: 5),

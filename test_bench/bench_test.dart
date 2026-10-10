@@ -6,7 +6,6 @@ import 'dart:ui' as ui;
 
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
-import 'package:apiary/data/sync_service.dart';
 import 'package:apiary/icons/app_icons.dart';
 import 'package:apiary/logic/merge_layout.dart';
 import 'package:apiary/ui/grid_view.dart';
@@ -53,6 +52,8 @@ List<SceneCell> makeScene(int cols, int rows) {
 }
 
 double paintMs(List<SceneCell> cells, double cs, Size size) {
+  // заміри швидкості - той самий тестовий код, лише в окремій теці
+  // ignore: invalid_use_of_visible_for_testing_member
   final painter = debugScenePainter(camera: Offset.zero - Offset(0, size.height), cs: cs, cells: cells);
   final sw = Stopwatch()..start();
   final rec = ui.PictureRecorder();
@@ -121,15 +122,12 @@ void main() {
       await r.db.close();
     }));
 
-    // синхронізація-заглушка: 2000 несинхронізованих рядків
+    // черга синхронізації: скільки змін чекає відправки (рядок стану)
     repo = await openRepo(path);
-    final sync = SyncService(repo);
     final sw = Stopwatch()..start();
-    final res = await sync.syncOnce();
+    final pending = await repo.countUnsynced();
     sw.stop();
-    print('BENCH|sync_stub_rows_${res.$2}|${(sw.elapsedMicroseconds / 1000).toStringAsFixed(2)}');
-    // друга синхронізація без змін (порожня черга)
-    report('sync_stub_idle', await timeIt(() async => sync.syncOnce()));
+    print('BENCH|sync_queue_count_$pending|${(sw.elapsedMicroseconds / 1000).toStringAsFixed(2)}');
     await repo.db.close();
   });
 

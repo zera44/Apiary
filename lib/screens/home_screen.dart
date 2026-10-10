@@ -5,14 +5,18 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../data/sync_service.dart';
 import '../logic/visit_reminders.dart';
+import '../l10n/l10n.dart';
 import '../services/auth.dart';
+import '../services/server.dart';
+import '../ui/first_login_dialog.dart';
+import '../services/sharing.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/icons.dart';
 import '../ui/hive_postbox.dart';
+import '../ui/invitations_sheet.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_screen.dart';
@@ -22,6 +26,7 @@ import 'splash_screen.dart';
 import 'finance_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
+import '../ui/sync_status.dart';
 import 'tutorial_screen.dart';
 import 'whats_new_screen.dart';
 
@@ -75,15 +80,98 @@ class _HomeScreenState extends State<HomeScreen> {
   AuthService get auth => widget.auth;
   Apiary? _backdrop;
 
+  /// Номер запиту фону: відповідь давнішого не перебиває новішу.
+  int _backdropReq = 0;
+
+  /// Номер оновлення фону: карта під меню перечитує вулики на місці.
+  int _backdropGen = 0;
+
+  /// Чи головний екран зараз нагорі (не під іншою сторінкою чи вікном).
+  bool _onTop = true;
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
-    if (HomeScreen.mapBackdrop) _loadBackdrop();
+    // застосунок знову відкрили (з фону, а не з нуля) - під меню остання пасіка
+    _lifecycle = AppLifecycleListener(onRestart: () {
+      if (_onTop) _loadBackdrop();
+    });
+    // дані змінились без переходу (відновили копію й «Скасувати») - фон теж
+    repo.mapChanges.addListener(_onMapChanged);
+    _loadBackdrop();
+    // перший вхід: дані і тут, і на сервері - спитати
+    Server.choice.addListener(_onFirstLogin);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstLogin());
+  }
+
+  bool _asking = false;
+
+  Future<void> _onFirstLogin() async {
+    final state = Server.choice.value;
+    if (state == null || _asking || !mounted) return;
+    _asking = true;
+    try {
+      // не вдалося (обірвався зв'язок) - знову вибір: інакше синхронізація
+      // так і чекала б
+      while (mounted && Server.choice.value != null) {
+        final a = await showFirstLoginDialog(context, state);
+        if (a == null || !mounted) return;
+        if (a.signOut) {
+          await Server.signOut(repo);
+          await auth.signOut();
+          if (!mounted) return;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
+            (_) => false,
+          );
+          return;
+        }
+        final messenger = ScaffoldMessenger.of(context);
+        try {
+          await Server.choose(repo, a.choice!);
+          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginDone)));
+          return;
+        } catch (e) {
+          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginFailed('$e'))));
+        }
+      }
+    } finally {
+      _asking = false;
+    }
+  }
+
+  void _onMapChanged() {
+    if (_onTop) _loadBackdrop();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // повернулись на головний (з карти, списку пасік, налаштувань…) - остання
+    // відкрита пасіка могла змінитись
+    final onTop = ModalRoute.isCurrentOf(context) ?? true;
+    if (onTop && !_onTop) _loadBackdrop();
+    _onTop = onTop;
+  }
+
+  @override
+  void dispose() {
+    Server.choice.removeListener(_onFirstLogin);
+    repo.mapChanges.removeListener(_onMapChanged);
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBackdrop() async {
+    if (!HomeScreen.mapBackdrop) return;
+    final req = ++_backdropReq;
     final a = await repo.startApiary();
-    if (a != null && mounted) setState(() => _backdrop = a);
+    if (!mounted || req != _backdropReq) return;
+    setState(() {
+      _backdrop = a;
+      _backdropGen++;
+    });
   }
 
   /// Гість входить пізніше: дані на пристрої лишаються, головний екран
@@ -92,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await auth.signIn();
-      unawaited(SyncService.now()); // одразу після входу
+      unawaited(Server.connect(repo, auth)); // і на сервер - одразу
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => HomeScreen(repo: repo, auth: auth),
@@ -113,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
         text: 'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.',
         confirmText: 'Вийти');
     if (!ok || !context.mounted) return;
+    await Server.signOut(repo);
     await auth.signOut();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -134,7 +223,13 @@ class _HomeScreenState extends State<HomeScreen> {
           else ...[
             // остання карта під меню: видно, але не реагує на дотики
             Positioned.fill(
-                child: IgnorePointer(child: MapScreen(repo: repo, apiary: _backdrop!))),
+                child: IgnorePointer(
+                    child: MapScreen(
+                        key: ValueKey('backdrop-${_backdrop!.id}'),
+                        repo: repo,
+                        apiary: _backdrop!,
+                        backdrop: true,
+                        refresh: _backdropGen))),
             Positioned.fill(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
           ],
           Center(
@@ -143,7 +238,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const AppLogo(size: 104),
+                  // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
+                  _PulseTap(
+                    key: const ValueKey('logo-whats-new'),
+                    label: 'Що нового',
+                    onTap: () => WhatsNewScreen.open(nav),
+                    child: const AppLogo(size: 104),
+                  ),
                   const SizedBox(height: 10),
                   Text('Vulyk',
                       style: TextStyle(
@@ -180,6 +281,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: 'Фінанси',
                             onTap: () => push(FinanceScreen(repo: repo))),
                         _Tile(
+                            icon: AppIcon('box', size: 28, color: AppColors.text),
+                            label: 'Склад',
+                            onTap: () => push(StockScreen(repo: repo))),
+                        _Tile(
                             icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
                             label: 'Навчання',
                             onTap: () => push(TutorialScreen(realRepo: repo))),
@@ -187,11 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
                             onTap: () => push(const FeedbackScreen())),
-                        _Tile(
-                            icon: Icon(Icons.new_releases_outlined,
-                                size: 30, color: AppColors.text),
-                            label: 'Що нового',
-                            onTap: () => WhatsNewScreen.open(nav)),
                       ]),
                     ]),
                   ),
@@ -199,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 14),
                     Text(user.email,
                         style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                    const _SyncLine(),
+                    const SyncStatusLine(),
                     TextButton(
                       onPressed: () => _signOut(context),
                       child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
@@ -302,7 +402,7 @@ class _Tile extends StatelessWidget {
                   IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
                   const SizedBox(height: 6),
                   Text(label,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: AppColors.text, fontSize: 12)),
                 ]),
@@ -375,13 +475,19 @@ class _AdvisorState extends State<_Advisor> {
   List<String> _low = const [];
   int _i = 0;
 
+  /// Вхідні запрошення помічником (чекають відповіді).
+  int get _invites => SharingService.current.pending.value;
+
   @override
   void initState() {
     super.initState();
     widget.repo.remindersChanged.addListener(_load);
     widget.repo.mapChanges.addListener(_load);
     widget.repo.stockChanges.addListener(_load);
+    SharingService.current.pending.addListener(_onInvites);
     _load();
+    // запрошення - із сервера (без зв'язку - з копії на телефоні)
+    SharingService.current.incoming().ignore();
   }
 
   @override
@@ -389,7 +495,12 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.remindersChanged.removeListener(_load);
     widget.repo.mapChanges.removeListener(_load);
     widget.repo.stockChanges.removeListener(_load);
+    SharingService.current.pending.removeListener(_onInvites);
     super.dispose();
+  }
+
+  void _onInvites() {
+    if (mounted) setState(() => _i = 0); // нове запрошення - одразу на видноті
   }
 
   Future<void> _load() async {
@@ -462,6 +573,7 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
         if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
         if (_low.isNotEmpty)
           (
@@ -472,8 +584,9 @@ class _AdvisorState extends State<_Advisor> {
         for (final t in _tips) (text: t, action: null),
       ];
 
-  // на вулику-поштоматі: скільки вуликів прострочено + позицій, що кінчаються
-  int get _mail => _due.length + _low.length;
+  // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
+  // що кінчаються
+  int get _mail => _invites + _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {
@@ -490,8 +603,9 @@ class _AdvisorState extends State<_Advisor> {
           onTap: action ?? () => setState(() => _i++),
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
-            // фіксована висота: довша репліка не розсуває екран
-            height: 116,
+            // фіксована висота: довша репліка не розсуває екран, але вміщається
+            // повністю (найдовші поради - до шести рядків)
+            height: 150,
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -520,7 +634,7 @@ class _AdvisorState extends State<_Advisor> {
                                   color: AppColors.create, fontWeight: FontWeight.w600))
                           : TextSpan(text: part),
                   ]),
-                  maxLines: 4,
+                  maxLines: 7,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: AppColors.text,
@@ -570,36 +684,6 @@ class _AdvisorState extends State<_Advisor> {
   }
 }
 
-/// «Синхронізовано: сьогодні 14:05» / «Очікує відправки: N» / «Немає зв'язку».
-class _SyncLine extends StatelessWidget {
-  const _SyncLine();
-
-  static String _fmt(DateTime t) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    final n = DateTime.now();
-    final hm = '${two(t.hour)}:${two(t.minute)}';
-    return (t.year == n.year && t.month == n.month && t.day == n.day)
-        ? 'сьогодні $hm'
-        : '${two(t.day)}.${two(t.month)} $hm';
-  }
-
-  @override
-  Widget build(BuildContext context) => ValueListenableBuilder<SyncInfo>(
-        valueListenable: SyncService.info,
-        builder: (_, i, __) {
-          final text = i.offline
-              ? 'Немає зв\'язку із сервером - зміни збережено на пристрої'
-              : i.pending > 0
-                  ? 'Очікує відправки: ${i.pending}'
-                  : i.lastOk != null
-                      ? 'Синхронізовано: ${_fmt(i.lastOk!)}'
-                      : null;
-          if (text == null) return const SizedBox.shrink();
-          return Text(text, style: TextStyle(color: AppColors.textMuted, fontSize: 12));
-        },
-      );
-}
-
 class _StartupPrompts extends StatefulWidget {
   final Repository repo;
   const _StartupPrompts({required this.repo});
@@ -620,4 +704,53 @@ class _StartupPromptsState extends State<_StartupPrompts> {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+
+/// Дотик: [child] коротко стискається й пружно повертається (пульс), потім
+/// [onTap]. Повторні дотики під час пульсу ігноруються (не відкриє двічі).
+class _PulseTap extends StatefulWidget {
+  const _PulseTap({super.key, required this.child, required this.onTap, required this.label});
+  final Widget child;
+  final VoidCallback onTap;
+  final String label;
+
+  @override
+  State<_PulseTap> createState() => _PulseTapState();
+}
+
+class _PulseTapState extends State<_PulseTap> with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.88).chain(CurveTween(curve: Curves.easeOut)), weight: 35),
+    TweenSequenceItem(
+        tween: Tween(begin: 0.88, end: 1.06).chain(CurveTween(curve: Curves.easeOut)), weight: 40),
+    TweenSequenceItem(
+        tween: Tween(begin: 1.06, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 25),
+  ]).animate(_c);
+
+  Future<void> _tap() async {
+    if (_c.isAnimating) return;
+    await _c.forward(from: 0).orCancel.catchError((_) {});
+    if (mounted) widget.onTap();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: widget.label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _tap,
+          child: ScaleTransition(scale: _scale, child: widget.child),
+        ),
+      );
 }

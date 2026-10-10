@@ -4,7 +4,7 @@ import 'common.dart';
 import 'theme.dart';
 
 /// Календар для типу даних "Дата" (порт date_picker.py): місяць/рік зі
-/// стрілками, сітка днів з понеділка, «Скасувати» / «Сьогодні» / «Підтвердити».
+/// стрілками, сітка днів з понеділка, «Скасувати» / «Сьогодні» / «Готово».
 /// Значення — текст "ДД.ММ.РРРР".
 
 const _monthNames = [
@@ -171,7 +171,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-              text: 'Підтвердити',
+              text: 'Готово',
               bg: AppColors.accent,
               fontSize: 12,
               onPressed: selected == null

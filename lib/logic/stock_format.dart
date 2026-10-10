@@ -9,6 +9,13 @@ double? parseAmount(String s) {
   return v;
 }
 
+/// Одиниці, що лічаться цілими (півтори штуки не буває).
+const kDiscreteUnits = {'шт', 'рамка', 'упаковка'};
+
+/// Чи [v] припустиме для [unit]: для штучних одиниць — лише ціле число.
+bool amountFitsUnit(double v, String unit) =>
+    !kDiscreteUnits.contains(unit.trim().toLowerCase()) || v == v.truncateToDouble();
+
 /// 5 → "5", 2.5 → "2,5", 0.125 → "0,125", 1/3 → "0,333".
 String formatAmount(double v) {
   final r = (v * 1000).roundToDouble() / 1000;

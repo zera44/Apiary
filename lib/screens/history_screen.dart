@@ -192,7 +192,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(r.entityLabel,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
