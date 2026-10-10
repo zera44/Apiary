@@ -75,15 +75,51 @@ class _HomeScreenState extends State<HomeScreen> {
   AuthService get auth => widget.auth;
   Apiary? _backdrop;
 
+  /// Номер запиту фону: відповідь давнішого не перебиває новішу.
+  int _backdropReq = 0;
+
+  /// Номер показаного фону: щоразу карта під меню будується наново (свіжі вулики).
+  int _backdropGen = 0;
+
+  /// Чи головний екран зараз нагорі (не під іншою сторінкою чи вікном).
+  bool _onTop = true;
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
-    if (HomeScreen.mapBackdrop) _loadBackdrop();
+    // застосунок знову відкрили (з фону, а не з нуля) - під меню остання пасіка
+    _lifecycle = AppLifecycleListener(onRestart: () {
+      if (_onTop) _loadBackdrop();
+    });
+    _loadBackdrop();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // повернулись на головний (з карти, списку пасік, налаштувань…) - остання
+    // відкрита пасіка могла змінитись
+    final onTop = ModalRoute.isCurrentOf(context) ?? true;
+    if (onTop && !_onTop) _loadBackdrop();
+    _onTop = onTop;
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBackdrop() async {
+    if (!HomeScreen.mapBackdrop) return;
+    final req = ++_backdropReq;
     final a = await repo.startApiary();
-    if (a != null && mounted) setState(() => _backdrop = a);
+    if (!mounted || req != _backdropReq) return;
+    setState(() {
+      _backdrop = a;
+      _backdropGen++;
+    });
   }
 
   /// Гість входить пізніше: дані на пристрої лишаються, головний екран
@@ -134,7 +170,11 @@ class _HomeScreenState extends State<HomeScreen> {
           else ...[
             // остання карта під меню: видно, але не реагує на дотики
             Positioned.fill(
-                child: IgnorePointer(child: MapScreen(repo: repo, apiary: _backdrop!))),
+                child: IgnorePointer(
+                    child: MapScreen(
+                        key: ValueKey('backdrop-${_backdrop!.id}-$_backdropGen'),
+                        repo: repo,
+                        apiary: _backdrop!))),
             Positioned.fill(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
           ],
           Center(

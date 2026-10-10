@@ -1770,6 +1770,61 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('під меню - остання відкрита пасіка: після повернення й повторного відкриття', (tester) async {
+    HomeScreen.mapBackdrop = true;
+    addTearDown(() => HomeScreen.mapBackdrop = false);
+    final second = (await tester.runAsync(() async {
+      final b = await repo.addApiary('Друга пасіка');
+      await repo.addGroup(b, {'0,0': 'hive'}, 0, 0, groupLabel: 'Вулик 1');
+      return b;
+    }))!;
+    String? shown() => find.byType(MapScreen).evaluate().isEmpty
+        ? null
+        : tester.widget<MapScreen>(find.byType(MapScreen).first).apiary.id;
+
+    // пасік дві, жодну ще не відкривали - під меню соти
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    expect(shown(), isNull);
+
+    // відкрили другу пасіку й повернулись на головний - вона під меню
+    await tester.tap(find.text('Почати'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.descendant(
+        of: find.ancestor(of: find.text('Друга пасіка'), matching: find.byType(Column)).first,
+        matching: find.byTooltip('Відкрити')));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byTooltip('Меню'), findsWidgets);
+    await tester.binding.handlePopRoute(); // карта -> список
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.binding.handlePopRoute(); // список -> головний
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Почати'), findsOneWidget);
+    expect(shown(), second);
+
+    // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
+    // відкрили з нагадування) - знову відкрили: під меню вже вона
+    await tester.runAsync(() => repo.setMeta('last_apiary', apiaryId));
+    for (final s in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(s);
+    }
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(shown(), apiaryId);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
