@@ -31,6 +31,24 @@ abstract class AppStrings {
   String syncPending(int n);
   String syncLastOk(String when);
   String syncError(String details);
+  String get syncRunning;
+  String get syncWaitingWifi;
+  String syncRejected(int n);
+  String get syncNeedsSignIn;
+  String get syncNow;
+  String get syncDone;
+  String get syncMobile;
+  String get syncMobileWarnTitle;
+  String get syncMobileWarnText;
+  String get serverRestore;
+  String get serverRestoreChoose;
+  String get serverBackupsNone;
+  String serverBackupItem(String when, String size);
+  String get serverRestoreTitle;
+  String serverRestoreText(String when);
+  String get serverRestoring;
+  String get serverRestored;
+  String serverRestoreFailed(String details);
 
   // ---- Загальне ----
   String get close;

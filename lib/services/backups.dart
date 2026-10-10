@@ -194,6 +194,17 @@ class BackupService {
     }
   }
 
+  /// Узгоджений перевірений знімок бази у файл [target] (поза списком
+  /// копій - для нічної копії на сервер).
+  Future<void> snapshotTo(String target) async {
+    await _delete(target);
+    await _snapshot(target);
+    if (!await verify(target)) {
+      await _delete(target);
+      throw const BackupException('знімок бази пошкоджений');
+    }
+  }
+
   Future<void> _snapshot(String target) async {
     final db = repo.db;
     if (!forceFileCopy) {
@@ -333,6 +344,16 @@ class BackupService {
 
   /// Відновити дані з копії [b]. Спершу автоматична копія поточного стану
   /// (її теж видно в списку - так відновлення можна скасувати). Повертає її.
+  /// Відновити з файлу бази [path] поза списком копій (копія із сервера):
+  /// перевірка, копія поточного стану, потім дані з файлу. Повертає копію
+  /// поточного стану (щоб можна було повернути).
+  Future<LocalBackup> restoreFile(String path) async {
+    if (!await verify(path)) throw const BackupException('копія пошкоджена');
+    final before = await create(BackupKind.beforeRestore);
+    await restoreFrom(path);
+    return before;
+  }
+
   Future<LocalBackup> restore(LocalBackup b) async {
     if (!await File(b.path).exists()) throw const BackupException('копії вже немає');
     if (!await verify(b.path)) throw const BackupException('копія пошкоджена');

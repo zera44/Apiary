@@ -2025,6 +2025,9 @@ class FakeAuth implements AuthService {
   Future<void> continueAsGuest() async => _guest = true;
 
   @override
+  Future<String?> idToken() async => null;
+
+  @override
   Future<void> signOut() async {
     _user = null;
     _guest = false;

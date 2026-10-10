@@ -33,6 +33,50 @@ class AppStringsUk extends AppStrings {
   String syncLastOk(String when) => 'Остання синхронізація: $when';
   @override
   String syncError(String details) => 'Помилка синхронізації: $details';
+  @override
+  String get syncRunning => 'Синхронізація…';
+  @override
+  String get syncWaitingWifi => 'Чекає Wi-Fi: синхронізацію через мобільний інтернет вимкнено';
+  @override
+  String syncRejected(int n) =>
+      'Сервер не прийняв $n ${plural(n, one: 'зміну', few: 'зміни', many: 'змін')} (немає доступу)';
+  @override
+  String get syncNeedsSignIn => 'Увійдіть через Google, щоб синхронізувати дані між телефонами';
+  @override
+  String get syncNow => 'Синхронізувати зараз';
+  @override
+  String get syncDone => 'Синхронізовано';
+  @override
+  String get syncMobile => 'Синхронізувати через мобільний інтернет';
+  @override
+  String get syncMobileWarnTitle => 'Мобільний інтернет';
+  @override
+  String get syncMobileWarnText =>
+      'Зазвичай синхронізація - це кілька кілобайт на годину. Уночі застосунок '
+      'відправляє на сервер повну копію бази (стиснену) і нові фото складу - це '
+      'може бути кілька мегабайт. Якщо трафік обмежений, вимкніть: тоді '
+      'синхронізація - лише через Wi-Fi.';
+  @override
+  String get serverRestore => 'Завантажити з сервера';
+  @override
+  String get serverRestoreChoose => 'Яку копію завантажити?';
+  @override
+  String get serverBackupsNone => 'На сервері ще немає копій - вони з\'являються щоночі';
+  @override
+  String serverBackupItem(String when, String size) => '$when · $size';
+  @override
+  String get serverRestoreTitle => 'Завантажити дані з сервера?';
+  @override
+  String serverRestoreText(String when) =>
+      'Дані на цьому телефоні буде замінено копією з сервера від $when. Перед цим '
+      'застосунок збереже копію поточних даних тут, на телефоні (її видно в '
+      '«Резервних копіях» - звідти можна повернути).';
+  @override
+  String get serverRestoring => 'Завантаження копії з сервера…';
+  @override
+  String get serverRestored => 'Дані завантажено з сервера';
+  @override
+  String serverRestoreFailed(String details) => 'Не вдалося завантажити: $details';
 
   // ---- Загальне ----
   @override

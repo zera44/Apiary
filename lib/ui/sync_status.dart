@@ -7,9 +7,12 @@ import 'theme.dart';
 
 /// Текст стану синхронізації (null - показувати нічого).
 String? syncStatusText(SyncInfo i, {DateTime? now}) {
-  if (i.disabled) return tr.syncDisabled;
+  if (i.disabled) return i.needsSignIn ? tr.syncNeedsSignIn : tr.syncDisabled;
+  if (i.running) return tr.syncRunning;
   if (i.error != null) return tr.syncError(i.error!);
+  if (i.waitingWifi) return tr.syncWaitingWifi;
   if (i.offline) return tr.syncOffline;
+  if (i.rejected > 0) return tr.syncRejected(i.rejected);
   if (i.pending > 0) return tr.syncPending(i.pending);
   if (i.lastOk != null) return tr.syncLastOk(formatWhen(i.lastOk!, now: now));
   return null;

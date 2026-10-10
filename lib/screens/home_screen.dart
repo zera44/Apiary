@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../data/sync_service.dart';
 import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 import '../services/auth.dart';
+import '../services/server.dart';
 import '../services/sharing.dart';
 import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await auth.signIn();
-      unawaited(SyncService.now()); // одразу після входу
+      unawaited(Server.connect(repo, auth)); // і на сервер - одразу
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => HomeScreen(repo: repo, auth: auth),
@@ -160,6 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
         text: 'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.',
         confirmText: 'Вийти');
     if (!ok || !context.mounted) return;
+    await Server.signOut(repo);
     await auth.signOut();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

@@ -1,8 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../data/sync_api.dart';
+import '../data/sync_service.dart';
 import '../l10n/l10n.dart';
+import '../services/background.dart';
 import '../services/backups.dart';
+import '../services/server.dart';
+import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
 import '../ui/theme.dart';
@@ -25,11 +32,187 @@ class MainSettingsTab extends StatefulWidget {
 
 class _MainSettingsTabState extends State<MainSettingsTab> {
   String? _backups;
+  bool? _mobile;
+  bool _busy = false;
+
+  SyncService? get _sync => SyncService.current;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.lesson) _loadBackups();
+    if (!widget.lesson) {
+      _loadBackups();
+      _loadMobile();
+    }
+  }
+
+  Future<void> _loadMobile() async {
+    final s = _sync;
+    if (s == null || !s.configured) return;
+    final v = await s.mobileAllowed();
+    if (mounted) setState(() => _mobile = v);
+  }
+
+  void _say(String text) => ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(text)));
+
+  Future<void> _syncNow() async {
+    final s = _sync;
+    if (s == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final r = await s.syncNow();
+      final i = SyncService.info.value;
+      if (!mounted) return;
+      if (r != null) {
+        _say(tr.syncDone);
+      } else if (i.error != null) {
+        _say(tr.syncError(i.error!));
+      } else if (i.waitingWifi) {
+        _say(tr.syncWaitingWifi);
+      } else if (i.offline) {
+        _say(tr.syncOffline);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Перемикач мобільного інтернету: перше ввімкнення - з поясненням про
+  /// трафік (один раз).
+  Future<void> _setMobile(bool on) async {
+    final s = _sync;
+    if (s == null) return;
+    if (on && (await s.repo.getMeta(SyncService.mobileWarnedKey)) != '1') {
+      if (!mounted) return;
+      final ok = await showConfirm(context,
+          title: tr.syncMobileWarnTitle,
+          text: tr.syncMobileWarnText,
+          confirmText: tr.syncMobile,
+          danger: false,
+          cancelText: tr.cancel);
+      if (!ok) return;
+      await s.repo.setMeta(SyncService.mobileWarnedKey, '1');
+    }
+    await s.setMobileAllowed(on);
+    unawaited(BackgroundTasks.registerSync(mobile: on).catchError((Object _) {}));
+    if (mounted) setState(() => _mobile = on);
+  }
+
+  /// «Завантажити з сервера»: вибір однієї з двох копій, підтвердження,
+  /// копія поточного стану на телефоні, потім - дані з сервера.
+  Future<void> _serverRestore() async {
+    final api = Server.api ?? _sync?.api;
+    if (api == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final local = await BackupService.of(widget.repo);
+      final server = ServerBackups(widget.repo, api, local);
+      final List<ServerBackup> list;
+      try {
+        list = await server.list();
+      } catch (e) {
+        if (mounted) _say(tr.serverRestoreFailed('$e'));
+        return;
+      }
+      if (!mounted) return;
+      if (list.isEmpty) {
+        _say(tr.serverBackupsNone);
+        return;
+      }
+      final b = await showModalBottomSheet<ServerBackup>(
+        context: context,
+        backgroundColor: AppColors.popupBg,
+        builder: (ctx) => SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+              child: Text(tr.serverRestoreChoose,
+                  style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
+            for (final x in list)
+              ListTile(
+                leading: Icon(Icons.cloud_download_outlined, color: AppColors.text),
+                title: Text(tr.serverBackupItem(formatWhen(x.createdAt), tr.fileSize(x.size)),
+                    style: TextStyle(color: AppColors.text)),
+                onTap: () => Navigator.pop(ctx, x),
+              ),
+          ]),
+        ),
+      );
+      if (b == null || !mounted) return;
+      final ok = await showConfirm(context,
+          title: tr.serverRestoreTitle,
+          text: tr.serverRestoreText(formatWhen(b.createdAt)),
+          confirmText: tr.serverRestore,
+          cancelText: tr.cancel);
+      if (!ok || !mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      final nav = Navigator.of(context);
+      messenger.showSnackBar(SnackBar(content: Text(tr.serverRestoring)));
+      try {
+        final before = await server.restore(b);
+        // усі відкриті екрани показували старі дані - на головний
+        nav.popUntil((r) => r.isFirst);
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(tr.serverRestored),
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: tr.undo,
+              onPressed: () async {
+                try {
+                  await local.restoreFrom(before.path);
+                  messenger.showSnackBar(SnackBar(content: Text(tr.backupUndone)));
+                } catch (e) {
+                  messenger.showSnackBar(SnackBar(content: Text(tr.backupRestoreFailed('$e'))));
+                }
+              },
+            ),
+          ));
+        unawaited(SyncService.now());
+      } catch (e) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(tr.serverRestoreFailed('$e'))));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  List<Widget> _syncControls() {
+    final s = _sync;
+    if (widget.lesson || s == null || !s.configured) return const [];
+    final on = s.enabled && !_busy;
+    return [
+      const SizedBox(height: 10),
+      PillButton(
+        text: tr.syncNow,
+        bg: AppColors.accent,
+        height: 40,
+        width: double.infinity,
+        onPressed: on ? _syncNow : null,
+      ),
+      const SizedBox(height: 8),
+      PillButton(
+        text: tr.serverRestore,
+        bg: AppColors.darkBtn,
+        fg: AppColors.text,
+        height: 40,
+        width: double.infinity,
+        onPressed: on ? _serverRestore : null,
+      ),
+      if (_mobile != null)
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(tr.syncMobile, style: TextStyle(color: AppColors.text, fontSize: 14)),
+          value: _mobile!,
+          onChanged: _setMobile,
+        ),
+    ];
   }
 
   Future<void> _loadBackups() async {
@@ -45,7 +228,10 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
         children: [
           SettingsSection(
             title: tr.syncSection,
-            children: const [SyncStatusLine(textAlign: TextAlign.start, fontSize: 13.5)],
+            children: [
+              const SyncStatusLine(textAlign: TextAlign.start, fontSize: 13.5),
+              ..._syncControls(),
+            ],
           ),
           if (!widget.lesson)
             SettingsSection(
@@ -87,11 +273,15 @@ class SettingsSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title,
-              style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          ...children,
-        ]),
+        // свій шар Material: перемикачі й кнопки малюють відгук поверх тла
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            ...children,
+          ]),
+        ),
       );
 }

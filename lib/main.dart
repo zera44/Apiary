@@ -14,6 +14,7 @@ import 'services/auth.dart';
 import 'services/background.dart';
 import 'services/backups.dart';
 import 'services/reminders.dart';
+import 'services/server.dart';
 import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
 import 'ui/common.dart' show showConfirm;
@@ -46,6 +47,8 @@ Future<void> _start() async {
     return;
   }
   final sync = SyncService(repo)..start();
+  // вхід на сервер (збережений або тихо через Google); без мережі - пізніше
+  unawaited(Server.start(repo, auth).catchError((Object _) {}));
   // нагадування про обхід; збій не повинен заважати запуску
   unawaited(ReminderService.instance.start(repo).catchError((Object _) {}));
   runApp(ApiaryApp(repo: repo, auth: auth, sync: sync));

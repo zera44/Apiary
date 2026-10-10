@@ -427,7 +427,7 @@ void main() {
     expect(rows.every((r) => r['deleted'] == 1), isTrue);
   });
 
-  test('сервер налаштовано, але обмін ще не готовий - теж нічого не чіпає', () async {
+  test('сервер налаштовано, але вхід не виконано - теж нічого не чіпає', () async {
     await repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, 0);
     final before = await repo.countUnsynced();
     final sync = SyncService(repo,

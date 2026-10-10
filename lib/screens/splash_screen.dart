@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
-import '../data/sync_service.dart';
 import '../services/auth.dart';
+import '../services/server.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
     });
     try {
       await widget.auth.signIn();
-      unawaited(SyncService.now()); // одразу після входу
+      unawaited(Server.connect(widget.repo, widget.auth)); // і на сервер - одразу
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => HomeScreen(repo: widget.repo, auth: widget.auth),

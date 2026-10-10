@@ -86,7 +86,7 @@ void main() {
       await db.close();
 
       repo = Repository(await AppDatabase.open(factory, p.join(dir.path, 'apiary.db')));
-      expect((await repo.db.rawQuery('PRAGMA user_version')).first.values.first, 3);
+      expect((await repo.db.rawQuery('PRAGMA user_version')).first.values.first, AppDatabase.schemaVersion);
       for (final t in AppDatabase.apiaryLinkedTables) {
         expect(await count(t, 'apiary_id IS NULL'), 0, reason: t);
       }
