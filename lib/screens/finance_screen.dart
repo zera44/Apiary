@@ -67,24 +67,64 @@ class FinEntryTile extends StatelessWidget {
   }
 }
 
-/// Відкрити запис журналу: деталі й «Скасувати запис» (на складі теж).
-/// Повертає true, якщо щось змінилось.
+/// Що зробити із записом журналу.
+enum _EntryAction { close, edit, cancel }
+
+/// Відкрити запис журналу: деталі, «Змінити» (власні операції) і
+/// «Скасувати запис» (на складі теж). Повертає true, якщо щось змінилось.
 Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
     Map<String, FinCategory> cats) async {
   final c = e.categoryId == null ? null : cats[e.categoryId];
   final name = e.fromStock ? kFinStockCategoryName : (c?.name ?? 'Без категорії');
   final what = e.title.isEmpty ? '' : '\n${e.title}';
+  final note = (e.comment ?? '').isEmpty || e.fromStock ? '' : '\n«${e.comment}»';
   final text = '$name · ${e.isExpense ? 'витрата' : 'дохід'} ${uah(e.amount)}\n'
-      '${finDay(e.date)}$what'
+      '${finDay(e.date)}$what$note'
       '${e.fromStock ? '\n\nПрихід внесено на складі. Скасування тут скасує його й на складі.' : ''}'
       '${!e.fromStock && e.lineCount > 0 ? '\n\nСкасування скасує й приходи цієї операції на складі.' : ''}';
   if (e.cancelled) {
     await showInfo(context, '$text\n\nЦей запис скасовано.', title: 'Запис');
     return false;
   }
-  final ok = await showConfirm(context,
-      title: 'Запис', text: text, confirmText: 'Скасувати запис', cancelText: 'Закрити');
-  if (!ok || !context.mounted) return false;
+  final action = await showDialog<_EntryAction>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Запис'),
+      content: Text(text, style: TextStyle(color: AppColors.text)),
+      actions: [
+        Column(mainAxisSize: MainAxisSize.min, children: [
+          if (!e.fromStock) ...[
+            SizedBox(
+              width: double.infinity,
+              child: PillButton(
+                  text: 'Змінити',
+                  bg: AppColors.accent,
+                  onPressed: () => Navigator.pop(ctx, _EntryAction.edit)),
+            ),
+            const SizedBox(height: 8),
+          ],
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                  text: 'Закрити',
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  onPressed: () => Navigator.pop(ctx, _EntryAction.close)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: PillButton(
+                  text: 'Скасувати запис',
+                  bg: AppColors.danger,
+                  onPressed: () => Navigator.pop(ctx, _EntryAction.cancel)),
+            ),
+          ]),
+        ]),
+      ],
+    ),
+  );
+  if (!context.mounted || action == null || action == _EntryAction.close) return false;
+  if (action == _EntryAction.edit) return _editFinEntry(context, repo, e);
   try {
     await repo.cancelFinEntry(e);
     return true;
@@ -96,6 +136,106 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
     return false;
   }
 }
+
+/// Форма «Змінити запис»: категорія, сума (якщо немає рядків таблиці), дата, коментар.
+Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) async {
+  final cats = await repo.listFinCategories(kind: e.kind);
+  if (!context.mounted) return false;
+  final amountCtrl = TextEditingController(text: _plain(e.amount));
+  final noteCtrl = TextEditingController(text: e.comment ?? '');
+  var catId = e.categoryId;
+  var date = e.date;
+  String? error;
+  final amountLocked = e.lineCount > 0;
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, setD) {
+      Future<void> save() async {
+        final v = double.tryParse(amountCtrl.text.trim().replaceAll(',', '.').replaceAll(' ', ''));
+        if (v == null || v < 0 || (amountCtrl.text.trim().startsWith('-'))) {
+          setD(() => error = 'Сума — число, не менше 0');
+          return;
+        }
+        try {
+          await repo.updateFinOp(e.id,
+              categoryId: catId, date: date, amount: v, comment: noteCtrl.text);
+          if (ctx.mounted) Navigator.pop(ctx, true);
+        } on StateError catch (err) {
+          setD(() => error = err.message);
+        } catch (err) {
+          setD(() => error = '$err');
+        }
+      }
+
+      return AlertDialog(
+        title: const Text('Змінити запис'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            TextField(
+              controller: amountCtrl,
+              enabled: !amountLocked,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                  labelText: 'Сума, ₴',
+                  helperText: amountLocked ? 'Сума складається з рядків таблиці' : null),
+            ),
+            const SizedBox(height: 12),
+            Text('Категорія', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final c in cats)
+                ChoiceChip(
+                  label: Text(c.name),
+                  selected: catId == c.id,
+                  onSelected: (_) => setD(() => catId = c.id),
+                ),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              Text('Дата: ', style: TextStyle(color: AppColors.textMuted)),
+              TextButton(
+                onPressed: () async {
+                  final r = await showAppDatePicker(ctx, formatDdMmYyyy(date));
+                  final d = parseDdMmYyyy(r);
+                  if (d != null) setD(() => date = d);
+                },
+                child: Text(formatDdMmYyyy(date)),
+              ),
+            ]),
+            TextField(
+              controller: noteCtrl,
+              maxLength: 200,
+              decoration: const InputDecoration(labelText: "Коментар (необов'язково)"),
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(error!, style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
+              ),
+          ]),
+        ),
+        actions: [
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                  text: 'Скасувати',
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  onPressed: () => Navigator.pop(ctx, false)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
+          ]),
+        ],
+      );
+    }),
+  );
+  return saved ?? false;
+}
+
+String _plain(double v) =>
+    v == v.truncateToDouble() ? v.toInt().toString() : v.toStringAsFixed(2).replaceAll('.', ',');
 
 /// Період огляду.
 enum FinPeriod { day, week, month, year, custom }

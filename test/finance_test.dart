@@ -3,6 +3,7 @@ import 'package:apiary/data/finance.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
+import 'package:apiary/screens/finance_screen.dart' show openFinEntry;
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -86,6 +87,52 @@ void main() {
     // той самий прихід не задвоюється як «внесено на складі»
     expect(entries.where((x) => x.fromStock).length, 1); // лише ручний прихід Вощини (100 ₴)
     expect(entries.singleWhere((x) => x.fromStock).amount, 100);
+  });
+
+  test('зміна запису: категорія, сума, дата й коментар; з рядками — сума незмінна', () async {
+    final korm = await cat('Корми');
+    final inc = (await repo.listFinCategories(kind: kFinIncome)).first;
+    // проста операція без рядків — змінюється все
+    await repo.addFinOp(
+        kind: kFinIncome, categoryId: inc.id, amount: 1000, date: DateTime(2026, 10, 1));
+    var e = (await repo.listFinEntries(from: from(), to: to())).single;
+    await repo.updateFinOp(e.id,
+        categoryId: inc.id, date: DateTime(2026, 10, 5), amount: 1200, comment: ' Мед ');
+    e = (await repo.listFinEntries(from: from(), to: to())).single;
+    expect(e.amount, 1200);
+    expect(e.date, DateTime(2026, 10, 5));
+    expect(e.comment, 'Мед');
+    // відʼємна сума не приймається
+    expect(
+        () => repo.updateFinOp(e.id,
+            categoryId: inc.id, date: DateTime(2026, 10, 5), amount: -1),
+        throwsArgumentError);
+
+    // операція з рядками: суму змінити не можна, дату й категорію — можна
+    await repo.addFinOp(
+      kind: kFinExpense,
+      categoryId: korm.id,
+      amount: 100,
+      date: DateTime(2026, 10, 2),
+      lines: const [FinLineInput(name: 'Цукор', qty: 4, unit: 'кг', price: 25, toStock: true)],
+    );
+    final op = (await repo.listFinEntries(from: from(), to: to()))
+        .singleWhere((x) => !x.fromStock && x.isExpense);
+    expect(
+        () => repo.updateFinOp(op.id,
+            categoryId: korm.id, date: DateTime(2026, 10, 2), amount: 999),
+        throwsStateError);
+    await repo.updateFinOp(op.id,
+        categoryId: korm.id, date: DateTime(2026, 10, 9), amount: 100);
+    final after = (await repo.listFinEntries(from: from(), to: to()))
+        .singleWhere((x) => x.id == op.id);
+    expect(after.date, DateTime(2026, 10, 9));
+    // скасований запис не змінюють
+    await repo.cancelFinEntry(after);
+    expect(
+        () => repo.updateFinOp(op.id,
+            categoryId: korm.id, date: DateTime(2026, 10, 9), amount: 100),
+        throwsStateError);
   });
 
   test('скасування витрати у фінансах скасовує прихід на складі', () async {
@@ -326,6 +373,45 @@ void main() {
       final entries =
           (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
       expect(entries.where((e) => !e.fromStock).single.amount, 331);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('запис журналу: «Змінити» змінює суму й категорію', (tester) async {
+      final inc = (await tester.runAsync(() => repo.listFinCategories(kind: kFinIncome)))!.first;
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinIncome, categoryId: inc.id, amount: 500, date: DateTime(2026, 10, 3)));
+      final e = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      final cats = {
+        for (final c in (await tester.runAsync(() => repo.listFinCategories()))!) c.id: c
+      };
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var changed = false;
+      await tester.pumpWidget(MaterialApp(
+        theme: buildAppTheme(),
+        home: Builder(
+          builder: (ctx) => Scaffold(
+            body: TextButton(
+              onPressed: () async => changed = await openFinEntry(ctx, repo, e, cats),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await settle(tester);
+      expect(find.text('Змінити'), findsOneWidget);
+      await tester.tap(find.text('Змінити'));
+      await settle(tester);
+      expect(find.text('Змінити запис'), findsOneWidget);
+      await tester.enterText(find.widgetWithText(TextField, '500'), '750');
+      await tester.tap(find.text('Зберегти'));
+      await settle(tester);
+      await settle(tester);
+      expect(changed, isTrue);
+      final after =
+          (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      expect(after.amount, 750);
       expect(tester.takeException(), isNull);
     });
 
