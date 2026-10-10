@@ -103,15 +103,30 @@ class PillButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: icon != null
                   ? Tooltip(message: text, child: Icon(icon, color: fg, size: 26))
-                  // вузька кнопка: напис переноситься на другий рядок, без «…»
-                  : Text(
-                      text,
-                      maxLines: 2,
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          color: fg, fontSize: fontSize, fontWeight: FontWeight.w500, height: 1.1),
-                    ),
+                  // вузька кнопка: кілька слів - переноситься на другий рядок, одне
+                  // слово - стискається (без «…» і без розриву слова навпіл)
+                  : (text.trim().contains(RegExp(r'\s'))
+                      ? Text(
+                          text,
+                          maxLines: 2,
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: fg,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w500,
+                              height: 1.1),
+                        )
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            text,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: TextStyle(
+                                color: fg, fontSize: fontSize, fontWeight: FontWeight.w500),
+                          ),
+                        )),
             ),
           ),
         ),

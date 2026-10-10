@@ -458,18 +458,21 @@ class _FillDialogState extends State<_FillDialog> {
               isDense: true,
               underline: const SizedBox.shrink(),
               dropdownColor: AppColors.popupBg,
-              hint: Text('Не списувати', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+              hint: _fitLeft(
+                  Text('Не списувати', style: TextStyle(color: AppColors.textMuted, fontSize: 14))),
               items: [
                 DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('Не списувати', style: TextStyle(color: AppColors.text))),
+                    child: _fitLeft(
+                        Text('Не списувати', style: TextStyle(color: AppColors.text, fontSize: 14)))),
                 for (final s in widget.stock)
                   DropdownMenuItem<String?>(
                     value: s.id,
-                    child: Text('${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: AppColors.text, fontSize: 14, height: 1.15)),
+                    child: _fitLeft(Text(
+                        '${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(color: AppColors.text, fontSize: 14))),
                   ),
               ],
               onChanged: (v) => setState(() {
@@ -493,6 +496,10 @@ class _FillDialogState extends State<_FillDialog> {
       ],
     );
   }
+
+  /// Текст у клітинці списку: не переноситься й не обрізається «…» — зменшується.
+  static Widget _fitLeft(Widget text) =>
+      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: text);
 
   static const _cellInput = InputDecoration(
     isDense: true,
