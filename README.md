@@ -132,8 +132,12 @@ flutter test
 flutter run --dart-define=SUPABASE_URL=https://xxxx.supabase.co --dart-define=SUPABASE_ANON_KEY=eyJ...
 ```
 
-У GitHub (Settings → Secrets and variables → Actions) - секрети
-`SUPABASE_URL` і `SUPABASE_ANON_KEY`; збірка APK передає їх сама.
+Проєктів два: тестовий (збірки гілок) і робочий (реліз з `main`). У GitHub
+(Settings → Secrets and variables → Actions) - секрети
+`SUPABASE_URL_TEST`, `SUPABASE_ANON_KEY_TEST`, `SUPABASE_URL_PROD`,
+`SUPABASE_ANON_KEY_PROD`; збірка APK сама бере потрібну пару. Як створити й
+налаштувати проєкти (таблиці, правила доступу, сховище, нічні копії,
+keep-alive) - [`supabase/README.md`](supabase/README.md).
 
 Поки адреси й ключа немає, синхронізація **вимкнена** і нічого не робить
 із даними: зміни лишаються в черзі (`synced = 0`), позначки «видалено» не
