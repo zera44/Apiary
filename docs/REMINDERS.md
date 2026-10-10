@@ -13,8 +13,11 @@
 ## 2. Ключі Google для входу — частково
 
 Зроблено: Web client ID створено й додано в секрет GitHub
-`APIARY_GOOGLE_SERVER_CLIENT_ID` (10.10.2026). Лишилось: Android-клієнти
-(п. 2 нижче) і провайдер Google у Supabase (`supabase/README.md`, крок 4).
+`APIARY_GOOGLE_SERVER_CLIENT_ID` (10.10.2026). Android-клієнт для тестового
+ключа («Vulyk – Android test», SHA-1 `0D:E8:…:2B:B7`) створено; його ID у
+збірку не потрібен (Google впізнає застосунок за пакетом і відбитком).
+Лишилось: Android-клієнт для ключа Google Play (коли буде публікація) і
+провайдер Google у Supabase (`supabase/README.md`, крок 4).
 
 Без них вхід, а отже й синхронізація, не запрацюють. Що зробити (один раз):
 
