@@ -495,8 +495,9 @@ class _AdvisorState extends State<_Advisor> {
           onTap: action ?? () => setState(() => _i++),
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
-            // фіксована висота: довша репліка не розсуває екран
-            height: 116,
+            // фіксована висота: довша репліка не розсуває екран, але вміщається
+            // повністю (найдовші поради - до шести рядків)
+            height: 150,
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -525,7 +526,7 @@ class _AdvisorState extends State<_Advisor> {
                                   color: AppColors.create, fontWeight: FontWeight.w600))
                           : TextSpan(text: part),
                   ]),
-                  maxLines: 4,
+                  maxLines: 7,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: AppColors.text,

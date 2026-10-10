@@ -1181,7 +1181,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final locked = _lockedBase(p);
     var subtitle = DataTypes.label(p.dataType);
     if (p.unit != null && p.unit!.isNotEmpty) subtitle += ' · ${p.unit}';
-    if (locked) subtitle += " · Базова характеристика (обов'язкова)";
+    if (locked) subtitle += " · обов'язкова";
     return ListCard(
       height: 66,
       child: Row(children: [
@@ -1233,13 +1233,14 @@ class _ParametersScreenState extends State<ParametersScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(p.name,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: AppColors.text, fontSize: 14, height: 1.05, fontWeight: FontWeight.bold)),
               Text(subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, height: 1.05)),
             ],
           ),
           ),
