@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show compute, kIsWeb, kDebugMode, debugPrint;
+import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -53,15 +53,12 @@ class TesseractReceiptOcr implements ReceiptOcr {
     if (prepared != null) {
       try {
         final text = await _tesseract(prepared);
-        if (kDebugMode) debugPrint('QAOCR prepared>>>\n$text\n<<<');
         if (parseReceipt(text).isNotEmpty) return text;
       } finally {
         File(prepared).delete().ignore();
       }
     }
-    final raw = await _tesseract(imagePath);
-    if (kDebugMode) debugPrint('QAOCR raw>>>\n$raw\n<<<');
-    return raw;
+    return _tesseract(imagePath);
   }
 }
 
