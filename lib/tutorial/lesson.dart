@@ -312,7 +312,8 @@ List<Widget> lessonPicScene(LessonCue cue,
 
 /// Вікно (діалог) під час уроку: вікно вище, щоб пасічник унизу його не
 /// закривав, і шар уроку зі своїм кроком [screen].
-Widget lessonDialog(LessonController? lesson, String screen, Widget dialog) {
+Widget lessonDialog(LessonController? lesson, String screen, Widget dialog,
+    {bool drawToggle = true}) {
   if (lesson == null) return dialog;
   return Stack(children: [
     // вікно над пасічником; коли відкрита клавіатура (вона й так закриває
@@ -326,7 +327,7 @@ Widget lessonDialog(LessonController? lesson, String screen, Widget dialog) {
         );
       }),
     ),
-    Positioned.fill(child: LessonLayer(lesson: lesson, screen: screen)),
+    Positioned.fill(child: LessonLayer(lesson: lesson, screen: screen, drawToggle: drawToggle)),
   ]);
 }
 

@@ -542,7 +542,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
               ),
             ),
           ),
-        ));
+        ), drawToggle: false);
       },
     );
     if (picked == null) {
@@ -650,7 +650,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
           title: 'Назва шаблону',
           initial: title.trim().isEmpty ? 'Новий шаблон' : title.trim(),
           dismissible: l == null,
-          wrap: l == null ? null : (d) => lessonDialog(l, 'template-name', d),
+          wrap: l == null ? null : (d) => lessonDialog(l, 'template-name', d, drawToggle: false),
           decorate: l == null
               ? null
               : (which, b) => LessonTarget(lesson: l, name: 'name-$which', radius: 14, child: b));
