@@ -18,22 +18,30 @@ import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
 
-/// Налаштування → «Головне». Тут - усе про дані користувача: синхронізація,
-/// резервні копії (а далі - мобільний інтернет, акаунт, політика
-/// конфіденційності).
-///
-/// [lesson] - вкладку показує урок (пісочниця): лише перегляд, без кнопок,
-/// що чіпають справжні дані.
-class MainSettingsTab extends StatefulWidget {
+/// Налаштування → «Головне»: розмір шрифту (і далі - інше про сам
+/// застосунок). Синхронізація, копії й акаунт - на вкладці «Акаунт».
+class MainSettingsTab extends StatelessWidget {
   final Repository repo;
-  final bool lesson;
-  const MainSettingsTab({super.key, required this.repo, this.lesson = false});
+  const MainSettingsTab({super.key, required this.repo});
 
   @override
-  State<MainSettingsTab> createState() => _MainSettingsTabState();
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [_TextSizeSection(repo: repo)],
+      );
 }
 
-class _MainSettingsTabState extends State<MainSettingsTab> {
+/// Налаштування → «Акаунт»: хто увійшов і «Вийти», синхронізація, резервні
+/// копії, політика конфіденційності й «Видалити акаунт».
+class AccountSettingsTab extends StatefulWidget {
+  final Repository repo;
+  const AccountSettingsTab({super.key, required this.repo});
+
+  @override
+  State<AccountSettingsTab> createState() => _AccountSettingsTabState();
+}
+
+class _AccountSettingsTabState extends State<AccountSettingsTab> {
   String? _backups;
   bool? _mobile;
   bool _busy = false;
@@ -43,10 +51,8 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
   @override
   void initState() {
     super.initState();
-    if (!widget.lesson) {
-      _loadBackups();
-      _loadMobile();
-    }
+    _loadBackups();
+    _loadMobile();
   }
 
   Future<void> _loadMobile() async {
@@ -212,7 +218,7 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
 
   List<Widget> _syncControls() {
     final s = _sync;
-    if (widget.lesson || s == null || !s.configured) return const [];
+    if (s == null || !s.configured) return const [];
     unawaited(_loadSignInAgain());
     final on = s.enabled && !_busy;
     return [
@@ -266,7 +272,24 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          if (!widget.lesson) _TextSizeSection(repo: widget.repo),
+          SettingsSection(
+            title: tr.accountSection,
+            children: [
+              if (Server.auth?.user case final u?) ...[
+                _AccountCard(user: u),
+                const SizedBox(height: 12),
+                PillButton(
+                  text: tr.accountSignOut,
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 40,
+                  width: double.infinity,
+                  onPressed: _busy ? null : _signOut,
+                ),
+              ] else
+                Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+            ],
+          ),
           SettingsSection(
             title: tr.syncSection,
             children: [
@@ -281,69 +304,53 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
               ),
             ],
           ),
-          if (!widget.lesson)
-            SettingsSection(
-              title: tr.backupsSection,
-              children: [
-                Text(_backups ?? '',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-                const SizedBox(height: 10),
-                PillButton(
-                  text: tr.backupsSection,
-                  bg: AppColors.darkBtn,
-                  fg: AppColors.text,
-                  height: 40,
-                  width: double.infinity,
-                  onPressed: () async {
-                    await BackupsScreen.open(context, widget.repo);
-                    await _loadBackups();
-                  },
-                ),
-              ],
-            ),
-          if (!widget.lesson)
-            SettingsSection(
-              title: tr.accountSection,
-              children: [
-                if (Server.auth?.user case final u?) ...[
-                  _AccountCard(user: u),
-                  const SizedBox(height: 12),
-                  PillButton(
-                    text: tr.accountSignOut,
-                    bg: AppColors.darkBtn,
-                    fg: AppColors.text,
-                    height: 40,
-                    width: double.infinity,
-                    onPressed: _busy ? null : _signOut,
+          SettingsSection(
+            title: tr.backupsSection,
+            children: [
+              Text(_backups ?? '',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+              const SizedBox(height: 10),
+              PillButton(
+                text: tr.backupsSection,
+                bg: AppColors.darkBtn,
+                fg: AppColors.text,
+                height: 40,
+                width: double.infinity,
+                onPressed: () async {
+                  await BackupsScreen.open(context, widget.repo);
+                  await _loadBackups();
+                },
+              ),
+            ],
+          ),
+          SettingsSection(
+            title: tr.privacySection,
+            children: [
+              _AccountLink(
+                icon: Icons.privacy_tip_outlined,
+                text: tr.privacyPolicy,
+                color: AppColors.text,
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.popupBg,
+                    title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
+                    content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
+                    ],
                   ),
-                ] else
-                  Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-                const SizedBox(height: 4),
+                ),
+              ),
+              if (Server.auth?.user != null)
                 _AccountLink(
-                  icon: Icons.privacy_tip_outlined,
-                  text: tr.privacyPolicy,
-                  color: AppColors.text,
-                  onTap: () => showDialog<void>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: AppColors.popupBg,
-                      title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
-                      content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
-                      ],
-                    ),
-                  ),
+                  icon: Icons.delete_outline,
+                  text: tr.accountDelete,
+                  color: AppColors.danger,
+                  onTap: _busy ? null : _deleteAccount,
                 ),
-                if (Server.auth?.user != null)
-                  _AccountLink(
-                    icon: Icons.delete_outline,
-                    text: tr.accountDelete,
-                    color: AppColors.danger,
-                    onTap: _busy ? null : _deleteAccount,
-                  ),
-              ],
-            ),
+            ],
+          ),
         ],
       );
 

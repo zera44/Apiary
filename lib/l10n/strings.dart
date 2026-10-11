@@ -23,6 +23,7 @@ abstract class AppStrings {
   String get settingsTitle;
   String get settingsTabMain;
   String get settingsTabTemplates;
+  String get settingsTabAccount;
 
   // ---- Синхронізація ----
   String get syncSection;
@@ -90,6 +91,7 @@ abstract class AppStrings {
   String get accountDeleted;
   String accountDeleteFailed(String details);
   String get privacyPolicy;
+  String get privacySection;
   String get privacySoon;
 
   // ---- Загальне ----

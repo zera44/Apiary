@@ -17,6 +17,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get settingsTabMain => 'Головне';
   @override
+  String get settingsTabAccount => 'Акаунт';
+  @override
   String get settingsTabTemplates => 'Шаблони';
 
   // ---- Синхронізація ----
@@ -175,6 +177,8 @@ class AppStringsUk extends AppStrings {
   String accountDeleteFailed(String details) => 'Не вдалося видалити: $details';
   @override
   String get privacyPolicy => 'Політика конфіденційності';
+  @override
+  String get privacySection => 'Конфіденційність';
   @override
   String get privacySoon => 'Текст політики конфіденційності скоро з\'явиться тут.';
 

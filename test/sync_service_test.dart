@@ -238,7 +238,7 @@ void main() {
 
       await tester.runAsync(() => repo.addApiary('Перша'));
       await tester.pumpWidget(MaterialApp(
-          theme: buildAppTheme(), home: Scaffold(body: MainSettingsTab(repo: repo))));
+          theme: buildAppTheme(), home: Scaffold(body: AccountSettingsTab(repo: repo))));
       await settle();
       expect(find.text(tr.syncNow), findsOneWidget);
       expect(find.text(tr.serverRestore), findsOneWidget);

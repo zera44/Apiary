@@ -1989,7 +1989,10 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);
     expect(find.text('Головне'), findsOneWidget);
-    // «Головне»: розділ синхронізації; без сервера - вона вимкнена
+    expect(find.text(tr.textSizeSection), findsOneWidget); // «Головне» - розмір шрифту
+    // «Акаунт»: розділ синхронізації; без сервера - вона вимкнена
+    await tester.tap(find.text(tr.settingsTabAccount));
+    await settle(tester);
     expect(find.text('Синхронізація'), findsOneWidget);
     expect(find.text(tr.syncDisabled), findsOneWidget);
     expect(find.textContaining('з\'являться тут згодом'), findsNothing);

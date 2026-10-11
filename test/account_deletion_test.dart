@@ -80,7 +80,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
-        home: Scaffold(body: MainSettingsTab(repo: repo)),
+        home: Scaffold(body: AccountSettingsTab(repo: repo)),
       ),
     );
     await settle();
@@ -99,7 +99,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
-        home: Scaffold(body: MainSettingsTab(repo: repo)),
+        home: Scaffold(body: AccountSettingsTab(repo: repo)),
       ),
     );
     await settle();
@@ -144,7 +144,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
-        home: Scaffold(body: MainSettingsTab(repo: repo)),
+        home: Scaffold(body: AccountSettingsTab(repo: repo)),
       ),
     );
     await settle();
