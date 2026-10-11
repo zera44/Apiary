@@ -291,7 +291,7 @@ class _StockScreenState extends State<StockScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: title, onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),

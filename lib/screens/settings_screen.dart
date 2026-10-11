@@ -112,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         body: SafeArea(
           child: Stack(children: [
-            Column(children: [
+            ScreenColumn(children: [
               TopBar(title: tr.settingsTitle, onBack: _back),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),

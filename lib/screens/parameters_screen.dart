@@ -659,7 +659,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
       child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             if (!widget.embedded)
             TopBar(
               title: widget.catalog ? 'Характеристики' : 'Таблиця параметрів',

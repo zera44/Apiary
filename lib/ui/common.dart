@@ -291,6 +291,26 @@ class TopBar extends StatelessWidget {
 }
 
 /// Картка списку (шаблон / параметр / запис історії).
+/// Найбільша ширина вмісту екранів-списків і форм: на планшеті вони не
+/// розтягуються на весь екран, а стоять по центру (карта - на всю ширину).
+const double kContentMaxWidth = 720;
+
+/// Вміст екрана (верхня смуга й решта) - колонкою не ширшою за
+/// [kContentMaxWidth], по центру. На телефоні - як звичайна колонка.
+class ScreenColumn extends StatelessWidget {
+  final List<Widget> children;
+  const ScreenColumn({super.key, required this.children});
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kContentMaxWidth),
+          child: Column(children: children),
+        ),
+      );
+}
+
 class ListCard extends StatelessWidget {
   final Widget child;
   final double height;

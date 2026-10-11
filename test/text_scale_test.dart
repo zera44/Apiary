@@ -21,6 +21,7 @@ import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/screens/whats_new_screen.dart';
 import 'package:apiary/services/server.dart';
 import 'package:apiary/ui/first_hints.dart';
+import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/text_scale.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -80,8 +81,9 @@ void main() {
   testWidgets('рівень обирається в Налаштуваннях, діє одразу й зберігається', (tester) async {
     // Налаштування відкрито поверх головного: зміна рівня їх не закриває
     await tester.pumpWidget(app(const Scaffold(body: Text('головний'))));
-    Navigator.of(tester.element(find.text('головний')))
-        .push(MaterialPageRoute<void>(builder: (_) => SettingsScreen(repo: repo)));
+    Navigator.of(
+      tester.element(find.text('головний')),
+    ).push(MaterialPageRoute<void>(builder: (_) => SettingsScreen(repo: repo)));
     await settle(tester);
     expect(find.text(tr.textSizeSection), findsOneWidget);
     expect(find.text(tr.textSizeLevels.first), findsOneWidget); // типово - звичайний
@@ -105,53 +107,77 @@ void main() {
     expect(AppTextScale.value.value, 1.0);
   });
 
-  testWidgets('найбільший шрифт на телефоні 360 dp: екрани без переповнень', (tester) async {
-    tester.view.physicalSize = const Size(1080, 1920); // 360×640 dp
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-    AppTextScale.value.value = AppTextScale.levels.last;
-    Server.debugAuth = FakeAuth(signedIn: true);
-    final apiary = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
-    final auth = FakeAuth(signedIn: true);
+  // дисплеї: вузький телефон з найбільшим шрифтом, найменший телефон,
+  // планшет вертикально й горизонтально
+  const displays = {
+    'телефон 360 dp, найбільший шрифт': (Size(360, 640), 1.5),
+    'телефон 320 dp': (Size(320, 568), 1.0),
+    'планшет вертикально, найбільший шрифт': (Size(800, 1280), 1.5),
+    'планшет горизонтально': (Size(1280, 800), 1.0),
+  };
+  for (final d in displays.entries) {
+    testWidgets('${d.key}: екрани без переповнень', (tester) async {
+      final (size, scale) = d.value;
+      tester.view.physicalSize = size * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      AppTextScale.value.value = scale;
+      Server.debugAuth = FakeAuth(signedIn: true);
+      final apiary = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+      final auth = FakeAuth(signedIn: true);
 
-    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
-    final screens = <String, Widget>{
-      'вхід': SplashScreen(repo: repo, auth: FakeAuth()),
-      'головний': HomeScreen(repo: repo, auth: auth),
-      'карта': MapScreen(repo: repo, apiary: apiary),
-      'панель вулика': MapScreen(repo: repo, apiary: apiary, focusElementId: hive.id),
-      'огляд': MapScreen(repo: repo, apiary: apiary, focusElementId: hive.id, openFill: true),
-      'характеристики': ParametersScreen.catalog(repo: repo),
-      'нова витрата': FinAddScreen(repo: repo, kind: kFinExpense),
-      'шаблони': TemplatesScreen(repo: repo),
-      'склад': StockScreen(repo: repo),
-      'фінанси': FinanceScreen(repo: repo),
-      'історія': HistoryHubScreen(repo: repo),
-      'налаштування': SettingsScreen(repo: repo),
-      'копії': BackupsScreen(repo: repo),
-    };
-    final problems = <String>[];
-    for (final e in screens.entries) {
-      final errors = <String>[];
-      final old = FlutterError.onError;
-      FlutterError.onError = (d) {
-        final s = d.exceptionAsString();
-        if (s.contains('overflowed')) {
-          errors.add(s.split('\n').first);
-        } else if (!s.contains('MissingPluginException')) {
-          old?.call(d);
-        }
+      final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!.firstWhere((e) => e.isHive);
+      final screens = <String, Widget>{
+        'вхід': SplashScreen(repo: repo, auth: FakeAuth()),
+        'головний': HomeScreen(repo: repo, auth: auth),
+        'карта': MapScreen(repo: repo, apiary: apiary),
+        'панель вулика': MapScreen(repo: repo, apiary: apiary, focusElementId: hive.id),
+        'огляд': MapScreen(repo: repo, apiary: apiary, focusElementId: hive.id, openFill: true),
+        'характеристики': ParametersScreen.catalog(repo: repo),
+        'нова витрата': FinAddScreen(repo: repo, kind: kFinExpense),
+        'шаблони': TemplatesScreen(repo: repo),
+        'склад': StockScreen(repo: repo),
+        'фінанси': FinanceScreen(repo: repo),
+        'історія': HistoryHubScreen(repo: repo),
+        'налаштування': SettingsScreen(repo: repo),
+        'копії': BackupsScreen(repo: repo),
       };
-      try {
-        await tester.pumpWidget(const SizedBox());
-        await tester.pumpWidget(app(e.value));
-        await settle(tester);
-      } finally {
-        FlutterError.onError = old;
+      final problems = <String>[];
+      for (final e in screens.entries) {
+        final errors = <String>[];
+        final old = FlutterError.onError;
+        FlutterError.onError = (d) {
+          final s = d.exceptionAsString();
+          if (s.contains('overflowed')) {
+            errors.add(s.split('\n').first);
+          } else if (!s.contains('MissingPluginException')) {
+            old?.call(d);
+          }
+        };
+        try {
+          await tester.pumpWidget(const SizedBox());
+          await tester.pumpWidget(app(e.value));
+          await settle(tester);
+        } finally {
+          FlutterError.onError = old;
+        }
+        if (errors.isNotEmpty) problems.add('${e.key}: ${errors.toSet().join('; ')}');
       }
-      if (errors.isNotEmpty) problems.add('${e.key}: ${errors.toSet().join('; ')}');
-    }
-    expect(problems, isEmpty, reason: problems.join('\n'));
+      expect(problems, isEmpty, reason: problems.join('\n'));
+    });
+  }
+
+  testWidgets('планшет: списки й форми - по центру, не на всю ширину', (tester) async {
+    tester.view.physicalSize = const Size(1280, 800) * 2;
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(FinanceScreen(repo: repo)));
+    await settle(tester);
+    final box = tester.getRect(find.byType(TopBar));
+    expect(box.width, lessThanOrEqualTo(kContentMaxWidth));
+    expect(box.center.dx, closeTo(640, 1));
+    // кнопка «+» - біля вмісту, не в кутку екрана
+    expect(tester.getRect(find.byTooltip('Нова операція')).right, lessThan(640 + kContentMaxWidth / 2));
   });
 }
 

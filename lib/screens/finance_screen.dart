@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../data/finance.dart';
@@ -472,7 +474,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(
               title: 'Фінанси',
               onBack: () => Navigator.pop(context),
@@ -618,7 +620,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
             ),
           ]),
           Positioned(
-            right: 20,
+            // на планшеті - біля вмісту (він по центру), а не в кутку екрана
+            right: 20 + math.max(0, (MediaQuery.sizeOf(context).width - kContentMaxWidth) / 2),
             bottom: 24,
             child: Material(
               color: const Color(0xFFFBC02D),
@@ -717,7 +720,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: widget.title, onBack: () => Navigator.pop(context)),
             if (!_scoped)
               Padding(

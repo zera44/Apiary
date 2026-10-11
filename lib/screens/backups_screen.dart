@@ -182,7 +182,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
     final list = _list;
     return Scaffold(
       body: SafeArea(
-        child: Column(children: [
+        child: ScreenColumn(children: [
           TopBar(title: tr.backupsSection, onBack: () => Navigator.maybePop(context)),
           Expanded(
             child: ListView(

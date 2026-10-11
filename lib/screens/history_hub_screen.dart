@@ -70,7 +70,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: 'Історія', onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -330,7 +330,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: 'Історія: ${widget.item.name}', onBack: () => Navigator.pop(context)),
             Expanded(
               child: list == null

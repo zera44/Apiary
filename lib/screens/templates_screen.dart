@@ -93,7 +93,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             if (!widget.embedded) TopBar(title: 'Шаблони', onBack: () => Navigator.pop(context)),
             Expanded(
               child: list == null
