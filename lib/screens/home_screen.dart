@@ -31,8 +31,8 @@ import 'whats_new_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
-/// «Фінанси», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
-/// «Вийти» (назад на екран входу).
+/// «Фінанси», «Пройти навчання», «Зворотний зв'язок». Хто увійшов і «Вийти» -
+/// у Налаштуваннях → «Головне» → «Акаунт»; тут лише лист «Вхід виконано».
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
 /// на головний екран; список пасік — через меню ☰); інакше — список.
 Future<void> openStart(NavigatorState nav, Repository repo, {bool instant = false}) async {
@@ -68,6 +68,10 @@ class HomeScreen extends StatefulWidget {
 
   /// Показувати під меню останню карту (неклікабельну); тести вимикають.
   static bool mapBackdrop = true;
+
+  /// Щойно увійшли (пошта): у вулику-поштоматі - лист «Вхід виконано»,
+  /// доки його не прочитають (дотик).
+  static String? signedInMail;
   const HomeScreen({super.key, required this.repo, required this.auth});
 
   @override
@@ -173,12 +177,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Гість входить пізніше: дані на пристрої лишаються, головний екран
-  /// оновлюється (пошта й «Вийти»).
+  /// Гість входить пізніше: дані на пристрої лишаються, на головному
+  /// екрані - лист «Вхід виконано».
   Future<void> _signIn(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await auth.signIn();
+      HomeScreen.signedInMail = auth.user?.email;
       unawaited(Server.connect(repo, auth)); // і на сервер - одразу
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -194,24 +199,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    final ok = await showConfirm(context,
-        title: 'Вийти?',
-        text: 'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.',
-        confirmText: 'Вийти');
-    if (!ok || !context.mounted) return;
-    await Server.signOut(repo);
-    await auth.signOut();
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
-      (_) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final user = auth.user;
     final nav = Navigator.of(context);
     void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
     return Scaffold(
@@ -294,16 +283,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       ]),
                     ]),
                   ),
-                  if (user != null) ...[
-                    const SizedBox(height: 14),
-                    // стан синхронізації - у Налаштуваннях → «Головне»
-                    Text(user.email,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                    TextButton(
-                      onPressed: () => _signOut(context),
-                      child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
-                    ),
-                  ] else if (auth.configured) ...[
+                  // хто увійшов, «Вийти» і стан синхронізації - у
+                  // Налаштуваннях → «Головне»
+                  if (auth.user == null && auth.configured) ...[
                     // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
                     const SizedBox(height: 14),
                     Text('Дані лише на цьому пристрої',
@@ -517,6 +499,12 @@ class _AdvisorState extends State<_Advisor> {
     }
   }
 
+  /// Лист «Вхід виконано» прочитано - далі звичайні повідомлення.
+  void _readSignedIn() => setState(() {
+        HomeScreen.signedInMail = null;
+        _i = 0;
+      });
+
   /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
   Future<void> _showDueList() async {
     final pick = await showDialog<VisitTarget?>(
@@ -572,6 +560,8 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (HomeScreen.signedInMail case final email?)
+          (text: tr.accountSignedInMail(email), action: _readSignedIn),
         if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
         if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
         if (_low.isNotEmpty)
@@ -585,7 +575,7 @@ class _AdvisorState extends State<_Advisor> {
 
   // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
   // що кінчаються
-  int get _mail => _invites + _due.length + _low.length;
+  int get _mail => (HomeScreen.signedInMail == null ? 0 : 1) + _invites + _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {

@@ -35,6 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
     });
     try {
       await widget.auth.signIn();
+      HomeScreen.signedInMail = widget.auth.user?.email;
       unawaited(Server.connect(widget.repo, widget.auth)); // і на сервер - одразу
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(

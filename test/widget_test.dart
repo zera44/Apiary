@@ -131,7 +131,10 @@ void main() {
     await repo.addParameterRecord(paramId, '12', EntityRef.group(groupId));
   });
 
-  tearDown(() async => repo.db.close());
+  tearDown(() async {
+    HomeScreen.signedInMail = null;
+    await repo.db.close();
+  });
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
 
@@ -259,7 +262,15 @@ void main() {
     expect(find.text('Навчання'), findsOneWidget);
     expect(find.text('Склад'), findsOneWidget);
     expect(find.text('Що нового'), findsNothing); // тепер - дотик до логотипа
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    // пошти й «Вийти» на головному немає (вони - у Налаштуваннях), лише лист
+    // «Вхід виконано» у вулику-поштоматі; дотик - прочитано
+    expect(find.text('pasichnyk@example.com'), findsNothing);
+    expect(find.text('Вийти'), findsNothing);
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsOneWidget);
+    await tester.tap(find.text(tr.accountSignedInMail('pasichnyk@example.com')));
+    await tester.pump();
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsNothing);
+    expect(HomeScreen.signedInMail, isNull);
     // логотип над «Vulyk» - пульс і «Що нового»
     await tester.tap(find.byKey(const ValueKey('logo-whats-new')));
     await tester.pump(const Duration(milliseconds: 100));
@@ -306,14 +317,7 @@ void main() {
         .first);
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // «Вийти» — з підтвердженням, назад на екран входу
-    await tester.tap(find.text('Вийти'));
-    await settle(tester);
-    await tester.tap(find.widgetWithText(PillButton, 'Вийти'));
-    await settle(tester);
-    await tester.pump(const Duration(seconds: 1));
-    expect(auth.user, isNull);
-    expect(find.text('Увійти через Google'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsOneWidget);
   });
 
   testWidgets('вхід не налаштовано в збірці - одразу головний екран', (tester) async {
@@ -407,7 +411,8 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(auth.user, isNotNull);
     expect(auth.guest, isFalse);
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsOneWidget);
+    expect(find.text('Увійти через Google для синхронізації'), findsNothing);
     expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
   });
 
@@ -1855,12 +1860,13 @@ void main() {
     expect(find.text('Почати'), findsOneWidget);
     expect(backdropId(tester), second);
     expect(backdropCells(tester), await elementIds(tester, second));
-    // карта на фоні - лише видно: без перемикача режимів і зуму (не налазять
-    // на пошту й «Вийти»); стан синхронізації - у Налаштуваннях, не тут
+    // карта на фоні - лише видно: без перемикача режимів і зуму; пошта,
+    // «Вийти» й стан синхронізації - у Налаштуваннях, не тут
     expect(find.byType(ModeToggle), findsNothing);
     expect(find.byType(ZoomButtons), findsNothing);
     expect(find.text(tr.syncDisabled), findsNothing);
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect(find.text('pasichnyk@example.com'), findsNothing);
+    expect(find.text('Вийти'), findsNothing);
 
     // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
     // відкрили з нагадування) - знову відкрили: під меню вже вона
@@ -1893,9 +1899,9 @@ void main() {
     final before = mapState();
     final changes = repo.mapChanges.value;
 
-    // вікно над меню (тут - «Вийти?») закрили: карта під меню та сама, без
-    // порожнього кадру, і нагадування не переплановуються
-    await tester.tap(find.text('Вийти'));
+    // вікно над меню закрили: карта під меню та сама, без порожнього кадру,
+    // і нагадування не переплановуються
+    unawaited(showConfirm(tester.element(find.byType(HomeScreen)), title: 'Вийти?', text: '', confirmText: 'Так'));
     await settle(tester);
     await tester.tap(find.text('Скасувати'));
     for (var i = 0; i < 12; i++) {

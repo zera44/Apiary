@@ -69,6 +69,12 @@ abstract class AppStrings {
   String firstLoginFailed(String details);
   String get accountSection;
   String accountSignedInAs(String email);
+  String get accountSignedInVia;
+  String accountSignedInMail(String email);
+  String get accountSignOut;
+  String get accountSignOutTitle;
+  String get accountSignOutText;
+  String get accountGuest;
   String get accountDelete;
   String get accountDeleteTitle;
   String get accountDeleteText;

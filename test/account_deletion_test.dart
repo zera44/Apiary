@@ -56,9 +56,13 @@ void main() {
   test('сервер не відповів - на телефоні нічого не чіпаємо', () async {
     await repo.addApiary('Моя');
     await expectLater(
-        deleteAccountAndData(
-            repo: repo, deleteOnServer: () async => throw const SyncOffline(), backups: (_) async => backups),
-        throwsA(isA<SyncOffline>()));
+      deleteAccountAndData(
+        repo: repo,
+        deleteOnServer: () async => throw const SyncOffline(),
+        backups: (_) async => backups,
+      ),
+      throwsA(isA<SyncOffline>()),
+    );
     expect((await repo.listApiaries()).single.name, 'Моя');
   });
 
@@ -72,11 +76,18 @@ void main() {
       }
     }
 
-    // без входу - лише політика
-    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: Scaffold(body: MainSettingsTab(repo: repo))));
+    // без входу - лише політика (і що дані лише на телефоні)
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(body: MainSettingsTab(repo: repo)),
+      ),
+    );
     await settle();
     expect(find.text(tr.privacyPolicy), findsOneWidget);
     expect(find.text(tr.accountDelete), findsNothing);
+    expect(find.text(tr.accountSignOut), findsNothing);
+    expect(find.text(tr.accountGuest), findsOneWidget);
     await tester.tap(find.text(tr.privacyPolicy));
     await settle();
     expect(find.text(tr.privacySoon), findsOneWidget);
@@ -85,9 +96,16 @@ void main() {
 
     Server.debugAuth = FakeAuth(signedIn: true);
     await tester.pumpWidget(const SizedBox());
-    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: Scaffold(body: MainSettingsTab(repo: repo))));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(body: MainSettingsTab(repo: repo)),
+      ),
+    );
     await settle();
-    expect(find.text(tr.accountSignedInAs('pasichnyk@example.com')), findsOneWidget);
+    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect(find.text('Пасічник'), findsOneWidget);
+    expect(find.text(tr.accountSignOut), findsOneWidget);
     await tester.tap(find.text(tr.accountDelete));
     await settle();
     expect(find.text(tr.accountDeleteText), findsOneWidget);
@@ -95,7 +113,10 @@ void main() {
     await settle();
     expect(find.text(tr.accountDeleteFinalText), findsOneWidget);
     // поки слово не написано - кнопка вимкнена
-    final btn = find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(PillButton, tr.accountDelete));
+    final btn = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.widgetWithText(PillButton, tr.accountDelete),
+    );
     expect(tester.widget<PillButton>(btn).onPressed, isNull);
     await tester.enterText(find.byType(TextField), 'видалити');
     await settle();
@@ -104,6 +125,42 @@ void main() {
     await settle();
     // сервера в тесті немає - зрозуміла помилка, дані на місці
     expect(find.textContaining(tr.accountDeleteFailed('')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Вийти» - у розділі «Акаунт»: з підтвердженням, далі екран входу', (tester) async {
+    final auth = FakeAuth(signedIn: true);
+    Server.debugAuth = auth;
+    await tester.runAsync(() => repo.addApiary('Моя'));
+    Future<void> settle() async {
+      for (var i = 0; i < 10; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAppTheme(),
+        home: Scaffold(body: MainSettingsTab(repo: repo)),
+      ),
+    );
+    await settle();
+    // передумали - лишаємось
+    await tester.tap(find.text(tr.accountSignOut));
+    await settle();
+    expect(find.text(tr.accountSignOutText), findsOneWidget);
+    await tester.tap(find.text(tr.cancel));
+    await settle();
+    expect(auth.user, isNotNull);
+    await tester.tap(find.text(tr.accountSignOut));
+    await settle();
+    await tester.tap(
+        find.descendant(of: find.byType(AlertDialog), matching: find.widgetWithText(PillButton, tr.accountSignOut)));
+    await settle();
+    expect(auth.user, isNull);
+    expect(find.text('Увійти через Google'), findsOneWidget);
+    expect((await tester.runAsync(() => repo.listApiaries()))!, isNotEmpty); // дані лишились
     expect(tester.takeException(), isNull);
   });
 }

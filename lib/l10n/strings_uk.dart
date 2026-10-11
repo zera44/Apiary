@@ -128,6 +128,19 @@ class AppStringsUk extends AppStrings {
   @override
   String accountSignedInAs(String email) => 'Ви увійшли як $email';
   @override
+  String get accountSignedInVia => 'Вхід через Google';
+  @override
+  String accountSignedInMail(String email) => 'Вхід виконано: $email. Дані синхронізуються.';
+  @override
+  String get accountSignOut => 'Вийти';
+  @override
+  String get accountSignOutTitle => 'Вийти?';
+  @override
+  String get accountSignOutText =>
+      'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.';
+  @override
+  String get accountGuest => 'Ви не увійшли - дані лише на цьому пристрої.';
+  @override
   String get accountDelete => 'Видалити акаунт і всі дані';
   @override
   String get accountDeleteTitle => 'Видалити акаунт?';
