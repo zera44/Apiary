@@ -262,7 +262,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () => openStart(nav, repo, instant: _backdrop != null),
                       ),
                       const SizedBox(height: 14),
-                      Row(children: [
+                      IntrinsicHeight(
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         _Tile(
                             icon: Icon(Icons.account_balance_wallet_outlined,
                                 size: 30, color: AppColors.text),
@@ -280,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
                             onTap: () => push(const FeedbackScreen())),
-                      ]),
+                      ])),
                     ]),
                   ),
                   // хто увійшов, «Вийти» і стан синхронізації - у
@@ -374,7 +375,10 @@ class _Tile extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               onTap: onTap,
               child: Container(
-                height: 78,
+                // не нижча за 78; більший шрифт - росте (сусідні плитки
+                // вирівнює IntrinsicHeight)
+                constraints: const BoxConstraints(minHeight: 78),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
@@ -593,8 +597,9 @@ class _AdvisorState extends State<_Advisor> {
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
             // фіксована висота: довша репліка не розсуває екран, але вміщається
-            // повністю (найдовші поради - до шести рядків)
-            height: 150,
+            // повністю (найдовші поради - до шести рядків); більший шрифт -
+            // і вища
+            height: 150 * MediaQuery.textScalerOf(context).scale(1),
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,

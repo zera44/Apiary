@@ -132,6 +132,8 @@ void main() {
     final auth = FakeAuth(signedIn: true);
     Server.debugAuth = auth;
     await tester.runAsync(() => repo.addApiary('Моя'));
+    await tester.binding.setSurfaceSize(const Size(800, 1600)); // увесь розділ «Акаунт» видно
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     Future<void> settle() async {
       for (var i = 0; i < 10; i++) {
         await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));

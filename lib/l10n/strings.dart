@@ -67,6 +67,10 @@ abstract class AppStrings {
   String get otherAccountSignOut;
   String get firstLoginDone;
   String firstLoginFailed(String details);
+  String get textSizeSection;
+  String get textSizeHint;
+  List<String> get textSizeLevels;
+  String get textSizePreview;
   String get accountSection;
   String accountSignedInAs(String email);
   String get accountSignedInVia;

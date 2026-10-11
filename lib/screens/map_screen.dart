@@ -2165,7 +2165,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(
                         child: Text(_apiaryName,
-                            maxLines: 2,
+                            // великий шрифт - в один рядок (козирьок невисокий)
+                            maxLines: MediaQuery.textScalerOf(context).scale(18) > 22 ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 color: AppColors.text,

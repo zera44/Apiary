@@ -19,6 +19,7 @@ import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
 import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
+import 'ui/text_scale.dart';
 import 'ui/voice_input_bar.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
@@ -42,6 +43,7 @@ Future<void> _start() async {
     await repo.prepareLikeFreshInstall();
     auth = await GoogleAuthService.open();
     await StockPhotos.init();
+    await AppTextScale.load(repo); // розмір шрифту з налаштувань
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
@@ -148,7 +150,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       // голосовий ввід (Vosk) над клавіатурою для всіх текстових полів
-      builder: (context, child) => VoiceInputHost(child: child ?? const SizedBox()),
+      // розмір шрифту з налаштувань - для всіх екранів
+      builder: (context, child) => AppTextScale.apply(VoiceInputHost(child: child ?? const SizedBox())),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
       // (поки вхід у збірці не налаштовано — одразу головний екран)
       home: !canUseApp(widget.auth)

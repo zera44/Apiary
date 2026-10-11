@@ -494,7 +494,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
+                  // знизу - місце під кнопку «+» (не закриває суму в останньому рядку)
+                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), children: [
                       Container(
                         padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
                         decoration: BoxDecoration(

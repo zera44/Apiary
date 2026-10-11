@@ -124,6 +124,14 @@ class AppStringsUk extends AppStrings {
   @override
   String firstLoginFailed(String details) => 'Не вдалося: $details';
   @override
+  String get textSizeSection => 'Розмір шрифту';
+  @override
+  String get textSizeHint => 'Для зручного читання - в усьому застосунку.';
+  @override
+  List<String> get textSizeLevels => const ['Звичайний', 'Більший', 'Великий', 'Дуже великий'];
+  @override
+  String get textSizePreview => 'Вулик 12 - сьогодні оглянути';
+  @override
   String get accountSection => 'Акаунт';
   @override
   String accountSignedInAs(String email) => 'Ви увійшли як $email';

@@ -416,7 +416,20 @@ class _FillDialogState extends State<_FillDialog> {
   /// поле. Сітка медова; підгодівля зі складу — останніми рядками.
   Widget _table() {
     final grid = AppColors.hive.withValues(alpha: 0.55);
-    TableRow row(String name, Widget value) => TableRow(children: [
+    // великий шрифт (Налаштування → «Розмір шрифту»): у дві колонки слова
+    // рвались би посередині - назва над полем
+    final stacked = MediaQuery.textScalerOf(context).scale(10) > 11.6;
+    TableRow row(String name, Widget value) => stacked
+        ? TableRow(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 4),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(name, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5, height: 1.25)),
+                value,
+              ]),
+            ),
+          ])
+        : TableRow(children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Text(name,
@@ -430,7 +443,9 @@ class _FillDialogState extends State<_FillDialog> {
     final feed = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
     return Table(
       border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
-      columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
+      columnWidths: stacked
+          ? const {0: FlexColumnWidth()}
+          : const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       children: [
         for (final (name, value) in widget.infoRows)

@@ -297,7 +297,8 @@ class ListCard extends StatelessWidget {
   const ListCard({super.key, required this.child, this.height = 66});
   @override
   Widget build(BuildContext context) => Container(
-        height: height,
+        // не нижча за [height]; більший шрифт - росте разом із текстом
+        constraints: BoxConstraints(minHeight: height),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.card,

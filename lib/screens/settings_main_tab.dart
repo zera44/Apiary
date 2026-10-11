@@ -13,6 +13,7 @@ import '../services/server.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
+import '../ui/text_scale.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
@@ -265,6 +266,7 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
+          if (!widget.lesson) _TextSizeSection(repo: widget.repo),
           SettingsSection(
             title: tr.syncSection,
             children: [
@@ -402,6 +404,67 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
       if (mounted) setState(() => _busy = false);
     }
   }
+}
+
+/// «Розмір шрифту»: чотири кнопки «А» зростаючого розміру, назва рівня й
+/// зразок тексту (одразу в новому розмірі).
+class _TextSizeSection extends StatelessWidget {
+  final Repository repo;
+  const _TextSizeSection({required this.repo});
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+        valueListenable: AppTextScale.value,
+        builder: (context, current, _) {
+          final levels = AppTextScale.levels;
+          final i = levels.indexOf(current);
+          return SettingsSection(
+            title: tr.textSizeSection,
+            children: [
+              Text(tr.textSizeHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+              const SizedBox(height: 10),
+              Row(children: [
+                for (var j = 0; j < levels.length; j++) ...[
+                  if (j > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      selected: j == i,
+                      label: tr.textSizeLevels[j],
+                      child: InkWell(
+                        key: ValueKey('text-size-$j'),
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => AppTextScale.set(repo, levels[j]),
+                        child: Container(
+                          height: 60,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: j == i ? AppColors.create : AppColors.darkBtn,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          // «А» - завжди однаковий крок, незалежно від обраного
+                          child: Text('А',
+                              textScaler: TextScaler.noScaling,
+                              style: TextStyle(
+                                color: j == i ? AppColors.bg : AppColors.text,
+                                fontSize: 16 + j * 6.0,
+                                fontWeight: FontWeight.w700,
+                              )),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 10),
+              Text(tr.textSizeLevels[i < 0 ? 0 : i],
+                  style: TextStyle(color: AppColors.create, fontSize: 13.5, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(tr.textSizePreview, style: TextStyle(color: AppColors.text, fontSize: 15)),
+            ],
+          );
+        },
+      );
 }
 
 /// Хто увійшов: кружечок із першою літерою, ім'я, пошта.
