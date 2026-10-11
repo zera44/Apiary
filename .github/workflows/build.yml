@@ -151,6 +151,15 @@ jobs:
         run: |
           flutter create --no-pub --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
+          # Пам'ять Gradle: типові 8 ГБ + 4 ГБ метаданих разом із демоном Kotlin
+          # і збіркою нативних бібліотек (Vosk, Tesseract) вичерпували 16 ГБ
+          # раннера - GitHub вбивав машину посеред збірки (exit 143)
+          sed -i '/^org.gradle.jvmargs=/d' android/gradle.properties
+          cat >> android/gradle.properties <<'EOF2'
+          org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m -XX:+HeapDumpOnOutOfMemoryError
+          kotlin.daemon.jvmargs=-Xmx1536m
+          org.gradle.workers.max=2
+          EOF2
       # Власна копія SQLite потрібна лише на комп'ютері: на Android працює
       # sqflite із системною SQLite, а додатковий libsqlite3.so важить
       # ~0,8 МБ на кожну архітектуру. Її вкладають ДВА джерела: плагін
