@@ -74,7 +74,8 @@ Supabase (`tests/`).
    * `20261010000300_sharing.sql` — запрошення й помічники;
    * `20261010000400_storage.sql` — фото, копії;
    * `20261010000500_maintenance.sql` — пінг, прибирання;
-   * `20261010000600_sync.sql` — забирання змін.
+   * `20261010000600_sync.sql` — забирання змін;
+   * `20261014000100_invite_links.sql` — запрошувальні посилання.
 
    Файли можна запускати повторно — нічого не зламається. Нові міграції
    (наступні етапи) додаються новими файлами; запускати лише їх.
@@ -87,18 +88,25 @@ Supabase (`tests/`).
      через Google ID-токен);
    * *Skip nonce check* — увімкнути, лише якщо вхід із телефона падає з
      помилкою про nonce.
-5. **Функції.** *Edge Functions → Deploy a new function → Via Editor* — дві
-   функції, кожна під своєю назвою, *Verify JWT* лишити увімкненим:
+5. **Функції.** *Edge Functions → Deploy a new function → Via Editor* — три
+   функції, кожна під своєю назвою; *Verify JWT* лишити увімкненим скрізь,
+   **крім `join`** (її відкриває браузер без входу):
    * `backup-commit` — вміст `functions/backup-commit/index.ts` (перевірка
      нічних копій);
    * `delete-account` — вміст `functions/delete-account/index.ts`
      («Видалити акаунт і всі дані»: файли, запрошення, акаунт; решту рядків
-     база видаляє разом з акаунтом).
+     база видаляє разом з акаунтом);
+   * `join` — вміст `functions/join/index.ts` (запрошувальне посилання
+     з месенджера відкриває Vulyk; **Verify JWT вимкнути**). Нічого не
+     змінює в базі: посилання приймає застосунок після входу. Куди вести,
+     якщо Vulyk не встановлено, — необов'язковий секрет функції
+     `JOIN_FALLBACK_URL` (типово — останній реліз на GitHub).
 
    Або з комп'ютера:
    ```
    npx supabase functions deploy backup-commit --project-ref <ref>
    npx supabase functions deploy delete-account --project-ref <ref>
+   npx supabase functions deploy join --no-verify-jwt --project-ref <ref>
    ```
    (`<ref>` — частина адреси `https://<ref>.supabase.co`).
 6. **Ключі для застосунку.** *Project Settings → API Keys*:

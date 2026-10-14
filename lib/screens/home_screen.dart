@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 import '../services/auth.dart';
+import '../services/invite_link.dart';
 import '../services/server.dart';
 import '../ui/first_login_dialog.dart';
 import '../services/sharing.dart';
@@ -106,9 +107,55 @@ class _HomeScreenState extends State<HomeScreen> {
     // перший вхід: дані і тут, і на сервері - спитати
     Server.choice.addListener(_onFirstLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstLogin());
+    // запрошувальне посилання: відкрили до входу, з месенджера або з фону
+    InviteLink.pending.addListener(_joinPending);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _joinPending());
   }
 
   bool _asking = false;
+  bool _joining = false;
+
+  /// Відкрили запрошувальне посилання: спитати й одразу додати помічником.
+  /// Сервер ще підключається (щойно ввійшли) - трохи чекаємо.
+  Future<void> _joinPending() async {
+    if (_joining || !mounted || InviteLink.pending.value == null) return;
+    _joining = true;
+    try {
+      for (var i = 0;
+          i < 40 && mounted && (!SharingService.current.available || Server.choice.value != null);
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+      final token = InviteLink.pending.value;
+      if (!mounted || token == null) return;
+      final messenger = ScaffoldMessenger.of(context);
+      if (!SharingService.current.available) {
+        InviteLink.pending.value = null;
+        messenger.showSnackBar(SnackBar(content: Text(tr.joinUnavailable)));
+        return;
+      }
+      final ok = await showConfirm(context,
+          title: tr.joinConfirmTitle,
+          text: tr.joinConfirmText,
+          confirmText: tr.joinConfirm,
+          cancelText: tr.cancel,
+          danger: false);
+      InviteLink.pending.value = null;
+      if (!ok || !mounted) return;
+      final (outcome, joined) = await SharingService.current.join(token);
+      messenger.showSnackBar(SnackBar(
+        content: Text(switch (outcome) {
+          JoinOutcome.joined => tr.joinDone(joined?.ownerEmail ?? '', joined?.apiaryNames ?? const []),
+          JoinOutcome.invalid => tr.joinInvalid,
+          JoinOutcome.own => tr.joinOwn,
+          JoinOutcome.unavailable => tr.joinUnavailable,
+        }),
+        duration: const Duration(seconds: 8),
+      ));
+    } finally {
+      _joining = false;
+    }
+  }
 
   Future<void> _onFirstLogin() async {
     final state = Server.choice.value;
@@ -161,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     Server.choice.removeListener(_onFirstLogin);
+    InviteLink.pending.removeListener(_joinPending);
     repo.mapChanges.removeListener(_onMapChanged);
     _lifecycle.dispose();
     super.dispose();

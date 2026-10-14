@@ -4,6 +4,7 @@ import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/l10n/l10n.dart';
+import 'package:apiary/services/invite_link.dart';
 import 'package:apiary/services/sharing.dart';
 import 'package:apiary/ui/hive_postbox.dart';
 import 'package:apiary/logic/cell_value.dart';
@@ -59,6 +60,7 @@ void main() {
     Hints.enabled = false;
     WhatsNewScreen.enabled = false;
     HomeScreen.mapBackdrop = false; // під меню — карта (свій тест)
+    ApiaryApp.listenLinks = false; // плагіна посилань у тесті немає
   });
 
   Future<void> settle(WidgetTester tester) async {
@@ -1970,6 +1972,69 @@ void main() {
     expect(server.members.values.single.userId, 'u-petro');
     expect(find.text(tr.inviteAccepted), findsOneWidget);
     expect(find.text(tr.invitesMail(1)), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('посилання-запрошення: відкрили - питає, «Приєднатися» - одразу помічник', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    final made = (await tester.runAsync(() => olena.createLink(stockAccess: true)))!;
+    final token = InviteLink.tokenFrom(made.$2!)!;
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() {
+      SharingService.current = SharingService(null, null);
+      InviteLink.pending.value = null;
+    });
+
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    // посилання відкрили, поки застосунок працює
+    InviteLink.pending.value = token;
+    await settle(tester);
+    expect(find.text(tr.joinConfirmTitle), findsOneWidget);
+    // передумали - нічого не сталось, посилання «з'їдено» на цьому телефоні
+    await tester.tap(find.text(tr.cancel));
+    await settle(tester);
+    expect(server.members, isEmpty);
+    expect(InviteLink.pending.value, isNull);
+    // знову - «Приєднатися»
+    InviteLink.pending.value = token;
+    await settle(tester);
+    await tester.tap(find.text(tr.joinConfirm));
+    await settle(tester);
+    await settle(tester);
+    expect(server.members.values.single.userId, 'u-petro');
+    expect(server.members.values.single.stockAccess, isTrue);
+    expect(find.textContaining(tr.joinDone('olena@gmail.com', const [])), findsOneWidget);
+    // те саме посилання вдруге - не діє для іншого (тут: уже використане
+    // цією ж людиною - без помилки, але й без другого запису)
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('посилання-запрошення, що вже не діє: зрозуміле повідомлення', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    final made = (await tester.runAsync(() => olena.createLink()))!;
+    final token = InviteLink.tokenFrom(made.$2!)!;
+    server.links[token]!.expired = true;
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() {
+      SharingService.current = SharingService(null, null);
+      InviteLink.pending.value = null;
+    });
+    // відкрили ще до входу застосунку - чекає, поки головний екран з'явиться
+    InviteLink.pending.value = token;
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.tap(find.text(tr.joinConfirm));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text(tr.joinInvalid), findsOneWidget);
+    expect(server.members, isEmpty);
     expect(tester.takeException(), isNull);
   });
 

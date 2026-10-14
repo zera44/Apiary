@@ -139,6 +139,30 @@ void _patchAndroidNotifications() {
 /// Дані застосунку (координати пасік, історія) не йдуть у хмарні резервні
 /// копії Google / adb backup. Перенесення на новий телефон напряму
 /// (device-transfer) лишається дозволеним.
+/// Запрошувальне посилання: схема vulyk://join?t=<код> відкриває Vulyk
+/// (на неї перенаправляє функція join, див. supabase/functions/join).
+void _patchAndroidInviteLink() {
+  final mf = File('android/app/src/main/AndroidManifest.xml');
+  if (!mf.existsSync()) return;
+  final s = mf.readAsStringSync();
+  if (s.contains('android:scheme="vulyk"')) return;
+  final i = s.indexOf('</activity>');
+  if (i < 0) {
+    stderr.writeln('✗ AndroidManifest.xml: не знайдено <activity> для посилань');
+    exit(1);
+  }
+  const filter = '''
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="vulyk" android:host="join"/>
+            </intent-filter>
+        ''';
+  mf.writeAsStringSync('${s.substring(0, i)}$filter${s.substring(i)}');
+  stdout.writeln('✓ AndroidManifest.xml (посилання-запрошення vulyk://join)');
+}
+
 void _patchAndroidBackup() {
   final mf = File('android/app/src/main/AndroidManifest.xml');
   if (!mf.existsSync()) return;
@@ -258,6 +282,7 @@ void main() {
   _patchAndroidCompressedLibs();
   _patchAndroidNotifications();
   _patchAndroidBackup();
+  _patchAndroidInviteLink();
   _patchAndroidSigning();
   _patchGradleProperties();
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');

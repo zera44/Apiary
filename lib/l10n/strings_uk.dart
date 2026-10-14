@@ -134,6 +134,36 @@ class AppStringsUk extends AppStrings {
   @override
   String get textSizePreview => 'Вулик 12 - сьогодні оглянути';
   @override
+  String get inviteLinkButton => 'Створити посилання-запрошення';
+  @override
+  String get inviteLinkHint =>
+      'Посилання одноразове й діє 7 днів. Надішліть його в месенджері - людина відкриє його на телефоні й одразу стане вашим помічником.';
+  @override
+  String inviteLinkShare(String url) => 'Приєднуйтесь до моєї пасіки у Vulyk (потрібен Google-акаунт):\n$url';
+  @override
+  String get inviteLinkCopied => 'Посилання скопійовано - надішліть його помічнику';
+  @override
+  String get inviteLinkTooMany => 'Забагато діючих посилань - зачекайте, поки ними скористаються чи вони застаріють.';
+  @override
+  String inviteLinkFailed(String details) => 'Не вдалося створити посилання: $details';
+  @override
+  String get joinConfirmTitle => 'Запрошення до пасіки';
+  @override
+  String get joinConfirmText => 'Вас запросили допомагати з пасікою у Vulyk. Приєднатися?';
+  @override
+  String get joinConfirm => 'Приєднатися';
+  @override
+  String joinDone(String owner, List<String> apiaries) => apiaries.isEmpty
+      ? 'Готово: ви помічник${owner.isEmpty ? '' : ' ($owner)'}. Пасіки з\'являться за хвилину.'
+      : 'Готово: ви помічник у ${apiaries.join(', ')}${owner.isEmpty ? '' : ' ($owner)'}. Пасіки з\'являться за хвилину.';
+  @override
+  String get joinInvalid => 'Це посилання вже не діє. Попросіть власника створити нове.';
+  @override
+  String get joinOwn => 'Це ваше власне посилання - надішліть його помічнику.';
+  @override
+  String get joinUnavailable =>
+      'Не вдалося приєднатися: немає зв\'язку із сервером. Відкрийте посилання ще раз.';
+  @override
   String get accountSection => 'Акаунт';
   @override
   String accountSignedInAs(String email) => 'Ви увійшли як $email';

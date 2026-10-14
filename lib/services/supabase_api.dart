@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../data/sharing.dart';
 import '../data/sync_api.dart';
 import 'app_config.dart';
+import 'invite_link.dart';
 import 'sharing.dart';
 
 /// Вхід на сервер Supabase: токен доступу (живе ~годину), токен оновлення,
@@ -410,6 +411,30 @@ class SupabaseApi implements SyncApi, SharingApi {
             .timeout(timeout),
         headers: {'Content-Type': 'application/json', 'Prefer': 'return=minimal'});
   }
+
+  @override
+  Future<String> createInviteLink({List<String>? apiaryIds, bool stockAccess = false}) async {
+    try {
+      final t = await _rpc('create_invite_link', {'p_apiary_ids': apiaryIds, 'p_stock': stockAccess});
+      return t as String;
+    } on SyncRejected catch (e) {
+      if (e.message.contains('забагато')) throw const SharingLimitError();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<JoinedLink> acceptInviteLink(String token) async {
+    try {
+      final j = await _rpc('accept_invite_link', {'p_token': token}) as Map;
+      return JoinedLink('${j['owner_email'] ?? ''}', [for (final n in (j['apiary_names'] as List? ?? const [])) '$n']);
+    } on SyncRejected catch (e) {
+      throw SharingLinkError(own: e.message.contains('власне'));
+    }
+  }
+
+  @override
+  Uri inviteUrl(String token) => InviteLink.build(base, token);
 
   @override
   Future<List<Invitation>> incoming() async => [
