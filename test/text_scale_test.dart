@@ -21,6 +21,7 @@ import 'package:apiary/screens/templates_screen.dart';
 import 'package:apiary/screens/whats_new_screen.dart';
 import 'package:apiary/services/server.dart';
 import 'package:apiary/ui/first_hints.dart';
+import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/text_scale.dart';
 import 'package:apiary/ui/theme.dart';
@@ -178,6 +179,31 @@ void main() {
     expect(box.center.dx, closeTo(640, 1));
     // кнопка «+» - біля вмісту, не в кутку екрана
     expect(tester.getRect(find.byTooltip('Нова операція')).right, lessThan(640 + kContentMaxWidth / 2));
+  });
+
+  testWidgets('карта на планшеті: 20×20 клітинок, віддалити можна; на телефоні - як була', (tester) async {
+    final apiary = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    Future<GridController> open(Size size) async {
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(app(MapScreen(repo: repo, apiary: apiary)));
+      await settle(tester);
+      return tester.widget<InfiniteGrid>(find.byType(InfiniteGrid)).controller;
+    }
+
+    addTearDown(tester.view.reset);
+    // планшет вертикально: коротша сторона карти - 20 клітинок
+    var grid = await open(const Size(800, 1280));
+    expect(grid.viewSize.shortestSide / grid.cellSize, closeTo(20, 0.01));
+    expect(grid.zoomTo(grid.minCell), isTrue); // віддалити - як завжди
+    expect(grid.viewSize.shortestSide / grid.cellSize, greaterThan(40));
+    // горизонтально - теж 20 по коротшій стороні
+    grid = await open(const Size(1280, 800));
+    expect(grid.viewSize.shortestSide / grid.cellSize, closeTo(20, 0.01));
+    // телефон - звичайний масштаб
+    grid = await open(const Size(390, 844));
+    expect(grid.cellSize, 34);
   });
 }
 
