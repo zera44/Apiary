@@ -19,3 +19,6 @@ build/
 /macos/
 /web/
 
+
+# ключі для локальної збірки (tool/build_local.sh) - не в git
+/tool/local.env
