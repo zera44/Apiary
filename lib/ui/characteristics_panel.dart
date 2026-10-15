@@ -301,7 +301,7 @@ class CharacteristicsPanel extends StatelessWidget {
       ? child
       : TabSwipe(index: 0, count: 2, onChanged: (i) => onTab?.call(i), child: child);
 
-  /// Перемикач «Характеристики | Нотатки N».
+  /// Перемикач «Характеристики | Нотатки».
   Widget _tabs() {
     Widget half(int i, String text) => Expanded(
           child: GestureDetector(
@@ -334,7 +334,7 @@ class CharacteristicsPanel extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(20)),
       child: Row(children: [
         half(0, 'Характеристики'),
-        half(1, notesCount > 0 ? 'Нотатки $notesCount' : 'Нотатки'),
+        half(1, 'Нотатки'),
       ]),
     );
   }

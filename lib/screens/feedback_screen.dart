@@ -107,7 +107,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: "Зворотний зв'язок", onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),

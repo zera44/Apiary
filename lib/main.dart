@@ -19,6 +19,9 @@ import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
 import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
+import 'ui/text_scale.dart';
+import 'package:app_links/app_links.dart';
+import 'services/invite_link.dart';
 import 'ui/voice_input_bar.dart';
 
 /// "Моя пасіка" — план пасіки. Працює повністю офлайн: усі дані одразу
@@ -42,6 +45,7 @@ Future<void> _start() async {
     await repo.prepareLikeFreshInstall();
     auth = await GoogleAuthService.open();
     await StockPhotos.init();
+    await AppTextScale.load(repo); // розмір шрифту з налаштувань
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
@@ -80,6 +84,9 @@ Future<void> _startJobs(Repository repo) async {
 bool canUseApp(AuthService auth) => auth.user != null || auth.guest || !auth.configured;
 
 class ApiaryApp extends StatefulWidget {
+  /// Слухати запрошувальні посилання (плагін системи; тести вимикають).
+  static bool listenLinks = true;
+
   final Repository repo;
   final AuthService auth;
   final SyncService? sync;
@@ -92,6 +99,7 @@ class ApiaryApp extends StatefulWidget {
 class _ApiaryAppState extends State<ApiaryApp> {
   final _nav = GlobalKey<NavigatorState>();
   final _reminders = ReminderService.instance.openHiveRequest;
+  StreamSubscription<Uri>? _links;
 
   @override
   void initState() {
@@ -100,11 +108,32 @@ class _ApiaryAppState extends State<ApiaryApp> {
     ReminderService.instance.beforeAskPermission = _explainNotifications;
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
+    _listenLinks();
+  }
+
+  /// Запрошувальні посилання (vulyk://join?t=...): і коли застосунок
+  /// запустили ними, і коли він уже був відкритий. Без плагіна (тести,
+  /// інші платформи) - тихо без посилань.
+  void _listenLinks() {
+    if (!ApiaryApp.listenLinks) return;
+    try {
+      final links = AppLinks();
+      links.getInitialLink().then(_onLink).catchError((Object _) {});
+      _links = links.uriLinkStream.listen(_onLink, onError: (Object _) {});
+    } catch (e) {
+      debugPrint('Посилання: $e');
+    }
+  }
+
+  void _onLink(Uri? uri) {
+    final t = uri == null ? null : InviteLink.tokenFrom(uri);
+    if (t != null) InviteLink.pending.value = t;
   }
 
   @override
   void dispose() {
     _reminders.removeListener(_openFromReminder);
+    unawaited(_links?.cancel());
     ReminderService.instance.beforeAskPermission = null;
     widget.sync?.stop();
     super.dispose();
@@ -148,7 +177,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       // голосовий ввід (Vosk) над клавіатурою для всіх текстових полів
-      builder: (context, child) => VoiceInputHost(child: child ?? const SizedBox()),
+      // розмір шрифту з налаштувань - для всіх екранів
+      builder: (context, child) => AppTextScale.apply(VoiceInputHost(child: child ?? const SizedBox())),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
       // (поки вхід у збірці не налаштовано — одразу головний екран)
       home: !canUseApp(widget.auth)

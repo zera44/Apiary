@@ -3,11 +3,13 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sharing.dart';
 import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/helpers_screen.dart';
+import 'package:apiary/services/invite_link.dart';
 import 'package:apiary/services/sharing.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/invitations_sheet.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -177,6 +179,63 @@ void main() {
     expect(details, contains('зв\'язку'));
   });
 
+  test('посилання: власник створює, помічник відкриває - одразу помічник; одноразове', () async {
+    final a = await olenaPhone.addApiary('Біля річки');
+    final (out, url, _) = await olena.createLink(apiaryIds: [a], stockAccess: true);
+    expect(out, LinkOutcome.created);
+    final token = InviteLink.tokenFrom(url!)!;
+    expect(token, hasLength(64));
+    final (r, joined) = await petro.join(token);
+    expect(r, JoinOutcome.joined);
+    expect(joined!.ownerEmail, 'olena@gmail.com');
+    final helper = (await olena.helpers()).single;
+    expect(helper.email, 'petro@gmail.com');
+    expect(helper.apiaryId, a);
+    expect(helper.stockAccess, isTrue);
+    // запрошень у скриньці немає - додали одразу
+    expect(await petro.incoming(), isEmpty);
+    // удруге ним же - без помилки; чужий - ні; власний - ні
+    expect((await petro.join(token)).$1, JoinOutcome.joined);
+    server.register('u-ivan', 'ivan@gmail.com');
+    final ivan = SharingService(server.as('ivan@gmail.com'), petroPhone);
+    expect((await ivan.join(token)).$1, JoinOutcome.invalid);
+    expect((await olena.join(token)).$1, JoinOutcome.own);
+    expect((await petro.join('f' * 64)).$1, JoinOutcome.invalid);
+  });
+
+  test('посилання: без сервера й без зв\'язку - зрозумілий результат; ліміт', () async {
+    expect((await SharingService(null, null).createLink()).$1, LinkOutcome.unavailable);
+    expect((await SharingService(null, null).join('a' * 64)).$1, JoinOutcome.unavailable);
+    server.offline = true;
+    expect((await olena.createLink()).$1, LinkOutcome.failed);
+    expect((await petro.join('a' * 64)).$1, JoinOutcome.unavailable);
+    server.offline = false;
+    for (var i = 0; i < 20; i++) {
+      expect((await olena.createLink()).$1, LinkOutcome.created);
+    }
+    expect((await olena.createLink()).$1, LinkOutcome.tooMany);
+  });
+
+  test('посилання: розбір адрес - лише наші, 64 hex', () {
+    final t = 'ab' * 32;
+    expect(InviteLink.tokenFrom(Uri.parse('vulyk://join?t=$t')), t);
+    expect(InviteLink.tokenFrom(Uri.parse('https://x.supabase.co/functions/v1/join?t=$t')), t);
+    expect(InviteLink.tokenFromText('  https://x.supabase.co/functions/v1/join?t=$t \n'), t);
+    for (final bad in [
+      'vulyk://other?t=$t',
+      'https://x.supabase.co/other?t=$t',
+      'vulyk://join?t=${t}0',
+      'vulyk://join?t=${t.toUpperCase()}',
+      'vulyk://join',
+      'ftp://x/functions/v1/join?t=$t',
+    ]) {
+      expect(InviteLink.tokenFrom(Uri.parse(bad)), isNull, reason: bad);
+    }
+    expect(InviteLink.build(Uri.parse('https://x.supabase.co'), t).toString(),
+        'https://x.supabase.co/functions/v1/join?t=$t');
+    expect(InviteLink.build(Uri.parse('https://x.supabase.co/'), t).path, '/functions/v1/join');
+  });
+
   group('екран «Помічники»', () {
     Future<void> settle(WidgetTester tester) async {
       for (var i = 0; i < 6; i++) {
@@ -231,6 +290,31 @@ void main() {
       await settle(tester);
       expect(server.members, isEmpty);
       expect(find.text(tr.helpersNone), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('«Створити посилання»: пасіки й склад з форми, посилання скопійовано', (tester) async {
+      SharingService.current = olena;
+      await tester.runAsync(() => olenaPhone.addApiary('Біля річки'));
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') copied = (call.arguments as Map)['text'] as String;
+        return null;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+      await pump(tester);
+      await tester.tap(find.text(tr.accessOne));
+      await settle(tester);
+      await tester.tap(find.text(tr.accessStock));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('invite-link')));
+      await settle(tester);
+      final link = server.links.values.single;
+      expect(link.apiaryIds!.length, 1);
+      expect(link.stockAccess, isTrue);
+      // поділитися немає чим (тест) - текст із посиланням на буфері
+      expect(copied, contains('https://fake.test/functions/v1/join?t='));
+      expect(find.text(tr.inviteLinkCopied), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

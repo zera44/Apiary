@@ -840,7 +840,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: _expense ? 'Нова витрата' : 'Новий дохід', onBack: _leave),
             Expanded(
               child: ListView(

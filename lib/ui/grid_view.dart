@@ -26,6 +26,10 @@ class GridController extends ChangeNotifier {
   Size viewSize = Size.zero;
   (double, double)? _pendingCenter;
 
+  /// Скільки клітинок уміщати по коротшій стороні при першому показі
+  /// (планшет); далі масштаб - як людина наблизить чи віддалить.
+  int? fitCells;
+
   GridController({this.cellSize = 34, this.minCell = 18, this.maxCell = 56, (double, double)? center})
       : _pendingCenter = center ?? (0.5, 0.5);
 
@@ -42,6 +46,11 @@ class GridController extends ChangeNotifier {
   void _setViewSize(Size s) {
     if (s == viewSize) return;
     final oldCenter = viewSize.isEmpty ? null : _centerGrid();
+    final fit = fitCells;
+    if (viewSize.isEmpty && fit != null && !s.isEmpty) {
+      cellSize = (s.shortestSide / fit).clamp(minCell, maxCell).toDouble();
+      fitCells = null;
+    }
     viewSize = s;
     final c = _pendingCenter ?? oldCenter;
     _pendingCenter = null;

@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 import '../services/auth.dart';
+import '../services/invite_link.dart';
 import '../services/server.dart';
 import '../ui/first_login_dialog.dart';
 import '../services/sharing.dart';
@@ -31,8 +32,8 @@ import 'whats_new_screen.dart';
 
 /// Головний екран (після «Почати» на заставці): назва застосунку й кнопки
 /// «Почати» (мої пасіки), «Сканувати QR-код» (відкрити вулик за наліпкою),
-/// «Фінанси», «Пройти навчання», «Зворотний зв'язок». Внизу — хто увійшов і
-/// «Вийти» (назад на екран входу).
+/// «Фінанси», «Пройти навчання», «Зворотний зв'язок». Хто увійшов і «Вийти» -
+/// у Налаштуваннях → «Головне» → «Акаунт»; тут лише лист «Вхід виконано».
 /// «Почати»: остання відкрита (або єдина) пасіка — одразу її карта («назад» —
 /// на головний екран; список пасік — через меню ☰); інакше — список.
 Future<void> openStart(NavigatorState nav, Repository repo, {bool instant = false}) async {
@@ -68,6 +69,10 @@ class HomeScreen extends StatefulWidget {
 
   /// Показувати під меню останню карту (неклікабельну); тести вимикають.
   static bool mapBackdrop = true;
+
+  /// Щойно увійшли (пошта): у вулику-поштоматі - лист «Вхід виконано»,
+  /// доки його не прочитають (дотик).
+  static String? signedInMail;
   const HomeScreen({super.key, required this.repo, required this.auth});
 
   @override
@@ -102,9 +107,55 @@ class _HomeScreenState extends State<HomeScreen> {
     // перший вхід: дані і тут, і на сервері - спитати
     Server.choice.addListener(_onFirstLogin);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onFirstLogin());
+    // запрошувальне посилання: відкрили до входу, з месенджера або з фону
+    InviteLink.pending.addListener(_joinPending);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _joinPending());
   }
 
   bool _asking = false;
+  bool _joining = false;
+
+  /// Відкрили запрошувальне посилання: спитати й одразу додати помічником.
+  /// Сервер ще підключається (щойно ввійшли) - трохи чекаємо.
+  Future<void> _joinPending() async {
+    if (_joining || !mounted || InviteLink.pending.value == null) return;
+    _joining = true;
+    try {
+      for (var i = 0;
+          i < 40 && mounted && (!SharingService.current.available || Server.choice.value != null);
+          i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+      final token = InviteLink.pending.value;
+      if (!mounted || token == null) return;
+      final messenger = ScaffoldMessenger.of(context);
+      if (!SharingService.current.available) {
+        InviteLink.pending.value = null;
+        messenger.showSnackBar(SnackBar(content: Text(tr.joinUnavailable)));
+        return;
+      }
+      final ok = await showConfirm(context,
+          title: tr.joinConfirmTitle,
+          text: tr.joinConfirmText,
+          confirmText: tr.joinConfirm,
+          cancelText: tr.cancel,
+          danger: false);
+      InviteLink.pending.value = null;
+      if (!ok || !mounted) return;
+      final (outcome, joined) = await SharingService.current.join(token);
+      messenger.showSnackBar(SnackBar(
+        content: Text(switch (outcome) {
+          JoinOutcome.joined => tr.joinDone(joined?.ownerEmail ?? '', joined?.apiaryNames ?? const []),
+          JoinOutcome.invalid => tr.joinInvalid,
+          JoinOutcome.own => tr.joinOwn,
+          JoinOutcome.unavailable => tr.joinUnavailable,
+        }),
+        duration: const Duration(seconds: 8),
+      ));
+    } finally {
+      _joining = false;
+    }
+  }
 
   Future<void> _onFirstLogin() async {
     final state = Server.choice.value;
@@ -157,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     Server.choice.removeListener(_onFirstLogin);
+    InviteLink.pending.removeListener(_joinPending);
     repo.mapChanges.removeListener(_onMapChanged);
     _lifecycle.dispose();
     super.dispose();
@@ -173,12 +225,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Гість входить пізніше: дані на пристрої лишаються, головний екран
-  /// оновлюється (пошта й «Вийти»).
+  /// Гість входить пізніше: дані на пристрої лишаються, на головному
+  /// екрані - лист «Вхід виконано».
   Future<void> _signIn(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await auth.signIn();
+      HomeScreen.signedInMail = auth.user?.email;
       unawaited(Server.connect(repo, auth)); // і на сервер - одразу
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
@@ -194,24 +247,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    final ok = await showConfirm(context,
-        title: 'Вийти?',
-        text: 'Дані пасік лишаються на цьому пристрої. Далі - знову увійти або продовжити без входу.',
-        confirmText: 'Вийти');
-    if (!ok || !context.mounted) return;
-    await Server.signOut(repo);
-    await auth.signOut();
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => SplashScreen(repo: repo, auth: auth)),
-      (_) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final user = auth.user;
     final nav = Navigator.of(context);
     void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
     return Scaffold(
@@ -273,7 +310,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onPressed: () => openStart(nav, repo, instant: _backdrop != null),
                       ),
                       const SizedBox(height: 14),
-                      Row(children: [
+                      IntrinsicHeight(
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         _Tile(
                             icon: Icon(Icons.account_balance_wallet_outlined,
                                 size: 30, color: AppColors.text),
@@ -291,19 +329,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
                             onTap: () => push(const FeedbackScreen())),
-                      ]),
+                      ])),
                     ]),
                   ),
-                  if (user != null) ...[
-                    const SizedBox(height: 14),
-                    // стан синхронізації - у Налаштуваннях → «Головне»
-                    Text(user.email,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                    TextButton(
-                      onPressed: () => _signOut(context),
-                      child: Text('Вийти', style: TextStyle(color: AppColors.textMuted)),
-                    ),
-                  ] else if (auth.configured) ...[
+                  // хто увійшов, «Вийти» і стан синхронізації - у
+                  // Налаштуваннях → «Головне»
+                  if (auth.user == null && auth.configured) ...[
                     // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
                     const SizedBox(height: 14),
                     Text('Дані лише на цьому пристрої',
@@ -392,7 +423,10 @@ class _Tile extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               onTap: onTap,
               child: Container(
-                height: 78,
+                // не нижча за 78; більший шрифт - росте (сусідні плитки
+                // вирівнює IntrinsicHeight)
+                constraints: const BoxConstraints(minHeight: 78),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.hive.withValues(alpha: 0.35)),
@@ -517,6 +551,12 @@ class _AdvisorState extends State<_Advisor> {
     }
   }
 
+  /// Лист «Вхід виконано» прочитано - далі звичайні повідомлення.
+  void _readSignedIn() => setState(() {
+        HomeScreen.signedInMail = null;
+        _i = 0;
+      });
+
   /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
   Future<void> _showDueList() async {
     final pick = await showDialog<VisitTarget?>(
@@ -572,6 +612,8 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (HomeScreen.signedInMail case final email?)
+          (text: tr.accountSignedInMail(email), action: _readSignedIn),
         if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
         if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
         if (_low.isNotEmpty)
@@ -585,7 +627,7 @@ class _AdvisorState extends State<_Advisor> {
 
   // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
   // що кінчаються
-  int get _mail => _invites + _due.length + _low.length;
+  int get _mail => (HomeScreen.signedInMail == null ? 0 : 1) + _invites + _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {
@@ -603,8 +645,9 @@ class _AdvisorState extends State<_Advisor> {
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
             // фіксована висота: довша репліка не розсуває екран, але вміщається
-            // повністю (найдовші поради - до шести рядків)
-            height: 150,
+            // повністю (найдовші поради - до шести рядків); більший шрифт -
+            // і вища
+            height: 150 * MediaQuery.textScalerOf(context).scale(1),
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,

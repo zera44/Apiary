@@ -506,6 +506,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _init();
   }
 
+  /// Планшет: на першому показі - 20×20 клітинок (по коротшій стороні), щоб
+  /// вулики не були дрібними; віддалити можна, як завжди.
+  static const tabletFitCells = 20;
+  bool _fitChecked = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_fitChecked) return;
+    _fitChecked = true;
+    // уроки - у своєму масштабі (їхні підказки розраховані на нього)
+    if (!_guided && MediaQuery.sizeOf(context).shortestSide >= 600) {
+      grid.fitCells = tabletFitCells;
+    }
+  }
+
   Future<void> _init() async {
     _bindCode = widget.bindCode;
     if (_bindCode != null) _warning = 'Торкніться вулика, до якого прив\'язати код';
@@ -2165,7 +2181,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Flexible(
                         child: Text(_apiaryName,
-                            maxLines: 2,
+                            // великий шрифт - в один рядок (козирьок невисокий)
+                            maxLines: MediaQuery.textScalerOf(context).scale(18) > 22 ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                                 color: AppColors.text,

@@ -299,7 +299,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: 'Чек', onBack: () => Navigator.pop(context)),
             if (_reading)
               Expanded(

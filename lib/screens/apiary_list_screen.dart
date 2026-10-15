@@ -145,7 +145,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
       child: Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(
               title: 'Мої пасіки',
               onBack: () => Navigator.of(context).pop(),

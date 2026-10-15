@@ -85,7 +85,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(
                 title: _editing ? 'Категорія' : 'Нова категорія',
                 onBack: () => Navigator.pop(context)),

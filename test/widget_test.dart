@@ -4,6 +4,7 @@ import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/l10n/l10n.dart';
+import 'package:apiary/services/invite_link.dart';
 import 'package:apiary/services/sharing.dart';
 import 'package:apiary/ui/hive_postbox.dart';
 import 'package:apiary/logic/cell_value.dart';
@@ -59,6 +60,7 @@ void main() {
     Hints.enabled = false;
     WhatsNewScreen.enabled = false;
     HomeScreen.mapBackdrop = false; // під меню — карта (свій тест)
+    ApiaryApp.listenLinks = false; // плагіна посилань у тесті немає
   });
 
   Future<void> settle(WidgetTester tester) async {
@@ -131,7 +133,10 @@ void main() {
     await repo.addParameterRecord(paramId, '12', EntityRef.group(groupId));
   });
 
-  tearDown(() async => repo.db.close());
+  tearDown(() async {
+    HomeScreen.signedInMail = null;
+    await repo.db.close();
+  });
 
   Widget wrap(Widget child) => MaterialApp(theme: buildAppTheme(), home: child);
 
@@ -259,7 +264,15 @@ void main() {
     expect(find.text('Навчання'), findsOneWidget);
     expect(find.text('Склад'), findsOneWidget);
     expect(find.text('Що нового'), findsNothing); // тепер - дотик до логотипа
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    // пошти й «Вийти» на головному немає (вони - у Налаштуваннях), лише лист
+    // «Вхід виконано» у вулику-поштоматі; дотик - прочитано
+    expect(find.text('pasichnyk@example.com'), findsNothing);
+    expect(find.text('Вийти'), findsNothing);
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsOneWidget);
+    await tester.tap(find.text(tr.accountSignedInMail('pasichnyk@example.com')));
+    await tester.pump();
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsNothing);
+    expect(HomeScreen.signedInMail, isNull);
     // логотип над «Vulyk» - пульс і «Що нового»
     await tester.tap(find.byKey(const ValueKey('logo-whats-new')));
     await tester.pump(const Duration(milliseconds: 100));
@@ -306,14 +319,7 @@ void main() {
         .first);
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    // «Вийти» — з підтвердженням, назад на екран входу
-    await tester.tap(find.text('Вийти'));
-    await settle(tester);
-    await tester.tap(find.widgetWithText(PillButton, 'Вийти'));
-    await settle(tester);
-    await tester.pump(const Duration(seconds: 1));
-    expect(auth.user, isNull);
-    expect(find.text('Увійти через Google'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsOneWidget);
   });
 
   testWidgets('вхід не налаштовано в збірці - одразу головний екран', (tester) async {
@@ -407,7 +413,8 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(auth.user, isNotNull);
     expect(auth.guest, isFalse);
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect(find.text(tr.accountSignedInMail('pasichnyk@example.com')), findsOneWidget);
+    expect(find.text('Увійти через Google для синхронізації'), findsNothing);
     expect((await tester.runAsync(() => repo.listApiaries()))!.length, 1);
   });
 
@@ -1855,12 +1862,13 @@ void main() {
     expect(find.text('Почати'), findsOneWidget);
     expect(backdropId(tester), second);
     expect(backdropCells(tester), await elementIds(tester, second));
-    // карта на фоні - лише видно: без перемикача режимів і зуму (не налазять
-    // на пошту й «Вийти»); стан синхронізації - у Налаштуваннях, не тут
+    // карта на фоні - лише видно: без перемикача режимів і зуму; пошта,
+    // «Вийти» й стан синхронізації - у Налаштуваннях, не тут
     expect(find.byType(ModeToggle), findsNothing);
     expect(find.byType(ZoomButtons), findsNothing);
     expect(find.text(tr.syncDisabled), findsNothing);
-    expect(find.text('pasichnyk@example.com'), findsOneWidget);
+    expect(find.text('pasichnyk@example.com'), findsNothing);
+    expect(find.text('Вийти'), findsNothing);
 
     // застосунок пішов у фон, тим часом остання пасіка змінилась (напр.,
     // відкрили з нагадування) - знову відкрили: під меню вже вона
@@ -1893,9 +1901,9 @@ void main() {
     final before = mapState();
     final changes = repo.mapChanges.value;
 
-    // вікно над меню (тут - «Вийти?») закрили: карта під меню та сама, без
-    // порожнього кадру, і нагадування не переплановуються
-    await tester.tap(find.text('Вийти'));
+    // вікно над меню закрили: карта під меню та сама, без порожнього кадру,
+    // і нагадування не переплановуються
+    unawaited(showConfirm(tester.element(find.byType(HomeScreen)), title: 'Вийти?', text: '', confirmText: 'Так'));
     await settle(tester);
     await tester.tap(find.text('Скасувати'));
     for (var i = 0; i < 12; i++) {
@@ -1967,6 +1975,69 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('посилання-запрошення: відкрили - питає, «Приєднатися» - одразу помічник', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    final made = (await tester.runAsync(() => olena.createLink(stockAccess: true)))!;
+    final token = InviteLink.tokenFrom(made.$2!)!;
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() {
+      SharingService.current = SharingService(null, null);
+      InviteLink.pending.value = null;
+    });
+
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    // посилання відкрили, поки застосунок працює
+    InviteLink.pending.value = token;
+    await settle(tester);
+    expect(find.text(tr.joinConfirmTitle), findsOneWidget);
+    // передумали - нічого не сталось, посилання «з'їдено» на цьому телефоні
+    await tester.tap(find.text(tr.cancel));
+    await settle(tester);
+    expect(server.members, isEmpty);
+    expect(InviteLink.pending.value, isNull);
+    // знову - «Приєднатися»
+    InviteLink.pending.value = token;
+    await settle(tester);
+    await tester.tap(find.text(tr.joinConfirm));
+    await settle(tester);
+    await settle(tester);
+    expect(server.members.values.single.userId, 'u-petro');
+    expect(server.members.values.single.stockAccess, isTrue);
+    expect(find.textContaining(tr.joinDone('olena@gmail.com', const [])), findsOneWidget);
+    // те саме посилання вдруге - не діє для іншого (тут: уже використане
+    // цією ж людиною - без помилки, але й без другого запису)
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('посилання-запрошення, що вже не діє: зрозуміле повідомлення', (tester) async {
+    final server = FakeSharingServer()
+      ..register('u-olena', 'olena@gmail.com')
+      ..register('u-petro', 'petro@gmail.com');
+    final olena = SharingService(server.as('olena@gmail.com'), repo);
+    final made = (await tester.runAsync(() => olena.createLink()))!;
+    final token = InviteLink.tokenFrom(made.$2!)!;
+    server.links[token]!.expired = true;
+    SharingService.current = SharingService(server.as('petro@gmail.com'), repo);
+    addTearDown(() {
+      SharingService.current = SharingService(null, null);
+      InviteLink.pending.value = null;
+    });
+    // відкрили ще до входу застосунку - чекає, поки головний екран з'явиться
+    InviteLink.pending.value = token;
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.tap(find.text(tr.joinConfirm));
+    await settle(tester);
+    await settle(tester);
+    expect(find.text(tr.joinInvalid), findsOneWidget);
+    expect(server.members, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
@@ -1983,7 +2054,10 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);
     expect(find.text('Головне'), findsOneWidget);
-    // «Головне»: розділ синхронізації; без сервера - вона вимкнена
+    expect(find.text(tr.textSizeSection), findsOneWidget); // «Головне» - розмір шрифту
+    // «Акаунт»: розділ синхронізації; без сервера - вона вимкнена
+    await tester.tap(find.text(tr.settingsTabAccount));
+    await settle(tester);
     expect(find.text('Синхронізація'), findsOneWidget);
     expect(find.text(tr.syncDisabled), findsOneWidget);
     expect(find.textContaining('з\'являться тут згодом'), findsNothing);

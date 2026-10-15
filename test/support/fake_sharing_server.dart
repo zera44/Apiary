@@ -12,6 +12,9 @@ class FakeSharingServer {
   final invitations = <String, Invitation>{};
   final members = <String, Member>{};
 
+  /// Запрошувальні посилання: код -> дані.
+  final links = <String, FakeLink>{};
+
   /// Зв'язку немає - кожен запит падає.
   bool offline = false;
 
@@ -23,6 +26,18 @@ class FakeSharingServer {
   void _net() {
     if (offline) throw StateError('немає зв\'язку із сервером');
   }
+}
+
+/// Запрошувальне посилання на фейковому сервері.
+class FakeLink {
+  final String ownerId;
+  final String ownerEmail;
+  final List<String>? apiaryIds;
+  final bool stockAccess;
+  String? usedBy;
+  bool revoked = false;
+  bool expired = false;
+  FakeLink(this.ownerId, this.ownerEmail, this.apiaryIds, this.stockAccess);
 }
 
 class _Client implements SharingApi {
@@ -37,6 +52,44 @@ class _Client implements SharingApi {
   Future<String?> findUser(String email) async {
     s._net();
     return s.users[normalizeEmail(email)];
+  }
+
+  @override
+  Future<String> createInviteLink({List<String>? apiaryIds, bool stockAccess = false}) async {
+    s._net();
+    if (s.links.values.where((l) => l.ownerId == myUserId && l.usedBy == null && !l.revoked).length >= 20) {
+      throw const SharingLimitError();
+    }
+    final t = (s.links.length + 1).toRadixString(16).padLeft(64, '0');
+    s.links[t] = FakeLink(myUserId, myEmail, apiaryIds, stockAccess);
+    return t;
+  }
+
+  @override
+  Uri inviteUrl(String token) => Uri.parse('https://fake.test/functions/v1/join?t=$token');
+
+  @override
+  Future<JoinedLink> acceptInviteLink(String token) async {
+    s._net();
+    final l = s.links[token];
+    if (l == null) throw const SharingLinkError();
+    if (l.usedBy == myUserId) return JoinedLink(l.ownerEmail, const []);
+    if (l.ownerId == myUserId) throw const SharingLinkError(own: true);
+    if (l.revoked || l.usedBy != null || l.expired) throw const SharingLinkError();
+    l.usedBy = myUserId;
+    for (final a in l.apiaryIds ?? const <String?>[null]) {
+      final id = Repository.newId();
+      s.members[id] = Member(
+        id: id,
+        ownerId: l.ownerId,
+        apiaryId: a,
+        userId: myUserId,
+        email: myEmail,
+        stockAccess: l.stockAccess,
+        createdAt: Repository.now(),
+      );
+    }
+    return JoinedLink(l.ownerEmail, const []);
   }
 
   @override

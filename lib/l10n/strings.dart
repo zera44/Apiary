@@ -23,6 +23,7 @@ abstract class AppStrings {
   String get settingsTitle;
   String get settingsTabMain;
   String get settingsTabTemplates;
+  String get settingsTabAccount;
 
   // ---- Синхронізація ----
   String get syncSection;
@@ -67,8 +68,31 @@ abstract class AppStrings {
   String get otherAccountSignOut;
   String get firstLoginDone;
   String firstLoginFailed(String details);
+  String get textSizeSection;
+  String get textSizeHint;
+  List<String> get textSizeLevels;
+  String get textSizePreview;
+  String get inviteLinkButton;
+  String get inviteLinkHint;
+  String inviteLinkShare(String url);
+  String get inviteLinkCopied;
+  String get inviteLinkTooMany;
+  String inviteLinkFailed(String details);
+  String get joinConfirmTitle;
+  String get joinConfirmText;
+  String get joinConfirm;
+  String joinDone(String owner, List<String> apiaries);
+  String get joinInvalid;
+  String get joinOwn;
+  String get joinUnavailable;
   String get accountSection;
   String accountSignedInAs(String email);
+  String get accountSignedInVia;
+  String accountSignedInMail(String email);
+  String get accountSignOut;
+  String get accountSignOutTitle;
+  String get accountSignOutText;
+  String get accountGuest;
   String get accountDelete;
   String get accountDeleteTitle;
   String get accountDeleteText;
@@ -80,6 +104,7 @@ abstract class AppStrings {
   String get accountDeleted;
   String accountDeleteFailed(String details);
   String get privacyPolicy;
+  String get privacySection;
   String get privacySoon;
 
   // ---- Загальне ----

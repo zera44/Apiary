@@ -303,7 +303,7 @@ void main() {
     });
   });
 
-  testWidgets('Налаштування → «Головне» → «Резервні копії»: копія зараз і відновлення',
+  testWidgets('Налаштування → «Акаунт» → «Резервні копії»: копія зараз і відновлення',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -317,6 +317,8 @@ void main() {
     }
 
     await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: SettingsScreen(repo: repo)));
+    await settle();
+    await tester.tap(find.text(tr.settingsTabAccount));
     await settle();
     expect(find.text(tr.backupsSection), findsNWidgets(2)); // заголовок і кнопка
     expect(find.text(tr.backupsNone), findsOneWidget);

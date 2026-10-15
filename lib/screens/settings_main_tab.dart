@@ -7,31 +7,41 @@ import '../data/sync_api.dart';
 import '../data/sync_service.dart';
 import '../l10n/l10n.dart';
 import '../services/background.dart';
+import '../services/auth.dart';
 import '../services/backups.dart';
 import '../services/server.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
+import '../ui/text_scale.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
 
-/// Налаштування → «Головне». Тут - усе про дані користувача: синхронізація,
-/// резервні копії (а далі - мобільний інтернет, акаунт, політика
-/// конфіденційності).
-///
-/// [lesson] - вкладку показує урок (пісочниця): лише перегляд, без кнопок,
-/// що чіпають справжні дані.
-class MainSettingsTab extends StatefulWidget {
+/// Налаштування → «Головне»: розмір шрифту (і далі - інше про сам
+/// застосунок). Синхронізація, копії й акаунт - на вкладці «Акаунт».
+class MainSettingsTab extends StatelessWidget {
   final Repository repo;
-  final bool lesson;
-  const MainSettingsTab({super.key, required this.repo, this.lesson = false});
+  const MainSettingsTab({super.key, required this.repo});
 
   @override
-  State<MainSettingsTab> createState() => _MainSettingsTabState();
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [_TextSizeSection(repo: repo)],
+      );
 }
 
-class _MainSettingsTabState extends State<MainSettingsTab> {
+/// Налаштування → «Акаунт»: хто увійшов і «Вийти», синхронізація, резервні
+/// копії, політика конфіденційності й «Видалити акаунт».
+class AccountSettingsTab extends StatefulWidget {
+  final Repository repo;
+  const AccountSettingsTab({super.key, required this.repo});
+
+  @override
+  State<AccountSettingsTab> createState() => _AccountSettingsTabState();
+}
+
+class _AccountSettingsTabState extends State<AccountSettingsTab> {
   String? _backups;
   bool? _mobile;
   bool _busy = false;
@@ -41,10 +51,8 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
   @override
   void initState() {
     super.initState();
-    if (!widget.lesson) {
-      _loadBackups();
-      _loadMobile();
-    }
+    _loadBackups();
+    _loadMobile();
   }
 
   Future<void> _loadMobile() async {
@@ -210,7 +218,7 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
 
   List<Widget> _syncControls() {
     final s = _sync;
-    if (widget.lesson || s == null || !s.configured) return const [];
+    if (s == null || !s.configured) return const [];
     unawaited(_loadSignInAgain());
     final on = s.enabled && !_busy;
     return [
@@ -265,6 +273,24 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           SettingsSection(
+            title: tr.accountSection,
+            children: [
+              if (Server.auth?.user case final u?) ...[
+                _AccountCard(user: u),
+                const SizedBox(height: 12),
+                PillButton(
+                  text: tr.accountSignOut,
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 40,
+                  width: double.infinity,
+                  onPressed: _busy ? null : _signOut,
+                ),
+              ] else
+                Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+            ],
+          ),
+          SettingsSection(
             title: tr.syncSection,
             children: [
               const SyncStatusLine(textAlign: TextAlign.start, fontSize: 13.5),
@@ -278,67 +304,75 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
               ),
             ],
           ),
-          if (!widget.lesson)
-            SettingsSection(
-              title: tr.backupsSection,
-              children: [
-                Text(_backups ?? '',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-                const SizedBox(height: 10),
-                PillButton(
-                  text: tr.backupsSection,
-                  bg: AppColors.darkBtn,
-                  fg: AppColors.text,
-                  height: 40,
-                  width: double.infinity,
-                  onPressed: () async {
-                    await BackupsScreen.open(context, widget.repo);
-                    await _loadBackups();
-                  },
-                ),
-              ],
-            ),
-          if (!widget.lesson)
-            SettingsSection(
-              title: tr.accountSection,
-              children: [
-                if (Server.auth?.user case final u?) ...[
-                  Text(tr.accountSignedInAs(u.email),
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-                  const SizedBox(height: 10),
-                ],
-                PillButton(
-                  text: tr.privacyPolicy,
-                  bg: AppColors.darkBtn,
-                  fg: AppColors.text,
-                  height: 40,
-                  width: double.infinity,
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: AppColors.popupBg,
-                      title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
-                      content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
-                      ],
-                    ),
+          SettingsSection(
+            title: tr.backupsSection,
+            children: [
+              Text(_backups ?? '',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+              const SizedBox(height: 10),
+              PillButton(
+                text: tr.backupsSection,
+                bg: AppColors.darkBtn,
+                fg: AppColors.text,
+                height: 40,
+                width: double.infinity,
+                onPressed: () async {
+                  await BackupsScreen.open(context, widget.repo);
+                  await _loadBackups();
+                },
+              ),
+            ],
+          ),
+          SettingsSection(
+            title: tr.privacySection,
+            children: [
+              _AccountLink(
+                icon: Icons.privacy_tip_outlined,
+                text: tr.privacyPolicy,
+                color: AppColors.text,
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.popupBg,
+                    title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
+                    content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
+                    ],
                   ),
                 ),
-                if (Server.auth?.user != null) ...[
-                  const SizedBox(height: 8),
-                  PillButton(
-                    text: tr.accountDelete,
-                    bg: AppColors.danger,
-                    height: 40,
-                    width: double.infinity,
-                    onPressed: _busy ? null : _deleteAccount,
-                  ),
-                ],
-              ],
-            ),
+              ),
+              if (Server.auth?.user != null)
+                _AccountLink(
+                  icon: Icons.delete_outline,
+                  text: tr.accountDelete,
+                  color: AppColors.danger,
+                  onTap: _busy ? null : _deleteAccount,
+                ),
+            ],
+          ),
         ],
       );
+
+  /// «Вийти»: з підтвердженням; дані лишаються на телефоні, далі - екран
+  /// входу.
+  Future<void> _signOut() async {
+    final auth = Server.auth;
+    if (auth == null) return;
+    final ok = await showConfirm(context,
+        title: tr.accountSignOutTitle,
+        text: tr.accountSignOutText,
+        confirmText: tr.accountSignOut,
+        cancelText: tr.cancel);
+    if (!ok || !mounted) return;
+    final nav = Navigator.of(context);
+    await Server.signOut(widget.repo);
+    await auth.signOut();
+    nav.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => SplashScreen(repo: widget.repo, auth: auth)),
+      (_) => false,
+    );
+  }
 
   /// «Видалити акаунт і всі дані»: два підтвердження (друге - написати
   /// слово), потім сервер, телефон і вихід.
@@ -377,6 +411,143 @@ class _MainSettingsTabState extends State<MainSettingsTab> {
       if (mounted) setState(() => _busy = false);
     }
   }
+}
+
+/// «Розмір шрифту»: чотири кнопки «А» зростаючого розміру, назва рівня й
+/// зразок тексту (одразу в новому розмірі).
+class _TextSizeSection extends StatelessWidget {
+  final Repository repo;
+  const _TextSizeSection({required this.repo});
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<double>(
+        valueListenable: AppTextScale.value,
+        builder: (context, current, _) {
+          final levels = AppTextScale.levels;
+          final i = levels.indexOf(current);
+          return SettingsSection(
+            title: tr.textSizeSection,
+            children: [
+              Text(tr.textSizeHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+              const SizedBox(height: 10),
+              Row(children: [
+                for (var j = 0; j < levels.length; j++) ...[
+                  if (j > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      selected: j == i,
+                      label: tr.textSizeLevels[j],
+                      child: InkWell(
+                        key: ValueKey('text-size-$j'),
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => AppTextScale.set(repo, levels[j]),
+                        child: Container(
+                          height: 60,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: j == i ? AppColors.create : AppColors.darkBtn,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          // «А» - завжди однаковий крок, незалежно від обраного
+                          child: Text('А',
+                              textScaler: TextScaler.noScaling,
+                              style: TextStyle(
+                                color: j == i ? AppColors.bg : AppColors.text,
+                                fontSize: 16 + j * 6.0,
+                                fontWeight: FontWeight.w700,
+                              )),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+              const SizedBox(height: 10),
+              Text(tr.textSizeLevels[i < 0 ? 0 : i],
+                  style: TextStyle(color: AppColors.create, fontSize: 13.5, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(tr.textSizePreview, style: TextStyle(color: AppColors.text, fontSize: 15)),
+            ],
+          );
+        },
+      );
+}
+
+/// Хто увійшов: кружечок із першою літерою, ім'я, пошта.
+class _AccountCard extends StatelessWidget {
+  final AppUser user;
+  const _AccountCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = user.name.trim().isEmpty ? user.email.split('@').first : user.name.trim();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.darkBtn,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(children: [
+        Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.accent,
+            border: Border.all(color: AppColors.hive, width: 2),
+          ),
+          child: Text(name.characters.first.toUpperCase(),
+              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(user.email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            const SizedBox(height: 4),
+            Row(children: [
+              Icon(Icons.verified_user_outlined, size: 14, color: AppColors.create),
+              const SizedBox(width: 4),
+              Text(tr.accountSignedInVia, style: TextStyle(color: AppColors.create, fontSize: 12)),
+            ]),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Рядок-посилання розділу «Акаунт» (політика, видалення).
+class _AccountLink extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color color;
+  final VoidCallback? onTap;
+  const _AccountLink({required this.icon, required this.text, required this.color, this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          child: Row(children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text, style: TextStyle(color: color, fontSize: 14.5))),
+            Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ]),
+        ),
+      );
 }
 
 /// Друге підтвердження: написати слово [AppStrings.accountDeleteWord].

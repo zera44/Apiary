@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 
 import '../data/repository.dart';
@@ -18,6 +20,16 @@ abstract class SharingApi {
 
   /// Надіслати запрошення.
   Future<void> createInvitation(Invitation inv);
+
+  /// Створити запрошувальне посилання (одноразове, 7 днів): [apiaryIds]
+  /// null - до всіх пасік. Повертає код.
+  Future<String> createInviteLink({List<String>? apiaryIds, bool stockAccess = false});
+
+  /// Прийняти посилання - вхід уже виконано: людина стає помічником.
+  Future<JoinedLink> acceptInviteLink(String token);
+
+  /// Адреса посилання для надсилання.
+  Uri inviteUrl(String token);
 
   /// Запрошення на мою пошту (усі стани).
   Future<List<Invitation>> incoming();
@@ -40,6 +52,41 @@ abstract class SharingApi {
   /// Дати чи забрати склад і фінанси.
   Future<void> setStockAccess(String memberId, {required bool on});
 }
+
+/// Кого й куди додало посилання.
+class JoinedLink {
+  final String ownerEmail;
+  final List<String> apiaryNames;
+  const JoinedLink(this.ownerEmail, this.apiaryNames);
+}
+
+/// Посилання не прийнято: воно не діє або власне ([own]).
+class SharingLinkError implements Exception {
+  final bool own;
+  const SharingLinkError({this.own = false});
+}
+
+/// Забагато діючих посилань (ліміт сервера).
+class SharingLimitError implements Exception {
+  const SharingLimitError();
+}
+
+/// Чим закінчилась спроба прийняти посилання.
+enum JoinOutcome {
+  joined,
+
+  /// Посилання вже не діє (скористались, скасоване, термін вийшов) або не наше.
+  invalid,
+
+  /// Власне посилання.
+  own,
+
+  /// Сервер недоступний (не налаштовано, не увійшли, немає зв'язку).
+  unavailable,
+}
+
+/// Чим закінчилась спроба створити посилання.
+enum LinkOutcome { created, unavailable, tooMany, failed }
 
 /// Чим закінчилась спроба запросити.
 enum InviteOutcome {
@@ -124,6 +171,39 @@ class SharingService {
     } catch (e) {
       debugPrint('Запрошення: $e');
       return (InviteOutcome.failed, '$e');
+    }
+  }
+
+  /// Створити посилання-запрошення: (результат, адреса, подробиці).
+  Future<(LinkOutcome, Uri?, String?)> createLink(
+      {List<String>? apiaryIds, bool stockAccess = false}) async {
+    final api = this.api;
+    if (api == null) return (LinkOutcome.unavailable, null, null);
+    try {
+      final t = await api.createInviteLink(apiaryIds: apiaryIds, stockAccess: stockAccess);
+      return (LinkOutcome.created, api.inviteUrl(t), null);
+    } on SharingLimitError {
+      return (LinkOutcome.tooMany, null, null);
+    } catch (e) {
+      debugPrint('Посилання: $e');
+      return (LinkOutcome.failed, null, '$e');
+    }
+  }
+
+  /// Прийняти посилання, яке відкрили: помічник - одразу, без відповіді на
+  /// запрошення. Пасіки з'являться після синхронізації.
+  Future<(JoinOutcome, JoinedLink?)> join(String token) async {
+    final api = this.api;
+    if (api == null) return (JoinOutcome.unavailable, null);
+    try {
+      final r = await api.acceptInviteLink(token);
+      unawaited(SyncService.now());
+      return (JoinOutcome.joined, r);
+    } on SharingLinkError catch (e) {
+      return (e.own ? JoinOutcome.own : JoinOutcome.invalid, null);
+    } catch (e) {
+      debugPrint('Посилання (прийняти): $e');
+      return (JoinOutcome.unavailable, null);
     }
   }
 

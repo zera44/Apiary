@@ -203,7 +203,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     final withCode = objects.where((o) => linked.contains(o.first.id)).length;
     return Scaffold(
       body: SafeArea(
-        child: Column(children: [
+        child: ScreenColumn(children: [
           TopBar(title: 'QR-коди: ${widget.apiary.name}', onBack: () => Navigator.pop(context)),
           Expanded(
             child: Stack(children: [
@@ -353,7 +353,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(
                 title: 'Наліпки (${widget.labels.length})', onBack: () => Navigator.pop(context)),
             Expanded(

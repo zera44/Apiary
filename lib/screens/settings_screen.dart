@@ -32,8 +32,9 @@ class GearButton extends StatelessWidget {
       );
 }
 
-/// «Налаштування»: вкладки «Головне» (синхронізація та інше про дані) і
-/// «Шаблони» (свайпом теж). Параметри створюються й перейменовуються в
+/// «Налаштування»: вкладки «Головне» (розмір шрифту), «Шаблони» і «Акаунт»
+/// (вхід, синхронізація, резервні копії, видалення акаунта; свайпом теж).
+/// В уроці вкладки «Акаунт» немає (там - справжні дані). Параметри створюються й перейменовуються в
 /// «Таблиці параметрів» вулика. Історії тут немає - вона лише по картах.
 class SettingsScreen extends StatefulWidget {
   final Repository repo;
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Scaffold(
         body: SafeArea(
           child: Stack(children: [
-            Column(children: [
+            ScreenColumn(children: [
               TopBar(title: tr.settingsTitle, onBack: _back),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -119,20 +120,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _tabButton(tr.settingsTabMain, 0),
                   const SizedBox(width: 8),
                   _tabButton(tr.settingsTabTemplates, 1),
+                  if (l == null) ...[
+                    const SizedBox(width: 8),
+                    _tabButton(tr.settingsTabAccount, 2),
+                  ],
                 ]),
               ),
               Expanded(
                 child: TabSwipe(
                   index: _tab,
-                  count: 2,
+                  count: l == null ? 3 : 2,
                   // в уроці вкладку веде урок - свайп не збиває крок
                   onChanged: (i) {
                     if (l == null) setState(() => _tab = i);
                   },
-                  child: _tab == 0
-                      ? MainSettingsTab(repo: widget.repo, lesson: l != null)
-                      : TemplatesScreen(
-                          key: _templates, repo: widget.repo, embedded: true, lesson: l),
+                  child: switch (_tab) {
+                    0 => MainSettingsTab(repo: widget.repo),
+                    1 => TemplatesScreen(key: _templates, repo: widget.repo, embedded: true, lesson: l),
+                    _ => AccountSettingsTab(repo: widget.repo),
+                  },
                 ),
               ),
               // місце під пасічника з хмаркою

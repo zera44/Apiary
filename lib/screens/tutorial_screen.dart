@@ -241,7 +241,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
       return Scaffold(
         body: SafeArea(
           child: Stack(children: [
-            Column(children: [
+            ScreenColumn(children: [
               TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
             ]),
             const Positioned.fill(child: ScreenFrame()),
@@ -252,7 +252,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: 'Навчання', onBack: () => Navigator.of(context).pop()),
             Expanded(
               child: GridView.count(

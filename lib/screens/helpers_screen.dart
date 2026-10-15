@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -112,6 +114,45 @@ class _HelpersScreenState extends State<HelpersScreen> {
     });
   }
 
+  /// Посилання-запрошення (замість пошти): ті самі пасіки й склад, що вибрано
+  /// у формі; надсилається будь-яким месенджером.
+  Future<void> _link() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _result = null;
+    });
+    final one = !_all && _apiary != null;
+    final (outcome, url, details) =
+        await _sharing.createLink(apiaryIds: one ? [_apiary!] : null, stockAccess: _stock);
+    if (!mounted) return;
+    if (outcome != LinkOutcome.created || url == null) {
+      setState(() {
+        _busy = false;
+        _resultOk = false;
+        _result = switch (outcome) {
+          LinkOutcome.unavailable => tr.sharingUnavailable,
+          LinkOutcome.tooMany => tr.inviteLinkTooMany,
+          _ => tr.inviteLinkFailed(details ?? ''),
+        };
+      });
+      return;
+    }
+    final text = tr.inviteLinkShare('$url');
+    var shared = false;
+    try {
+      final r = await SharePlus.instance.share(ShareParams(text: text));
+      shared = r.status != ShareResultStatus.unavailable;
+    } catch (_) {}
+    if (!shared) await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _resultOk = true;
+      _result = shared ? null : tr.inviteLinkCopied;
+    });
+  }
+
   Future<void> _revoke(Member m) async {
     final ok = await showConfirm(
       context,
@@ -219,6 +260,18 @@ class _HelpersScreenState extends State<HelpersScreen> {
                       width: double.infinity,
                       onPressed: on && !_busy ? _invite : null,
                     ),
+                    const SizedBox(height: 8),
+                    PillButton(
+                      key: const ValueKey('invite-link'),
+                      text: tr.inviteLinkButton,
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      height: 44,
+                      width: double.infinity,
+                      onPressed: on && !_busy ? _link : null,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(tr.inviteLinkHint, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
                     if (_result != null) ...[
                       const SizedBox(height: 10),
                       Text(

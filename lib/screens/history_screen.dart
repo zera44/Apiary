@@ -132,7 +132,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
-          Column(children: [
+          ScreenColumn(children: [
             TopBar(title: title, onBack: () => Navigator.pop(context)),
             _filterBar(),
             Expanded(
