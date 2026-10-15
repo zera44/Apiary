@@ -104,6 +104,10 @@ void main() {
       expect(syncStatusText(SyncInfo(lastOk: DateTime(2026, 10, 9, 23, 59)), now: now),
           'Остання синхронізація: 09.10 23:59');
       expect(syncStatusText(const SyncInfo()), isNull);
+      // у Google увійшли, а сервер не прийняв - не «увійдіть через Google»
+      const noServer = SyncInfo(disabled: true, needsSignIn: true);
+      expect(syncStatusText(noServer), tr.syncNeedsSignIn);
+      expect(syncStatusText(noServer, googleSignedIn: true), tr.serverNotConnected);
     });
   });
 }

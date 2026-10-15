@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import 'account_deletion.dart';
 import '../data/sync_api.dart';
 import '../data/sync_service.dart';
+import '../l10n/l10n.dart';
 import 'app_config.dart';
 import 'auth.dart';
 import 'sharing.dart';
@@ -37,6 +38,24 @@ abstract final class Server {
 
   /// Тести: інший сховок входу.
   static Future<SessionStore> Function() sessionStore = SessionStore.forApp;
+
+  /// Чому не вдалося увійти на сервер (null - вдалося або ще не пробували):
+  /// налаштування показують це людині разом із кнопкою «Підключитися».
+  static final ValueNotifier<String?> problem = ValueNotifier(null);
+
+  /// Помилку входу - людською мовою (найчастіші налаштування Supabase).
+  static String explain(Object e) {
+    final m = '$e';
+    final low = m.toLowerCase();
+    if (low.contains('provider') && (low.contains('not enabled') || low.contains('unsupported'))) {
+      return tr.serverGoogleDisabled;
+    }
+    if (low.contains('audience') || low.contains('client id') || low.contains('nonce')) {
+      return tr.serverGoogleClient(m);
+    }
+    if (e is SyncOffline) return tr.syncOffline;
+    return m;
+  }
 
   /// Вхід на сервер відкликано - лише свідомий вхід (кнопка «Увійти знову»).
   static const signInAgainKey = 'sync_sign_in_again';
@@ -83,6 +102,7 @@ abstract final class Server {
     try {
       final restored = await SupabaseApi.restore(config, await sessionStore());
       if (restored != null && restored.session.email == auth.user!.email.toLowerCase()) {
+        problem.value = null;
         _attach(repo, restored, auth);
         await _firstLogin(repo, restored);
         return;
@@ -90,6 +110,7 @@ abstract final class Server {
       await connect(repo, auth, silent: true);
     } catch (e) {
       debugPrint('Сервер: $e');
+      problem.value = explain(e);
       _attach(repo, null, auth);
     }
   }
@@ -104,16 +125,28 @@ abstract final class Server {
     if (!config.syncConfigured) return false;
     if (silent && await repo.getMeta(signInAgainKey) == '1') return false;
     final token = await auth.idToken();
-    if (token == null) return false;
+    if (token == null) {
+      problem.value = tr.serverNoGoogleToken;
+      return false;
+    }
     try {
       final api = await SupabaseApi.signInWithGoogle(config, await sessionStore(), token);
       await repo.setMeta(signInAgainKey, '');
+      problem.value = null;
       _attach(repo, api, auth);
       await _firstLogin(repo, api);
       return true;
     } on SyncOffline catch (e) {
       debugPrint('Сервер: $e');
+      problem.value = explain(e);
       return false;
+    } catch (e) {
+      // сервер відхилив вхід (вхід Google на сервері не ввімкнено, чужий
+      // ключ клієнта…) - пояснити в налаштуваннях, а не мовчати
+      debugPrint('Сервер: $e');
+      problem.value = explain(e);
+      if (silent) return false;
+      rethrow;
     }
   }
 
@@ -174,6 +207,7 @@ abstract final class Server {
   /// Вихід: забути вхід на сервер (дані на телефоні лишаються).
   static Future<void> signOut(Repository repo) async {
     final api = _api;
+    problem.value = null;
     _attach(repo, null);
     choice.value = null;
     // вийшли свідомо - не входити знову самим

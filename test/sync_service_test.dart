@@ -126,6 +126,25 @@ void main() {
       expect(await Server.needsSignInAgain(repo), isTrue);
     });
 
+    test('у Google увійшли, а сервер не прийняв - зрозуміла причина замість мовчання', () async {
+      final prev = AppConfig.current;
+      AppConfig.current = _config;
+      addTearDown(() {
+        AppConfig.current = prev;
+        Server.problem.value = null;
+      });
+      // Google не дав ключ для сервера
+      expect(await Server.connect(repo, FakeAuth(signedIn: true), silent: true), isFalse);
+      expect(Server.problem.value, tr.serverNoGoogleToken);
+      // найчастіші відповіді Supabase - людською мовою
+      expect(Server.explain(const SyncRejected(400, 'Unsupported provider: provider is not enabled')),
+          tr.serverGoogleDisabled);
+      expect(Server.explain(const SyncRejected(400, 'Unacceptable audience in id_token')),
+          contains('Authorized Client IDs'));
+      expect(Server.explain(const SyncOffline()), tr.syncOffline);
+      expect(Server.explain(const SyncRejected(500, 'щось інше')), contains('щось інше'));
+    });
+
     test('замок для видалення акаунта: чекає, доки фонова синхронізація закінчить', () async {
       final s = svc();
       await repo.setMeta(SyncService.lockKey,

@@ -216,12 +216,49 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     }
   }
 
+  /// Google - так, сервер - ні (вхід на сервер не вдався): ще раз, з
+  /// поясненням, якщо знову не вийде.
+  Future<void> _connect() async {
+    final auth = Server.auth;
+    if (auth == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final ok = await Server.connect(widget.repo, auth);
+      if (mounted) _say(ok ? tr.serverConnected : (Server.problem.value ?? tr.syncOffline));
+    } catch (e) {
+      if (mounted) _say(Server.explain(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   List<Widget> _syncControls() {
     final s = _sync;
     if (s == null || !s.configured) return const [];
     unawaited(_loadSignInAgain());
     final on = s.enabled && !_busy;
+    final notConnected = !s.enabled && !_signInAgain && Server.auth?.user != null;
     return [
+      if (notConnected) ...[
+        ValueListenableBuilder<String?>(
+          valueListenable: Server.problem,
+          builder: (_, p, _) => p == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(p, style: TextStyle(color: AppColors.danger, fontSize: 13)),
+                ),
+        ),
+        const SizedBox(height: 8),
+        PillButton(
+          key: const ValueKey('server-connect'),
+          text: tr.serverConnect,
+          bg: AppColors.accent,
+          height: 40,
+          width: double.infinity,
+          onPressed: _busy ? null : _connect,
+        ),
+      ],
       if (_signInAgain && !s.enabled) ...[
         const SizedBox(height: 8),
         Text(tr.syncSignInAgainHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
@@ -293,7 +330,8 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
           SettingsSection(
             title: tr.syncSection,
             children: [
-              const SyncStatusLine(textAlign: TextAlign.start, fontSize: 13.5),
+              SyncStatusLine(
+                  textAlign: TextAlign.start, fontSize: 13.5, googleSignedIn: Server.auth?.user != null),
               // вхід на сервер міг завершитися вже після відкриття вкладки
               ValueListenableBuilder<SyncInfo>(
                 valueListenable: SyncService.info,

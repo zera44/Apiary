@@ -85,6 +85,12 @@ abstract class AppStrings {
   String get joinInvalid;
   String get joinOwn;
   String get joinUnavailable;
+  String get serverNotConnected;
+  String get serverConnect;
+  String get serverConnected;
+  String get serverNoGoogleToken;
+  String get serverGoogleDisabled;
+  String serverGoogleClient(String details);
   String get accountSection;
   String accountSignedInAs(String email);
   String get accountSignedInVia;

@@ -164,6 +164,21 @@ class AppStringsUk extends AppStrings {
   String get joinUnavailable =>
       'Не вдалося приєднатися: немає зв\'язку із сервером. Відкрийте посилання ще раз.';
   @override
+  String get serverNotConnected => 'Ви увійшли через Google, але сервер синхронізації ще не підключено';
+  @override
+  String get serverConnect => 'Підключитися до сервера';
+  @override
+  String get serverConnected => 'Сервер підключено - дані синхронізуються';
+  @override
+  String get serverNoGoogleToken =>
+      'Google не видав ключ входу для сервера. Натисніть «Підключитися до сервера» - відкриється вибір акаунта.';
+  @override
+  String get serverGoogleDisabled =>
+      'Сервер не приймає вхід через Google: у Supabase не ввімкнено Google (Authentication → Sign In / Providers → Google).';
+  @override
+  String serverGoogleClient(String details) =>
+      'Сервер не прийняв вхід Google - перевірте Client ID у Supabase (Authentication → Providers → Google → Authorized Client IDs). Подробиці: $details';
+  @override
   String get accountSection => 'Акаунт';
   @override
   String accountSignedInAs(String email) => 'Ви увійшли як $email';
@@ -320,7 +335,7 @@ class AppStringsUk extends AppStrings {
   String inviteFailed(String details) => 'Не вдалося надіслати запрошення: $details';
   @override
   String get sharingUnavailable =>
-      'Запросити помічника можна, коли налаштовано синхронізацію і ви увійшли через Google.';
+      'Запросити помічника можна, коли сервер синхронізації підключено. Перевірте: Налаштування → «Акаунт» → «Синхронізація».';
   @override
   String get helpersNone => 'Помічників ще немає';
   @override

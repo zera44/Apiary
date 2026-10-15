@@ -232,7 +232,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await auth.signIn();
       HomeScreen.signedInMail = auth.user?.email;
-      unawaited(Server.connect(repo, auth)); // і на сервер - одразу
+      // і на сервер - одразу (не вийде - пояснення в Налаштуваннях → «Акаунт»)
+      unawaited(Server.connect(repo, auth).catchError((Object _) => false));
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => HomeScreen(repo: repo, auth: auth),
