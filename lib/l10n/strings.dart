@@ -72,6 +72,9 @@ abstract class AppStrings {
   String get textSizeHint;
   List<String> get textSizeLevels;
   String get textSizePreview;
+  String get orientationSection;
+  String get orientationHint;
+  List<String> get orientationLevels;
   String get inviteLinkButton;
   String get inviteLinkHint;
   String inviteLinkShare(String url);

@@ -15,6 +15,7 @@ import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
+import '../ui/orientation.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
@@ -29,7 +30,11 @@ class MainSettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [_TextSizeSection(repo: repo), _AssistantSection(repo: repo)],
+        children: [
+          _TextSizeSection(repo: repo),
+          _OrientationSection(repo: repo),
+          _AssistantSection(repo: repo),
+        ],
       );
 }
 
@@ -513,6 +518,66 @@ class _TextSizeSection extends StatelessWidget {
             ],
           );
         },
+      );
+}
+
+/// «Орієнтація екрана»: авто, вертикальна, горизонтальна.
+class _OrientationSection extends StatelessWidget {
+  final Repository repo;
+  const _OrientationSection({required this.repo});
+
+  static const _icons = [Icons.screen_rotation, Icons.stay_current_portrait, Icons.stay_current_landscape];
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<ScreenOrientation>(
+        valueListenable: AppOrientation.value,
+        builder: (context, current, _) => SettingsSection(
+          title: tr.orientationSection,
+          children: [
+            Text(tr.orientationHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+            const SizedBox(height: 10),
+            Row(children: [
+              for (final o in ScreenOrientation.values) ...[
+                if (o.index > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: Semantics(
+                    button: true,
+                    selected: o == current,
+                    label: tr.orientationLevels[o.index],
+                    child: InkWell(
+                      key: ValueKey('orientation-${o.name}'),
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => AppOrientation.set(repo, o),
+                      child: Container(
+                        height: 72,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: o == current ? AppColors.create : AppColors.darkBtn,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(_icons[o.index],
+                              color: o == current ? AppColors.bg : AppColors.text, size: 26),
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(tr.orientationLevels[o.index],
+                                maxLines: 1,
+                                softWrap: false,
+                                style: TextStyle(
+                                    color: o == current ? AppColors.bg : AppColors.text,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ]),
+          ],
+        ),
       );
 }
 
