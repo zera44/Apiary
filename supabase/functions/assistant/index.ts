@@ -22,13 +22,16 @@
 import {
   ANTHROPIC_URL,
   ANTHROPIC_VERSION,
-  EFFORT,
+  effortFrom,
+  FALLBACK_BETA,
   type Env,
   MAX_BODY_BYTES,
   MAX_MESSAGES,
   MAX_STEPS,
   MAX_TOKENS,
   modelFrom,
+  REFUSAL_TEXT,
+  usesFallback,
 } from './config.ts';
 import { type AccessCheck, checkAccess } from './access.ts';
 import { SYSTEM_PROMPT } from './prompt.ts';
@@ -103,14 +106,21 @@ export function validateMessages(raw: unknown): string | null {
 
 /** Тіло запиту до Anthropic: кеш - на останньому інструменті й на
  *  системному промпті (порядок рендеру tools -> system -> messages). */
-export function buildRequest(model: string, messages: Message[], system: string, tools: ToolDef[]) {
+export function buildRequest(
+  model: string,
+  messages: Message[],
+  system: string,
+  tools: ToolDef[],
+  effort: string = 'medium',
+) {
   const t = tools.map((d, i) =>
     i === tools.length - 1 ? { ...d, cache_control: { type: 'ephemeral' } } : { ...d },
   );
   return {
     model,
     max_tokens: MAX_TOKENS,
-    output_config: { effort: EFFORT },
+    output_config: { effort },
+    ...(usesFallback(model) ? { fallbacks: 'default' } : {}),
     system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
     ...(t.length > 0 ? { tools: t, tool_choice: { type: 'auto' } } : {}),
     messages,
@@ -152,7 +162,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   const model = modelFrom(deps.env);
-  const payload = buildRequest(model, messages, deps.system ?? SYSTEM_PROMPT, deps.tools ?? TOOLS);
+  const effort = effortFrom(deps.env);
+  const payload = buildRequest(model, messages, deps.system ?? SYSTEM_PROMPT, deps.tools ?? TOOLS, effort);
   let res: Response;
   try {
     res = await deps.fetch(ANTHROPIC_URL, {
@@ -161,6 +172,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         'content-type': 'application/json',
         'x-api-key': key,
         'anthropic-version': ANTHROPIC_VERSION,
+        ...(usesFallback(model) ? { 'anthropic-beta': FALLBACK_BETA } : {}),
       },
       body: JSON.stringify(payload),
     });
@@ -177,12 +189,18 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
 
   const out = (await res.json()) as { content?: Block[]; stop_reason?: string; usage?: Usage };
+  // запобіжники моделі відмовили - застосунку звичайна коротка відповідь
+  if (out.stop_reason === 'refusal') {
+    out.content = [{ type: 'text', text: REFUSAL_TEXT }];
+    out.stop_reason = 'end_turn';
+  }
   const u = out.usage ?? {};
   deps.log(
     JSON.stringify({
       fn: 'assistant',
       result: 'ok',
       model,
+      effort,
       steps: steps + (out.stop_reason === 'tool_use' ? 1 : 0),
       input_tokens: u.input_tokens ?? 0,
       output_tokens: u.output_tokens ?? 0,
