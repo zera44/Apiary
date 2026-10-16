@@ -254,68 +254,50 @@ class _HomeScreenState extends State<HomeScreen> {
     void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
     final size = MediaQuery.sizeOf(context);
     final landscape = size.width > size.height && size.height < 600;
+    // ландшафт: лого маленьке, порадник - нижча бульбашка
     final logo = Column(mainAxisSize: MainAxisSize.min, children: [
       // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
       _PulseTap(
         key: const ValueKey('logo-whats-new'),
         label: 'Що нового',
         onTap: () => WhatsNewScreen.open(nav),
-        child: const AppLogo(size: 104),
+        child: AppLogo(size: landscape ? 64 : 104),
       ),
-      const SizedBox(height: 10),
+      SizedBox(height: landscape ? 4 : 10),
       Text('Vulyk',
           style: TextStyle(
-              color: AppColors.text, fontSize: 28, fontWeight: FontWeight.w800)),
+              color: AppColors.text, fontSize: landscape ? 22 : 28, fontWeight: FontWeight.w800)),
     ]);
-    final panel = Column(mainAxisSize: MainAxisSize.min, children: [
-      // панель у стилі вулика: медова рамка, пасічник-порадник,
-      // «Почати» і піктограми решти розділів
-      Container(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-        decoration: BoxDecoration(
-          color: AppColors.popupBg,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.hive, width: 2.5),
-        ),
-        child: Column(children: [
-          _Banner(text: _greeting()),
-          const SizedBox(height: 10),
-          _Advisor(repo: repo),
-          const SizedBox(height: 14),
-          PillButton(
-            text: 'Почати',
-            bg: AppColors.accent,
-            width: double.infinity,
-            height: 56,
-            radius: 18,
-            fontSize: 18,
-            onPressed: () => openStart(nav, repo, instant: _backdrop != null),
-          ),
-          const SizedBox(height: 14),
-          IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _Tile(
-                icon: Icon(Icons.account_balance_wallet_outlined,
-                    size: 30, color: AppColors.text),
-                label: 'Фінанси',
-                onTap: () => push(FinanceScreen(repo: repo))),
-            _Tile(
-                icon: AppIcon('box', size: 28, color: AppColors.text),
-                label: 'Склад',
-                onTap: () => push(StockScreen(repo: repo))),
-            _Tile(
-                icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
-                label: 'Навчання',
-                onTap: () => push(TutorialScreen(realRepo: repo))),
-            _Tile(
-                icon: AppIcon('pencil', size: 28, color: AppColors.text),
-                label: 'Відгук',
-                onTap: () => push(const FeedbackScreen())),
-          ])),
-        ]),
-      ),
-      // хто увійшов, «Вийти» і стан синхронізації - у
-      // Налаштуваннях → «Головне»
+    final start = PillButton(
+      text: 'Почати',
+      bg: AppColors.accent,
+      width: double.infinity,
+      height: landscape ? 48 : 56,
+      radius: 18,
+      fontSize: 18,
+      onPressed: () => openStart(nav, repo, instant: _backdrop != null),
+    );
+    final tiles = IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _Tile(
+          icon: Icon(Icons.account_balance_wallet_outlined, size: 30, color: AppColors.text),
+          label: 'Фінанси',
+          onTap: () => push(FinanceScreen(repo: repo))),
+      _Tile(
+          icon: AppIcon('box', size: 28, color: AppColors.text),
+          label: 'Склад',
+          onTap: () => push(StockScreen(repo: repo))),
+      _Tile(
+          icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
+          label: 'Навчання',
+          onTap: () => push(TutorialScreen(realRepo: repo))),
+      _Tile(
+          icon: AppIcon('pencil', size: 28, color: AppColors.text),
+          label: 'Відгук',
+          onTap: () => push(const FeedbackScreen())),
+    ]));
+    // хто увійшов, «Вийти» і стан синхронізації - у Налаштуваннях → «Головне»
+    final guest = <Widget>[
       if (auth.user == null && auth.configured) ...[
         // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
         const SizedBox(height: 14),
@@ -327,6 +309,49 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
         ),
       ],
+    ];
+    // панель у стилі вулика: медова рамка, пасічник-порадник, «Почати»
+    // (і в портреті - піктограми решти розділів)
+    Widget hivePanel(List<Widget> children) => Container(
+          padding: EdgeInsets.fromLTRB(14, 0, 14, landscape ? 12 : 16),
+          decoration: BoxDecoration(
+            color: AppColors.popupBg,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.hive, width: 2.5),
+          ),
+          child: Column(children: children),
+        );
+    final panel = Column(mainAxisSize: MainAxisSize.min, children: [
+      hivePanel([
+        _Banner(text: _greeting()),
+        const SizedBox(height: 10),
+        _Advisor(repo: repo),
+        const SizedBox(height: 14),
+        start,
+        const SizedBox(height: 14),
+        tiles,
+      ]),
+      ...guest,
+    ]);
+    // ландшафт (телефон боком): ліворуч лого й розділи, праворуч порадник і
+    // «Почати» - усе видно без прокрутки навіть при великому шрифті
+    final wide = Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      Expanded(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        logo,
+        const SizedBox(height: 12),
+        tiles,
+        ...guest,
+      ])),
+      const SizedBox(width: 20),
+      Expanded(
+          child: hivePanel([
+        _Banner(text: _greeting()),
+        const SizedBox(height: 6),
+        _Advisor(repo: repo, compact: true),
+        const SizedBox(height: 8),
+        start,
+      ])),
     ]);
     return Scaffold(
       body: SafeArea(
@@ -356,14 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: landscape
                       // ландшафт (телефон боком): лого ліворуч, меню праворуч -
                       // «Почати» видно без прокрутки
-                      ? ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 820),
-                          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                            Expanded(child: logo),
-                            const SizedBox(width: 24),
-                            ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 420), child: panel),
-                          ]))
+                      ? ConstrainedBox(constraints: const BoxConstraints(maxWidth: 900), child: wide)
                       : ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 420),
                           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -522,7 +540,10 @@ class _HoneycombPainter extends CustomPainter {
 /// натискання веде туди; далі — поради. Натискання на пораду — наступна.
 class _Advisor extends StatefulWidget {
   final Repository repo;
-  const _Advisor({required this.repo});
+
+  /// Ландшафт: нижча бульбашка й менший пасічник (усе вміщається по висоті).
+  final bool compact;
+  const _Advisor({required this.repo, this.compact = false});
   @override
   State<_Advisor> createState() => _AdvisorState();
 }
@@ -671,7 +692,10 @@ class _AdvisorState extends State<_Advisor> {
     final action = m.action;
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
       Image.asset('assets/guide/beekeeper.webp',
-          height: 100, width: 72, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+          height: widget.compact ? 76 : 100,
+          width: widget.compact ? 54 : 72,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium),
       const SizedBox(width: 4),
       Expanded(
         child: GestureDetector(
@@ -682,7 +706,7 @@ class _AdvisorState extends State<_Advisor> {
             // фіксована висота: довша репліка не розсуває екран, але вміщається
             // повністю (найдовші поради - до шести рядків); більший шрифт -
             // і вища
-            height: 150 * MediaQuery.textScalerOf(context).scale(1),
+            height: (widget.compact ? 96 : 150) * MediaQuery.textScalerOf(context).scale(1),
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,

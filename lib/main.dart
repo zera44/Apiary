@@ -20,6 +20,7 @@ import 'ui/app_drawer.dart';
 import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
 import 'ui/text_scale.dart';
+import 'ui/orientation.dart';
 import 'package:app_links/app_links.dart';
 import 'services/invite_link.dart';
 import 'ui/voice_input_bar.dart';
@@ -46,6 +47,7 @@ Future<void> _start() async {
     auth = await GoogleAuthService.open();
     await StockPhotos.init();
     await AppTextScale.load(repo); // розмір шрифту з налаштувань
+    await AppOrientation.load(repo); // орієнтація екрана з налаштувань
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
