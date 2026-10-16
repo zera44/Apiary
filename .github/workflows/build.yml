@@ -220,7 +220,7 @@ jobs:
             SUPABASE_URL="$SUPABASE_URL_PROD"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_PROD"
             if [ "$ASSISTANT_IN_RELEASE" = "true" ]; then
               ASSISTANT_URL="$ASSISTANT_URL_TEST"; ASSISTANT_TOKEN="$ASSISTANT_TOKEN_TEST"
-              echo "::warning title=ПОМІЧНИК::У релізі - тестовий код помічника. Перед Google Play: ASSISTANT_IN_RELEASE: 'true'"
+              echo "::warning title=ПОМІЧНИК::У релізі - тестовий код помічника (зараз ASSISTANT_IN_RELEASE = 'true'). Перед публікацією в Google Play змінити на 'false'"
             fi
           else
             SUPABASE_URL="$SUPABASE_URL_TEST"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_TEST"
@@ -257,7 +257,7 @@ jobs:
         if: failure()
         shell: bash
         run: python3 tool/ci_error_report.py build.log
-      # APK з неочікуваним підписом не публікується
+      # APK з неочікуваним пі  Aдписом не публікується
       - name: Перевірити підпис APK
         shell: bash
         run: |
