@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Повернути</title>
+  <path d="M18.95 13.86 A7.2 7.2 0 1 1 4.8 12" stroke-width="2.44"/>
+  <path d="M4.8 12 L7.12 8.26 L2.48 8.26 Z" fill="currentColor" stroke="none"/>
+  <path d="M5.05 10.14 A7.2 7.2 0 1 1 19.2 12" stroke-width="2.44"/>
+  <path d="M19.2 12 L16.88 15.74 L21.52 15.74 Z" fill="currentColor" stroke="none"/>
+</svg>

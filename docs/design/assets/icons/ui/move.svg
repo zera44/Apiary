@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Переміщення</title>
+  <path d="M12 3.5 V20.5 M3.5 12 H20.5" stroke-width="1.8"/>
+  <path d="M9 6.5 L12 3.5 L15 6.5 M9 17.5 L12 20.5 L15 17.5 M6.5 9 L3.5 12 L6.5 15 M17.5 9 L20.5 12 L17.5 15" stroke-width="1.8"/>
+</svg>

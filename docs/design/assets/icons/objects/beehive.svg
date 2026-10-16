@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Вулик</title>
+  <rect x="4.08" y="4.56" width="15.84" height="14.88" rx="2.38" stroke-width="1.22"/>
+  <path d="M8.04 12 L8.04 6.94 L15.96 6.94 L15.96 12 L8.04 12" stroke-width="1.04"/>
+  <path d="M12 11.29 L13.58 10.38 L13.58 8.56 L12 7.65 L10.42 8.56 L10.42 10.38 Z" stroke-width="0.92"/>
+  <circle cx="16.12" cy="16.46" r="1.08" stroke-width="1.04"/>
+  <path d="M14.28 15.06 L15.85 16.19" stroke-width="1.04"/>
+  <path d="M16.39 16.19 L17.95 15.06" stroke-width="1.04"/>
+  <path d="M8.2 17.06 L12.95 17.06" stroke-width="1.04"/>
+</svg>

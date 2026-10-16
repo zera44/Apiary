@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>QR-код</title>
+  <path d="M6 18 L10.32 18 L10.32 13.68 L6 13.68 Z" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M13.68 18 L18 18 L18 13.68 L13.68 13.68 Z" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M6 10.32 L10.32 10.32 L10.32 6 L6 6 Z" stroke-width="1.41" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M12.72 10.56 L14.16 10.56" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M15.6 10.56 L17.04 10.56" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M12.72 7.68 L14.16 7.68" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M15.6 7.68 L17.04 7.68" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+  <path d="M14.16 9.12 L15.6 9.12" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+</svg>

@@ -1,0 +1,12 @@
+<!-- Шаблон нової іконки. Скопіюйте в потрібну підпапку, перейменуйте
+     (латиницею, малі літери, "_" між словами) і запишіть у icons.json.
+     Правила — у README.md поруч. Файли, що починаються з "_", ігноруються. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+     fill="none" stroke="currentColor" stroke-width="1.5"
+     stroke-linecap="round" stroke-linejoin="round">
+  <title>Назва іконки</title>
+  <!-- лінія (контур): fill="none" stroke="currentColor" — успадковується з <svg> -->
+  <path d="M5 12h14"/>
+  <!-- суцільна фігура: fill="currentColor" stroke="none" -->
+  <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Око</title>
+  <path d="M4.32 12 C10.84 6.24 13.16 6.24 19.68 12" stroke-width="1.41"/>
+  <path d="M4.32 12 C10.84 17.76 13.16 17.76 19.68 12" stroke-width="1.41"/>
+  <circle cx="12" cy="12" r="2.07" fill="currentColor" stroke="none"/>
+</svg>

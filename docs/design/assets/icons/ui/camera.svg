@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Фото</title>
+  <path d="M3.5 8.2 Q3.5 6.8 4.9 6.8 L7.6 6.8 L9 4.8 L15 4.8 L16.4 6.8 L19.1 6.8 Q20.5 6.8 20.5 8.2 L20.5 17.8 Q20.5 19.2 19.1 19.2 L4.9 19.2 Q3.5 19.2 3.5 17.8 Z" stroke-width="1.3"/>
+  <circle cx="12" cy="12.8" r="3.6" stroke-width="1.3"/>
+  <circle cx="17.4" cy="9.4" r="0.5" stroke-width="1"/>
+</svg>

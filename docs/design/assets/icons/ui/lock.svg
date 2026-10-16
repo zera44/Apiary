@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>Замок</title>
+  <path d="M7.5 11 V8 A4.5 4.5 0 0 1 16.5 8 V11" stroke-width="1.8"/>
+  <path d="M6.5 11 H17.5 A1.5 1.5 0 0 1 19 12.5 V19 A1.5 1.5 0 0 1 17.5 20.5 H6.5 A1.5 1.5 0 0 1 5 19 V12.5 A1.5 1.5 0 0 1 6.5 11 Z" stroke-width="1.8"/>
+  <circle cx="12" cy="15.7" r="1.4" fill="currentColor" stroke="none"/>
+</svg>
