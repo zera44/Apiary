@@ -2,6 +2,7 @@ import 'package:apiary/assistant/assistant_chat_screen.dart';
 import 'package:apiary/assistant/assistant_model.dart';
 import 'package:apiary/assistant/assistant_queue.dart';
 import 'package:apiary/assistant/assistant_store.dart';
+import 'package:apiary/assistant/assistant_persona.dart';
 import 'package:apiary/assistant/assistant_voice.dart';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
@@ -38,8 +39,10 @@ class FakeVoice implements ChatVoice {
 class FakeSpeaker implements ReplySpeaker {
   final spoken = <String>[];
   bool hasUk = true;
+  final personas = <AssistantPersona>[];
   @override
-  Future<bool> speak(String text) async {
+  Future<bool> speak(String text, {AssistantPersona persona = AssistantPersona.bear}) async {
+    personas.add(persona);
     if (!hasUk) return false;
     spoken.add(text);
     return true;
@@ -194,6 +197,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     expect(speaker.spoken, ['Готово, записав.']);
+    expect(speaker.personas, [AssistantPersona.bear]); // демо-модель - голос Ведмедика
   });
 
   testWidgets('«Читати вголос» вимкнено - мовчить', (tester) async {

@@ -98,7 +98,7 @@ void main() {
     expect(find.text('Відповідає haiku'), findsOneWidget);
   });
 
-  testWidgets('плашка під полем: обрати Пасічника й «Дуже високу» - зберігається, іде в запит',
+  testWidgets('плашка під полем: обрати Пасічника й «Високу» - зберігається, іде в запит',
       (tester) async {
     await open(tester);
     await tester.tap(find.byKey(const ValueKey('assistant-chooser')));
@@ -107,17 +107,20 @@ void main() {
     expect(find.text(tr.assistantBeekeeperHint), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('persona-sonnet')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('effort-xhigh')));
+    await tester.tap(find.byKey(const ValueKey('effort-high')));
     await settle(tester);
     await tester.tapAt(const Offset(10, 10)); // закрити
     await tester.pumpAndSettle();
 
     expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), 'sonnet');
-    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.effortKey)), 'xhigh');
+    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.effortKey)), 'high');
     expect(find.text(tr.assistantBeekeeper), findsWidgets);
     await send(tester, 'Привіт');
     expect(server.bodies.last['model'], 'sonnet');
-    expect(server.bodies.last['effort'], 'xhigh');
+    expect(server.bodies.last['effort'], 'high');
+    // людині - без назв моделей; лише три рівні
+    expect(find.textContaining('Haiku'), findsNothing);
+    expect(find.textContaining('Sonnet'), findsNothing);
   });
 
   testWidgets('кожна відповідь - з обличчям того, хто відповідав', (tester) async {
@@ -142,5 +145,11 @@ void main() {
     await AssistantPrefs.setEffort(repo, 'high');
     expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'effort': 'high'});
     expect(AssistantPersona.of(null), AssistantPersona.bear);
+    // колишня «дуже висока» - тепер середня
+    await repo.setMeta(AssistantPrefs.effortKey, 'xhigh');
+    expect((await AssistantPrefs.requestOptions(repo))['effort'], 'medium');
+    expect(kAssistantEfforts, ['low', 'medium', 'high']);
+    // голоси різні
+    expect(AssistantPersona.bear.pitch, greaterThan(AssistantPersona.beekeeper.pitch));
   });
 }

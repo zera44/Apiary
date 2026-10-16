@@ -9,6 +9,7 @@ import 'package:vosk_flutter/vosk_flutter.dart';
 
 import '../data/repository.dart';
 import '../services/voice_input.dart';
+import 'assistant_persona.dart';
 import 'assistant_queue.dart';
 
 /// Голос у чаті з помічником: розпізнавання (тримаєш кнопку - говориш,
@@ -164,8 +165,9 @@ class PhoneVoice implements ChatVoice {
 
 /// Читання відповідей уголос.
 abstract class ReplySpeaker {
-  /// false - українського голосу в телефоні немає.
-  Future<bool> speak(String text);
+  /// false - українського голосу в телефоні немає. Голос - персонажа
+  /// [persona] (Ведмедик чи Пасічник).
+  Future<bool> speak(String text, {AssistantPersona persona = AssistantPersona.bear});
   Future<void> stop();
 }
 
@@ -174,19 +176,41 @@ class PhoneSpeaker implements ReplySpeaker {
   bool? _uk;
 
   @override
-  Future<bool> speak(String text) async {
+  Future<bool> speak(String text, {AssistantPersona persona = AssistantPersona.bear}) async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
       final tts = _tts ??= FlutterTts();
       _uk ??= (await tts.isLanguageAvailable('uk-UA')) == true;
       if (!_uk!) return false;
       await tts.setLanguage('uk-UA');
+      await _voiceFor(tts, persona);
+      await tts.setPitch(persona.pitch);
+      await tts.setSpeechRate(persona.rate);
       await tts.stop();
       await tts.speak(text);
       return true;
     } catch (e) {
       debugPrint('Синтезатор: $e');
       return false;
+    }
+  }
+
+  List<Map<String, String>>? _ukVoices;
+
+  /// Якщо в телефоні кілька українських голосів - кожному персонажу свій
+  /// (Ведмедику - перший, Пасічнику - останній).
+  Future<void> _voiceFor(FlutterTts tts, AssistantPersona persona) async {
+    try {
+      _ukVoices ??= [
+        for (final v in (await tts.getVoices as List? ?? const []))
+          if (v is Map && '${v['locale']}'.toLowerCase().startsWith('uk'))
+            {'name': '${v['name']}', 'locale': '${v['locale']}'},
+      ];
+      final voices = _ukVoices!;
+      if (voices.length < 2) return;
+      await tts.setVoice(persona == AssistantPersona.bear ? voices.first : voices.last);
+    } catch (_) {
+      // немає списку голосів - лише висота й темп
     }
   }
 

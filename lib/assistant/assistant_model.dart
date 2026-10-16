@@ -159,7 +159,7 @@ class DemoAssistantModel implements AssistantModel {
   /// Що надсилалося (для тестів).
   final List<List<Map<String, dynamic>>> sent = [];
 
-  static const demoReply = 'Я - Пасічник, поки в демо-режимі: сервер помічника не підключено.';
+  static const demoReply = 'Поки що демо-режим: сервер помічника не підключено.';
 
   @override
   bool get isRemote => false;

@@ -165,7 +165,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     ];
     if (items.isNotEmpty && items.last.seq > _seenSeq) _seenSeq = items.last.seq;
     if (_speak && fresh.isNotEmpty && !_noUkVoice) {
-      final ok = await _speaker.speak(fresh.last.text);
+      final ok = await _speaker.speak(fresh.last.text,
+          persona: AssistantPersona.of(fresh.last.data['model'] as String?));
       if (!ok && mounted) {
         _noUkVoice = true;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
