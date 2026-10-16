@@ -381,6 +381,19 @@ class AppDatabase {
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_hn_owner ON hive_notes(group_id, element_id)');
 
+    // Разові нагадування («нагадай 5 травня підгодувати 3-й вулик»; ставить
+    // помічник «Пасічник»). Лише на цьому телефоні - не синхронізуються.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_reminders (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        due_at REAL NOT NULL,
+        group_id TEXT,
+        element_id TEXT,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0
+      )''');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

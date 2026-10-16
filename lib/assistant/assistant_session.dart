@@ -33,12 +33,22 @@ class AssistantSession {
 
   final List<Map<String, dynamic>> messages;
 
+  static const _days = ['понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота', 'неділя'];
+
+  static String todayLine(DateTime d) =>
+      '[Сьогодні: ${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}, '
+      '${_days[d.weekday - 1]}]';
+
   /// Надіслати повідомлення людини й довести відповідь до кінця.
   /// Помилка зв'язку ([AssistantException]) - повідомлення людини з
   /// історії прибирається (його можна надіслати знову чи з черги).
-  Future<AssistantReply> ask(String text, {ToolRunner? tools}) async {
+  ///
+  /// [today] - дата для моделі («завтра», «5 травня»): додається рядком
+  /// «[Сьогодні: …]» до самого повідомлення (не до системного промпта - той
+  /// незмінний і кешується).
+  Future<AssistantReply> ask(String text, {ToolRunner? tools, DateTime? today}) async {
     final start = messages.length;
-    messages.add({'role': 'user', 'content': text});
+    messages.add({'role': 'user', 'content': today == null ? text : '$text\n\n${todayLine(today)}'});
     try {
       var steps = 0;
       while (true) {

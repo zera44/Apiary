@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/repository.dart';
+import '../data/user_reminders.dart';
 import '../logic/visit_reminders.dart';
 
 /// Пуш-сповіщення "Ти давно не заглядав у вулик …".
@@ -137,14 +138,33 @@ class ReminderService {
     final targets = await repo.visitTargets();
     // iOS дозволяє лише 64 відкладені сповіщення
     final limit = Platform.isIOS ? 60 : 300;
+    // разові нагадування («нагадай 5 травня…»): натискання відкриває вулик,
+    // якщо його вказано (для групи - перший її вулик)
+    Future<List<PlannedReminder>> oneOff(DateTime from) async => [
+          for (final r in await repo.listUserReminders(from: from))
+            PlannedReminder(
+                r.hive?.elementId ??
+                    (r.hive?.groupId == null
+                        ? ''
+                        : (await repo.getGroupElements(r.hive!.groupId!)).firstOrNull?.id ?? ''),
+                'Нагадування',
+                r.text,
+                r.due),
+        ];
+    List<PlannedReminder> plan(DateTime now, List<PlannedReminder> extra) {
+      final all = [...planReminders(targets, now: now, limit: limit), ...extra]
+        ..sort((a, b) => a.when.compareTo(b.when));
+      return all.length > limit ? all.sublist(0, limit) : all;
+    }
+
     // лише заплановані: уже показані в шторці сповіщення лишаються
     await _plugin.cancelAllPendingNotifications();
-    if (planReminders(targets, now: DateTime.now(), limit: limit).isEmpty) return;
+    if (plan(DateTime.now(), await oneOff(DateTime.now())).isEmpty) return;
     await _requestPermission();
     // план рахуємо ПІСЛЯ можливого діалогу дозволу (користувач міг відповісти
     // через кілька хвилин) і з запасом: момент у минулому система відхиляє
-    final plans =
-        planReminders(targets, now: DateTime.now().add(const Duration(minutes: 1)), limit: limit);
+    final from = DateTime.now().add(const Duration(minutes: 1));
+    final plans = plan(from, await oneOff(from));
     var id = 1;
     for (final p in plans) {
       final u = p.when.toUtc();
