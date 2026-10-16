@@ -198,7 +198,7 @@ class AssistantQueue {
       await store.appendHistory(session.messages.sublist(start));
       await store.update(item.id, {'status': ChatStatus.sent, 'error': null});
       await store.addAssistant(reply.text,
-          nav: tools.offeredNav, unread: !chatVisible, replyTo: item.id);
+          nav: tools.offeredNav, unread: !chatVisible, replyTo: item.id, model: reply.model);
       // картки - після відповіді, що про них каже
       for (final id in cards) {
         final c = (await store.item(id))!;

@@ -88,3 +88,15 @@ export const SYSTEM_PROMPT = `Ти - «Пасічник», помічник у �
 - lesson - конкретний урок.
 - feedback - відгук розробникам.
 - whats_new - що нового у версії.`;
+
+/** У застосунку два персонажі: Haiku - «Ведмедик», Sonnet - «Пасічник»
+ *  (людина обирає під полем чату). Решта промпту однакова; для кожної
+ *  моделі текст сталий - кеш працює. */
+export const BEAR_PROMPT = SYSTEM_PROMPT.replace(
+  'Ти - «Пасічник», помічник',
+  'Ти - «Ведмедик», ведмежа-помічник пасічника (так і називай себе),',
+);
+
+export function systemPromptFor(model: string): string {
+  return model.includes('haiku') ? BEAR_PROMPT : SYSTEM_PROMPT;
+}

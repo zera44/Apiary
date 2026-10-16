@@ -39,6 +39,33 @@ export function modelFrom(env: Env): string {
   return MODEL_ALIASES[v.toLowerCase()] ?? (v || DEFAULT_MODEL);
 }
 
+/** Вибір людини в застосунку (плашка під полем чату): лише ці моделі.
+ *  Секрет ASSISTANT_CLIENT_CHOICE = off - сервер вибір ігнорує (напр.,
+ *  поки Sonnet не для всіх). */
+export const CLIENT_MODELS = ['haiku', 'sonnet'];
+
+/** Коротка назва для застосунку (яким персонажем показати відповідь). */
+export function aliasOf(model: string): string {
+  for (const [k, v] of Object.entries(MODEL_ALIASES)) if (v === model) return k;
+  return model.includes('sonnet') ? 'sonnet' : 'haiku';
+}
+
+export function clientChoiceAllowed(env: Env): boolean {
+  return (env('ASSISTANT_CLIENT_CHOICE')?.trim().toLowerCase() ?? '') !== 'off';
+}
+
+/** Модель і глибина для цього запиту: вибір застосунку (якщо дозволено й
+ *  значення відоме), інакше - секрети, інакше - типові. */
+export function choose(env: Env, wanted: { model?: unknown; effort?: unknown }) {
+  const allowed = clientChoiceAllowed(env);
+  const m = typeof wanted.model === 'string' ? wanted.model.trim().toLowerCase() : '';
+  const e = typeof wanted.effort === 'string' ? wanted.effort.trim().toLowerCase() : '';
+  return {
+    model: allowed && CLIENT_MODELS.includes(m) ? MODEL_ALIASES[m] : modelFrom(env),
+    effort: allowed && EFFORTS.includes(e) ? e : effortFrom(env),
+  };
+}
+
 /** Невідоме значення - типове (помилка в секреті не зламає помічника). */
 export function effortFrom(env: Env): string {
   const v = env('ASSISTANT_EFFORT')?.trim().toLowerCase() ?? '';

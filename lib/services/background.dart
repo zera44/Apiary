@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:workmanager/workmanager.dart';
 
 import '../assistant/assistant_model.dart';
+import '../assistant/assistant_persona.dart';
 import '../assistant/assistant_queue.dart';
 import '../assistant/assistant_store.dart';
 import '../data/database.dart';
@@ -118,7 +119,9 @@ Future<bool> runBackgroundTask(String task,
         return true;
       case BackgroundTasks.assistant:
         final store = AssistantStore(repo.db);
-        await AssistantQueue(repo, store, (assistantModel ?? AssistantModel.fromConfig)(),
+        final model = assistantModel?.call() ??
+            AssistantModel.fromConfig(options: () => AssistantPrefs.requestOptions(repo));
+        await AssistantQueue(repo, store, model,
                 isOnline: () async => true)
             .process();
         // лишилося (пауза після збою, зв'язок зник) - система повторить

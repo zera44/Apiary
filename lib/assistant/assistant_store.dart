@@ -131,11 +131,12 @@ class AssistantStore {
   Future<ChatItem> addUser(String text) => _add(ChatRole.user, text, status: ChatStatus.queued);
 
   Future<ChatItem> addAssistant(String text,
-          {List<NavTarget> nav = const [], bool unread = false, String? replyTo}) =>
+          {List<NavTarget> nav = const [], bool unread = false, String? replyTo, String? model}) =>
       _add(ChatRole.assistant, text,
           data: {
             if (nav.isNotEmpty) 'nav': [for (final n in nav) navJson(n)],
             'reply_to': ?replyTo,
+            'model': ?model,
           },
           unread: unread);
 

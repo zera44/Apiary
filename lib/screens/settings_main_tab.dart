@@ -455,7 +455,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
   }
 }
 
-/// «Розмір шрифту»: чотири кнопки «А» зростаючого розміру, назва рівня й
+/// «Розмір шрифту»: п'ять кнопок «А» зростаючого розміру, назва рівня й
 /// зразок тексту (одразу в новому розмірі).
 class _TextSizeSection extends StatelessWidget {
   final Repository repo;
@@ -496,7 +496,7 @@ class _TextSizeSection extends StatelessWidget {
                               textScaler: TextScaler.noScaling,
                               style: TextStyle(
                                 color: j == i ? AppColors.bg : AppColors.text,
-                                fontSize: 16 + j * 6.0,
+                                fontSize: 16 + j * 5.0,
                                 fontWeight: FontWeight.w700,
                               )),
                         ),

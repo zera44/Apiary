@@ -130,6 +130,32 @@ test('глибина міркувань - секретом ASSISTANT_EFFORT; н�
   }
 });
 
+test('вибір у застосунку: модель і глибина з запиту; персонаж за моделлю', async () => {
+  const s = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const out = await (await handle(post({ ...hello, model: 'sonnet', effort: 'high' }), s.d)).json();
+  assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.deepEqual(s.calls[0].body.output_config, { effort: 'high' });
+  assert.equal(out.model, 'sonnet');
+  assert.match(s.calls[0].body.system[0].text, /«Пасічник»/);
+
+  const h = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const out2 = await (await handle(post({ ...hello, model: 'haiku' }), h.d)).json();
+  assert.equal(out2.model, 'haiku');
+  assert.match(h.calls[0].body.system[0].text, /«Ведмедик»/);
+});
+
+test('невідомий вибір ігнорується; ASSISTANT_CLIENT_CHOICE=off - вибір застосунку не діє', async () => {
+  const bad = deps(modelReply([]));
+  await handle(post({ ...hello, model: 'claude-opus-5-5', effort: 'turbo' }), bad.d);
+  assert.equal(bad.calls[0].body.model, DEFAULT_MODEL);
+  assert.deepEqual(bad.calls[0].body.output_config, { effort: 'medium' });
+
+  const off = deps(modelReply([]), { ...SECRETS, ASSISTANT_CLIENT_CHOICE: 'off' });
+  await handle(post({ ...hello, model: 'sonnet', effort: 'max' }), off.d);
+  assert.equal(off.calls[0].body.model, DEFAULT_MODEL);
+  assert.deepEqual(off.calls[0].body.output_config, { effort: 'medium' });
+});
+
 test('відмова запобіжників моделі - звичайна коротка відповідь застосунку', async () => {
   const { d } = deps(modelReply([], 'refusal'));
   const out = await (await handle(post(hello), d)).json();

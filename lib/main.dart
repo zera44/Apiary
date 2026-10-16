@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'assistant/assistant_model.dart';
+import 'assistant/assistant_persona.dart';
 import 'assistant/assistant_queue.dart';
 import 'assistant/assistant_store.dart';
 import 'data/database.dart';
@@ -55,7 +56,9 @@ Future<void> _start() async {
   }
   final sync = SyncService(repo)..start();
   // помічник «Пасічник»: черга повідомлень без інтернету
-  unawaited(AssistantQueue(repo, AssistantStore(repo.db), AssistantModel.fromConfig(),
+  unawaited(AssistantPrefs.load(repo).catchError((Object _) {}));
+  unawaited(AssistantQueue(repo, AssistantStore(repo.db),
+          AssistantModel.fromConfig(options: () => AssistantPrefs.requestOptions(repo)),
           scheduleBackground: BackgroundTasks.scheduleAssistant)
       .start()
       .catchError((Object e) => debugPrint('Помічник: $e')));

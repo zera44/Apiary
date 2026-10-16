@@ -22,19 +22,19 @@
 import {
   ANTHROPIC_URL,
   ANTHROPIC_VERSION,
-  effortFrom,
+  aliasOf,
+  choose,
   FALLBACK_BETA,
   type Env,
   MAX_BODY_BYTES,
   MAX_MESSAGES,
   MAX_STEPS,
   MAX_TOKENS,
-  modelFrom,
   REFUSAL_TEXT,
   usesFallback,
 } from './config.ts';
 import { type AccessCheck, checkAccess } from './access.ts';
-import { SYSTEM_PROMPT } from './prompt.ts';
+import { systemPromptFor } from './prompt.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 
 declare const Deno: {
@@ -145,7 +145,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   const text = await req.text();
   if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return fail(413, 'too_large');
-  let body: { messages?: unknown };
+  let body: { messages?: unknown; model?: unknown; effort?: unknown };
   try {
     body = JSON.parse(text);
   } catch {
@@ -161,9 +161,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return fail(422, 'step_limit');
   }
 
-  const model = modelFrom(deps.env);
-  const effort = effortFrom(deps.env);
-  const payload = buildRequest(model, messages, deps.system ?? SYSTEM_PROMPT, deps.tools ?? TOOLS, effort);
+  // вибір у застосунку (плашка під полем чату), якщо сервер дозволяє
+  const { model, effort } = choose(deps.env, body);
+  const payload = buildRequest(model, messages, deps.system ?? systemPromptFor(model), deps.tools ?? TOOLS, effort);
   let res: Response;
   try {
     res = await deps.fetch(ANTHROPIC_URL, {
@@ -211,6 +211,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   return json({
     content: out.content ?? [],
     stop_reason: out.stop_reason ?? 'end_turn',
+    model: aliasOf(model),
     steps_left: MAX_STEPS - steps - (out.stop_reason === 'tool_use' ? 1 : 0),
   });
 }
