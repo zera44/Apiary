@@ -1,0 +1,5390 @@
+[
+ {
+  "file": "icons/noname__a01_my_apiaries_00.png",
+  "label": "",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   42,
+   137,
+   144,
+   239
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Мої_пасіки__a01_my_apiaries_01.png",
+  "label": "Мої пасіки",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Додати_помічника__a01_my_apiaries_02.png",
+  "label": "Додати помічника",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   936,
+   137,
+   1038,
+   239
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Пасіка_1__a01_my_apiaries_03.png",
+  "label": "Пасіка 1",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   36,
+   302,
+   348,
+   669
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Видалити__a01_my_apiaries_04.png",
+  "label": "Видалити",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   246,
+   386,
+   330,
+   470
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/QR_наліпки__a01_my_apiaries_05.png",
+  "label": "QR-наліпки",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   54,
+   567,
+   138,
+   651
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Пасіка_2__a01_my_apiaries_06.png",
+  "label": "Пасіка 2",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   384,
+   302,
+   696,
+   669
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Видалити__a01_my_apiaries_07.png",
+  "label": "Видалити",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   594,
+   386,
+   678,
+   470
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/QR_наліпки__a01_my_apiaries_08.png",
+  "label": "QR-наліпки",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   402,
+   567,
+   486,
+   651
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Створити_карту__a01_my_apiaries_09.png",
+  "label": "+  Створити карту",
+  "screen": "a01_my_apiaries",
+  "bounds": [
+   36,
+   2088,
+   1044,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Запросити_помічника_можна_коли_налаштова__a02_helpers_00.png",
+  "label": "Запросити помічника можна, коли налаштовано синхронізацію і ви увійшли через Google.",
+  "screen": "a02_helpers",
+  "bounds": [
+   48,
+   290,
+   1032,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Також_склад_і_фінанси__a02_helpers_01.png",
+  "label": "Також склад і фінанси",
+  "screen": "a02_helpers",
+  "bounds": [
+   93,
+   848,
+   987,
+   1016
+  ],
+  "class": "Switch"
+ },
+ {
+  "file": "texts/Помічники__a02_helpers_02.png",
+  "label": "Помічники / Помічників ще немає",
+  "screen": "a02_helpers",
+  "bounds": [
+   48,
+   1547,
+   1032,
+   1808
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Меню__e01_edit_mode_00.png",
+  "label": "Меню",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   30,
+   134,
+   174,
+   278
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Пасіка_1__e01_edit_mode_01.png",
+  "label": "Пасіка 1",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   402,
+   168,
+   678,
+   237
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Налаштування__e01_edit_mode_02.png",
+  "label": "Налаштування",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   906,
+   134,
+   1050,
+   278
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Оберіть_вулик__e01_edit_mode_03.png",
+  "label": "Оберіть вулик",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   429,
+   338,
+   651,
+   383
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__e01_edit_mode_04.png",
+  "label": "+",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   912,
+   1051,
+   1038,
+   1177
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__e01_edit_mode_05.png",
+  "label": "Робочий режим",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   42,
+   2028,
+   456,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Додати_об_єкт__e01_edit_mode_06.png",
+  "label": "Додати об'єкт",
+  "screen": "e01_edit_mode",
+  "bounds": [
+   492,
+   2034,
+   648,
+   2190
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Оберіть_шаблон__e02_add_sheet_00.png",
+  "label": "Оберіть шаблон",
+  "screen": "e02_add_sheet",
+  "bounds": [
+   129,
+   979,
+   951,
+   1033
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Лежак__e02_add_sheet_01.png",
+  "label": "Лежак",
+  "screen": "e02_add_sheet",
+  "bounds": [
+   200,
+   1081,
+   316,
+   1132
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Вулик__e02_add_sheet_02.png",
+  "label": "Вулик",
+  "screen": "e02_add_sheet",
+  "bounds": [
+   489,
+   1081,
+   591,
+   1132
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/2_1__e02_add_sheet_03.png",
+  "label": "2×1",
+  "screen": "e02_add_sheet",
+  "bounds": [
+   129,
+   1147,
+   387,
+   1399
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/1_1__e02_add_sheet_04.png",
+  "label": "1×1",
+  "screen": "e02_add_sheet",
+  "bounds": [
+   411,
+   1147,
+   669,
+   1399
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Тапай_ставити_Лежак_тягни_перемістити__e03_placing_00.png",
+  "label": "Тапай - ставити «Лежак», тягни - перемістити",
+  "screen": "e03_placing",
+  "bounds": [
+   252,
+   338,
+   828,
+   428
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Завершити_додавання__e03_placing_01.png",
+  "label": "Завершити додавання",
+  "screen": "e03_placing",
+  "bounds": [
+   492,
+   2034,
+   648,
+   2190
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Властивості__e04_object_actions_00.png",
+  "label": "Властивості",
+  "screen": "e04_object_actions",
+  "bounds": [
+   645,
+   793,
+   753,
+   901
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Повернути__e04_object_actions_01.png",
+  "label": "Повернути",
+  "screen": "e04_object_actions",
+  "bounds": [
+   771,
+   793,
+   879,
+   901
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Видалити__e04_object_actions_02.png",
+  "label": "Видалити",
+  "screen": "e04_object_actions",
+  "bounds": [
+   897,
+   793,
+   1005,
+   901
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Тапай_ставити_Лежак_тягни_перемістити__e05_object_properties_00.png",
+  "label": "Тапай - ставити «Лежак», тягни - перемістити",
+  "screen": "e05_object_properties",
+  "bounds": [
+   252,
+   338,
+   828,
+   428
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__e05_object_properties_01.png",
+  "label": "",
+  "screen": "e05_object_properties",
+  "bounds": [
+   948,
+   344,
+   1050,
+   446
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/noname__e05_object_properties_02.png",
+  "label": "",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   464,
+   1038,
+   680
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Лежак_1__e05_object_properties_03.png",
+  "label": "Лежак 1",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   710,
+   1038,
+   779
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Вулик__e05_object_properties_04.png",
+  "label": "Вулик",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   785,
+   1038,
+   836
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Колір__e05_object_properties_05.png",
+  "label": "Колір",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   878,
+   1038,
+   923
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Медовий_оранжевий_ED9D2F__e05_object_properties_06.png",
+  "label": "Медовий оранжевий  #ED9D2F",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   941,
+   1038,
+   1043
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Значення__e05_object_properties_07.png",
+  "label": "Значення",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   1085,
+   1038,
+   1130
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Кількість_днів_до_обходу_днів__e05_object_properties_08.png",
+  "label": "Кількість днів до обходу (днів)",
+  "screen": "e05_object_properties",
+  "bounds": [
+   444,
+   1175,
+   731,
+   1265
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Дата_останнього_обходу__e05_object_properties_09.png",
+  "label": "Дата останнього обходу",
+  "screen": "e05_object_properties",
+  "bounds": [
+   444,
+   1319,
+   731,
+   1454
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Мітка_матки__e05_object_properties_10.png",
+  "label": "Мітка матки",
+  "screen": "e05_object_properties",
+  "bounds": [
+   444,
+   1513,
+   731,
+   1558
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Кількість_вуличок_з_бджолами__e05_object_properties_11.png",
+  "label": "Кількість вуличок з бджолами",
+  "screen": "e05_object_properties",
+  "bounds": [
+   444,
+   1616,
+   731,
+   1751
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Параметри__e05_object_properties_12.png",
+  "label": "Параметри",
+  "screen": "e05_object_properties",
+  "bounds": [
+   414,
+   1832,
+   1038,
+   1946
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__e05_object_properties_13.png",
+  "label": "−",
+  "screen": "e05_object_properties",
+  "bounds": [
+   912,
+   1201,
+   1038,
+   1327
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__e05_object_properties_14.png",
+  "label": "Робочий режим",
+  "screen": "e05_object_properties",
+  "bounds": [
+   42,
+   2028,
+   456,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Фінанси__f01_expenses_00.png",
+  "label": "Фінанси",
+  "screen": "f01_expenses",
+  "bounds": [
+   144,
+   157,
+   918,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Усі_операції__f01_expenses_01.png",
+  "label": "Усі операції",
+  "screen": "f01_expenses",
+  "bounds": [
+   918,
+   128,
+   1038,
+   248
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Витрати__f01_expenses_02.png",
+  "label": "Витрати",
+  "screen": "f01_expenses",
+  "bounds": [
+   60,
+   278,
+   540,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Дохід__f01_expenses_03.png",
+  "label": "Дохід",
+  "screen": "f01_expenses",
+  "bounds": [
+   540,
+   278,
+   1020,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Жовтень_2026__f01_expenses_04.png",
+  "label": "Жовтень 2026 / 370 ₴ / баланс 530 ₴",
+  "screen": "f01_expenses",
+  "bounds": [
+   48,
+   428,
+   1032,
+   1496
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/День__f01_expenses_05.png",
+  "label": "День",
+  "screen": "f01_expenses",
+  "bounds": [
+   84,
+   428,
+   256,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Тиждень__f01_expenses_06.png",
+  "label": "Тиждень",
+  "screen": "f01_expenses",
+  "bounds": [
+   256,
+   428,
+   504,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Місяць__f01_expenses_07.png",
+  "label": "Місяць",
+  "screen": "f01_expenses",
+  "bounds": [
+   504,
+   428,
+   718,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Рік__f01_expenses_08.png",
+  "label": "Рік",
+  "screen": "f01_expenses",
+  "bounds": [
+   718,
+   428,
+   850,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Період__f01_expenses_09.png",
+  "label": "Період",
+  "screen": "f01_expenses",
+  "bounds": [
+   850,
+   428,
+   1020,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Раніше__f01_expenses_10.png",
+  "label": "Раніше",
+  "screen": "f01_expenses",
+  "bounds": [
+   221,
+   554,
+   365,
+   698
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Пізніше__f01_expenses_11.png",
+  "label": "Пізніше",
+  "screen": "f01_expenses",
+  "bounds": [
+   715,
+   554,
+   859,
+   698
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "cards/Внесено_на_складі__f01_expenses_12.png",
+  "label": "Внесено на складі / 68% / 250 ₴",
+  "screen": "f01_expenses",
+  "bounds": [
+   48,
+   1532,
+   1032,
+   1766
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Ліки__f01_expenses_13.png",
+  "label": "Ліки / 32% / 120 ₴",
+  "screen": "f01_expenses",
+  "bounds": [
+   48,
+   1766,
+   1032,
+   2000
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Нова_операція__f01_expenses_14.png",
+  "label": "Нова операція",
+  "screen": "f01_expenses",
+  "bounds": [
+   828,
+   2004,
+   1020,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Витрати__f02_income_00.png",
+  "label": "Витрати",
+  "screen": "f02_income",
+  "bounds": [
+   60,
+   278,
+   540,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Дохід__f02_income_01.png",
+  "label": "Дохід",
+  "screen": "f02_income",
+  "bounds": [
+   540,
+   278,
+   1020,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/16_10_2026__f03_day_00.png",
+  "label": "16.10.2026 / 0 ₴ / баланс 0 ₴",
+  "screen": "f03_day",
+  "bounds": [
+   48,
+   428,
+   1032,
+   1496
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/День__f03_day_01.png",
+  "label": "День",
+  "screen": "f03_day",
+  "bounds": [
+   84,
+   428,
+   256,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Місяць__f03_day_02.png",
+  "label": "Місяць",
+  "screen": "f03_day",
+  "bounds": [
+   505,
+   428,
+   717,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/За_цей_період_нічого_немає__f03_day_03.png",
+  "label": "За цей період нічого немає",
+  "screen": "f03_day",
+  "bounds": [
+   48,
+   1532,
+   1032,
+   1706
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Тиждень__f04_week_00.png",
+  "label": "Тиждень",
+  "screen": "f04_week",
+  "bounds": [
+   256,
+   428,
+   507,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Рік__f05_year_00.png",
+  "label": "Рік",
+  "screen": "f05_year",
+  "bounds": [
+   717,
+   428,
+   850,
+   554
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Оберіть_дату__f06_period_picker_00.png",
+  "label": "Оберіть дату",
+  "screen": "f06_period_picker",
+  "bounds": [
+   192,
+   687,
+   888,
+   741
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f06_period_picker_01.png",
+  "label": "",
+  "screen": "f06_period_picker",
+  "bounds": [
+   192,
+   789,
+   294,
+   891
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Січень_2026__f06_period_picker_02.png",
+  "label": "Січень 2026",
+  "screen": "f06_period_picker",
+  "bounds": [
+   294,
+   812,
+   786,
+   869
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f06_period_picker_03.png",
+  "label": "",
+  "screen": "f06_period_picker",
+  "bounds": [
+   786,
+   789,
+   888,
+   891
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Пн__f06_period_picker_04.png",
+  "label": "Пн",
+  "screen": "f06_period_picker",
+  "bounds": [
+   192,
+   915,
+   291,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Вт__f06_period_picker_05.png",
+  "label": "Вт",
+  "screen": "f06_period_picker",
+  "bounds": [
+   291,
+   915,
+   391,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Ср__f06_period_picker_06.png",
+  "label": "Ср",
+  "screen": "f06_period_picker",
+  "bounds": [
+   391,
+   915,
+   490,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Чт__f06_period_picker_07.png",
+  "label": "Чт",
+  "screen": "f06_period_picker",
+  "bounds": [
+   490,
+   915,
+   590,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Пт__f06_period_picker_08.png",
+  "label": "Пт",
+  "screen": "f06_period_picker",
+  "bounds": [
+   590,
+   915,
+   689,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Сб__f06_period_picker_09.png",
+  "label": "Сб",
+  "screen": "f06_period_picker",
+  "bounds": [
+   689,
+   915,
+   789,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Нд__f06_period_picker_10.png",
+  "label": "Нд",
+  "screen": "f06_period_picker",
+  "bounds": [
+   789,
+   915,
+   888,
+   957
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/29__f06_period_picker_11.png",
+  "label": "29",
+  "screen": "f06_period_picker",
+  "bounds": [
+   192,
+   969,
+   284,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/30__f06_period_picker_12.png",
+  "label": "30",
+  "screen": "f06_period_picker",
+  "bounds": [
+   293,
+   969,
+   384,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/31__f06_period_picker_13.png",
+  "label": "31",
+  "screen": "f06_period_picker",
+  "bounds": [
+   393,
+   969,
+   485,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/1__f06_period_picker_14.png",
+  "label": "1",
+  "screen": "f06_period_picker",
+  "bounds": [
+   494,
+   969,
+   586,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/2__f06_period_picker_15.png",
+  "label": "2",
+  "screen": "f06_period_picker",
+  "bounds": [
+   595,
+   969,
+   687,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/4__f06_period_picker_16.png",
+  "label": "4",
+  "screen": "f06_period_picker",
+  "bounds": [
+   796,
+   969,
+   888,
+   1049
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/7__f06_period_picker_17.png",
+  "label": "7",
+  "screen": "f06_period_picker",
+  "bounds": [
+   393,
+   1058,
+   485,
+   1138
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/10__f06_period_picker_18.png",
+  "label": "10",
+  "screen": "f06_period_picker",
+  "bounds": [
+   696,
+   1058,
+   787,
+   1138
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/11__f06_period_picker_19.png",
+  "label": "11",
+  "screen": "f06_period_picker",
+  "bounds": [
+   796,
+   1058,
+   888,
+   1138
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/22__f06_period_picker_20.png",
+  "label": "22",
+  "screen": "f06_period_picker",
+  "bounds": [
+   494,
+   1236,
+   586,
+   1315
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/24__f06_period_picker_21.png",
+  "label": "24",
+  "screen": "f06_period_picker",
+  "bounds": [
+   696,
+   1236,
+   787,
+   1315
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/27__f06_period_picker_22.png",
+  "label": "27",
+  "screen": "f06_period_picker",
+  "bounds": [
+   293,
+   1324,
+   384,
+   1404
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Скасувати__f06_period_picker_23.png",
+  "label": "Скасувати",
+  "screen": "f06_period_picker",
+  "bounds": [
+   192,
+   1565,
+   412,
+   1691
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Сьогодні__f06_period_picker_24.png",
+  "label": "Сьогодні",
+  "screen": "f06_period_picker",
+  "bounds": [
+   430,
+   1565,
+   650,
+   1691
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Готово__f06_period_picker_25.png",
+  "label": "Готово",
+  "screen": "f06_period_picker",
+  "bounds": [
+   668,
+   1565,
+   888,
+   1691
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Операції_Жовтень_2026__f07_all_ops_00.png",
+  "label": "Операції · Жовтень 2026",
+  "screen": "f07_all_ops",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Усі__f07_all_ops_01.png",
+  "label": "Усі",
+  "screen": "f07_all_ops",
+  "bounds": [
+   60,
+   278,
+   380,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Витрати__f07_all_ops_02.png",
+  "label": "Витрати",
+  "screen": "f07_all_ops",
+  "bounds": [
+   380,
+   278,
+   700,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Доходи__f07_all_ops_03.png",
+  "label": "Доходи",
+  "screen": "f07_all_ops",
+  "bounds": [
+   700,
+   278,
+   1020,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Продаж_меду__f07_all_ops_04.png",
+  "label": "Продаж меду / 15.10 / +900 ₴",
+  "screen": "f07_all_ops",
+  "bounds": [
+   48,
+   428,
+   1032,
+   596
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Ліки__f07_all_ops_05.png",
+  "label": "Ліки / 15.10 / −120 ₴",
+  "screen": "f07_all_ops",
+  "bounds": [
+   48,
+   596,
+   1032,
+   764
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Внесено_на_складі__f07_all_ops_06.png",
+  "label": "Внесено на складі / 15.10 · QA sugar / −250 ₴",
+  "screen": "f07_all_ops",
+  "bounds": [
+   48,
+   764,
+   1032,
+   932
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Усі__f07b_ops_expenses_00.png",
+  "label": "Усі",
+  "screen": "f07b_ops_expenses",
+  "bounds": [
+   60,
+   278,
+   380,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Витрати__f07b_ops_expenses_01.png",
+  "label": "Витрати",
+  "screen": "f07b_ops_expenses",
+  "bounds": [
+   380,
+   278,
+   700,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Запис__f08_record_00.png",
+  "label": "Запис",
+  "screen": "f08_record",
+  "bounds": [
+   192,
+   910,
+   888,
+   964
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Ліки_витрата_120__f08_record_01.png",
+  "label": "Ліки · витрата 120 ₴ / 15.10",
+  "screen": "f08_record",
+  "bounds": [
+   192,
+   1012,
+   888,
+   1120
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Змінити__f08_record_02.png",
+  "label": "Змінити",
+  "screen": "f08_record",
+  "bounds": [
+   192,
+   1192,
+   888,
+   1318
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Закрити__f08_record_03.png",
+  "label": "Закрити",
+  "screen": "f08_record",
+  "bounds": [
+   192,
+   1342,
+   528,
+   1468
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Скасувати_запис__f08_record_04.png",
+  "label": "Скасувати запис",
+  "screen": "f08_record",
+  "bounds": [
+   552,
+   1342,
+   888,
+   1468
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Змінити_запис__f09_record_edit_00.png",
+  "label": "Змінити запис",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   486,
+   888,
+   540
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/120__f09_record_edit_01.png",
+  "label": "120",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   588,
+   888,
+   732
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Категорія__f09_record_edit_02.png",
+  "label": "Категорія",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   768,
+   356,
+   819
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Корми__f09_record_edit_03.png",
+  "label": "Корми",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   837,
+   412,
+   981
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Ліки__f09_record_edit_04.png",
+  "label": "Ліки",
+  "screen": "f09_record_edit",
+  "bounds": [
+   436,
+   837,
+   672,
+   981
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Дорога__f09_record_edit_05.png",
+  "label": "Дорога",
+  "screen": "f09_record_edit",
+  "bounds": [
+   435,
+   1005,
+   667,
+   1149
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Ремонт__f09_record_edit_06.png",
+  "label": "Ремонт",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   1173,
+   430,
+   1317
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Дата__f09_record_edit_07.png",
+  "label": "Дата: ",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   1398,
+   302,
+   1452
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/15_10_2026__f09_record_edit_08.png",
+  "label": "15.10.2026",
+  "screen": "f09_record_edit",
+  "bounds": [
+   302,
+   1353,
+   570,
+   1497
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/noname__f09_record_edit_09.png",
+  "label": "",
+  "screen": "f09_record_edit",
+  "bounds": [
+   192,
+   1497,
+   888,
+   1695
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/200_characters_remaining__f09_record_edit_10.png",
+  "label": "200 characters remaining",
+  "screen": "f09_record_edit",
+  "bounds": [
+   748,
+   1653,
+   840,
+   1695
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Нова_витрата__f10_new_expense_00.png",
+  "label": "Нова витрата",
+  "screen": "f10_new_expense",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/noname__f10_new_expense_01.png",
+  "label": "",
+  "screen": "f10_new_expense",
+  "bounds": [
+   0,
+   416,
+   1080,
+   725
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Категорія__f10_new_expense_02.png",
+  "label": "Категорія",
+  "screen": "f10_new_expense",
+  "bounds": [
+   0,
+   725,
+   1080,
+   1301
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Корми__f10_new_expense_03.png",
+  "label": "Корми",
+  "screen": "f10_new_expense",
+  "bounds": [
+   48,
+   848,
+   405,
+   983
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Ліки__f10_new_expense_04.png",
+  "label": "Ліки",
+  "screen": "f10_new_expense",
+  "bounds": [
+   429,
+   848,
+   747,
+   983
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Дорога__f10_new_expense_05.png",
+  "label": "Дорога",
+  "screen": "f10_new_expense",
+  "bounds": [
+   427,
+   1007,
+   738,
+   1142
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Нова__f10_new_expense_06.png",
+  "label": "+ Нова",
+  "screen": "f10_new_expense",
+  "bounds": [
+   387,
+   1166,
+   606,
+   1289
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Товар__f10_new_expense_07.png",
+  "label": "Товар / К-сть / Ціна",
+  "screen": "f10_new_expense",
+  "bounds": [
+   0,
+   1301,
+   1080,
+   1958
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вручну__f10_new_expense_08.png",
+  "label": "Вручну",
+  "screen": "f10_new_expense",
+  "bounds": [
+   96,
+   1397,
+   540,
+   1511
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/З_чека__f10_new_expense_09.png",
+  "label": "З чека",
+  "screen": "f10_new_expense",
+  "bounds": [
+   540,
+   1397,
+   984,
+   1511
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Покласти_на_склад__f10_new_expense_10.png",
+  "label": "Покласти на склад",
+  "screen": "f10_new_expense",
+  "bounds": [
+   84,
+   1625,
+   186,
+   1745
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/noname__f10_new_expense_11.png",
+  "label": "",
+  "screen": "f10_new_expense",
+  "bounds": [
+   186,
+   1628,
+   497,
+   1742
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "icons/1__f10_new_expense_12.png",
+  "label": "1",
+  "screen": "f10_new_expense",
+  "bounds": [
+   515,
+   1628,
+   701,
+   1742
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "icons/шт__f10_new_expense_13.png",
+  "label": "шт",
+  "screen": "f10_new_expense",
+  "bounds": [
+   637,
+   1661,
+   701,
+   1709
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f10_new_expense_14.png",
+  "label": "",
+  "screen": "f10_new_expense",
+  "bounds": [
+   719,
+   1628,
+   906,
+   1742
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "icons/Видалити_рядок__f10_new_expense_15.png",
+  "label": "Видалити рядок",
+  "screen": "f10_new_expense",
+  "bounds": [
+   906,
+   1625,
+   996,
+   1745
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/рядок__f10_new_expense_16.png",
+  "label": "+ рядок",
+  "screen": "f10_new_expense",
+  "bounds": [
+   84,
+   1778,
+   296,
+   1922
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Сьогодні__f10_new_expense_17.png",
+  "label": "Сьогодні",
+  "screen": "f10_new_expense",
+  "bounds": [
+   48,
+   2006,
+   303,
+   2052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Додати__f10_new_expense_18.png",
+  "label": "Додати",
+  "screen": "f10_new_expense",
+  "bounds": [
+   48,
+   2064,
+   1032,
+   2220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Сьогодні__f10b_new_expense_scrolled_00.png",
+  "label": "Сьогодні",
+  "screen": "f10b_new_expense_scrolled",
+  "bounds": [
+   48,
+   1887,
+   303,
+   2004
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вчора__f10b_new_expense_scrolled_01.png",
+  "label": "Вчора",
+  "screen": "f10b_new_expense_scrolled",
+  "bounds": [
+   327,
+   1887,
+   531,
+   2004
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Інша_дата__f10b_new_expense_scrolled_02.png",
+  "label": "Інша дата",
+  "screen": "f10b_new_expense_scrolled",
+  "bounds": [
+   555,
+   1887,
+   829,
+   2004
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Сфотографуйте_чек_рівно_при_гарному_світ__f11_from_receipt_00.png",
+  "label": "Сфотографуйте чек рівно, при гарному світлі. Усі позиції потраплять у таблицю нижче. / Товар / К-сть / Ціна",
+  "screen": "f11_from_receipt",
+  "bounds": [
+   0,
+   1301,
+   1080,
+   2052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Сфотографувати_чек__f11_from_receipt_01.png",
+  "label": "Сфотографувати чек",
+  "screen": "f11_from_receipt",
+  "bounds": [
+   84,
+   1667,
+   996,
+   1805
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Обрати_фото_з_галереї__f11_from_receipt_02.png",
+  "label": "Обрати фото з галереї",
+  "screen": "f11_from_receipt",
+  "bounds": [
+   84,
+   1829,
+   996,
+   1955
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/noname__f12_new_category_00.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   0,
+   266,
+   1080,
+   470
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "cards/Позиції_йдуть_на_склад__f12_new_category_01.png",
+  "label": "Позиції йдуть на склад / Рядки таблиці витрати стануть приходом",
+  "screen": "f12_new_category",
+  "bounds": [
+   0,
+   656,
+   1080,
+   911
+  ],
+  "class": "Switch"
+ },
+ {
+  "file": "icons/noname__f12_new_category_02.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   48,
+   1034,
+   192,
+   1178
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_03.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   222,
+   1034,
+   366,
+   1178
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_04.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   396,
+   1034,
+   540,
+   1178
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_05.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   570,
+   1034,
+   714,
+   1178
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_06.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   48,
+   1208,
+   192,
+   1352
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_07.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   222,
+   1208,
+   366,
+   1352
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_08.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   222,
+   1382,
+   366,
+   1526
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__f12_new_category_09.png",
+  "label": "",
+  "screen": "f12_new_category",
+  "bounds": [
+   48,
+   1649,
+   168,
+   1769
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Новий_дохід__f13_new_income_00.png",
+  "label": "Новий дохід",
+  "screen": "f13_new_income",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Категорія__f13_new_income_01.png",
+  "label": "Категорія",
+  "screen": "f13_new_income",
+  "bounds": [
+   0,
+   725,
+   1080,
+   1130
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Продаж_меду__f13_new_income_02.png",
+  "label": "Продаж меду",
+  "screen": "f13_new_income",
+  "bounds": [
+   48,
+   848,
+   532,
+   983
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Інший_дохід__f13_new_income_03.png",
+  "label": "Інший дохід",
+  "screen": "f13_new_income",
+  "bounds": [
+   556,
+   848,
+   952,
+   983
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Головне__g01_settings_main_00.png",
+  "label": "Головне",
+  "screen": "g01_settings_main",
+  "bounds": [
+   36,
+   278,
+   356,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Розмір_шрифту__g01_settings_main_01.png",
+  "label": "Розмір шрифту / Для зручного читання - в усьому застосунку. / Звичайний / Вулик 12 - сьогодні оглянути",
+  "screen": "g01_settings_main",
+  "bounds": [
+   48,
+   446,
+   1032,
+   1052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Звичайний__g01_settings_main_02.png",
+  "label": "Звичайний / А",
+  "screen": "g01_settings_main",
+  "bounds": [
+   93,
+   647,
+   299,
+   827
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Більший__g01_settings_main_03.png",
+  "label": "Більший / А",
+  "screen": "g01_settings_main",
+  "bounds": [
+   323,
+   647,
+   528,
+   827
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Дуже_великий__g01_settings_main_04.png",
+  "label": "Дуже великий / А",
+  "screen": "g01_settings_main",
+  "bounds": [
+   782,
+   647,
+   987,
+   827
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Налаштування__g02_font2_00.png",
+  "label": "Налаштування",
+  "screen": "g02_font2",
+  "bounds": [
+   144,
+   152,
+   936,
+   224
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Шаблони__g02_font2_01.png",
+  "label": "Шаблони",
+  "screen": "g02_font2",
+  "bounds": [
+   380,
+   278,
+   700,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Розмір_шрифту__g02_font2_02.png",
+  "label": "Розмір шрифту / Для зручного читання - в усьому застосунку. / Більший / Вулик 12 - сьогодні оглянути",
+  "screen": "g02_font2",
+  "bounds": [
+   48,
+   446,
+   1032,
+   1148
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Налаштування__g03_font3_00.png",
+  "label": "Налаштування",
+  "screen": "g03_font3",
+  "bounds": [
+   144,
+   148,
+   936,
+   229
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Головне__g03_font3_01.png",
+  "label": "Головне",
+  "screen": "g03_font3",
+  "bounds": [
+   36,
+   278,
+   356,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Шаблони__g03_font3_02.png",
+  "label": "Шаблони",
+  "screen": "g03_font3",
+  "bounds": [
+   380,
+   278,
+   700,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Акаунт__g03_font3_03.png",
+  "label": "Акаунт",
+  "screen": "g03_font3",
+  "bounds": [
+   724,
+   278,
+   1044,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Розмір_шрифту__g03_font3_04.png",
+  "label": "Розмір шрифту / Для зручного читання - в усьому застосунку. / Великий / Вулик 12 - сьогодні оглянути",
+  "screen": "g03_font3",
+  "bounds": [
+   48,
+   446,
+   1032,
+   1193
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Великий__g03_font3_05.png",
+  "label": "Великий / А",
+  "screen": "g03_font3",
+  "bounds": [
+   552,
+   752,
+   758,
+   932
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Налаштування__g04_font4_00.png",
+  "label": "Налаштування",
+  "screen": "g04_font4",
+  "bounds": [
+   144,
+   142,
+   936,
+   235
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Головне__g04_font4_01.png",
+  "label": "Головне",
+  "screen": "g04_font4",
+  "bounds": [
+   36,
+   278,
+   356,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Шаблони__g04_font4_02.png",
+  "label": "Шаблони",
+  "screen": "g04_font4",
+  "bounds": [
+   380,
+   278,
+   700,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Акаунт__g04_font4_03.png",
+  "label": "Акаунт",
+  "screen": "g04_font4",
+  "bounds": [
+   724,
+   278,
+   1044,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Розмір_шрифту__g04_font4_04.png",
+  "label": "Розмір шрифту / Для зручного читання - в усьому застосунку. / Дуже великий / Вулик 12 - сьогодні оглянути",
+  "screen": "g04_font4",
+  "bounds": [
+   48,
+   446,
+   1032,
+   1244
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Дуже_великий__g04_font4_05.png",
+  "label": "Дуже великий / А",
+  "screen": "g04_font4",
+  "bounds": [
+   782,
+   782,
+   987,
+   962
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "cards/Лежак__g05_templates_00.png",
+  "label": "Лежак / 2×1",
+  "screen": "g05_templates",
+  "bounds": [
+   36,
+   446,
+   348,
+   813
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Перейменувати__g05_templates_01.png",
+  "label": "Перейменувати",
+  "screen": "g05_templates",
+  "bounds": [
+   246,
+   711,
+   330,
+   795
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Новий_шаблон__g06_create_template_00.png",
+  "label": "Новий шаблон",
+  "screen": "g06_create_template",
+  "bounds": [
+   168,
+   154,
+   1080,
+   217
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Торкніться_екземпляра_щоб_побачити_інфор__g06_create_template_01.png",
+  "label": "Торкніться екземпляра, щоб побачити інформацію",
+  "screen": "g06_create_template",
+  "bounds": [
+   134,
+   1997,
+   946,
+   2042
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Додати__g06_create_template_02.png",
+  "label": "Додати",
+  "screen": "g06_create_template",
+  "bounds": [
+   192,
+   2094,
+   330,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Переміщення__g06_create_template_03.png",
+  "label": "Переміщення",
+  "screen": "g06_create_template",
+  "bounds": [
+   378,
+   2094,
+   516,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Скасувати__g06_create_template_04.png",
+  "label": "Скасувати",
+  "screen": "g06_create_template",
+  "bounds": [
+   564,
+   2094,
+   702,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Зберегти__g06_create_template_05.png",
+  "label": "Зберегти",
+  "screen": "g06_create_template",
+  "bounds": [
+   750,
+   2094,
+   888,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Тип_для_малювання__g07_template_add_object_00.png",
+  "label": "Тип для малювання",
+  "screen": "g07_template_add_object",
+  "bounds": [
+   192,
+   873,
+   888,
+   927
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вулики__g07_template_add_object_01.png",
+  "label": "Вулики",
+  "screen": "g07_template_add_object",
+  "bounds": [
+   204,
+   987,
+   540,
+   1101
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Перешкоди__g07_template_add_object_02.png",
+  "label": "Перешкоди",
+  "screen": "g07_template_add_object",
+  "bounds": [
+   540,
+   987,
+   876,
+   1101
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Інше__g07_template_add_object_03.png",
+  "label": "Інше",
+  "screen": "g07_template_add_object",
+  "bounds": [
+   216,
+   1149,
+   360,
+   1293
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вулики__g08_template_type_hives_00.png",
+  "label": "Вулики",
+  "screen": "g08_template_type_hives",
+  "bounds": [
+   204,
+   987,
+   540,
+   1101
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Перешкоди__g08_template_type_hives_01.png",
+  "label": "Перешкоди",
+  "screen": "g08_template_type_hives",
+  "bounds": [
+   540,
+   987,
+   876,
+   1101
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Додаємо_Перешкода_Річка_торкніться_кліти__g09_template_drawing_00.png",
+  "label": "Додаємо: Перешкода - Річка   ·   торкніться клітинки, щоб прибрати",
+  "screen": "g09_template_drawing",
+  "bounds": [
+   42,
+   1962,
+   1038,
+   2052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__g10_template_obstacles_00.png",
+  "label": "+",
+  "screen": "g10_template_obstacles",
+  "bounds": [
+   912,
+   970,
+   1038,
+   1096
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Додаємо_Перешкода_Річка_торкніться_кліти__g10_template_obstacles_01.png",
+  "label": "Додаємо: Перешкода - Річка   ·   торкніться клітинки, щоб прибрати",
+  "screen": "g10_template_obstacles",
+  "bounds": [
+   42,
+   1962,
+   1038,
+   2052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Новий_шаблон__g11_obstacle_info_00.png",
+  "label": "Новий шаблон",
+  "screen": "g11_obstacle_info",
+  "bounds": [
+   414,
+   656,
+   1038,
+   725
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Перешкода_Річка__g11_obstacle_info_01.png",
+  "label": "Перешкода - Річка",
+  "screen": "g11_obstacle_info",
+  "bounds": [
+   414,
+   731,
+   1038,
+   782
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Кам_яно_бежевий_988569__g11_obstacle_info_02.png",
+  "label": "Кам'яно-бежевий  #988569",
+  "screen": "g11_obstacle_info",
+  "bounds": [
+   414,
+   887,
+   1038,
+   971
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Інформація_про_екземпляр_справа__g11_obstacle_info_03.png",
+  "label": "Інформація про екземпляр - справа",
+  "screen": "g11_obstacle_info",
+  "bounds": [
+   256,
+   1997,
+   824,
+   2042
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вулик__g12_template_editor_00.png",
+  "label": "Вулик",
+  "screen": "g12_template_editor",
+  "bounds": [
+   168,
+   154,
+   1080,
+   217
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вулик__g13_template_instance_00.png",
+  "label": "Вулик",
+  "screen": "g13_template_instance",
+  "bounds": [
+   414,
+   656,
+   1038,
+   725
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__g13_template_instance_01.png",
+  "label": "−",
+  "screen": "g13_template_instance",
+  "bounds": [
+   912,
+   1132,
+   1038,
+   1258
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Акаунт__g14_account_00.png",
+  "label": "Акаунт",
+  "screen": "g14_account",
+  "bounds": [
+   724,
+   278,
+   1044,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Акаунт__g14_account_01.png",
+  "label": "Акаунт / Є / Євгеній Резвін / evgenijrezvin@gmail.com / Вхід через Google / Вийти",
+  "screen": "g14_account",
+  "bounds": [
+   48,
+   446,
+   1032,
+   1052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Синхронізація__g14_account_02.png",
+  "label": "Синхронізація / Увійдіть через Google, щоб синхронізувати дані між телефонами / Синхронізувати зараз / Завантажити з сервера",
+  "screen": "g14_account",
+  "bounds": [
+   48,
+   1052,
+   1032,
+   1817
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Синхронізувати_через_мобільний_інтернет__g14_account_03.png",
+  "label": "Синхронізувати через мобільний інтернет",
+  "screen": "g14_account",
+  "bounds": [
+   93,
+   1568,
+   987,
+   1736
+  ],
+  "class": "Switch"
+ },
+ {
+  "file": "cards/Резервні_копії__g14_account_04.png",
+  "label": "Резервні копії / Остання копія: сьогодні 06:10 / Резервні копії",
+  "screen": "g14_account",
+  "bounds": [
+   48,
+   1817,
+   1032,
+   2219
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Конфіденційність__g14_account_05.png",
+  "label": "Конфіденційність",
+  "screen": "g14_account",
+  "bounds": [
+   48,
+   2219,
+   1032,
+   2268
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Акаунт__g15_account_bottom_00.png",
+  "label": "Акаунт / Є / Євгеній Резвін / evgenijrezvin@gmail.com / Вхід через Google / Вийти",
+  "screen": "g15_account_bottom",
+  "bounds": [
+   48,
+   410,
+   1032,
+   588
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Конфіденційність__g15_account_bottom_01.png",
+  "label": "Конфіденційність",
+  "screen": "g15_account_bottom",
+  "bounds": [
+   48,
+   1755,
+   1032,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Політика_конфіденційності__g15_account_bottom_02.png",
+  "label": "Політика конфіденційності",
+  "screen": "g15_account_bottom",
+  "bounds": [
+   93,
+   1875,
+   987,
+   1995
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Політика_конфіденційності__g16_privacy_00.png",
+  "label": "Політика конфіденційності",
+  "screen": "g16_privacy",
+  "bounds": [
+   192,
+   976,
+   888,
+   1030
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Текст_політики_конфіденційності_скоро_з___g16_privacy_01.png",
+  "label": "Текст політики конфіденційності скоро з'явиться тут.",
+  "screen": "g16_privacy",
+  "bounds": [
+   192,
+   1078,
+   888,
+   1186
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Закрити__g16_privacy_02.png",
+  "label": "Закрити",
+  "screen": "g16_privacy",
+  "bounds": [
+   667,
+   1258,
+   888,
+   1402
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Резервні_копії__g17_backups_00.png",
+  "label": "Резервні копії",
+  "screen": "g17_backups",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Копія_даних_робиться_сама_кожні_6_годин___g17_backups_01.png",
+  "label": "Копія даних робиться сама кожні 6 годин і зберігається на цьому телефоні 2 дні. Фото в копію не входять - вони лишаються на телефоні.",
+  "screen": "g17_backups",
+  "bounds": [
+   48,
+   290,
+   1032,
+   443
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Зробити_копію_зараз__g17_backups_02.png",
+  "label": "Зробити копію зараз",
+  "screen": "g17_backups",
+  "bounds": [
+   48,
+   479,
+   1032,
+   611
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/16_10_2026_06_10__g17_backups_03.png",
+  "label": "16.10.2026 06:10 / автоматична · 240 КБ",
+  "screen": "g17_backups",
+  "bounds": [
+   48,
+   659,
+   1032,
+   1016
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Відновити__g17_backups_04.png",
+  "label": "Відновити",
+  "screen": "g17_backups",
+  "bounds": [
+   93,
+   839,
+   528,
+   947
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Зберегти_у_файл__g17_backups_05.png",
+  "label": "Зберегти у файл",
+  "screen": "g17_backups",
+  "bounds": [
+   552,
+   839,
+   987,
+   947
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Видалити_акаунт__g18_delete_confirm_00.png",
+  "label": "Видалити акаунт?",
+  "screen": "g18_delete_confirm",
+  "bounds": [
+   192,
+   796,
+   888,
+   850
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Буде_видалено_назавжди_ваш_акаунт_усі_па__g18_delete_confirm_01.png",
+  "label": "Буде видалено назавжди: ваш акаунт, усі пасіки, вулики, огляди, нотатки, склад, фінанси, фото складу й нічні копії - на сервері й на цьому телефоні, а також резервні копії на телефоні. Ваші помічники втратять доступ. Записи, які ви робили як помічник у чужих пасіках, лишаються в їхніх власників.",
+  "screen": "g18_delete_confirm",
+  "bounds": [
+   192,
+   898,
+   888,
+   1384
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Далі__g18_delete_confirm_02.png",
+  "label": "Далі",
+  "screen": "g18_delete_confirm",
+  "bounds": [
+   552,
+   1456,
+   888,
+   1582
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Меню__h01_home_00.png",
+  "label": "Меню",
+  "screen": "h01_home",
+  "bounds": [
+   30,
+   134,
+   174,
+   278
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Сканувати_QR_код__h01_home_01.png",
+  "label": "Сканувати QR-код",
+  "screen": "h01_home",
+  "bounds": [
+   36,
+   146,
+   180,
+   290
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Налаштування__h01_home_02.png",
+  "label": "Налаштування",
+  "screen": "h01_home",
+  "bounds": [
+   906,
+   134,
+   1050,
+   278
+  ],
+  "class": "View"
+ },
+ {
+  "file": "images/Що_нового__h01_home_03.png",
+  "label": "Що нового",
+  "screen": "h01_home",
+  "bounds": [
+   384,
+   432,
+   696,
+   744
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "texts/Vulyk__h01_home_04.png",
+  "label": "Vulyk",
+  "screen": "h01_home",
+  "bounds": [
+   443,
+   774,
+   637,
+   882
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Доброго_ранку_пасічнику__h01_home_05.png",
+  "label": "Доброго ранку, пасічнику!",
+  "screen": "h01_home",
+  "bounds": [
+   134,
+   964,
+   947,
+   1021
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Утримайте_вулик_на_карті_і_одразу_перетя__h01_home_06.png",
+  "label": "Утримайте вулик на карті - і одразу перетягуйте його на нове місце. / Натисніть - далі",
+  "screen": "h01_home",
+  "bounds": [
+   326,
+   1078,
+   799,
+   1525
+  ],
+  "class": "View"
+ },
+ {
+  "file": "images/Вулик_поштомат__h01_home_07.png",
+  "label": "Вулик-поштомат",
+  "screen": "h01_home",
+  "bounds": [
+   811,
+   1213,
+   983,
+   1525
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "buttons/Почати__h01_home_08.png",
+  "label": "Почати",
+  "screen": "h01_home",
+  "bounds": [
+   98,
+   1567,
+   983,
+   1735
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Фінанси__h01_home_09.png",
+  "label": "Фінанси",
+  "screen": "h01_home",
+  "bounds": [
+   110,
+   1777,
+   307,
+   2011
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Склад__h01_home_10.png",
+  "label": "Склад",
+  "screen": "h01_home",
+  "bounds": [
+   331,
+   1777,
+   528,
+   2011
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Навчання__h01_home_11.png",
+  "label": "Навчання",
+  "screen": "h01_home",
+  "bounds": [
+   552,
+   1777,
+   749,
+   2011
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Відгук__h01_home_12.png",
+  "label": "Відгук",
+  "screen": "h01_home",
+  "bounds": [
+   773,
+   1777,
+   971,
+   2011
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/В_огляді_Зберегти_Змін_немає_і_Пропустит__h02_home_tip_00.png",
+  "label": "В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик. / Натисніть - далі",
+  "screen": "h02_home_tip",
+  "bounds": [
+   326,
+   1078,
+   799,
+   1525
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Що_нового_0_3_15__h03_whats_new_00.png",
+  "label": "Що нового · 0.3.15",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   176,
+   1014,
+   260
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/запис_у_фінансах_можна_змінити_категорію__h03_whats_new_01.png",
+  "label": "запис у фінансах можна змінити - категорію, суму, дату й коментар",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   302,
+   1014,
+   434
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/табличка_завершити_навчання_вдвічі_менша__h03_whats_new_02.png",
+  "label": "табличка «завершити навчання» вдвічі менша, у правому нижньому куті",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   434,
+   1014,
+   566
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/зміна_набору_характеристик_шаблону_запит__h03_whats_new_03.png",
+  "label": "зміна набору характеристик шаблону - запит «Застосувати до поставлених вуликів?»",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   566,
+   1014,
+   698
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/на_головному_екрані_видно_стан_синхроніз__h03_whats_new_04.png",
+  "label": "на головному екрані видно стан синхронізації (час, що очікує, немає зв'язку); синхронізація одразу після входу й запуску",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   698,
+   1014,
+   884
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/козирьок_на_карті_меню_назва_з_олівцем_ш__h03_whats_new_05.png",
+  "label": "«козирьок» на карті (меню, назва з олівцем, шестерня) і екран «Налаштування» з вкладками «Головна» і «Шаблони»; шестерня й на головному екрані",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   884,
+   1014,
+   1124
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/фільтр_Об_єкт_зверху_історії_видно_можна__h03_whats_new_06.png",
+  "label": "фільтр «Об'єкт» зверху історії (видно, можна змінити чи очистити); склад - «Списати» й «Історія» на плитці, вартість приходу за замовчуванням 0",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   1124,
+   1014,
+   1364
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/назву_значок_і_колір_вулика_можна_змінит__h03_whats_new_07.png",
+  "label": "назву, значок і колір вулика можна змінити з панелі й у робочому режимі",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   1364,
+   1014,
+   1496
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Сьогодні_оглянути_список_прострочених_ву__h03_whats_new_08.png",
+  "label": "«Сьогодні оглянути» - список прострочених вуликів і «Почати обхід»; на вулику-поштоматі кількість прострочених вуликів",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   1496,
+   1014,
+   1682
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/невідомий_QR_Прив_язати_до_вулика_тап_по__h03_whats_new_09.png",
+  "label": "невідомий QR - «Прив'язати до вулика» (тап по вулику на карті, далі огляд); «Пропустити цей вулик» при прив'язці підряд",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   1682,
+   1014,
+   1868
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/головне_меню_лежить_поверх_неклікабельно__h03_whats_new_10.png",
+  "label": "головне меню лежить поверх неклікабельної останньої карти, «Почати» просто прибирає меню",
+  "screen": "h03_whats_new",
+  "bounds": [
+   66,
+   1868,
+   1014,
+   2052
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/До_роботи__h03_whats_new_11.png",
+  "label": "До роботи",
+  "screen": "h03_whats_new",
+  "bounds": [
+   210,
+   2064,
+   870,
+   2220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/зміна_набору_характеристик_шаблону_запит__h03b_whats_new_scrolled_00.png",
+  "label": "зміна набору характеристик шаблону - запит «Застосувати до поставлених вуликів?»",
+  "screen": "h03b_whats_new_scrolled",
+  "bounds": [
+   66,
+   110,
+   1014,
+   204
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/козирьок_на_карті_меню_назва_з_олівцем_ш__h03b_whats_new_scrolled_01.png",
+  "label": "«козирьок» на карті (меню, назва з олівцем, шестерня) і екран «Налаштування» з вкладками «Головна» і «Шаблони»; шестерня й на головному екрані",
+  "screen": "h03b_whats_new_scrolled",
+  "bounds": [
+   66,
+   390,
+   1014,
+   630
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/огляд_Зберегти_Змін_немає_Пропустити_вед__h03b_whats_new_scrolled_02.png",
+  "label": "огляд - «Зберегти», «Змін немає», «Пропустити» ведуть до наступного вулика; швидка правка значення з історією; QR - тап по комірці; «Параметри» внизу панелі; періодичність не у формі огляду",
+  "screen": "h03b_whats_new_scrolled",
+  "bounds": [
+   66,
+   1560,
+   1014,
+   1854
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Ще_44_змін_і_виправлення_помилок_Collaps__h03b_whats_new_scrolled_03.png",
+  "label": "Ще: 44 змін і виправлення помилок, Collapsed",
+  "screen": "h03b_whats_new_scrolled",
+  "bounds": [
+   66,
+   1857,
+   1014,
+   2025
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Зворотний_зв_язок__h04_feedback_00.png",
+  "label": "Зворотний зв'язок",
+  "screen": "h04_feedback",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Бажаєте_поділитись_чимось_цінним_запропо__h04_feedback_01.png",
+  "label": "Бажаєте поділитись чимось цінним, запропонувати ідею чи поскаржитися на проблеми з додатком? Напишіть, для нас це цінно.",
+  "screen": "h04_feedback",
+  "bounds": [
+   60,
+   290,
+   1020,
+   506
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/5000_characters_remaining__h04_feedback_02.png",
+  "label": "5000 characters remaining",
+  "screen": "h04_feedback",
+  "bounds": [
+   872,
+   1989,
+   984,
+   2031
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Надіслати__h04_feedback_03.png",
+  "label": "Надіслати",
+  "screen": "h04_feedback",
+  "bounds": [
+   48,
+   2070,
+   1032,
+   2220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "images/Базові_поняття__l01_lessons_00.png",
+  "label": "Базові поняття",
+  "screen": "l01_lessons",
+  "bounds": [
+   48,
+   314,
+   519,
+   837
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "images/Групи_і_параметри_обходу__l01_lessons_01.png",
+  "label": "Групи і параметри обходу",
+  "screen": "l01_lessons",
+  "bounds": [
+   561,
+   314,
+   1032,
+   837
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "images/Шаблони__l01_lessons_02.png",
+  "label": "Шаблони",
+  "screen": "l01_lessons",
+  "bounds": [
+   48,
+   879,
+   519,
+   1403
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "images/скоро__l01_lessons_03.png",
+  "label": "скоро / QR-код",
+  "screen": "l01_lessons",
+  "bounds": [
+   561,
+   879,
+   1032,
+   1403
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "images/скоро__l01_lessons_04.png",
+  "label": "скоро / Склад",
+  "screen": "l01_lessons",
+  "bounds": [
+   48,
+   1445,
+   519,
+   1968
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "images/скоро__l01_lessons_05.png",
+  "label": "скоро / Історія",
+  "screen": "l01_lessons",
+  "bounds": [
+   561,
+   1445,
+   1032,
+   1968
+  ],
+  "class": "ImageView"
+ },
+ {
+  "file": "texts/Групи_і_параметри_обходу__l02_resume_dialog_00.png",
+  "label": "Групи і параметри обходу",
+  "screen": "l02_resume_dialog",
+  "bounds": [
+   192,
+   958,
+   888,
+   1012
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Ти_вже_починав_цей_урок_Продовжити_з_міс__l02_resume_dialog_01.png",
+  "label": "Ти вже починав цей урок. Продовжити з місця, де зупинився, чи почати спочатку?",
+  "screen": "l02_resume_dialog",
+  "bounds": [
+   192,
+   1060,
+   888,
+   1222
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Продовжити__l02_resume_dialog_02.png",
+  "label": "Продовжити",
+  "screen": "l02_resume_dialog",
+  "bounds": [
+   552,
+   1294,
+   888,
+   1420
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Назад__l03_lesson2_step_00.png",
+  "label": "Назад",
+  "screen": "l03_lesson2_step",
+  "bounds": [
+   30,
+   134,
+   174,
+   278
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Пасіка__l03_lesson2_step_01.png",
+  "label": "Пасіка",
+  "screen": "l03_lesson2_step",
+  "bounds": [
+   462,
+   168,
+   618,
+   237
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__l03_lesson2_step_02.png",
+  "label": "Робочий режим",
+  "screen": "l03_lesson2_step",
+  "bounds": [
+   42,
+   2034,
+   456,
+   2202
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Друже_вітаю_тебе_Хочеш_більше_дізнатись___l03_lesson2_step_03.png",
+  "label": "Друже, вітаю тебе. Хочеш більше дізнатись про обходи вуликів? Ти вчасно, натисни на вулик!",
+  "screen": "l03_lesson2_step",
+  "bounds": [
+   516,
+   1446,
+   1002,
+   1716
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__l04_lesson3_start_00.png",
+  "label": "Робочий режим",
+  "screen": "l04_lesson3_start",
+  "bounds": [
+   42,
+   2034,
+   456,
+   2202
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Друже_це_знову_ти_Мені_подобається_твоя___l04_lesson3_start_01.png",
+  "label": "Друже, це знову ти! Мені подобається твоя жага до знань. Сьогодні навчимося створювати шаблони - заготовки вуликів і перешкод, які потім ставиш на карту.",
+  "screen": "l04_lesson3_start",
+  "bounds": [
+   516,
+   1374,
+   1002,
+   1752
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Продовжити__l04_lesson3_start_02.png",
+  "label": "Продовжити",
+  "screen": "l04_lesson3_start",
+  "bounds": [
+   480,
+   1824,
+   1044,
+   1962
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/завершити_навчання__l04_lesson3_start_03.png",
+  "label": "завершити навчання",
+  "screen": "l04_lesson3_start",
+  "bounds": [
+   592,
+   1986,
+   932,
+   2094
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Здоров_був_новачок_укуси_мене_бджола_А_д__l05_lesson1_start_00.png",
+  "label": "Здоров був, новачок, укуси мене бджола! А де твоя пасіка? Непорядок... Натисни «Створити карту»",
+  "screen": "l05_lesson1_start",
+  "bounds": [
+   481,
+   1530,
+   1002,
+   1800
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Пасіка_1__l06_lesson1_map_00.png",
+  "label": "Пасіка 1",
+  "screen": "l06_lesson1_map",
+  "bounds": [
+   441,
+   168,
+   639,
+   237
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__l06_lesson1_map_01.png",
+  "label": "Робочий режим",
+  "screen": "l06_lesson1_map",
+  "bounds": [
+   42,
+   2034,
+   456,
+   2202
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Щось_у_тебе_друже_і_вуликів_то_нема_Дода__l06_lesson1_map_02.png",
+  "label": "Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим «Редагування» унизу ліворуч",
+  "screen": "l06_lesson1_map",
+  "bounds": [
+   516,
+   1446,
+   1002,
+   1716
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Я_трохи_про_тебе_потурбувався_Створив_Ву__l07_lesson1_choose_00.png",
+  "label": "Я трохи про тебе потурбувався. Створив «Вулик» і «Лежак». Обери «Вулик»",
+  "screen": "l07_lesson1_choose",
+  "bounds": [
+   516,
+   1500,
+   1002,
+   1716
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Мої_пасіки__m01_menu_00.png",
+  "label": "Мої пасіки",
+  "screen": "m01_menu",
+  "bounds": [
+   0,
+   284,
+   912,
+   452
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Склад__m01_menu_01.png",
+  "label": "Склад",
+  "screen": "m01_menu",
+  "bounds": [
+   0,
+   452,
+   912,
+   620
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/QR_код_Collapsed__m01_menu_02.png",
+  "label": "QR-код, Collapsed",
+  "screen": "m01_menu",
+  "bounds": [
+   0,
+   959,
+   912,
+   1127
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Зворотний_зв_язок__m01_menu_03.png",
+  "label": "Зворотний зв'язок",
+  "screen": "m01_menu",
+  "bounds": [
+   0,
+   1298,
+   912,
+   1466
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Сканувати__m02_menu_qr_00.png",
+  "label": "Сканувати",
+  "screen": "m02_menu_qr",
+  "bounds": [
+   120,
+   1127,
+   912,
+   1295
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Прив_язати_підряд__m02_menu_qr_01.png",
+  "label": "Прив'язати підряд",
+  "screen": "m02_menu_qr",
+  "bounds": [
+   120,
+   1463,
+   912,
+   1631
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Робочий_режим__m03_map_work_00.png",
+  "label": "Робочий режим",
+  "screen": "m03_map_work",
+  "bounds": [
+   42,
+   2028,
+   456,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Налаштування_пасіки__m04_apiary_settings_00.png",
+  "label": "Налаштування пасіки",
+  "screen": "m04_apiary_settings",
+  "bounds": [
+   192,
+   736,
+   888,
+   790
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Пасіка_1__m04_apiary_settings_01.png",
+  "label": "Пасіка 1",
+  "screen": "m04_apiary_settings",
+  "bounds": [
+   192,
+   838,
+   888,
+   982
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/noname__m04_apiary_settings_02.png",
+  "label": "",
+  "screen": "m04_apiary_settings",
+  "bounds": [
+   192,
+   1018,
+   888,
+   1162
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Діє_для_всіх_вуликів_пасіки_Вулику_можна__m04_apiary_settings_03.png",
+  "label": "Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Оглянути».",
+  "screen": "m04_apiary_settings",
+  "bounds": [
+   192,
+   1186,
+   888,
+   1276
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Звіт_по_пасіці_Excel__m04_apiary_settings_04.png",
+  "label": "Звіт по пасіці (Excel)",
+  "screen": "m04_apiary_settings",
+  "bounds": [
+   192,
+   1300,
+   888,
+   1444
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Характеристики__p01_panel_00.png",
+  "label": "Характеристики",
+  "screen": "p01_panel",
+  "bounds": [
+   405,
+   479,
+   720,
+   581
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Нотатки__p01_panel_01.png",
+  "label": "Нотатки",
+  "screen": "p01_panel",
+  "bounds": [
+   720,
+   479,
+   1035,
+   581
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/QR_код__p01_panel_02.png",
+  "label": "QR-код",
+  "screen": "p01_panel",
+  "bounds": [
+   444,
+   1324,
+   731,
+   1369
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/1__p01_panel_03.png",
+  "label": "№ 1",
+  "screen": "p01_panel",
+  "bounds": [
+   761,
+   1292,
+   1038,
+   1400
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Кількість_днів_до_обходу_днів__p01_panel_04.png",
+  "label": "Кількість днів до обходу (днів)",
+  "screen": "p01_panel",
+  "bounds": [
+   414,
+   1400,
+   761,
+   1544
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Дата_останнього_обходу__p01_panel_05.png",
+  "label": "Дата останнього обходу",
+  "screen": "p01_panel",
+  "bounds": [
+   414,
+   1544,
+   761,
+   1733
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/15_10_2026__p01_panel_06.png",
+  "label": "15.10.2026",
+  "screen": "p01_panel",
+  "bounds": [
+   761,
+   1585,
+   1038,
+   1693
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Мітка_матки__p01_panel_07.png",
+  "label": "Мітка матки",
+  "screen": "p01_panel",
+  "bounds": [
+   414,
+   1756,
+   761,
+   1855
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Жовтий__p01_panel_08.png",
+  "label": "Жовтий",
+  "screen": "p01_panel",
+  "bounds": [
+   761,
+   1733,
+   1038,
+   1877
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Кількість_вуличок_з_бджолами__p01_panel_09.png",
+  "label": "Кількість вуличок з бджолами",
+  "screen": "p01_panel",
+  "bounds": [
+   414,
+   1877,
+   761,
+   2066
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/7__p01_panel_10.png",
+  "label": "7",
+  "screen": "p01_panel",
+  "bounds": [
+   761,
+   1918,
+   1038,
+   2026
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Оглянути__p01_panel_11.png",
+  "label": "Оглянути",
+  "screen": "p01_panel",
+  "bounds": [
+   414,
+   2096,
+   714,
+   2210
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Змін_немає__p01_panel_12.png",
+  "label": "Змін немає",
+  "screen": "p01_panel",
+  "bounds": [
+   738,
+   2096,
+   1038,
+   2210
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__p01_panel_13.png",
+  "label": "Робочий режим",
+  "screen": "p01_panel",
+  "bounds": [
+   42,
+   2028,
+   456,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__p02_panel_scrolled_00.png",
+  "label": "+",
+  "screen": "p02_panel_scrolled",
+  "bounds": [
+   912,
+   1051,
+   1038,
+   1177
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Робочий_режим__p02_panel_scrolled_01.png",
+  "label": "Робочий режим",
+  "screen": "p02_panel_scrolled",
+  "bounds": [
+   42,
+   2028,
+   456,
+   2196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Вулик_1__p03_inspect_00.png",
+  "label": "Вулик 1 / Заповнити параметри",
+  "screen": "p03_inspect",
+  "bounds": [
+   192,
+   522,
+   888,
+   666
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Закрити__p03_inspect_01.png",
+  "label": "Закрити",
+  "screen": "p03_inspect",
+  "bounds": [
+   744,
+   522,
+   888,
+   666
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Дата_останнього_обходу__p03_inspect_02.png",
+  "label": "Дата останнього обходу",
+  "screen": "p03_inspect",
+  "bounds": [
+   222,
+   744,
+   527,
+   834
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/15_10_2026__p03_inspect_03.png",
+  "label": "15.10.2026",
+  "screen": "p03_inspect",
+  "bounds": [
+   581,
+   736,
+   864,
+   841
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Мітка_матки__p03_inspect_04.png",
+  "label": "Мітка матки",
+  "screen": "p03_inspect",
+  "bounds": [
+   222,
+   943,
+   527,
+   988
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Без_кольору__p03_inspect_05.png",
+  "label": "Без кольору",
+  "screen": "p03_inspect",
+  "bounds": [
+   581,
+   876,
+   665,
+   960
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Білий__p03_inspect_06.png",
+  "label": "Білий",
+  "screen": "p03_inspect",
+  "bounds": [
+   677,
+   876,
+   761,
+   960
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Червоний__p03_inspect_07.png",
+  "label": "Червоний",
+  "screen": "p03_inspect",
+  "bounds": [
+   581,
+   972,
+   665,
+   1056
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Кількість_вуличок_з_бджолами__p03_inspect_08.png",
+  "label": "Кількість вуличок з бджолами",
+  "screen": "p03_inspect",
+  "bounds": [
+   222,
+   1098,
+   527,
+   1233
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/7__p03_inspect_09.png",
+  "label": "7",
+  "screen": "p03_inspect",
+  "bounds": [
+   581,
+   1111,
+   864,
+   1219
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Підгодівля_зі_складу__p03_inspect_10.png",
+  "label": "Підгодівля зі складу",
+  "screen": "p03_inspect",
+  "bounds": [
+   222,
+   1293,
+   527,
+   1383
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Не_списувати__p03_inspect_11.png",
+  "label": "Не списувати",
+  "screen": "p03_inspect",
+  "bounds": [
+   581,
+   1302,
+   864,
+   1374
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "icons/Зберегти__p03_inspect_12.png",
+  "label": "Зберегти",
+  "screen": "p03_inspect",
+  "bounds": [
+   192,
+   1707,
+   342,
+   1857
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Змін_немає__p03_inspect_13.png",
+  "label": "Змін немає",
+  "screen": "p03_inspect",
+  "bounds": [
+   372,
+   1707,
+   708,
+   1857
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Пропустити__p03_inspect_14.png",
+  "label": "Пропустити",
+  "screen": "p03_inspect",
+  "bounds": [
+   738,
+   1707,
+   888,
+   1857
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Жовтень_2026__p04_date_picker_00.png",
+  "label": "Жовтень 2026",
+  "screen": "p04_date_picker",
+  "bounds": [
+   294,
+   812,
+   786,
+   869
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Не_списувати__p05_feeding_menu_00.png",
+  "label": "Не списувати",
+  "screen": "p05_feeding_menu",
+  "bounds": [
+   533,
+   1266,
+   936,
+   1410
+  ],
+  "class": "MenuItem"
+ },
+ {
+  "file": "buttons/QA_sugar_є_7_кг__p05_feeding_menu_01.png",
+  "label": "QA sugar (є 7 кг)",
+  "screen": "p05_feeding_menu",
+  "bounds": [
+   533,
+   1410,
+   936,
+   1554
+  ],
+  "class": "MenuItem"
+ },
+ {
+  "file": "buttons/noname__p06_inspect_keyboard_00.png",
+  "label": "",
+  "screen": "p06_inspect_keyboard",
+  "bounds": [
+   192,
+   834,
+   888,
+   999
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "icons/Вулик__p07_icon_picker_00.png",
+  "label": "Вулик",
+  "screen": "p07_icon_picker",
+  "bounds": [
+   369,
+   1162,
+   525,
+   1318
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Стільник__p07_icon_picker_01.png",
+  "label": "Стільник",
+  "screen": "p07_icon_picker",
+  "bounds": [
+   555,
+   1162,
+   711,
+   1318
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Медовий_оранжевий__p08_color_picker_00.png",
+  "label": "Медовий оранжевий",
+  "screen": "p08_color_picker",
+  "bounds": [
+   219,
+   1003,
+   357,
+   1141
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Перейменувати_об_єкт__p09_rename_00.png",
+  "label": "Перейменувати об'єкт",
+  "screen": "p09_rename",
+  "bounds": [
+   192,
+   967,
+   888,
+   1021
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Вулик_1__p09_rename_01.png",
+  "label": "Вулик 1",
+  "screen": "p09_rename",
+  "bounds": [
+   192,
+   1069,
+   888,
+   1213
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/Характеристики__p10_notes_00.png",
+  "label": "Характеристики",
+  "screen": "p10_notes",
+  "bounds": [
+   405,
+   479,
+   720,
+   581
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Нотатки__p10_notes_01.png",
+  "label": "Нотатки",
+  "screen": "p10_notes",
+  "bounds": [
+   720,
+   479,
+   1035,
+   581
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Нотатка__p10_notes_02.png",
+  "label": "+ Нотатка",
+  "screen": "p10_notes",
+  "bounds": [
+   402,
+   608,
+   1038,
+   722
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Усі__p10_notes_03.png",
+  "label": "Усі",
+  "screen": "p10_notes",
+  "bounds": [
+   402,
+   752,
+   509,
+   827
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Огляд__p10_notes_04.png",
+  "label": "Огляд",
+  "screen": "p10_notes",
+  "bounds": [
+   527,
+   752,
+   683,
+   827
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Вчора__p10_notes_05.png",
+  "label": "Вчора / QA note 2",
+  "screen": "p10_notes",
+  "bounds": [
+   402,
+   857,
+   1038,
+   1079
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Дії__p10_notes_06.png",
+  "label": "Дії",
+  "screen": "p10_notes",
+  "bounds": [
+   933,
+   872,
+   1035,
+   974
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "cards/Вчора__p10_notes_07.png",
+  "label": "Вчора / Огляд / QA test note",
+  "screen": "p10_notes",
+  "bounds": [
+   402,
+   1079,
+   1038,
+   1301
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/el__p10_notes_08.png",
+  "label": "+",
+  "screen": "p10_notes",
+  "bounds": [
+   912,
+   1051,
+   1038,
+   1177
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Змінити__p11_note_actions_00.png",
+  "label": "Змінити",
+  "screen": "p11_note_actions",
+  "bounds": [
+   699,
+   896,
+   1035,
+   1040
+  ],
+  "class": "MenuItem"
+ },
+ {
+  "file": "texts/Нова_нотатка__p12_note_new_kb_00.png",
+  "label": "Нова нотатка",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   254,
+   960,
+   308
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/noname__p12_note_new_kb_01.png",
+  "label": "",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   356,
+   960,
+   668
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Дата__p12_note_new_kb_02.png",
+  "label": "Дата",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   710,
+   201,
+   758
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Сьогодні__p12_note_new_kb_03.png",
+  "label": "Сьогодні",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   776,
+   344,
+   869
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Інша_дата__p12_note_new_kb_04.png",
+  "label": "Інша дата",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   368,
+   776,
+   610,
+   869
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Мітка__p12_note_new_kb_05.png",
+  "label": "Мітка",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   911,
+   216,
+   959
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Без_мітки__p12_note_new_kb_06.png",
+  "label": "Без мітки",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   977,
+   360,
+   1023
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Огляд__p12_note_new_kb_07.png",
+  "label": "Огляд",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   384,
+   977,
+   559,
+   1023
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Мітка__p12_note_new_kb_08.png",
+  "label": "+ Мітка",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   583,
+   977,
+   784,
+   1023
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Скасувати__p12_note_new_kb_09.png",
+  "label": "Скасувати",
+  "screen": "p12_note_new_kb",
+  "bounds": [
+   120,
+   1095,
+   528,
+   1221
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Без_мітки__p13_note_new_00.png",
+  "label": "Без мітки",
+  "screen": "p13_note_new",
+  "bounds": [
+   120,
+   1374,
+   360,
+   1467
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Огляд__p13_note_new_01.png",
+  "label": "Огляд",
+  "screen": "p13_note_new",
+  "bounds": [
+   384,
+   1374,
+   559,
+   1467
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Мітка__p13_note_new_02.png",
+  "label": "+ Мітка",
+  "screen": "p13_note_new",
+  "bounds": [
+   583,
+   1374,
+   784,
+   1467
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Утримуйте_мітку_щоб_перейменувати_чи_вид__p13_note_new_03.png",
+  "label": "Утримуйте мітку, щоб перейменувати чи видалити.",
+  "screen": "p13_note_new",
+  "bounds": [
+   120,
+   1485,
+   900,
+   1530
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Нова_мітка__p14_new_tag_00.png",
+  "label": "Нова мітка",
+  "screen": "p14_new_tag",
+  "bounds": [
+   192,
+   967,
+   888,
+   1021
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Таблиця_параметрів__p15_params_list_00.png",
+  "label": "Таблиця параметрів",
+  "screen": "p15_params_list",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Створити_параметр__p15_params_list_01.png",
+  "label": "Створити параметр",
+  "screen": "p15_params_list",
+  "bounds": [
+   936,
+   137,
+   1038,
+   239
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Список__p15_params_list_02.png",
+  "label": "Список",
+  "screen": "p15_params_list",
+  "bounds": [
+   36,
+   266,
+   531,
+   380
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Конструктор__p15_params_list_03.png",
+  "label": "Конструктор",
+  "screen": "p15_params_list",
+  "bounds": [
+   549,
+   266,
+   1044,
+   380
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Кількість_днів_до_обходу__p15_params_list_04.png",
+  "label": "Кількість днів до обходу / Ціле число · днів · обов'язкова",
+  "screen": "p15_params_list",
+  "bounds": [
+   36,
+   434,
+   1044,
+   662
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Мітка_матки__p15_params_list_05.png",
+  "label": "Мітка матки / Колір · обов'язкова",
+  "screen": "p15_params_list",
+  "bounds": [
+   36,
+   1118,
+   1044,
+   1346
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/noname__p15_params_list_06.png",
+  "label": "",
+  "screen": "p15_params_list",
+  "bounds": [
+   162,
+   1394,
+   264,
+   1496
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Кількість_вуличок_з_бджолами__p15_params_list_07.png",
+  "label": "Кількість вуличок з бджолами / Ціле число",
+  "screen": "p15_params_list",
+  "bounds": [
+   288,
+   1411,
+   882,
+   1480
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Історія__p15_params_list_08.png",
+  "label": "Історія",
+  "screen": "p15_params_list",
+  "bounds": [
+   882,
+   1391,
+   990,
+   1499
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Застосувати_до__p15_params_list_09.png",
+  "label": "Застосувати до:",
+  "screen": "p15_params_list",
+  "bounds": [
+   48,
+   2031,
+   303,
+   2076
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Цей_вулик__p15_params_list_10.png",
+  "label": "Цей вулик / Цей вулик",
+  "screen": "p15_params_list",
+  "bounds": [
+   51,
+   2103,
+   377,
+   2217
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Усі_Вулик__p15_params_list_11.png",
+  "label": "Усі «Вулик» / Усі «Вулик»",
+  "screen": "p15_params_list",
+  "bounds": [
+   377,
+   2103,
+   703,
+   2217
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "texts/Затисни_параметр_і_веди_в_потрібну_групу__p16_params_constructor_00.png",
+  "label": "Затисни параметр і веди в потрібну групу.",
+  "screen": "p16_params_constructor",
+  "bounds": [
+   36,
+   434,
+   1044,
+   515
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Нова_група__p16_params_constructor_01.png",
+  "label": "+ Нова група",
+  "screen": "p16_params_constructor",
+  "bounds": [
+   36,
+   515,
+   1044,
+   641
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Обрані_але_ще_без_групи__p16_params_constructor_02.png",
+  "label": "Обрані, але ще без групи / Затисни й перетягни в групу. / Кількість днів до обходу (днів) / Періодичність обходу (днів) / Дата останнього обходу / Мітка матки / Кількість вуличок з бджолами",
+  "screen": "p16_params_constructor",
+  "bounds": [
+   36,
+   683,
+   1044,
+   1412
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Новий_параметр__p17_new_param_00.png",
+  "label": "Новий параметр",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   426,
+   888,
+   480
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Назва__p17_new_param_01.png",
+  "label": "Назва",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   528,
+   888,
+   573
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Одиниця_виміру__p17_new_param_02.png",
+  "label": "Одиниця виміру",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   759,
+   888,
+   804
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Тип_даних__p17_new_param_03.png",
+  "label": "Тип даних",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   990,
+   888,
+   1035
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Аа__p17_new_param_04.png",
+  "label": "Аа / Текст",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   1053,
+   528,
+   1185
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/123__p17_new_param_05.png",
+  "label": "123 / Ціле число",
+  "screen": "p17_new_param",
+  "bounds": [
+   552,
+   1053,
+   888,
+   1185
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/1_5__p17_new_param_06.png",
+  "label": "1,5 / Дробове число",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   1209,
+   528,
+   1341
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Дата__p17_new_param_07.png",
+  "label": "Дата",
+  "screen": "p17_new_param",
+  "bounds": [
+   552,
+   1209,
+   888,
+   1341
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Так__p17_new_param_08.png",
+  "label": "Так / Ні",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   1365,
+   528,
+   1497
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Список__p17_new_param_09.png",
+  "label": "Список",
+  "screen": "p17_new_param",
+  "bounds": [
+   552,
+   1365,
+   888,
+   1497
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Тип_даних_можна_змінити_поки_немає_жодно__p17_new_param_10.png",
+  "label": "Тип даних можна змінити, поки немає жодного запису.",
+  "screen": "p17_new_param",
+  "bounds": [
+   192,
+   1671,
+   888,
+   1755
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Сканувати_QR_код__q01_scan_hive_00.png",
+  "label": "Сканувати QR-код",
+  "screen": "q01_scan_hive",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Код_вулика__q01_scan_hive_01.png",
+  "label": "Код вулика",
+  "screen": "q01_scan_hive",
+  "bounds": [
+   36,
+   266,
+   528,
+   386
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Чек__q01_scan_hive_02.png",
+  "label": "Чек",
+  "screen": "q01_scan_hive",
+  "bounds": [
+   552,
+   266,
+   1044,
+   386
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Наведіть_камеру_на_QR_код_вулика__q01_scan_hive_03.png",
+  "label": "Наведіть камеру на QR-код вулика",
+  "screen": "q01_scan_hive",
+  "bounds": [
+   221,
+   1986,
+   859,
+   2040
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Чек__q02_scan_receipt_00.png",
+  "label": "Чек",
+  "screen": "q02_scan_receipt",
+  "bounds": [
+   552,
+   266,
+   1044,
+   386
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Сфотографуйте_чек_рівно_при_гарному_світ__q02_scan_receipt_01.png",
+  "label": "Сфотографуйте чек рівно, при гарному світлі, щоб було видно весь текст. Товар, кількість і ціна потраплять у таблицю, яку можна виправити.",
+  "screen": "q02_scan_receipt",
+  "bounds": [
+   72,
+   1266,
+   1008,
+   1419
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Сфотографувати_чек__q02_scan_receipt_02.png",
+  "label": "Сфотографувати чек",
+  "screen": "q02_scan_receipt",
+  "bounds": [
+   72,
+   1485,
+   1008,
+   1629
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Обрати_фото_з_галереї__q02_scan_receipt_03.png",
+  "label": "Обрати фото з галереї",
+  "screen": "q02_scan_receipt",
+  "bounds": [
+   72,
+   1659,
+   1008,
+   1791
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Введіть_код_посилання_вручну__q03_manual_code_00.png",
+  "label": "Введіть код (посилання) вручну",
+  "screen": "q03_manual_code",
+  "bounds": [
+   192,
+   967,
+   888,
+   1021
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/QR_коди_Пасіка_1__q04_generate_00.png",
+  "label": "QR-коди: Пасіка 1",
+  "screen": "q04_generate",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Червоний_ободок_обрано_коду_немає_зелени__q04_generate_01.png",
+  "label": "Червоний ободок - обрано, коду немає · зелений - код уже є (2 з 3)",
+  "screen": "q04_generate",
+  "bounds": [
+   42,
+   314,
+   1038,
+   404
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Усі_без_коду__q04_generate_02.png",
+  "label": "Усі без коду",
+  "screen": "q04_generate",
+  "bounds": [
+   36,
+   2094,
+   362,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Згенерувати_1__q04_generate_03.png",
+  "label": "Згенерувати (1)",
+  "screen": "q04_generate",
+  "bounds": [
+   392,
+   2094,
+   1044,
+   2232
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Наліпка_для_Лежак_1__q05_bind_series_00.png",
+  "label": "Наліпка для: Лежак 1",
+  "screen": "q05_bind_series",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Прихід_і_списання__s01_stock_00.png",
+  "label": "Прихід і списання",
+  "screen": "s01_stock",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Прихід_і_списання__s01_stock_01.png",
+  "label": "Прихід і списання",
+  "screen": "s01_stock",
+  "bounds": [
+   36,
+   278,
+   528,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/QA_sugar__s01_stock_02.png",
+  "label": "QA sugar",
+  "screen": "s01_stock",
+  "bounds": [
+   36,
+   446,
+   522,
+   1230
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/7_кг__s01_stock_03.png",
+  "label": "7 кг",
+  "screen": "s01_stock",
+  "bounds": [
+   36,
+   512,
+   522,
+   1104
+  ],
+  "class": "View"
+ },
+ {
+  "file": "icons/Історія__s01_stock_04.png",
+  "label": "Історія",
+  "screen": "s01_stock",
+  "bounds": [
+   423,
+   527,
+   507,
+   611
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Прихід__s01_stock_05.png",
+  "label": "Прихід",
+  "screen": "s01_stock",
+  "bounds": [
+   36,
+   1122,
+   270,
+   1230
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Списати__s01_stock_06.png",
+  "label": "Списати",
+  "screen": "s01_stock",
+  "bounds": [
+   288,
+   1122,
+   522,
+   1230
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/По_одному__s02_recount_00.png",
+  "label": "По одному",
+  "screen": "s02_recount",
+  "bounds": [
+   222,
+   416,
+   572,
+   560
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Списком__s02_recount_01.png",
+  "label": "Списком",
+  "screen": "s02_recount",
+  "bounds": [
+   596,
+   416,
+   858,
+   560
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Перерахувати__s02_recount_02.png",
+  "label": "Перерахувати",
+  "screen": "s02_recount",
+  "bounds": [
+   36,
+   1272,
+   522,
+   1380
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/По_одному__s03_recount_list_00.png",
+  "label": "По одному",
+  "screen": "s03_recount_list",
+  "bounds": [
+   222,
+   416,
+   518,
+   560
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "buttons/Списком__s03_recount_list_01.png",
+  "label": "Списком",
+  "screen": "s03_recount_list",
+  "bounds": [
+   542,
+   416,
+   858,
+   560
+  ],
+  "class": "Button"
+ },
+ {
+  "file": "cards/7__s03_recount_list_02.png",
+  "label": "7",
+  "screen": "s03_recount_list",
+  "bounds": [
+   36,
+   596,
+   1044,
+   788
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/кг__s03_recount_list_03.png",
+  "label": "кг",
+  "screen": "s03_recount_list",
+  "bounds": [
+   915,
+   659,
+   960,
+   725
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Переоблік_QA_sugar__s04_recount_dialog_00.png",
+  "label": "Переоблік: QA sugar",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   132,
+   756,
+   948,
+   810
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/За_обліком_7_кг__s04_recount_dialog_01.png",
+  "label": "За обліком: 7 кг",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   132,
+   888,
+   405,
+   939
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/16_10_2026__s04_recount_dialog_02.png",
+  "label": "16.10.2026",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   242,
+   969,
+   948,
+   1077
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/noname__s04_recount_dialog_03.png",
+  "label": "",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   132,
+   1107,
+   948,
+   1245
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/noname__s04_recount_dialog_04.png",
+  "label": "",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   132,
+   1275,
+   948,
+   1413
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/Скасувати__s04_recount_dialog_05.png",
+  "label": "Скасувати",
+  "screen": "s04_recount_dialog",
+  "bounds": [
+   132,
+   1497,
+   528,
+   1623
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Нова_номенклатура__s05_new_item_00.png",
+  "label": "Нова номенклатура",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   307,
+   948,
+   361
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Одиниця_виміру__s05_new_item_01.png",
+  "label": "Одиниця виміру",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   625,
+   408,
+   676
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/шт__s05_new_item_02.png",
+  "label": "шт",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   694,
+   388,
+   820
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/рамка__s05_new_item_03.png",
+  "label": "рамка",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   994,
+   388,
+   1120
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/упаковка__s05_new_item_04.png",
+  "label": "упаковка",
+  "screen": "s05_new_item",
+  "bounds": [
+   412,
+   994,
+   668,
+   1120
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/noname__s05_new_item_05.png",
+  "label": "",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   1162,
+   948,
+   1360
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Дійде_до_нього_час_докупити__s05_new_item_06.png",
+  "label": "Дійде до нього - «час докупити»",
+  "screen": "s05_new_item",
+  "bounds": [
+   180,
+   1318,
+   704,
+   1360
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Одразу_прихід_необов_язково__s05_new_item_07.png",
+  "label": "Одразу прихід (необов'язково)",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   1402,
+   661,
+   1453
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/noname__s05_new_item_08.png",
+  "label": "",
+  "screen": "s05_new_item",
+  "bounds": [
+   132,
+   1453,
+   525,
+   1597
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/Зробити_фото__s05_new_item_09.png",
+  "label": "Зробити фото",
+  "screen": "s05_new_item",
+  "bounds": [
+   378,
+   1639,
+   948,
+   1741
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/З_галереї__s05_new_item_10.png",
+  "label": "З галереї",
+  "screen": "s05_new_item",
+  "bounds": [
+   378,
+   1759,
+   948,
+   1861
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Прихід_QA_sugar__s06_income_00.png",
+  "label": "Прихід: QA sugar",
+  "screen": "s06_income",
+  "bounds": [
+   132,
+   672,
+   948,
+   726
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Залишок_7_кг__s06_income_01.png",
+  "label": "Залишок: 7 кг",
+  "screen": "s06_income",
+  "bounds": [
+   132,
+   804,
+   369,
+   855
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/noname__s06_income_02.png",
+  "label": "",
+  "screen": "s06_income",
+  "bounds": [
+   132,
+   1191,
+   948,
+   1329
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "texts/Історія_QA_sugar__s08_item_history_00.png",
+  "label": "Історія: QA sugar",
+  "screen": "s08_item_history",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Списано__s08_item_history_01.png",
+  "label": "Списано / 15.10.2026 / −3 кг / стало: 7 кг",
+  "screen": "s08_item_history",
+  "bounds": [
+   36,
+   302,
+   1044,
+   488
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Прихід__s08_item_history_02.png",
+  "label": "Прихід / 15.10.2026 · 250 грн · 25 грн/кг / +10 кг / стало: 10 кг",
+  "screen": "s08_item_history",
+  "bounds": [
+   36,
+   518,
+   1044,
+   704
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Номенклатура__s09_item_edit_00.png",
+  "label": "Номенклатура",
+  "screen": "s09_item_edit",
+  "bounds": [
+   132,
+   351,
+   948,
+   405
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/QA_sugar__s09_item_edit_01.png",
+  "label": "QA sugar",
+  "screen": "s09_item_edit",
+  "bounds": [
+   132,
+   483,
+   948,
+   627
+  ],
+  "class": "EditText"
+ },
+ {
+  "file": "buttons/кг__s09_item_edit_02.png",
+  "label": "кг",
+  "screen": "s09_item_edit",
+  "bounds": [
+   412,
+   738,
+   668,
+   864
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/інша__s09_item_edit_03.png",
+  "label": "інша…",
+  "screen": "s09_item_edit",
+  "bounds": [
+   692,
+   1038,
+   948,
+   1164
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Видалити__s09_item_edit_04.png",
+  "label": "Видалити",
+  "screen": "s09_item_edit",
+  "bounds": [
+   132,
+   1752,
+   948,
+   1878
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Історія__y01_history_00.png",
+  "label": "Історія",
+  "screen": "y01_history",
+  "bounds": [
+   144,
+   157,
+   936,
+   220
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Склад__y01_history_01.png",
+  "label": "Склад",
+  "screen": "y01_history",
+  "bounds": [
+   552,
+   278,
+   1044,
+   398
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Звіт_по_пасіці_Excel__y01_history_02.png",
+  "label": "Звіт по пасіці (Excel)",
+  "screen": "y01_history",
+  "bounds": [
+   36,
+   422,
+   1044,
+   542
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Кількість_вуличок_з_бджолами__y01_history_03.png",
+  "label": "Кількість вуличок з бджолами",
+  "screen": "y01_history",
+  "bounds": [
+   36,
+   578,
+   1044,
+   764
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Мітка_матки__y01_history_04.png",
+  "label": "Мітка матки",
+  "screen": "y01_history",
+  "bounds": [
+   36,
+   794,
+   1044,
+   980
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Дата_останнього_обходу__y01_history_05.png",
+  "label": "Дата останнього обходу",
+  "screen": "y01_history",
+  "bounds": [
+   36,
+   1010,
+   1044,
+   1196
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Історія_Кількість_вуличок_з_бджолами__y02_param_history_00.png",
+  "label": "Історія: Кількість вуличок з бджолами",
+  "screen": "y02_param_history",
+  "bounds": [
+   144,
+   125,
+   936,
+   251
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/Усі_об_єкти__y02_param_history_01.png",
+  "label": "Усі об'єкти",
+  "screen": "y02_param_history",
+  "bounds": [
+   36,
+   278,
+   1044,
+   392
+  ],
+  "class": "View"
+ },
+ {
+  "file": "texts/Вулик_1__y02_param_history_02.png",
+  "label": "Вулик 1 / 15.10.2026 11:43 / 7",
+  "screen": "y02_param_history",
+  "bounds": [
+   36,
+   428,
+   1044,
+   614
+  ],
+  "class": "View"
+ },
+ {
+  "file": "buttons/Усі_об_єкти__y03_object_filter_00.png",
+  "label": "Усі об'єкти",
+  "screen": "y03_object_filter",
+  "bounds": [
+   120,
+   1144,
+   960,
+   1246
+  ],
+  "class": "View"
+ },
+ {
+  "file": "cards/QA_sugar__y04_history_stock_00.png",
+  "label": "QA sugar / Залишок: 7 кг",
+  "screen": "y04_history_stock",
+  "bounds": [
+   36,
+   446,
+   1044,
+   632
+  ],
+  "class": "View"
+ }
+]
