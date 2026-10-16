@@ -363,6 +363,62 @@ class AppStringsUk extends AppStrings {
   @override
   String get invitationsNone => 'Запрошень немає';
 
+  // ---- Помічник «Пасічник» ----
+  @override
+  String get assistantTitle => 'Пасічник';
+  @override
+  String get assistantOpen => 'Поговорити з пасічником';
+  @override
+  String get assistantHint => 'Напишіть, що зробити: «відкрий склад», «запиши огляд 5-го вулика»…';
+  @override
+  String get assistantGreeting => 'Я допоможу із застосунком: відкрити потрібне, знайти вулики, записати огляд, прихід на склад чи витрату. Що зробити?';
+  @override
+  String get assistantSend => 'Надіслати';
+  @override
+  String get assistantNewChat => 'Нова розмова';
+  @override
+  String get assistantNewChatConfirm =>
+      'Почати нову розмову? Попередня зникне з цього телефона (повідомлення в черзі лишаться).';
+  @override
+  String get assistantOffline => "Немає зв'язку - надішлю, щойно з'явиться";
+  @override
+  String get assistantWaiting => 'чекає на інтернет';
+  @override
+  String get assistantSending => 'надсилаю…';
+  @override
+  String get assistantFailed => 'не надіслано';
+  @override
+  String get assistantRetry => 'Повторити';
+  @override
+  String get assistantDelete => 'Видалити';
+  @override
+  String get assistantThinking => 'Пасічник думає…';
+  @override
+  String get assistantCardTitle => 'Записати так?';
+  @override
+  String get assistantYes => 'Так';
+  @override
+  String get assistantNo => 'Ні';
+  @override
+  String get assistantSaved => 'Записано';
+  @override
+  String get assistantRejected => 'Не записано';
+  @override
+  String get assistantUndo => 'Скасувати';
+  @override
+  String get assistantUndone => 'Скасовано';
+  @override
+  String assistantOpenTarget(String what) => 'Відкрити: $what';
+  @override
+  String get assistantUnauthorized => 'Помічник недоступний: сервер не прийняв код доступу';
+  @override
+  String get assistantServerError => 'Сервер помічника не відповів як слід';
+  @override
+  String get assistantDemo => 'Демо-режим: сервер помічника не підключено';
+  @override
+  String assistantMail(int n) =>
+      'Пасічник відповів: $n ${plural(n, one: 'нове', few: 'нові', many: 'нових')}';
+
   // ---- Дата й час ----
   @override
   String todayAt(String hm) => 'сьогодні $hm';

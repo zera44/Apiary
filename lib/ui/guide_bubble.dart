@@ -115,6 +115,20 @@ class GuideBubble extends StatelessWidget {
   }
 }
 
+/// Хмарка пасічника (як у [GuideBubble]) навколо довільного вмісту - напр.,
+/// відповідь у чаті помічника.
+class SpeechBubble extends StatelessWidget {
+  final Widget child;
+  final Color? border;
+  const SpeechBubble({super.key, required this.child, this.border});
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _BubblePainter(fill: AppColors.popupBg, border: border ?? AppColors.create),
+        child: Padding(padding: const EdgeInsets.fromLTRB(22, 12, 14, 12), child: child),
+      );
+}
+
 /// Заокруглена хмарка з «хвостиком» ліворуч (до пасічника).
 class _BubblePainter extends CustomPainter {
   final Color fill;
