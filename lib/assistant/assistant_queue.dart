@@ -68,6 +68,13 @@ class AssistantQueue {
 
   bool get chatVisible => presenter != null;
 
+  /// Скасовані кнопкою «Скасувати» записи: модель дізнається про них із
+  /// наступним повідомленням («[Скасовано: …]») - інакше вважала б їх
+  /// зробленими.
+  final List<String> _undone = [];
+
+  void noteUndone(String label) => _undone.add(label);
+
   /// Нових відповідей і карток, яких людина не бачила (значок на поштоматі).
   final ValueNotifier<int> unread = ValueNotifier<int>(0);
 
@@ -182,7 +189,12 @@ class AssistantQueue {
     final start = history.length;
     final session = AssistantSession(model, history: history);
     try {
-      final reply = await session.ask(item.text, tools: tools.run, today: now());
+      final notes = [..._undone];
+      final text = notes.isEmpty
+          ? item.text
+          : '${item.text}\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
+      final reply = await session.ask(text, tools: tools.run, today: now());
+      _undone.removeRange(0, notes.length);
       await store.appendHistory(session.messages.sublist(start));
       await store.update(item.id, {'status': ChatStatus.sent, 'error': null});
       await store.addAssistant(reply.text,

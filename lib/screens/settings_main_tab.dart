@@ -19,8 +19,9 @@ import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
 
-/// Налаштування → «Головне»: розмір шрифту (і далі - інше про сам
-/// застосунок). Синхронізація, копії й акаунт - на вкладці «Акаунт».
+/// Налаштування → «Головне»: розмір шрифту, помічник «Пасічник» (і далі -
+/// інше про сам застосунок). Синхронізація, копії й акаунт - на вкладці
+/// «Акаунт».
 class MainSettingsTab extends StatelessWidget {
   final Repository repo;
   const MainSettingsTab({super.key, required this.repo});
@@ -28,7 +29,46 @@ class MainSettingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [_TextSizeSection(repo: repo)],
+        children: [_TextSizeSection(repo: repo), _AssistantSection(repo: repo)],
+      );
+}
+
+/// «Пасічник-помічник»: «Читати відповіді вголос».
+class _AssistantSection extends StatefulWidget {
+  final Repository repo;
+  const _AssistantSection({required this.repo});
+
+  @override
+  State<_AssistantSection> createState() => _AssistantSectionState();
+}
+
+class _AssistantSectionState extends State<_AssistantSection> {
+  bool _speak = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AssistantVoiceSettings.speak(widget.repo).then((v) {
+      if (mounted) setState(() => _speak = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => SettingsSection(
+        title: tr.assistantSection,
+        children: [
+          SwitchListTile(
+            key: const ValueKey('assistant-speak'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(tr.assistantSpeakSetting,
+                style: TextStyle(color: AppColors.text, fontSize: 14)),
+            value: _speak,
+            onChanged: (v) async {
+              setState(() => _speak = v);
+              await AssistantVoiceSettings.setSpeak(widget.repo, v);
+            },
+          ),
+        ],
       );
 }
 
@@ -46,8 +86,6 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
   String? _backups;
   bool? _mobile;
 
-  /// Помічник читає відповіді вголос.
-  bool _speak = false;
   bool _busy = false;
 
   SyncService? get _sync => SyncService.current;
@@ -57,9 +95,6 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     super.initState();
     _loadBackups();
     _loadMobile();
-    AssistantVoiceSettings.speak(widget.repo).then((v) {
-      if (mounted) setState(() => _speak = v);
-    });
   }
 
   Future<void> _loadMobile() async {
@@ -295,22 +330,6 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                 ),
               ] else
                 Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-            ],
-          ),
-          SettingsSection(
-            title: tr.assistantSection,
-            children: [
-              SwitchListTile(
-                key: const ValueKey('assistant-speak'),
-                contentPadding: EdgeInsets.zero,
-                title: Text(tr.assistantSpeakSetting,
-                    style: TextStyle(color: AppColors.text, fontSize: 14)),
-                value: _speak,
-                onChanged: (v) async {
-                  setState(() => _speak = v);
-                  await AssistantVoiceSettings.setSpeak(widget.repo, v);
-                },
-              ),
             ],
           ),
           SettingsSection(

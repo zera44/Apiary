@@ -245,17 +245,19 @@ class AssistantTools {
   }
 
   Future<List<_Hive>> _allHives() async {
-    final apiaries = {for (final a in await repo.listApiaries()) a.name: a.id};
+    final apiaries = await repo.listApiaries();
+    final byElement = <String, String>{
+      for (final e in (await repo.listElementsByApiary([for (final a in apiaries) a.id])).entries)
+        for (final el in e.value) el.id: e.key,
+    };
     return [
       for (final t in await repo.visitTargets())
         _Hive(
-          t.key.startsWith('g:')
-              ? EntityRef.group(t.key.substring(2))
-              : EntityRef.element(t.elementId),
+          t.key.startsWith('g:') ? EntityRef.group(t.key.substring(2)) : EntityRef.element(t.elementId),
           t.key,
           t.name,
           t.apiaryName,
-          apiaries[t.apiaryName],
+          byElement[t.elementId],
           t.elementId,
         ),
     ];
@@ -350,14 +352,15 @@ class AssistantTools {
 
   Future<Map<String, dynamic>> _apiariesList() async {
     final apiaries = await repo.listApiaries();
-    final els = await repo.listElementsByApiary([for (final a in apiaries) a.id]);
+    final hives = await _allHives();
     return {
       'apiaries': [
         for (final a in apiaries)
           {
             'id': a.id,
             'name': a.name,
-            'hives': (els[a.id] ?? const []).where((e) => e.isHive && !e.archived).length,
+            // група вуликів (лежак) - один вулик, як у find_hives
+            'hives': hives.where((h) => h.apiaryId == a.id).length,
           },
       ],
     };
@@ -369,6 +372,7 @@ class AssistantTools {
     final due = _s(input, 'due');
     final param = _s(input, 'parameter');
     final value = _norm(_s(input, 'value'));
+    final hasQr = input['has_qr'];
     final limit = ((input['limit'] as num?)?.toInt() ?? 20).clamp(1, 50);
     if (due.isNotEmpty && !const ['overdue', 'week'].contains(due)) {
       throw _Bad('due: overdue або week');
@@ -400,6 +404,14 @@ class AssistantTools {
         for (final h in hives)
           if (daysLeft(h) != null && daysLeft(h)! <= (due == 'overdue' ? 0 : 7)) h,
       ];
+    }
+
+    if (hasQr is bool) {
+      final kept = <_Hive>[];
+      for (final h in hives) {
+        if ((await repo.qrFor(h.ref) != null) == hasQr) kept.add(h);
+      }
+      hives = kept;
     }
 
     final p = param.isEmpty

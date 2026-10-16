@@ -32,6 +32,11 @@ test('open_screen знає саме ті екрани, що описано в п
   assert.deepEqual(screen.enum, [...SCREENS]);
 });
 
+test('find_hives уміє шукати за QR-кодом', () => {
+  const find = TOOLS.find((t) => t.name === 'find_hives')!;
+  assert.equal((find.input_schema as any).properties.has_qr.type, 'boolean');
+});
+
 test('інструменти запису кажуть про підтвердження', () => {
   for (const n of WRITE_TOOLS) {
     assert.match(TOOLS.find((t) => t.name === n)!.description, /підтверджує/, n);

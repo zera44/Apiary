@@ -256,6 +256,18 @@ void main() {
     });
   });
 
+  test('«Скасувати» - модель дізнається з наступним повідомленням, один раз', () async {
+    final m = FakeModel([say('Добре'), say('Так')]);
+    final q = queue(m);
+    q.noteUndone('Прихід: Цукор');
+    await q.submit('Скільки цукру?');
+    expect(m.sent[0].last['content'], contains('[Скасовано: Прихід: Цукор]'));
+    await q.submit('А меду?');
+    expect(m.sent[1].last['content'], isNot(contains('Скасовано')));
+    // у чаті людина бачить лише своє повідомлення
+    expect((await store.items()).first.text, 'Скільки цукру?');
+  });
+
   test('«Нова розмова» - чисто, але черга лишається', () async {
     final q = queue(FakeModel([say('Так')]));
     await q.submit('Раз');

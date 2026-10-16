@@ -105,6 +105,24 @@ void main() {
       expect((await ok(tools(), 'find_hives', {'parameter': 'Сила', 'value': '5'}))['count'], 0);
     });
 
+    test('група вуликів (лежак) - один вулик і в apiaries_list, і в find_hives', () async {
+      await repo.addElement(apiary, 5, 5, label: 'Лежак 1', groupId: 'lezhak');
+      await repo.addElement(apiary, 6, 5, label: 'Лежак 1', groupId: 'lezhak');
+      final list = await ok(tools(), 'apiaries_list');
+      final mine = (list['apiaries'] as List).firstWhere((a) => a['id'] == apiary);
+      final found = await ok(tools(), 'find_hives', {'apiary': apiary});
+      expect(mine['hives'], 3);
+      expect(found['count'], mine['hives']);
+    });
+
+    test('find_hives - з QR-кодом і без', () async {
+      await repo.linkQr('https://vulyk.app/h/1', EntityRef.element(hive5));
+      final withQr = await ok(tools(), 'find_hives', {'has_qr': true});
+      expect([for (final h in withQr['hives']) h['name']], ['Вулик 5']);
+      final without = await ok(tools(), 'find_hives', {'has_qr': false, 'apiary': apiary});
+      expect([for (final h in without['hives']) h['name']], ['Вулик 7']);
+    });
+
     test('find_hives - невідома пасіка чи неправильний due - помилка для моделі', () async {
       expect(await bad(tools(), 'find_hives', {'apiary': 'Степова'}), contains('Біля хати'));
       await bad(tools(), 'find_hives', {'due': 'soon'});

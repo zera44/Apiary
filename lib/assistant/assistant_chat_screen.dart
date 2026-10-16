@@ -237,6 +237,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     if (u == null) return;
     try {
       await u.undo();
+      widget.queue.noteUndone(u.label);
       setState(() => _undone.add(c.id));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
