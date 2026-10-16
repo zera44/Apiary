@@ -418,6 +418,41 @@ class AppStringsUk extends AppStrings {
   @override
   String assistantMail(int n) =>
       'Пасічник відповів: $n ${plural(n, one: 'нове', few: 'нові', many: 'нових')}';
+  @override
+  String get assistantMicHold => "Тримайте кнопку й говоріть";
+  @override
+  String get assistantListening => "Говоріть… (відпустіть - надішлю)";
+  @override
+  String get assistantMicExplainTitle => "Мікрофон для пасічника";
+  @override
+  String get assistantMicExplain =>
+      "Щоб говорити з пасічником голосом, застосунку потрібен дозвіл на мікрофон. Він слухає лише, поки ви тримаєте кнопку з мікрофоном. Зараз телефон спитає дозвіл.";
+  @override
+  String get assistantMicExplainOk => "Зрозуміло";
+  @override
+  String assistantVoiceModel(int mb) =>
+      "Щоб говорити без інтернету, один раз завантажте модель голосу (~$mb МБ, краще через Wi-Fi).";
+  @override
+  String get assistantVoiceDownload => "Завантажити";
+  @override
+  String assistantVoiceDownloading(int percent) => "Завантажую модель голосу: $percent%";
+  @override
+  String get assistantVoiceReady => "Модель голосу готова - тримайте кнопку й говоріть";
+  @override
+  String get assistantVoiceOffline =>
+      "Без інтернету розпізнавання голосу недоступне: модель голосу ще не завантажена. Напишіть текстом або завантажте модель, коли буде Wi-Fi.";
+  @override
+  String get assistantVoiceUnavailable => "Голосовий ввід на цьому телефоні недоступний";
+  @override
+  String get assistantNoMic =>
+      "Немає дозволу на мікрофон (Налаштування телефону → Застосунки → Vulyk → Дозволи)";
+  @override
+  String get assistantNoUkVoice =>
+      "У синтезаторі мови телефону немає української - відповіді не читатимуться вголос";
+  @override
+  String get assistantSection => "Пасічник-помічник";
+  @override
+  String get assistantSpeakSetting => "Читати відповіді вголос";
 
   // ---- Дата й час ----
   @override

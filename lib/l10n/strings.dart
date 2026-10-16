@@ -209,6 +209,21 @@ abstract class AppStrings {
   String get assistantServerError;
   String get assistantDemo;
   String assistantMail(int n);
+  String get assistantMicHold;
+  String get assistantListening;
+  String get assistantMicExplainTitle;
+  String get assistantMicExplain;
+  String get assistantMicExplainOk;
+  String assistantVoiceModel(int mb);
+  String get assistantVoiceDownload;
+  String assistantVoiceDownloading(int percent);
+  String get assistantVoiceReady;
+  String get assistantVoiceOffline;
+  String get assistantVoiceUnavailable;
+  String get assistantNoMic;
+  String get assistantNoUkVoice;
+  String get assistantSection;
+  String get assistantSpeakSetting;
 
   // ---- Дата й час ----
   /// «сьогодні 14:05»

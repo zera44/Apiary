@@ -70,6 +70,7 @@ void main() {
 
   Future<void> send(WidgetTester tester, String text) async {
     await tester.enterText(find.byKey(const ValueKey('assistant-input')), text);
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     await tester.pumpAndSettle();
@@ -109,6 +110,7 @@ void main() {
     await tester.runAsync(() async => sugar = await repo.addStockItem('Цукор', 'кг'));
     await pumpChat(tester, q);
     await tester.enterText(find.byKey(const ValueKey('assistant-input')), 'Прийми 10 кг цукру');
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     expect(find.text(tr.assistantCardTitle), findsOneWidget);
@@ -141,6 +143,7 @@ void main() {
     ]);
     await pumpChat(tester, q);
     await tester.enterText(find.byKey(const ValueKey('assistant-input')), 'Витрата 300');
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     final card = (await tester.runAsync(store.items))!.firstWhere((i) => i.isCard);

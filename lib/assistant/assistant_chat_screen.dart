@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
+import '../services/voice_input.dart';
 import '../ui/common.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
@@ -11,6 +12,7 @@ import 'assistant_nav.dart';
 import 'assistant_queue.dart';
 import 'assistant_store.dart';
 import 'assistant_tools.dart';
+import 'assistant_voice.dart';
 
 /// Чат із помічником «Пасічник»: відповіді - хмарками пасічника,
 /// повідомлення людини - праворуч зі станом черги, картки «Записати так?».
@@ -21,7 +23,12 @@ class AssistantChatScreen extends StatefulWidget {
 
   /// Відкрити екран (тести підставляють свій).
   final Navigate? navigate;
-  const AssistantChatScreen({super.key, required this.repo, required this.queue, this.navigate});
+
+  /// Голос (тести підставляють свій): розпізнавання й читання вголос.
+  final ChatVoice? voice;
+  final ReplySpeaker? speaker;
+  const AssistantChatScreen(
+      {super.key, required this.repo, required this.queue, this.navigate, this.voice, this.speaker});
 
   /// Відкрити чат (з головного, карти, поштомату). Без черги (сервер ще не
   /// запущено) - нічого.
@@ -56,6 +63,21 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   final _undone = <String>{};
   UndoEntry? _lastUndo;
 
+  // голос
+  late final ChatVoice _voice = widget.voice ?? PhoneVoice();
+  late final ReplySpeaker _speaker = widget.speaker ?? PhoneSpeaker();
+  final _dictation = Dictation();
+  bool _listening = false;
+  bool _micHeld = false;
+  bool _starting = false;
+  Timer? _stopLimit;
+  double? _download;
+  bool _speak = false;
+  bool _noUkVoice = false;
+
+  /// Відповіді, що вже були на екрані (читаємо вголос лише нові).
+  int _seenSeq = 1 << 62;
+
   @override
   void initState() {
     super.initState();
@@ -76,7 +98,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       }
     }
     _firstUnread = (await store.firstUnread())?.id;
+    _speak = await AssistantVoiceSettings.speak(widget.repo);
     await _reload();
+    _seenSeq = _items.isEmpty ? 0 : _items.last.seq;
     await widget.queue.markAllRead();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _firstUnreadKey.currentContext;
@@ -98,6 +122,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       q.onUndoable = null;
     }
     store.changes.removeListener(_reload);
+    _stopLimit?.cancel();
+    if (_listening) unawaited(_voice.cancel());
+    unawaited(_speaker.stop());
     for (final c in _live.values) {
       if (!c.isCompleted) c.complete(null);
     }
@@ -116,6 +143,16 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     if (!mounted) return;
     final grew = items.length > _items.length;
     setState(() => _items = items);
+    // нові відповіді, поки чат відкрито - уголос (якщо ввімкнено)
+    final fresh = [for (final i in items) if (i.role == ChatRole.assistant && i.seq > _seenSeq) i];
+    if (items.isNotEmpty && items.last.seq > _seenSeq) _seenSeq = items.last.seq;
+    if (_speak && fresh.isNotEmpty && !_noUkVoice) {
+      final ok = await _speaker.speak(fresh.last.text);
+      if (!ok && mounted) {
+        _noUkVoice = true;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
+      }
+    }
     if (widget.queue.chatVisible) unawaited(widget.queue.markAllRead());
     if (grew) _toBottom();
   }
@@ -148,8 +185,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   Future<void> _send() async {
     final text = _input.text.trim();
-    if (text.isEmpty || _busy) return;
+    if (text.isEmpty) return;
     _input.clear();
+    await _sendText(text);
+  }
+
+  Future<void> _sendText(String text) async {
+    if (_busy) return;
     setState(() {
       _busy = true;
       _offline = false;
@@ -198,6 +240,104 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       setState(() => _undone.add(c.id));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // голос: тримаєш кнопку - говориш, відпустив - надіслано
+
+  void _say(String m) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _micDown() async {
+    _micHeld = true;
+    if (_listening || _starting || _download != null) return;
+    unawaited(_speaker.stop());
+    if (await widget.repo.getMeta(AssistantVoiceSettings.micExplainedKey) != '1') {
+      _micHeld = false;
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.popupBg,
+          title: Text(tr.assistantMicExplainTitle, style: TextStyle(color: AppColors.text)),
+          content: Text(tr.assistantMicExplain, style: TextStyle(color: AppColors.text)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: Text(tr.assistantMicExplainOk)),
+          ],
+        ),
+      );
+      await widget.repo.setMeta(AssistantVoiceSettings.micExplainedKey, '1');
+      return;
+    }
+    setState(() => _starting = true);
+    _dictation.clear();
+    final r = await _voice.start(_onVoice);
+    if (!mounted) return;
+    setState(() {
+      _starting = false;
+      _listening = r == VoiceStart.ok;
+    });
+    switch (r) {
+      case VoiceStart.ok:
+        if (!_micHeld) await _micUp(); // відпустили, поки вмикався
+      case VoiceStart.needModel:
+        await _offerModel();
+      case VoiceStart.noPermission:
+        _say(tr.assistantNoMic);
+      case VoiceStart.offlineUnavailable:
+        _say(tr.assistantVoiceOffline);
+      case VoiceStart.unavailable:
+        _say(tr.assistantVoiceUnavailable);
+    }
+  }
+
+  Future<void> _micUp() async {
+    _micHeld = false;
+    if (!_listening) return;
+    await _voice.stop();
+    // остаточний текст має прийти одразу; ні - надсилаємо, що є
+    _stopLimit?.cancel();
+    _stopLimit = Timer(const Duration(seconds: 3), _finishVoice);
+  }
+
+  void _onVoice(VoiceText t) {
+    if (!mounted || !_listening) return;
+    setState(() => _voice.phrases ? _dictation.add(t) : _dictation.replace(t));
+    if (t.isFinal) _finishVoice();
+  }
+
+  void _finishVoice() {
+    _stopLimit?.cancel();
+    if (!mounted || !_listening) return;
+    final text = _dictation.text.trim();
+    _dictation.clear();
+    setState(() => _listening = false);
+    if (text.isNotEmpty) unawaited(_sendText(text));
+  }
+
+  Future<void> _offerModel() async {
+    final go = await showConfirm(context,
+        title: tr.assistantTitle,
+        text: tr.assistantVoiceModel(kVoskModelMb),
+        confirmText: tr.assistantVoiceDownload,
+        danger: false);
+    if (!go || !mounted) return;
+    setState(() => _download = 0);
+    try {
+      await VoiceInput.instance.download(
+        onProgress: (p) {
+          if (mounted) setState(() => _download = p);
+        },
+        cancelled: () => !mounted,
+      );
+      _say(tr.assistantVoiceReady);
+    } catch (e) {
+      _say('$e');
+    } finally {
+      if (mounted) setState(() => _download = null);
     }
   }
 
@@ -259,6 +399,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   key: const ValueKey('assistant-offline'),
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             ),
+          if (_listening || _starting || _download != null) _voiceStrip(),
           _inputBar(),
         ]),
       ),
@@ -489,6 +630,57 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     );
   }
 
+  Widget _voiceStrip() {
+    final text = _download != null
+        ? tr.assistantVoiceDownloading((_download! * 100).round())
+        : _dictation.text.isEmpty
+            ? tr.assistantListening
+            : _dictation.text;
+    return Container(
+      key: const ValueKey('assistant-voice-strip'),
+      width: double.infinity,
+      color: AppColors.popupBg,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(children: [
+        Icon(_download != null ? Icons.download : Icons.mic, color: AppColors.danger),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(text,
+              style: TextStyle(
+                  color: _dictation.text.isEmpty ? AppColors.textMuted : AppColors.text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600)),
+        ),
+      ]),
+    );
+  }
+
+  /// Велика кнопка-мікрофон: зручно й у рукавицях.
+  Widget _micButton() => Tooltip(
+        message: tr.assistantMicHold,
+        child: Semantics(
+          button: true,
+          label: tr.assistantMicHold,
+          child: Listener(
+            key: const ValueKey('assistant-mic'),
+            onPointerDown: (_) => _micDown(),
+            onPointerUp: (_) => _micUp(),
+            onPointerCancel: (_) => _micUp(),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: _listening ? 76 : 64,
+              height: _listening ? 76 : 64,
+              decoration: BoxDecoration(
+                color: _listening ? AppColors.danger : AppColors.hive,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.frame, width: 2),
+              ),
+              child: Icon(Icons.mic, color: Colors.white, size: _listening ? 40 : 34),
+            ),
+          ),
+        ),
+      );
+
   Widget _inputBar() => Container(
         color: AppColors.panel,
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
@@ -515,12 +707,18 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             ),
           ),
           const SizedBox(width: 6),
-          IconButton.filled(
-            key: const ValueKey('assistant-send'),
-            tooltip: tr.assistantSend,
-            style: IconButton.styleFrom(backgroundColor: AppColors.accent),
-            onPressed: _busy ? null : _send,
-            icon: const Icon(Icons.send, color: Colors.white),
+          // є текст - «Надіслати»; немає - великий мікрофон
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _input,
+            builder: (_, v, _) => v.text.trim().isEmpty && !_busy
+                ? _micButton()
+                : IconButton.filled(
+                    key: const ValueKey('assistant-send'),
+                    tooltip: tr.assistantSend,
+                    style: IconButton.styleFrom(backgroundColor: AppColors.accent),
+                    onPressed: _busy ? null : _send,
+                    icon: const Icon(Icons.send, color: Colors.white),
+                  ),
           ),
         ]),
       );
