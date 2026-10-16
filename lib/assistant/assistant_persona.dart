@@ -12,7 +12,8 @@ enum AssistantPersona {
   /// Sonnet 5.5 - кмітливіший, дорожчий.
   beekeeper('sonnet', 'Sonnet 5.5', 'assets/guide/beekeeper.webp');
 
-  /// Як модель називає сервер (поле model у запиті й відповіді).
+  /// Як модель називає сервер (поле model у запиті й відповіді). Людині
+  /// показуємо лише персонажа - без назв моделей.
   final String model;
   final String modelLabel;
   final String image;
@@ -23,16 +24,20 @@ enum AssistantPersona {
 
   /// За назвою моделі з сервера; невідома (старі відповіді) - [bear].
   static AssistantPersona of(String? model) => model == 'sonnet' ? beekeeper : bear;
+
+  /// Голос персонажа (синтезатор телефона): Ведмедик - вищий і жвавіший,
+  /// Пасічник - нижчий і розміреніший. 1.0 / 0.5 - звичайні.
+  double get pitch => this == bear ? 1.35 : 0.8;
+  double get rate => this == bear ? 0.55 : 0.45;
 }
 
-/// Глибина міркувань (output_config.effort). «Максимальну» не пропонуємо:
-/// для «відкрий / знайди / запиши» вона лише довше думає.
-const kAssistantEfforts = ['low', 'medium', 'high', 'xhigh'];
+/// Глибина міркувань (output_config.effort): низька, середня, висока.
+/// Вищі рівні для «відкрий / знайди / запиши» лише довше думають.
+const kAssistantEfforts = ['low', 'medium', 'high'];
 
 String effortLabel(String e) => switch (e) {
       'low' => tr.assistantEffortLow,
       'high' => tr.assistantEffortHigh,
-      'xhigh' => tr.assistantEffortXhigh,
       _ => tr.assistantEffortMedium,
     };
 

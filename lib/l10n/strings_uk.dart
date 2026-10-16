@@ -423,9 +423,9 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantBeekeeper => 'Пасічник';
   @override
-  String get assistantBearHint => 'Haiku 5.5 · швидкий і дешевий';
+  String get assistantBearHint => 'Швидкий - для простих справ';
   @override
-  String get assistantBeekeeperHint => 'Sonnet 5.5 · кмітливіший, дорожчий';
+  String get assistantBeekeeperHint => 'Досвідченіший - краще розуміє складні прохання';
   @override
   String get assistantWhoHelps => 'Хто допомагає';
   @override
