@@ -10,6 +10,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/ui/voice_input_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -154,6 +155,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantRejected), findsOneWidget);
     expect(await tester.runAsync(() => repo.db.query('fin_ops')), isEmpty);
+  });
+
+  test('поле чату - зі своїм мікрофоном (без загальної смужки «Голосовий ввід»)', () {
+    final c = TextEditingController();
+    VoiceInputHost.ownMicrophone(c);
+    expect(VoiceInputHost.hasOwnMicrophone(c), isTrue);
+    expect(VoiceInputHost.hasOwnMicrophone(TextEditingController()), isFalse);
   });
 
   testWidgets('«відкрий склад» у чаті - відкриває одразу', (tester) async {

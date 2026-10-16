@@ -6,6 +6,7 @@ import '../data/notes.dart';
 import '../data/repository.dart';
 import '../data/user_reminders.dart';
 import '../logic/visit_reminders.dart';
+import '../ui/icons.dart' show queenTagChoices;
 import 'assistant_session.dart';
 
 /// Інструменти помічника «Пасічник» - виконує їх застосунок (дані на
@@ -76,7 +77,8 @@ typedef ConfirmWrite = Future<Map<String, String>?> Function(PendingWrite write)
 
 /// Відкласти запис: чат не відкрито (відповідь із черги, фон) - картка
 /// чекатиме в чаті; [tool] і [input] - щоб виконати після «Так».
-typedef DeferWrite = Future<void> Function(String tool, Map<String, dynamic> input, PendingWrite card);
+typedef DeferWrite =
+    Future<void> Function(String tool, Map<String, dynamic> input, PendingWrite card);
 
 /// Відкрити екран; false - не вдалося.
 typedef Navigate = Future<bool> Function(NavTarget target);
@@ -134,11 +136,20 @@ class AssistantTools {
 
   /// Виконати відкладений запис після «Так» у картці ([values] - поля
   /// картки, можливо виправлені). Дані перевіряються наново - на момент «Так».
-  static Future<ToolOutcome> applyDeferred(Repository repo, String tool, Map<String, dynamic> input,
-      Map<String, String> values,
-      {void Function(UndoEntry entry)? onUndoable, DateTime Function()? now}) {
-    return AssistantTools(repo, confirm: (_) async => values, onUndoable: onUndoable, now: now)
-        .run(tool, input);
+  static Future<ToolOutcome> applyDeferred(
+    Repository repo,
+    String tool,
+    Map<String, dynamic> input,
+    Map<String, String> values, {
+    void Function(UndoEntry entry)? onUndoable,
+    DateTime Function()? now,
+  }) {
+    return AssistantTools(
+      repo,
+      confirm: (_) async => values,
+      onUndoable: onUndoable,
+      now: now,
+    ).run(tool, input);
   }
 
   /// Зроблені записи (для «Скасувати»).
@@ -244,6 +255,14 @@ class AssistantTools {
     );
   }
 
+  /// Як [_pick], але нічого схожого - null (а не помилка).
+  static T? _maybe<T>(Iterable<T> all, String query, String Function(T) name, String what) {
+    final q = _norm(query);
+    if (q.isEmpty) return null;
+    if (!all.any((x) => _norm(name(x)) == q || _norm(name(x)).contains(q))) return null;
+    return _pick<T>(all, query, name, what);
+  }
+
   Future<List<_Hive>> _allHives() async {
     final apiaries = await repo.listApiaries();
     final byElement = <String, String>{
@@ -253,7 +272,9 @@ class AssistantTools {
     return [
       for (final t in await repo.visitTargets())
         _Hive(
-          t.key.startsWith('g:') ? EntityRef.group(t.key.substring(2)) : EntityRef.element(t.elementId),
+          t.key.startsWith('g:')
+              ? EntityRef.group(t.key.substring(2))
+              : EntityRef.element(t.elementId),
           t.key,
           t.name,
           t.apiaryName,
@@ -297,7 +318,10 @@ class AssistantTools {
     final d = defer;
     if (d != null) {
       await d(_tool!, Map<String, dynamic>.from(_input!), w);
-      return {'status': 'очікує підтвердження', 'note': 'Людина побачить картку в чаті й вирішить сама'};
+      return {
+        'status': 'очікує підтвердження',
+        'note': 'Людина побачить картку в чаті й вирішить сама',
+      };
     }
     final values = await confirm(w);
     if (values == null) return {'status': 'відхилено'};
@@ -558,7 +582,13 @@ class AssistantTools {
       case DataTypes.choice:
         return _pick(p.options, v, (o) => o, '«${p.name}»: значення');
       case DataTypes.color:
-        throw _Bad('«${p.name}» (колір) помічник не записує - лише вручну');
+        final l = _norm(v);
+        for (final (label, _) in queenTagChoices) {
+          final stem = _norm(label).substring(0, 3);
+          if (_norm(label) == l || (l.length >= 3 && l.startsWith(stem))) return label;
+        }
+        if (l.startsWith('без') || l == 'немає' || l == 'нема') return queenTagChoices.first.$1;
+        throw _Bad('«${p.name}»: ${[for (final c in queenTagChoices) c.$1].join(', ')}');
       default:
         return v;
     }
@@ -656,14 +686,19 @@ class AssistantTools {
     Map<String, dynamic> input, {
     required bool receive,
   }) async {
-    final item = _pick(
-      await repo.listStockItems(),
-      _s(input, 'item'),
-      (i) => i.name,
-      'Номенклатуру',
-    );
+    final items = await repo.listStockItems();
+    final name = _s(input, 'item');
+    if (name.isEmpty) throw const _Bad('item: назва номенклатури');
+    final found = _maybe(items, name, (i) => i.name, 'Номенклатуру');
+    if (found == null && !receive) {
+      throw _Bad(
+        'На складі немає «$name». Є: ${[for (final i in items.take(15)) i.name].join(', ')}',
+      );
+    }
     final amount = _parseNum(_s(input, 'amount'));
     if (amount == null || amount <= 0) throw const _Bad('amount: кількість більше 0');
+    if (found == null) return _receiveNew(name, amount, input);
+    final item = found;
     final comment = _s(input, 'comment');
     final have = item.quantity ?? 0;
     if (!receive && amount > have) {
@@ -714,6 +749,43 @@ class AssistantTools {
     });
   }
 
+  /// Прихід того, чого на складі ще немає: картка показує, що позицію
+  /// буде створено (назву й одиницю можна виправити).
+  Future<Map<String, dynamic>> _receiveNew(
+    String name,
+    double amount,
+    Map<String, dynamic> input,
+  ) async {
+    final unit = _s(input, 'unit').isEmpty ? 'шт' : _s(input, 'unit');
+    final total = _parseNum(_s(input, 'total')) ?? 0;
+    final comment = _s(input, 'comment');
+    final card = PendingWrite('stock_receive', 'Прихід: $name (нова позиція складу)', [
+      WriteField('name', 'Назва', name),
+      WriteField('unit', 'Одиниця', unit),
+      WriteField('amount', 'Кількість', _num(amount)),
+      WriteField('total', 'Сума, грн', _num(total)),
+      if (comment.isNotEmpty) WriteField('comment', 'Коментар', comment),
+    ]);
+    return _write(card, (v) async {
+      final n = (v['name'] ?? name).trim();
+      final u = (v['unit'] ?? unit).trim();
+      if (n.isEmpty || u.isEmpty) throw const _Bad('Потрібні назва й одиниця');
+      final a = _parseNum(v['amount'] ?? '') ?? (throw const _Bad('Кількість: число більше 0'));
+      final c = (v['comment'] ?? comment).trim();
+      final id = await repo.addStockItem(n, u);
+      final left = await repo.receiveStock(
+        id,
+        a,
+        total: _parseNum(v['total'] ?? '') ?? total,
+        comment: c.isEmpty ? null : c,
+      );
+      return (
+        {'item': n, 'created': true, 'quantity_now': _num(left), 'unit': u},
+        UndoEntry('Прихід: $n', () async => repo.deleteStockItem(id)),
+      );
+    });
+  }
+
   Future<Map<String, dynamic>> _addFinance(Map<String, dynamic> input) async {
     final kind = _s(input, 'kind');
     if (kind != kFinIncome && kind != kFinExpense) throw const _Bad('kind: income або expense');
@@ -721,14 +793,18 @@ class AssistantTools {
     if (amount == null || amount <= 0) throw const _Bad('amount: сума більше 0');
     final catName = _s(input, 'category');
     final cats = await repo.listFinCategories(kind: kind);
-    final cat = catName.isEmpty ? null : _pick(cats, catName, (c) => c.name, 'Категорію');
+    final cat = _maybe(cats, catName, (c) => c.name, 'Категорію');
+    // такої категорії немає - буде створена (картка це показує)
+    final newCat = cat == null && catName.isNotEmpty ? catName : null;
     final date = _s(input, 'date').isEmpty
         ? now()
         : (_parseDate(_s(input, 'date')) ?? (throw const _Bad('date: YYYY-MM-DD')));
     final comment = _s(input, 'comment');
     final card = PendingWrite('add_finance_entry', kind == kFinIncome ? 'Дохід' : 'Витрата', [
       WriteField('amount', 'Сума, грн', _num(amount)),
-      WriteField('category', 'Категорія', cat?.name ?? '-', editable: false),
+      newCat != null
+          ? WriteField('category', 'Нова категорія', newCat)
+          : WriteField('category', 'Категорія', cat?.name ?? '-', editable: false),
       WriteField('date', 'Дата', _date(date)),
       if (comment.isNotEmpty) WriteField('comment', 'Коментар', comment),
     ]);
@@ -736,22 +812,33 @@ class AssistantTools {
       final a = _parseNum(v['amount'] ?? '') ?? (throw const _Bad('Сума: число більше 0'));
       final d = _parseDate(v['date'] ?? '') ?? date;
       final c = (v['comment'] ?? comment).trim();
+      final created = newCat == null
+          ? null
+          : await repo.addFinCategory(
+              (v['category'] ?? newCat).trim().isEmpty ? newCat : (v['category'] ?? newCat).trim(),
+              kind,
+            );
+      final catId = created ?? cat?.id;
       final id = await repo.addFinOp(
         kind: kind,
-        categoryId: cat?.id,
+        categoryId: catId,
         amount: a,
         date: d,
         comment: c.isEmpty ? null : c,
       );
       return (
-        {'kind': kind, 'amount': _num(a), 'date': _date(d)},
-        UndoEntry(
-          kind == kFinIncome ? 'Дохід ${_num(a)} грн' : 'Витрата ${_num(a)} грн',
-          () async => repo.cancelFinEntry(
+        {
+          'kind': kind,
+          'amount': _num(a),
+          'date': _date(d),
+          if (created != null) 'new_category': true,
+        },
+        UndoEntry(kind == kFinIncome ? 'Дохід ${_num(a)} грн' : 'Витрата ${_num(a)} грн', () async {
+          await repo.cancelFinEntry(
             FinEntry(
               id: id,
               kind: kind,
-              categoryId: cat?.id,
+              categoryId: catId,
               amount: a,
               date: d,
               title: '',
@@ -759,8 +846,9 @@ class AssistantTools {
               cancelled: false,
               fromStock: false,
             ),
-          ),
-        ),
+          );
+          if (created != null) await repo.deleteFinCategory(created);
+        }),
       );
     });
   }

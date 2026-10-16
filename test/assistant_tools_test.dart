@@ -219,6 +219,22 @@ void main() {
       expect(await repo.listHiveNotes(e), isEmpty);
     });
 
+    test('record_inspection: «внеси синю матку» - Мітка матки = Синій', () async {
+      final t = tools();
+      for (final (said, stored) in [('синю', 'Синій'), ('Жовта', 'Жовтий'), ('без кольору', 'Без кольору')]) {
+        final r = await ok(t, 'record_inspection', {
+          'hive_id': '5',
+          'values': {'мітка матки': said},
+          'mark_visited': false,
+        });
+        expect(r['status'], 'підтверджено');
+        final mark = (await repo.baseParameterId('hive', 'queen_mark'))!;
+        expect((await repo.latestParameterValues(EntityRef.element(hive5)))[mark], stored);
+      }
+      expect(await bad(t, 'record_inspection', {'hive_id': '5', 'values': {'мітка матки': 'фіолетова'}}),
+          contains('Синій'));
+    });
+
     test('record_inspection: «Ні» - нічого не змінюється', () async {
       answer = (_) => null;
       final before = await repo.db.query('parameter_records');
@@ -277,8 +293,37 @@ void main() {
       answer = (_) => null;
       expect((await ok(t, 'add_finance_entry', {'kind': 'expense', 'amount': 10}))['status'], 'відхилено');
       expect((await sum()).expense, 0);
-      expect(await bad(t, 'add_finance_entry', {'kind': 'income', 'amount': 5, 'category': 'Бензин'}),
-          contains('не знайдено'));
+      // нова категорія з «Ні» - не створюється
+      expect((await ok(t, 'add_finance_entry', {'kind': 'income', 'amount': 5, 'category': 'Бензин'}))['status'],
+          'відхилено');
+      expect([for (final c in await repo.listFinCategories()) c.name], isNot(contains('Бензин')));
+    });
+
+    test('add_finance_entry: категорії немає - створюється (видно в картці); «Скасувати» прибирає й її',
+        () async {
+      final t = tools();
+      final r = await ok(t, 'add_finance_entry', {'kind': 'expense', 'amount': 100, 'category': 'Вощина'});
+      expect(r['new_category'], isTrue);
+      final f = cards.last.fields.firstWhere((f) => f.key == 'category');
+      expect(f.label, 'Нова категорія');
+      expect(f.value, 'Вощина');
+      expect([for (final c in await repo.listFinCategories(kind: kFinExpense)) c.name], contains('Вощина'));
+      await t.undoable.last.undo();
+      expect([for (final c in await repo.listFinCategories(kind: kFinExpense)) c.name],
+          isNot(contains('Вощина')));
+    });
+
+    test('stock_receive: нової позиції немає - створюється з одиницею; списати чого немає - ні', () async {
+      final t = tools();
+      final r = await ok(t, 'stock_receive', {'item': 'Вощина', 'amount': 20, 'unit': 'аркуш', 'total': 600});
+      expect(r['created'], isTrue);
+      expect(cards.last.title, contains('нова позиція'));
+      final item = (await repo.listStockItems()).singleWhere((i) => i.name == 'Вощина');
+      expect(item.unit, 'аркуш');
+      expect(item.quantity, 20);
+      expect(await bad(t, 'stock_issue', {'item': 'Мед', 'amount': 1}), contains('немає'));
+      await t.undoable.last.undo();
+      expect([for (final i in await repo.listStockItems()) i.name], isNot(contains('Вощина')));
     });
 
     test('create_reminder: у майбутньому, з вулика; «Скасувати» - видалено', () async {

@@ -29,6 +29,12 @@ test('завжди українською; у записи - лише сказа
   assert.match(SYSTEM_PROMPT, /\[Скасовано: …\]/);
 });
 
+test('шукає, як зробити, і розуміє з півслова', () => {
+  assert.match(SYSTEM_PROMPT, /Шукай, як зробити, а не причину відмовити/);
+  assert.match(SYSTEM_PROMPT, /«синя матка»/);
+  assert.match(SYSTEM_PROMPT, /інструмент створить нову/);
+});
+
 test('поки немає книг - порад з бджільництва не дає', () => {
   assert.match(SYSTEM_PROMPT, /Порад з бджільництва .* поки НЕ даєш/);
   assert.match(SYSTEM_PROMPT, /порадник з'явиться згодом/);

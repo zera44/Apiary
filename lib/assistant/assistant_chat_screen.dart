@@ -8,6 +8,7 @@ import '../services/voice_input.dart';
 import '../ui/common.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
+import '../ui/voice_input_bar.dart';
 import 'assistant_nav.dart';
 import 'assistant_queue.dart';
 import 'assistant_store.dart';
@@ -82,6 +83,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   void initState() {
     super.initState();
     final q = widget.queue;
+    // свій великий мікрофон - без загальної смужки «Голосовий ввід»
+    VoiceInputHost.ownMicrophone(_input);
     q.presenter = _present;
     q.navigator = widget.navigate ?? (t) => openAssistantTarget(Navigator.of(context), widget.repo, t);
     q.onUndoable = (u) => _lastUndo = u;
