@@ -381,6 +381,43 @@ class AppDatabase {
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_hn_owner ON hive_notes(group_id, element_id)');
 
+    // Разові нагадування («нагадай 5 травня підгодувати 3-й вулик»; ставить
+    // помічник «Пасічник»). Лише на цьому телефоні - не синхронізуються.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_reminders (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        due_at REAL NOT NULL,
+        group_id TEXT,
+        element_id TEXT,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0
+      )''');
+
+    // Помічник «Пасічник»: стрічка чату (повідомлення, черга без інтернету,
+    // картки «Записати так?») і розмова для моделі. Лише на цьому
+    // телефоні - не синхронізуються.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistant_chat (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT NOT NULL UNIQUE,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT '',
+        attempts INTEGER NOT NULL DEFAULT 0,
+        next_try REAL,
+        error TEXT,
+        data TEXT,
+        queued INTEGER NOT NULL DEFAULT 0,
+        unread INTEGER NOT NULL DEFAULT 0,
+        created_at REAL NOT NULL
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistant_history (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        msg TEXT NOT NULL
+      )''');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(

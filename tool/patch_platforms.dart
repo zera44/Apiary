@@ -274,6 +274,33 @@ void _copyAppIcon() {
   copyTree('tool/app_icon/android/res', 'android/app/src/main/res');
 }
 
+/// Помічник «Пасічник»: розпізнавач мови Android (запасний, коли моделі
+/// Vosk ще немає) і синтезатор (читання відповідей уголос). З Android 11
+/// застосунок бачить ці служби, лише якщо назве їх у <queries>.
+void _patchAndroidSpeechQueries() {
+  final mf = File('android/app/src/main/AndroidManifest.xml');
+  if (!mf.existsSync()) return;
+  var s = mf.readAsStringSync();
+  const actions = ['android.speech.RecognitionService', 'android.intent.action.TTS_SERVICE'];
+  final missing = [for (final a in actions) if (!s.contains('"$a"')) a];
+  if (missing.isEmpty) return;
+  final intents = [
+    for (final a in missing)
+      '        <intent>\n            <action android:name="$a" />\n        </intent>\n'
+  ].join();
+  final q = s.indexOf('<queries>');
+  if (q >= 0) {
+    final at = q + '<queries>'.length;
+    s = '${s.substring(0, at)}\n$intents${s.substring(at)}';
+  } else {
+    final end = s.lastIndexOf('</manifest>');
+    if (end < 0) return;
+    s = '${s.substring(0, end)}    <queries>\n$intents    </queries>\n${s.substring(end)}';
+  }
+  mf.writeAsStringSync(s);
+  stdout.writeln('✓ AndroidManifest.xml (розпізнавання мови й синтезатор для помічника)');
+}
+
 void main() {
   _copyAppIcon();
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
@@ -283,6 +310,7 @@ void main() {
   _patchAndroidNotifications();
   _patchAndroidBackup();
   _patchAndroidInviteLink();
+  _patchAndroidSpeechQueries();
   _patchAndroidSigning();
   _patchGradleProperties();
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');

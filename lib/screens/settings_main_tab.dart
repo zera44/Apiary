@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_voice.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
 import '../data/sync_service.dart';
@@ -44,6 +45,9 @@ class AccountSettingsTab extends StatefulWidget {
 class _AccountSettingsTabState extends State<AccountSettingsTab> {
   String? _backups;
   bool? _mobile;
+
+  /// Помічник читає відповіді вголос.
+  bool _speak = false;
   bool _busy = false;
 
   SyncService? get _sync => SyncService.current;
@@ -53,6 +57,9 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     super.initState();
     _loadBackups();
     _loadMobile();
+    AssistantVoiceSettings.speak(widget.repo).then((v) {
+      if (mounted) setState(() => _speak = v);
+    });
   }
 
   Future<void> _loadMobile() async {
@@ -288,6 +295,22 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                 ),
               ] else
                 Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+            ],
+          ),
+          SettingsSection(
+            title: tr.assistantSection,
+            children: [
+              SwitchListTile(
+                key: const ValueKey('assistant-speak'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(tr.assistantSpeakSetting,
+                    style: TextStyle(color: AppColors.text, fontSize: 14)),
+                value: _speak,
+                onChanged: (v) async {
+                  setState(() => _speak = v);
+                  await AssistantVoiceSettings.setSpeak(widget.repo, v);
+                },
+              ),
             ],
           ),
           SettingsSection(

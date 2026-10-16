@@ -182,6 +182,49 @@ abstract class AppStrings {
   String get inviteDeclined;
   String get invitationsNone;
 
+  // ---- Помічник «Пасічник» ----
+  String get assistantTitle;
+  String get assistantOpen;
+  String get assistantHint;
+  String get assistantGreeting;
+  String get assistantSend;
+  String get assistantNewChat;
+  String get assistantNewChatConfirm;
+  String get assistantOffline;
+  String get assistantWaiting;
+  String get assistantSending;
+  String get assistantFailed;
+  String get assistantRetry;
+  String get assistantDelete;
+  String get assistantThinking;
+  String get assistantCardTitle;
+  String get assistantYes;
+  String get assistantNo;
+  String get assistantSaved;
+  String get assistantRejected;
+  String get assistantUndo;
+  String get assistantUndone;
+  String assistantOpenTarget(String what);
+  String get assistantUnauthorized;
+  String get assistantServerError;
+  String get assistantDemo;
+  String assistantMail(int n);
+  String get assistantMicHold;
+  String get assistantListening;
+  String get assistantMicExplainTitle;
+  String get assistantMicExplain;
+  String get assistantMicExplainOk;
+  String assistantVoiceModel(int mb);
+  String get assistantVoiceDownload;
+  String assistantVoiceDownloading(int percent);
+  String get assistantVoiceReady;
+  String get assistantVoiceOffline;
+  String get assistantVoiceUnavailable;
+  String get assistantNoMic;
+  String get assistantNoUkVoice;
+  String get assistantSection;
+  String get assistantSpeakSetting;
+
   // ---- Дата й час ----
   /// «сьогодні 14:05»
   String todayAt(String hm);

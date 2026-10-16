@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_chat_screen.dart';
+import '../assistant/assistant_queue.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/visit_reminders.dart';
@@ -511,6 +513,11 @@ class _AdvisorState extends State<_Advisor> {
   /// Вхідні запрошення помічником (чекають відповіді).
   int get _invites => SharingService.current.pending.value;
 
+  /// Нові відповіді й картки пасічника-помічника, яких ще не бачили.
+  int get _assistant => AssistantQueue.current?.unread.value ?? 0;
+
+  void _openAssistant() => AssistantChatScreen.open(Navigator.of(context), widget.repo);
+
   @override
   void initState() {
     super.initState();
@@ -518,6 +525,7 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.mapChanges.addListener(_load);
     widget.repo.stockChanges.addListener(_load);
     SharingService.current.pending.addListener(_onInvites);
+    AssistantQueue.current?.unread.addListener(_onInvites);
     _load();
     // запрошення - із сервера (без зв'язку - з копії на телефоні)
     SharingService.current.incoming().ignore();
@@ -529,6 +537,7 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.mapChanges.removeListener(_load);
     widget.repo.stockChanges.removeListener(_load);
     SharingService.current.pending.removeListener(_onInvites);
+    AssistantQueue.current?.unread.removeListener(_onInvites);
     super.dispose();
   }
 
@@ -612,6 +621,7 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (_assistant > 0) (text: tr.assistantMail(_assistant), action: _openAssistant),
         if (HomeScreen.signedInMail case final email?)
           (text: tr.accountSignedInMail(email), action: _readSignedIn),
         if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
@@ -627,7 +637,8 @@ class _AdvisorState extends State<_Advisor> {
 
   // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
   // що кінчаються
-  int get _mail => (HomeScreen.signedInMail == null ? 0 : 1) + _invites + _due.length + _low.length;
+  int get _mail =>
+      (HomeScreen.signedInMail == null ? 0 : 1) + _invites + _assistant + _due.length + _low.length;
 
   @override
   Widget build(BuildContext context) {
@@ -635,8 +646,18 @@ class _AdvisorState extends State<_Advisor> {
     final m = list[_i % list.length];
     final action = m.action;
     return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      Image.asset('assets/guide/beekeeper.webp',
-          height: 100, width: 72, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+      // пасічник - він же помічник: торкнутися - поговорити
+      Semantics(
+        button: AssistantQueue.current != null,
+        label: tr.assistantOpen,
+        child: GestureDetector(
+          key: const ValueKey('home-assistant'),
+          behavior: HitTestBehavior.opaque,
+          onTap: AssistantQueue.current == null ? null : _openAssistant,
+          child: Image.asset('assets/guide/beekeeper.webp',
+              height: 100, width: 72, fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+        ),
+      ),
       const SizedBox(width: 4),
       Expanded(
         child: GestureDetector(
