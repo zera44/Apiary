@@ -91,6 +91,7 @@ abstract class AppStrings {
   String get serverNoGoogleToken;
   String get serverGoogleDisabled;
   String serverGoogleClient(String details);
+  String serverNotSupabase(int status);
   String get accountSection;
   String accountSignedInAs(String email);
   String get accountSignedInVia;

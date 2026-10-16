@@ -374,7 +374,8 @@ class _StockScreenState extends State<StockScreen> {
 
   /// Плитка: назва, фото (тап — змінити), залишок і кнопка дії вкладки.
   Widget _tile(StockItem it) {
-    final qty = it.quantity == null ? '-' : '${formatAmount(it.quantity!)} ${it.unit}';
+    // ще без приходу - «0 кг», як у вікні приходу («Залишок: 0 кг»), а не «-»
+    final qty = '${formatAmount(it.quantity ?? 0)} ${it.unit}';
     final (text, color) = switch (_op) {
       StockOp.receive => ('Прихід', AppColors.addObject),
       StockOp.writeOff => ('Списати', AppColors.danger),

@@ -358,7 +358,7 @@ class CharacteristicsPanel extends StatelessWidget {
     TableRow row((Parameter, String?) e) => TableRow(children: [
           cell(
               e.$1,
-              Text(e.$1.nameWithUnit,
+              WordSafeText(e.$1.nameWithUnit,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
           cell(e.$1, _valueView(e.$1, e.$2)),
         ]);
@@ -378,7 +378,7 @@ class CharacteristicsPanel extends StatelessWidget {
         TableRow(children: [
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-              child: Text('QR-код',
+              child: WordSafeText('QR-код',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
           _qrCell(context),
         ]),
@@ -444,7 +444,7 @@ class CharacteristicsPanel extends StatelessWidget {
         );
       }
     }
-    return Text((value == null || value.isEmpty) ? '-' : value,
+    return WordSafeText((value == null || value.isEmpty) ? '-' : value,
                     style: TextStyle(
                         color: (value == null || value.isEmpty) ? AppColors.textMuted : AppColors.text,
                         fontSize: 14,

@@ -5,6 +5,47 @@ import '../icons/app_icons.dart';
 import 'icons.dart';
 import 'theme.dart';
 
+/// Текст, що переноситься лише між словами. Якщо найдовше слово не
+/// вміщується в ширину (великий шрифт, вузька колонка), зменшується весь
+/// напис - замість «Навчан/ня» чи «15.10.2/026».
+class WordSafeText extends StatelessWidget {
+  final String text;
+  final TextStyle style;
+  final int? maxLines;
+  final TextAlign textAlign;
+  const WordSafeText(this.text,
+      {super.key, required this.style, this.maxLines, this.textAlign = TextAlign.start});
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        var st = DefaultTextStyle.of(context).style.merge(style);
+        if (c.maxWidth.isFinite) {
+          final scaler = MediaQuery.textScalerOf(context);
+          var widest = 0.0;
+          for (final w in text.split(RegExp(r'\s+'))) {
+            if (w.isEmpty) continue;
+            final tp = TextPainter(
+                text: TextSpan(text: w, style: st),
+                textDirection: TextDirection.ltr,
+                textScaler: scaler,
+                maxLines: 1)
+              ..layout();
+            if (tp.width > widest) widest = tp.width;
+            tp.dispose();
+          }
+          if (widest > c.maxWidth && widest > 0) {
+            // з невеликим запасом на округлення ширини гліфів
+            st = st.copyWith(fontSize: (st.fontSize ?? 14) * c.maxWidth / widest * 0.98);
+          }
+        }
+        return Text(text,
+            style: st,
+            maxLines: maxLines,
+            textAlign: textAlign,
+            overflow: maxLines == null ? null : TextOverflow.ellipsis);
+      });
+}
+
 /// Кругла кнопка з іконкою, намальованою лініями.
 class CircleIconButton extends StatelessWidget {
   final String icon;
@@ -87,6 +128,9 @@ class PillButton extends StatelessWidget {
     this.width,
   });
 
+  bool _twoLinesFit(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(fontSize) * 1.1 * 2 + 6 <= height;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -104,8 +148,10 @@ class PillButton extends StatelessWidget {
               child: icon != null
                   ? Tooltip(message: text, child: Icon(icon, color: fg, size: 26))
                   // вузька кнопка: кілька слів - переноситься на другий рядок, одне
-                  // слово - стискається (без «…» і без розриву слова навпіл)
-                  : (text.trim().contains(RegExp(r'\s'))
+                  // слово - стискається (без «…» і без розриву слова навпіл).
+                  // Два рядки не вміщуються по висоті (великий шрифт) - один
+                  // рядок, стиснутий, а не притиснутий до країв кнопки
+                  : (text.trim().contains(RegExp(r'\s')) && _twoLinesFit(context)
                       ? Text(
                           text,
                           maxLines: 2,

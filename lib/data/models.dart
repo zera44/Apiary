@@ -253,8 +253,13 @@ class Parameter {
 
   static String encodeOptions(List<String> options) => jsonEncode(options);
 
-  String get nameWithUnit =>
-      (unit != null && unit!.isNotEmpty) ? '$name ($unit)' : name;
+  /// «Назва (одиниця)»; одиниця вже є в назві («Кількість днів до обходу»,
+  /// «днів») - без повтору в дужках.
+  String get nameWithUnit {
+    final u = unit?.trim() ?? '';
+    if (u.isEmpty || name.toLowerCase().contains(u.toLowerCase())) return name;
+    return '$name ($u)';
+  }
 }
 
 /// Пасіка — окрема карта зі своїми вуликами/перешкодами. Застосунок

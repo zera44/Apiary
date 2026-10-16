@@ -208,6 +208,8 @@ jobs:
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
             echo "::warning::Секретів Supabase для цієї збірки немає - синхронізація в APK вимкнена"
           fi
+          # адреса не на Supabase (напр. github.com) - не збирати APK зі зламаною синхронізацією
+          bash tool/check_supabase_url.sh "$SUPABASE_URL" "$SUPABASE_ANON_KEY"
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
             key="$RUNNER_TEMP/apiary-release.p12"
             trap 'rm -f "$key"' EXIT

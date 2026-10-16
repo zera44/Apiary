@@ -179,6 +179,9 @@ class AppStringsUk extends AppStrings {
   String serverGoogleClient(String details) =>
       'Сервер не прийняв вхід Google - перевірте Client ID у Supabase (Authentication → Providers → Google → Authorized Client IDs). Подробиці: $details';
   @override
+  String serverNotSupabase(int status) =>
+      'Сервер синхронізації відповів веб-сторінкою замість даних ($status): у цій збірці вказано неправильну адресу сервера. Потрібна нова збірка застосунку.';
+  @override
   String get accountSection => 'Акаунт';
   @override
   String accountSignedInAs(String email) => 'Ви увійшли як $email';

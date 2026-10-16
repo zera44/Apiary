@@ -143,6 +143,10 @@ void main() {
           contains('Authorized Client IDs'));
       expect(Server.explain(const SyncOffline()), tr.syncOffline);
       expect(Server.explain(const SyncRejected(500, 'щось інше')), contains('щось інше'));
+      // адреса веде не на Supabase (напр. github.com) - без HTML у тексті
+      final html = Server.explain(const SyncRejected(422, '<!DOCTYPE html>\n<html lang="en">'));
+      expect(html, tr.serverNotSupabase(422));
+      expect(html, isNot(contains('<')));
     });
 
     test('замок для видалення акаунта: чекає, доки фонова синхронізація закінчить', () async {

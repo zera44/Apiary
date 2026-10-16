@@ -54,7 +54,12 @@ abstract final class Server {
       return tr.serverGoogleClient(m);
     }
     if (e is SyncOffline) return tr.syncOffline;
-    return m;
+    // замість сервера Supabase відповіла звичайна веб-сторінка (HTML) -
+    // у збірці неправильна адреса SUPABASE_URL; сторінку людині не показуємо
+    if (e is SyncRejected && e.message.trimLeft().startsWith('<')) {
+      return tr.serverNotSupabase(e.status);
+    }
+    return m.length > 300 ? '${m.substring(0, 300)}…' : m;
   }
 
   /// Вхід на сервер відкликано - лише свідомий вхід (кнопка «Увійти знову»).

@@ -64,6 +64,7 @@ class _HiveNotesViewState extends State<HiveNotesView> {
 
   Future<void> _load() async {
     final entity = widget.entity;
+    if (!widget.repo.db.isOpen) return; // урок: пісочницю вже закрили
     final notes = await widget.repo.listHiveNotes(entity);
     final labels = await widget.repo.listNoteLabels();
     if (!mounted || entity != widget.entity) return;
@@ -163,11 +164,14 @@ class _HiveNotesViewState extends State<HiveNotesView> {
             Row(children: [
               Text(noteDayText(n.day),
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
+              // мітка забирає все вільне місце (а не половину разом зі Spacer),
+              // тож «…» у кожній картці - біля правого краю
               if (label != null) ...[
                 const SizedBox(width: 6),
-                Flexible(child: _LabelTag(label.name)),
-              ],
-              const Spacer(),
+                Expanded(
+                    child: Align(alignment: Alignment.centerLeft, child: _LabelTag(label.name))),
+              ] else
+                const Spacer(),
               SizedBox(
                 width: 34,
                 height: 34,

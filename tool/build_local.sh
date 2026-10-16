@@ -29,6 +29,7 @@ SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
 GOOGLE_SERVER_CLIENT_ID=${GOOGLE_SERVER_CLIENT_ID:-}
 FEEDBACK_URL=${FEEDBACK_URL:-}
 [ -z "$SUPABASE_URL" ] && echo "! SUPABASE_URL не задано - синхронізація в APK буде вимкнена"
+bash tool/check_supabase_url.sh "$SUPABASE_URL" "$SUPABASE_ANON_KEY" || exit 1
 [ -z "$GOOGLE_SERVER_CLIENT_ID" ] && echo "! GOOGLE_SERVER_CLIENT_ID не задано - вхід через Google не працюватиме"
 
 # pubspec тимчасово змінюється (див. нижче) - наприкінці повертаємо як був

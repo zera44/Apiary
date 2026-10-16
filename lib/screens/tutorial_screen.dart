@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../data/database.dart';
 import '../data/repository.dart';
@@ -58,6 +60,24 @@ class _TutorialScreenState extends State<TutorialScreen> {
     }
   }
 
+  /// Закрити пісочницю уроку. `nav.push` повертається одразу, як урок
+  /// прибрали з навігатора, але його екрани ще живуть до кінця анімації: при
+  /// знищенні карта збільшує `mapChanges`, а слухачі (список пасік, нотатки)
+  /// перечитують базу. Закрита раніше база давала «database_closed».
+  static Future<void> _closeSandbox(Repository? sandbox) async {
+    if (sandbox == null) return;
+    // чекаємо кадрами, а не таймером: анімація переходу - теж кадри, а
+    // віджет-тести не лишаються з таймером після кінця тесту
+    final sw = Stopwatch()..start();
+    while (sw.elapsed < _sandboxCloseDelay) {
+      await SchedulerBinding.instance.endOfFrame;
+    }
+    await sandbox.db.close();
+  }
+
+  /// Довше за анімацію переходу (300 мс) з запасом на останні запити.
+  static const _sandboxCloseDelay = Duration(seconds: 1);
+
   /// «Базові поняття»: починаємо з порожнього списку «Мої пасіки», де
   /// пасічник підказує створити першу карту.
   Future<void> _basics() async {
@@ -113,8 +133,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
       // вийшли з уроку, що почався з пігулки, — назад на головний, а не до плиток
       if (widget.autoStart && mounted) nav.pop();
     } finally {
-      await sandbox?.db.close();
       if (mounted) setState(() => _opening = false);
+      // окрема база в пам'яті - закривається у фоні, наступний урок можна
+      // відкривати одразу
+      unawaited(_closeSandbox(sandbox));
     }
   }
 
@@ -228,8 +250,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
       await nav.push(MaterialPageRoute<void>(
           builder: (_) => MapScreen(repo: sb, apiary: apiary, lesson: lesson)));
     } finally {
-      await sandbox?.db.close();
       if (mounted) setState(() => _opening = false);
+      // окрема база в пам'яті - закривається у фоні, наступний урок можна
+      // відкривати одразу
+      unawaited(_closeSandbox(sandbox));
     }
   }
 

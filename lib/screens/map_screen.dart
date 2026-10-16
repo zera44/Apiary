@@ -916,7 +916,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   String get _statusText {
     if (!selectMode) return '';
     if (pendingTemplate != null) {
-      return 'Тапай - ставити «${pendingTemplate!.name}», тягни - перемістити';
+      return 'Натисніть - поставити «${pendingTemplate!.name}», перетягніть - перемістити';
     }
     if (selectedGroupId != null) {
       final sel = selection;
@@ -2299,9 +2299,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // зум і перемикач режимів - не на фоні головного екрана (там лише
             // видно карту, а знизу - пошта й «Вийти»)
             if (!widget.backdrop) ...[
-            // зум
-            Positioned(
-              right: 14,
+            // зум (відкрита панель - ліворуч від неї, а не під нею)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              right: panelOpen && !_guided ? CharacteristicsPanel.width + 14 : 14,
               top: box.maxHeight / 2 - 46,
               child: ZoomButtons(key: _zoomKey, controller: grid),
             ),
@@ -2351,8 +2353,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               duration: const Duration(milliseconds: 220),
               curve: panelOpen ? Curves.easeOutCubic : Curves.easeInCubic,
               top: 70,
-              // урок: панель закінчується над пасічником (він увесь урок унизу)
-              bottom: _guided ? kLessonPanelBottom : 12,
+              // урок: панель закінчується над пасічником (він увесь урок унизу);
+              // вузький екран - над перемикачем режимів (і «Додати» поруч), щоб
+              // панель їх не накривала
+              bottom: _guided
+                  ? kLessonPanelBottom
+                  : (box.maxWidth - CharacteristicsPanel.width <
+                          kToggleLeft + kToggleW + (selectMode ? 12 + 52 : 0) + 8
+                      ? _toggleBottom + kToggleH + 8
+                      : 12),
               right: panelOpen ? 0 : -(CharacteristicsPanel.width + 12),
               child: panelData == null
                   ? const SizedBox(width: CharacteristicsPanel.width)

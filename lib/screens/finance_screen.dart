@@ -437,26 +437,35 @@ class _FinanceScreenState extends State<FinanceScreen> {
     await _reload();
   }
 
-  Widget _periodTabs() => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+  /// Вкладки періоду - усі п'ять завжди видно: рівна ширина, підпис при
+  /// великому шрифті зменшується (раніше «Рік» і «Період» ховалися за край).
+  Widget _periodTabs() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(children: [
           for (final p in FinPeriod.values)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _setPeriod(p),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                      bottom: BorderSide(
-                          color: p == _period ? AppColors.create : Colors.transparent, width: 3)),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _setPeriod(p),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border(
+                        bottom: BorderSide(
+                            color: p == _period ? AppColors.create : Colors.transparent, width: 3)),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(_periodNames[p]!,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                            color: p == _period ? AppColors.create : AppColors.textMuted,
+                            fontSize: 15,
+                            fontWeight: p == _period ? FontWeight.w700 : FontWeight.w500)),
+                  ),
                 ),
-                child: Text(_periodNames[p]!,
-                    style: TextStyle(
-                        color: p == _period ? AppColors.create : AppColors.textMuted,
-                        fontSize: 15,
-                        fontWeight: p == _period ? FontWeight.w700 : FontWeight.w500)),
               ),
             ),
         ]),
@@ -606,11 +615,23 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(color: AppColors.text, fontSize: 16)),
                                   ),
-                                  Text('$pct%',
-                                      style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
-                                  const SizedBox(width: 14),
-                                  Text(uah(e.value),
-                                      style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                  // відсоток і сума - не ширші за ~45% рядка: при
+                                  // великому шрифті на вузькому телефоні зменшуються
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                        maxWidth: MediaQuery.sizeOf(context).width * 0.45),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                        Text('$pct%',
+                                            style:
+                                                TextStyle(color: AppColors.textMuted, fontSize: 15)),
+                                        const SizedBox(width: 14),
+                                        Text(uah(e.value),
+                                            style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                      ]),
+                                    ),
+                                  ),
                                 ]),
                               ),
                             ),

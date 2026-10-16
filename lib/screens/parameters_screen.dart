@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
@@ -86,6 +87,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
 
   /// УПОРЯДКОВАНИЙ список: порядок вибору = порядок показу на панелі.
   List<String> selected = [];
+  /// Шаблон: список на початку (щоб не повертати незмінений).
+  List<String>? _templateInitial;
 
   /// Вкладка: 0 - «Список», 1 - «Конструктор» (групи обраних параметрів).
   int _tab = 0;
@@ -156,6 +159,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         ...base.where((id) => !widget.initialIds.contains(id)),
         ...widget.initialIds,
       ];
+      _templateInitial = List<String>.from(selected);
     }
     await _reload();
   }
@@ -229,7 +233,10 @@ class _ParametersScreenState extends State<ParametersScreen> {
     await repo.setParamGroups(groups);
     if (!mounted) return;
     if (widget.templateMode) {
-      Navigator.pop(context, List<String>.from(selected));
+      // нічого не змінили - нічого й не повертаємо: інакше редактор шаблону
+      // бачив список із доданими базовими параметрами і питав «Вийти без
+      // збереження?», хоча людина нічого не міняла
+      Navigator.pop(context, listEquals(selected, _templateInitial) ? null : List<String>.from(selected));
       return;
     }
     try {
@@ -1030,7 +1037,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   height: 44,
                   alignment: Alignment.center,
                   color: over ? AppColors.hive.withValues(alpha: 0.14) : null,
-                  child: Text(over ? 'Відпусти тут' : 'Перетягни сюди параметри',
+                  child: Text(over ? 'Відпустіть тут' : 'Тягніть сюди параметри',
                       style: TextStyle(
                           color: over ? AppColors.hive : AppColors.textMuted, fontSize: 13)),
                 ),
@@ -1053,7 +1060,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         child: Text(
             chosen.isEmpty
                 ? 'Тут з\'являться параметри, які ви оберете у вкладці «Список».'
-                : 'Затисни параметр і веди в потрібну групу.',
+                : 'Затисніть параметр і ведіть у групу.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       ),
       for (final g in groups) groupCard(g),
@@ -1092,7 +1099,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 style: TextStyle(
                     color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(loose.isEmpty ? 'Усі параметри розкладено по групах.' : 'Затисни й перетягни в групу.',
+            Text(loose.isEmpty ? 'Усі параметри розкладено по групах.' : 'Затисніть і тягніть у групу.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             if (loose.isNotEmpty) const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [

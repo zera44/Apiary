@@ -252,6 +252,82 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final nav = Navigator.of(context);
     void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height && size.height < 600;
+    final logo = Column(mainAxisSize: MainAxisSize.min, children: [
+      // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
+      _PulseTap(
+        key: const ValueKey('logo-whats-new'),
+        label: 'Що нового',
+        onTap: () => WhatsNewScreen.open(nav),
+        child: const AppLogo(size: 104),
+      ),
+      const SizedBox(height: 10),
+      Text('Vulyk',
+          style: TextStyle(
+              color: AppColors.text, fontSize: 28, fontWeight: FontWeight.w800)),
+    ]);
+    final panel = Column(mainAxisSize: MainAxisSize.min, children: [
+      // панель у стилі вулика: медова рамка, пасічник-порадник,
+      // «Почати» і піктограми решти розділів
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+        decoration: BoxDecoration(
+          color: AppColors.popupBg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.hive, width: 2.5),
+        ),
+        child: Column(children: [
+          _Banner(text: _greeting()),
+          const SizedBox(height: 10),
+          _Advisor(repo: repo),
+          const SizedBox(height: 14),
+          PillButton(
+            text: 'Почати',
+            bg: AppColors.accent,
+            width: double.infinity,
+            height: 56,
+            radius: 18,
+            fontSize: 18,
+            onPressed: () => openStart(nav, repo, instant: _backdrop != null),
+          ),
+          const SizedBox(height: 14),
+          IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _Tile(
+                icon: Icon(Icons.account_balance_wallet_outlined,
+                    size: 30, color: AppColors.text),
+                label: 'Фінанси',
+                onTap: () => push(FinanceScreen(repo: repo))),
+            _Tile(
+                icon: AppIcon('box', size: 28, color: AppColors.text),
+                label: 'Склад',
+                onTap: () => push(StockScreen(repo: repo))),
+            _Tile(
+                icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
+                label: 'Навчання',
+                onTap: () => push(TutorialScreen(realRepo: repo))),
+            _Tile(
+                icon: AppIcon('pencil', size: 28, color: AppColors.text),
+                label: 'Відгук',
+                onTap: () => push(const FeedbackScreen())),
+          ])),
+        ]),
+      ),
+      // хто увійшов, «Вийти» і стан синхронізації - у
+      // Налаштуваннях → «Головне»
+      if (auth.user == null && auth.configured) ...[
+        // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
+        const SizedBox(height: 14),
+        Text('Дані лише на цьому пристрої',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+        TextButton(
+          onPressed: () => _signIn(context),
+          child: Text('Увійти через Google для синхронізації',
+              style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
+        ),
+      ],
+    ]);
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
@@ -269,84 +345,33 @@ class _HomeScreenState extends State<HomeScreen> {
                         refresh: _backdropGen))),
             Positioned.fill(child: ColoredBox(color: Colors.black.withValues(alpha: 0.5))),
           ],
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 56, 16, 16),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
-                  _PulseTap(
-                    key: const ValueKey('logo-whats-new'),
-                    label: 'Що нового',
-                    onTap: () => WhatsNewScreen.open(nav),
-                    child: const AppLogo(size: 104),
-                  ),
-                  const SizedBox(height: 10),
-                  Text('Vulyk',
-                      style: TextStyle(
-                          color: AppColors.text, fontSize: 28, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 16),
-                  // панель у стилі вулика: медова рамка, пасічник-порадник,
-                  // «Почати» і піктограми решти розділів
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.popupBg,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: AppColors.hive, width: 2.5),
-                    ),
-                    child: Column(children: [
-                      _Banner(text: _greeting()),
-                      const SizedBox(height: 10),
-                      _Advisor(repo: repo),
-                      const SizedBox(height: 14),
-                      PillButton(
-                        text: 'Почати',
-                        bg: AppColors.accent,
-                        width: double.infinity,
-                        height: 56,
-                        radius: 18,
-                        fontSize: 18,
-                        onPressed: () => openStart(nav, repo, instant: _backdrop != null),
-                      ),
-                      const SizedBox(height: 14),
-                      IntrinsicHeight(
-                          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        _Tile(
-                            icon: Icon(Icons.account_balance_wallet_outlined,
-                                size: 30, color: AppColors.text),
-                            label: 'Фінанси',
-                            onTap: () => push(FinanceScreen(repo: repo))),
-                        _Tile(
-                            icon: AppIcon('box', size: 28, color: AppColors.text),
-                            label: 'Склад',
-                            onTap: () => push(StockScreen(repo: repo))),
-                        _Tile(
-                            icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
-                            label: 'Навчання',
-                            onTap: () => push(TutorialScreen(realRepo: repo))),
-                        _Tile(
-                            icon: AppIcon('pencil', size: 28, color: AppColors.text),
-                            label: 'Відгук',
-                            onTap: () => push(const FeedbackScreen())),
-                      ])),
-                    ]),
-                  ),
-                  // хто увійшов, «Вийти» і стан синхронізації - у
-                  // Налаштуваннях → «Головне»
-                  if (auth.user == null && auth.configured) ...[
-                    // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
-                    const SizedBox(height: 14),
-                    Text('Дані лише на цьому пристрої',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-                    TextButton(
-                      onPressed: () => _signIn(context),
-                      child: Text('Увійти через Google для синхронізації',
-                          style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ]),
+          // зверху - кнопки QR і налаштувань: прокручуваний вміст ховається
+          // під ними, а не наїжджає
+          Padding(
+            padding: const EdgeInsets.only(top: 56),
+            child: ClipRect(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: landscape
+                      // ландшафт (телефон боком): лого ліворуч, меню праворуч -
+                      // «Почати» видно без прокрутки
+                      ? ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 820),
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                            Expanded(child: logo),
+                            const SizedBox(width: 24),
+                            ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 420), child: panel),
+                          ]))
+                      : ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Column(mainAxisSize: MainAxisSize.min, children: [
+                            logo,
+                            const SizedBox(height: 16),
+                            panel,
+                          ])),
+                ),
               ),
             ),
           ),
@@ -435,10 +460,19 @@ class _Tile extends StatelessWidget {
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
                   const SizedBox(height: 6),
-                  Text(label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.text, fontSize: 12)),
+                  // підпис - одне слово: при великому шрифті зменшується, а не
+                  // «Навчан/ня» (плитки міряє IntrinsicHeight - тут FittedBox,
+                  // а не LayoutBuilder)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(color: AppColors.text, fontSize: 12)),
+                    ),
+                  ),
                 ]),
               ),
             ),

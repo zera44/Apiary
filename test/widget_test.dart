@@ -158,7 +158,8 @@ void main() {
     await tester.tap(find.text('Зберегти'));
     await settle(tester);
     expect(find.text('Цукор'), findsOneWidget);
-    expect(find.text('-'), findsOneWidget);
+    // ще без приходу - «0 кг», як у вікні приходу
+    expect(find.text('0 кг'), findsOneWidget);
 
     // поки приходу не було — «Списати» вимкнено
     expect(tester.widget<PillButton>(find.widgetWithText(PillButton, 'Списати')).onPressed, isNull);
