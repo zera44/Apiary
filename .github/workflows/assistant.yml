@@ -1,0 +1,53 @@
+name: Помічник
+
+# Перевірки помічника «Пасічник» при кожному push у гілку помічника чи main
+# і в PR (лише якщо змінилось щось його): посередник на Node, аналіз і тести
+# застосунку з фейковою моделлю. Повна збірка (build.yml) ганяє їх теж.
+on:
+  push:
+    branches: [ main, assistant ]
+    paths:
+      - 'lib/**'
+      - 'test/assistant_*'
+      - 'supabase/functions/assistant/**'
+      - 'supabase/tests/assistant*'
+      - 'pubspec.*'
+      - '.github/workflows/assistant.yml'
+  pull_request:
+    paths:
+      - 'lib/assistant/**'
+      - 'test/assistant_*'
+      - 'supabase/functions/assistant/**'
+      - 'supabase/tests/assistant*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Посередник і застосунок
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Посередник (Node)
+        run: node --test supabase/tests/assistant*.test.ts
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+      - name: SQLite для тестів
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - name: Залежності
+        run: flutter pub get --enforce-lockfile
+      - name: Аналіз коду
+        run: flutter analyze --no-fatal-infos
+      - name: Тести помічника (фейкова модель)
+        run: flutter test test/assistant_*_test.dart

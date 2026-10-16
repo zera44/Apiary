@@ -56,6 +56,15 @@ jobs:
         run: |
           set -o pipefail
           flutter test 2>&1 | tee build.log
+      # посередник помічника «Пасічник» (фейкова модель, без Supabase)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Тести посередника помічника
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test supabase/tests/assistant*.test.ts 2>&1 | tee build.log
       - name: Показати помилку
         if: failure()
         run: python3 tool/ci_error_report.py build.log

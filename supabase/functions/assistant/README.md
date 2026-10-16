@@ -106,3 +106,33 @@ Supabase → Edge Functions → `assistant` → **Logs**: рядки на кшт
 | 422 | `step_limit` | «спитайте простіше» |
 | 503 | `busy`, `retry: true` | черга, повтор пізніше |
 | 500 | `not_configured` | на сервері немає ключа |
+
+## Автоматичні перевірки
+
+Фейкова модель із заготовленими викликами інструментів — ані Anthropic, ані
+Supabase не потрібні (і нічого не коштують). Запускаються в GitHub:
+
+* процес **«Помічник»** (`.github/workflows/assistant.yml`) — при кожному
+  push у `assistant` / `main` і в PR, якщо змінено щось помічника;
+* повна збірка **«Build»** — усі тести застосунку й посередника перед APK;
+* **«Supabase»** — посередник разом з іншими функціями сервера.
+
+| Сценарій | Де перевіряється |
+|---|---|
+| навігація («відкрий склад») | `test/assistant_scenarios_test.dart`, `test/assistant_tools_test.dart`, `test/assistant_chat_test.dart` (диспетчер усіх 19 екранів) |
+| пошук (вулики, історія, склад, фінанси) | `test/assistant_scenarios_test.dart`, `test/assistant_tools_test.dart` |
+| запис із «Так» / з «Ні», виправлення в картці | `test/assistant_scenarios_test.dart`, `test/assistant_tools_test.dart`, `test/assistant_chat_test.dart` |
+| «Скасувати» | ті самі |
+| черга: офлайн → онлайн, по порядку | `test/assistant_scenarios_test.dart`, `test/assistant_queue_test.dart` |
+| перезапуск із непорожньою чергою | ті самі |
+| повтор після збою, «не надіслано» після 5 | ті самі |
+| видалення з черги | ті самі + `test/assistant_chat_test.dart` |
+| відповідь із черги не відкриває екран сама | ті самі |
+| записи з черги — картка чекає в чаті | `test/assistant_queue_test.dart` |
+| зупинка після 6 кроків | `test/assistant_scenarios_test.dart`, `test/assistant_model_test.dart`, `supabase/tests/assistant.test.ts` |
+| неправильний тестовий код — відмова сервера | `test/assistant_scenarios_test.dart`, `supabase/tests/assistant.test.ts` |
+| голос, читання вголос | `test/assistant_voice_test.dart` |
+| промпт і опис інструментів (назви збігаються з застосунком) | `supabase/tests/assistant_prompt.test.ts`, `supabase/tests/assistant_tools.test.ts`, `test/assistant_tools_test.dart` |
+
+Локально: `flutter test test/assistant_*_test.dart` і
+`node --test supabase/tests/assistant*.test.ts`.
