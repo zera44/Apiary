@@ -74,6 +74,10 @@ class PendingWrite {
 /// «Ні» - null.
 typedef ConfirmWrite = Future<Map<String, String>?> Function(PendingWrite write);
 
+/// Відкласти запис: чат не відкрито (відповідь із черги, фон) - картка
+/// чекатиме в чаті; [tool] і [input] - щоб виконати після «Так».
+typedef DeferWrite = Future<void> Function(String tool, Map<String, dynamic> input, PendingWrite card);
+
 /// Відкрити екран; false - не вдалося.
 typedef Navigate = Future<bool> Function(NavTarget target);
 
@@ -107,6 +111,9 @@ class AssistantTools {
   /// а пропонується кнопкою ([offeredNav]).
   final Navigate? navigate;
   final ConfirmWrite confirm;
+
+  /// Є - запис не підтверджується одразу, а відкладається карткою.
+  final DeferWrite? defer;
   final void Function(UndoEntry entry)? onUndoable;
   final DateTime Function() now;
 
@@ -114,12 +121,25 @@ class AssistantTools {
     this.repo, {
     this.navigate,
     required this.confirm,
+    this.defer,
     this.onUndoable,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
 
   /// Запропоновані (не відкриті) екрани - для кнопок «Відкрити …».
   final List<NavTarget> offeredNav = [];
+
+  String? _tool;
+  Map<String, dynamic>? _input;
+
+  /// Виконати відкладений запис після «Так» у картці ([values] - поля
+  /// картки, можливо виправлені). Дані перевіряються наново - на момент «Так».
+  static Future<ToolOutcome> applyDeferred(Repository repo, String tool, Map<String, dynamic> input,
+      Map<String, String> values,
+      {void Function(UndoEntry entry)? onUndoable, DateTime Function()? now}) {
+    return AssistantTools(repo, confirm: (_) async => values, onUndoable: onUndoable, now: now)
+        .run(tool, input);
+  }
 
   /// Зроблені записи (для «Скасувати»).
   final List<UndoEntry> undoable = [];
@@ -142,6 +162,8 @@ class AssistantTools {
 
   /// Для [AssistantSession.ask].
   Future<ToolOutcome> run(String name, Map<String, dynamic> input) async {
+    _tool = name;
+    _input = input;
     try {
       final out = switch (name) {
         'open_screen' => await _openScreen(input),
@@ -270,6 +292,11 @@ class AssistantTools {
     PendingWrite w,
     Future<(Map<String, dynamic>, UndoEntry)> Function(Map<String, String> values) apply,
   ) async {
+    final d = defer;
+    if (d != null) {
+      await d(_tool!, Map<String, dynamic>.from(_input!), w);
+      return {'status': 'очікує підтвердження', 'note': 'Людина побачить картку в чаті й вирішить сама'};
+    }
     final values = await confirm(w);
     if (values == null) return {'status': 'відхилено'};
     final (result, undo) = await apply(values);

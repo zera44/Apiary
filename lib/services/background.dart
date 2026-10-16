@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:workmanager/workmanager.dart';
 
+import '../assistant/assistant_model.dart';
+import '../assistant/assistant_queue.dart';
+import '../assistant/assistant_store.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -33,11 +36,24 @@ class BackgroundTasks {
   static const sync = 'apiary.sync';
   static const syncEvery = Duration(minutes: 15);
 
+  /// Помічник «Пасічник»: дослати чергу повідомлень, коли з'явиться
+  /// інтернет (навіть якщо застосунок закрили). Разове; невдача - система
+  /// повторює з паузою.
+  static const assistant = 'apiary.assistant';
+
+  static bool _initialized = false;
+
+  static Future<void> _init() async {
+    if (_initialized) return;
+    await Workmanager().initialize(callbackDispatcher);
+    _initialized = true;
+  }
+
   /// Записати завдання в систему (один раз на запуск; наявні не дублюються).
   static Future<void> register() async {
     if (!Platform.isAndroid) return;
     final wm = Workmanager();
-    await wm.initialize(callbackDispatcher);
+    await _init();
     await wm.registerPeriodicTask(
       backup,
       backup,
@@ -46,6 +62,20 @@ class BackgroundTasks {
       constraints: Constraints(networkType: NetworkType.notRequired, requiresStorageNotLow: true),
     );
     await registerSync(mobile: true, replace: false);
+  }
+
+  /// Черга помічника не порожня: дослати у фоні, щойно буде мережа.
+  static Future<void> scheduleAssistant() async {
+    if (!Platform.isAndroid) return;
+    await _init();
+    await Workmanager().registerOneOffTask(
+      assistant,
+      assistant,
+      existingWorkPolicy: ExistingWorkPolicy.keep,
+      constraints: Constraints(networkType: NetworkType.connected),
+      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicyDelay: const Duration(seconds: 30),
+    );
   }
 
   /// Записати (чи переписати - змінився перемикач мобільного інтернету)
@@ -72,7 +102,8 @@ void callbackDispatcher() {
 Future<bool> runBackgroundTask(String task,
     {Future<Repository> Function()? openRepo,
     Future<BackupService> Function(Repository)? backups,
-    Future<SyncApi?> Function()? syncApi}) async {
+    Future<SyncApi?> Function()? syncApi,
+    AssistantModel Function()? assistantModel}) async {
   try {
     final repo = await (openRepo ?? () async => Repository(await AppDatabase.openDefault()))();
     switch (task) {
@@ -85,6 +116,13 @@ Future<bool> runBackgroundTask(String task,
         if (api == null) return true; // не увійшли - нічого робити
         await SyncService(repo, api: api).tick();
         return true;
+      case BackgroundTasks.assistant:
+        final store = AssistantStore(repo.db);
+        await AssistantQueue(repo, store, (assistantModel ?? AssistantModel.fromConfig)(),
+                isOnline: () async => true)
+            .process();
+        // лишилося (пауза після збою, зв'язок зник) - система повторить
+        return !await store.hasQueued();
     }
     return true; // невідоме (застаріле) завдання - не повторювати
   } catch (e) {
