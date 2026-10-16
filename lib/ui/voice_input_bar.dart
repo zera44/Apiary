@@ -46,6 +46,14 @@ class VoiceInputHost extends StatefulWidget {
   final Widget child;
   const VoiceInputHost({super.key, required this.child});
 
+  /// Поля зі своїм мікрофоном (чат помічника): смужку над клавіатурою для
+  /// них не показувати - інакше два мікрофони поруч.
+  static final Expando<bool> _ownMic = Expando<bool>();
+
+  static void ownMicrophone(TextEditingController c) => _ownMic[c] = true;
+
+  static bool hasOwnMicrophone(TextEditingController? c) => c != null && _ownMic[c] == true;
+
   @override
   State<VoiceInputHost> createState() => _VoiceInputHostState();
 }
@@ -110,6 +118,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
         ? ctx.state as EditableTextState
         : ctx.findAncestorStateOfType<EditableTextState>();
     if (s == null || s.widget.readOnly) return null;
+    if (VoiceInputHost.hasOwnMicrophone(s.widget.controller)) return null;
     return s;
   }
 

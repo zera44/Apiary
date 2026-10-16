@@ -95,9 +95,18 @@ void main() {
     await settle(tester);
     expect(AppTextScale.value.value, 1.5);
     expect(find.byType(SettingsScreen), findsOneWidget);
-    expect(find.text(tr.textSizeLevels.last), findsOneWidget);
+    expect(find.text(tr.textSizeLevels[3]), findsOneWidget);
     expect(scaleOf(find.text(tr.textSizePreview)), closeTo(15, 0.001));
     expect(await tester.runAsync(() => repo.getMeta(AppTextScale.key)), '1.5');
+
+    // п'ятий рівень - на 15% більший за «дуже великий»
+    await tester.tap(find.byKey(const ValueKey('text-size-4')));
+    await settle(tester);
+    expect(AppTextScale.value.value, 1.725);
+    expect(find.text(tr.textSizeLevels.last), findsOneWidget);
+    expect(scaleOf(find.text(tr.textSizePreview)), closeTo(17.25, 0.001));
+    await tester.tap(find.byKey(const ValueKey('text-size-3')));
+    await settle(tester);
 
     // перезапуск: збережений рівень повертається; сміття - звичайний
     AppTextScale.value.value = 1.0;
@@ -110,11 +119,12 @@ void main() {
 
   // дисплеї: вузький телефон з найбільшим шрифтом, найменший телефон,
   // планшет вертикально й горизонтально
-  const displays = {
-    'телефон 360 dp, найбільший шрифт': (Size(360, 640), 1.5),
-    'телефон 320 dp': (Size(320, 568), 1.0),
-    'планшет вертикально, найбільший шрифт': (Size(800, 1280), 1.5),
-    'планшет горизонтально': (Size(1280, 800), 1.0),
+  final displays = {
+    'телефон 360 dp, найбільший шрифт': (const Size(360, 640), AppTextScale.levels.last),
+    'телефон 360 dp, дуже великий шрифт': (const Size(360, 640), 1.5),
+    'телефон 320 dp': (const Size(320, 568), 1.0),
+    'планшет вертикально, найбільший шрифт': (const Size(800, 1280), AppTextScale.levels.last),
+    'планшет горизонтально': (const Size(1280, 800), 1.0),
   };
   for (final d in displays.entries) {
     testWidgets('${d.key}: екрани без переповнень', (tester) async {

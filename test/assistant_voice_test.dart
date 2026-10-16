@@ -6,6 +6,7 @@ import 'package:apiary/assistant/assistant_voice.dart';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
+import 'package:apiary/screens/settings_main_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -213,6 +214,21 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     expect(find.text(tr.assistantNoUkVoice), findsOneWidget);
+  });
+
+  testWidgets('Налаштування → «Головне»: перемикач «Читати відповіді вголос»', (tester) async {
+    await tester.runAsync(() async {
+      repo = Repository(await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath,
+          singleInstance: false));
+      await repo.init();
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: MainSettingsTab(repo: repo))));
+    await settle(tester);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('assistant-speak')), 200);
+    expect(find.text(tr.assistantSpeakSetting), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('assistant-speak')));
+    await settle(tester);
+    expect(await tester.runAsync(() => AssistantVoiceSettings.speak(repo)), isTrue);
   });
 
   test('налаштування «Читати відповіді вголос» зберігається', () async {

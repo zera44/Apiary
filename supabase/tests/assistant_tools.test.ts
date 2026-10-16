@@ -32,6 +32,19 @@ test('open_screen знає саме ті екрани, що описано в п
   assert.deepEqual(screen.enum, [...SCREENS]);
 });
 
+test('find_hives уміє шукати за QR-кодом', () => {
+  const find = TOOLS.find((t) => t.name === 'find_hives')!;
+  assert.equal((find.input_schema as any).properties.has_qr.type, 'boolean');
+});
+
+test('мітка матки - кольором; нова позиція складу й нова категорія - створюються', () => {
+  const d = (n: string) => TOOLS.find((t) => t.name === n)!.description;
+  assert.match(d('record_inspection'), /Мітка матки» - колір/);
+  assert.match(d('stock_receive'), /створюється/);
+  assert.match(d('add_finance_entry'), /створюється/);
+  assert.ok('unit' in (TOOLS.find((t) => t.name === 'stock_receive')!.input_schema as any).properties);
+});
+
 test('інструменти запису кажуть про підтвердження', () => {
   for (const n of WRITE_TOOLS) {
     assert.match(TOOLS.find((t) => t.name === n)!.description, /підтверджує/, n);

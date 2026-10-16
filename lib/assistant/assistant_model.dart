@@ -16,7 +16,10 @@ import '../services/app_config.dart';
 class ModelTurn {
   final List<Map<String, dynamic>> content;
   final String stopReason;
-  const ModelTurn(this.content, this.stopReason);
+
+  /// Хто відповідав (haiku / sonnet) - за ним персонаж у чаті.
+  final String? model;
+  const ModelTurn(this.content, this.stopReason, {this.model});
 
   /// Текст відповіді (усі текстові блоки).
   String get text => [
@@ -64,10 +67,14 @@ abstract class AssistantModel {
   Future<ModelTurn> send(List<Map<String, dynamic>> messages);
 
   /// Модель за налаштуваннями збірки: є адреса - посередник; немає - demo.
-  static AssistantModel fromConfig({String url = assistantUrl, http.Client? client}) {
+  static AssistantModel fromConfig({
+    String url = assistantUrl,
+    http.Client? client,
+    Future<Map<String, String>> Function()? options,
+  }) {
     final base = url.trim().isEmpty ? null : AppConfig.secureBase(url);
     if (base == null) return DemoAssistantModel();
-    return RemoteAssistantModel(base, assistantTestToken, client: client);
+    return RemoteAssistantModel(base, assistantTestToken, client: client, options: options);
   }
 
   /// --dart-define=APIARY_ASSISTANT_URL=https://<проєкт>.supabase.co/functions/v1/assistant
@@ -83,8 +90,11 @@ class RemoteAssistantModel implements AssistantModel {
   final String token;
   final http.Client? client;
   final Duration timeout;
+
+  /// Вибір людини (модель, глибина) - додається до кожного запиту.
+  final Future<Map<String, String>> Function()? options;
   RemoteAssistantModel(this.url, this.token,
-      {this.client, this.timeout = const Duration(seconds: 60)});
+      {this.client, this.timeout = const Duration(seconds: 60), this.options});
 
   static const tokenHeader = 'x-apiary-assistant-token';
 
@@ -93,6 +103,7 @@ class RemoteAssistantModel implements AssistantModel {
 
   @override
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
+    final extra = await options?.call() ?? const <String, String>{};
     final c = client ?? http.Client();
     http.Response r;
     try {
@@ -102,7 +113,7 @@ class RemoteAssistantModel implements AssistantModel {
                 'Content-Type': 'application/json; charset=utf-8',
                 tokenHeader: token,
               },
-              body: jsonEncode({'messages': messages}))
+              body: jsonEncode({'messages': messages, ...extra}))
           .timeout(timeout);
     } on SocketException {
       throw const AssistantException(AssistantFailure.offline);
@@ -122,6 +133,7 @@ class RemoteAssistantModel implements AssistantModel {
               Map<String, dynamic>.from(b as Map)
           ],
           j['stop_reason'] as String? ?? 'end_turn',
+          model: j['model'] as String?,
         );
       case 401:
       case 403:

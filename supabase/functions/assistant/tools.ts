@@ -36,14 +36,15 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'apiaries_list',
-    description: 'Список пасік: id, назва, кількість вуликів.',
+    description: 'Список пасік: id, назва, кількість вуликів (група вуликів - один, як у find_hives).',
     input_schema: obj({}),
   },
   {
     name: 'find_hives',
     description:
       'Знайти вулики: за пасікою, назвою, терміном огляду (due: overdue - пора або прострочено, ' +
-      'week - протягом 7 днів), останнім значенням параметра (parameter + value - «містить»). ' +
+      'week - протягом 7 днів), останнім значенням параметра (parameter + value - «містить»), ' +
+      'наявністю QR-коду (has_qr). Група вуликів (напр., лежак) - один вулик. ' +
       'Повертає короткий список: id, назва, пасіка, днів до огляду, останній огляд.',
     input_schema: obj({
       apiary: str('id або назва пасіки'),
@@ -51,6 +52,7 @@ export const TOOLS: ToolDef[] = [
       due: { type: 'string', enum: ['overdue', 'week'] },
       parameter: str('назва параметра'),
       value: str('значення параметра (частина)'),
+      has_qr: { type: 'boolean', description: 'true - лише з QR-кодом, false - лише без QR-коду' },
       limit: { type: 'integer', minimum: 1, maximum: 50 },
     }),
   },
@@ -72,8 +74,9 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'record_inspection',
     description:
-      'Записати огляд вулика: значення параметрів (назви - як у вулика), нотатку; дата обходу - ' +
-      'сьогодні (mark_visited=false - не відмічати). Людина підтверджує карткою.',
+      'Записати огляд вулика: значення параметрів (назви - як у вулика; «Мітка матки» - колір: Білий, ' +
+      'Жовтий, Червоний, Зелений, Синій або «Без кольору»), нотатку; дата обходу - сьогодні ' +
+      '(mark_visited=false - не відмічати). Людина підтверджує карткою.',
     input_schema: obj(
       {
         hive_id: HIVE_ID,
@@ -86,27 +89,37 @@ export const TOOLS: ToolDef[] = [
   },
   {
     name: 'stock_receive',
-    description: 'Прихід на склад (купили, отримали). Людина підтверджує карткою.',
+    description:
+      'Прихід на склад (купили, отримали). Якщо такої позиції ще немає - вона створюється (unit - одиниця, ' +
+      'типово шт; картка покаже «нова позиція»). Людина підтверджує карткою.',
     input_schema: obj(
-      { item: str('назва номенклатури'), amount: { type: 'number' }, total: { type: 'number', description: 'сума, грн' }, comment: str('коментар') },
+      {
+        item: str('назва номенклатури'),
+        amount: { type: 'number' },
+        total: { type: 'number', description: 'сума, грн' },
+        unit: str('одиниця для нової позиції: кг, шт, л…'),
+        comment: str('коментар - лише якщо людина його сказала'),
+      },
       ['item', 'amount'],
     ),
   },
   {
     name: 'stock_issue',
     description: 'Списання зі складу (використали, віддали). Людина підтверджує карткою.',
-    input_schema: obj({ item: str('назва номенклатури'), amount: { type: 'number' }, comment: str('коментар') }, ['item', 'amount']),
+    input_schema: obj({ item: str('назва номенклатури'), amount: { type: 'number' }, comment: str('коментар - лише якщо людина його сказала') }, ['item', 'amount']),
   },
   {
     name: 'add_finance_entry',
-    description: 'Запис у фінанси: дохід чи витрата, сума, категорія (назва), дата. Людина підтверджує карткою.',
+    description:
+      'Запис у фінанси: дохід чи витрата, сума, категорія (назва), дата. Категорії ще немає - вона ' +
+      'створюється (картка покаже «нова категорія»). Людина підтверджує карткою.',
     input_schema: obj(
       {
         kind: { type: 'string', enum: ['income', 'expense'] },
         amount: { type: 'number' },
         category: str('назва категорії'),
         date: str('YYYY-MM-DD, типово сьогодні'),
-        comment: str('коментар'),
+        comment: str('коментар - лише якщо людина його сказала'),
       },
       ['kind', 'amount'],
     ),

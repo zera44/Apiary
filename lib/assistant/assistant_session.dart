@@ -16,7 +16,10 @@ class AssistantReply {
 
   /// Модель хотіла ще кроків, але ліміт вичерпано.
   final bool stoppedAtLimit;
-  const AssistantReply(this.text, {this.stoppedAtLimit = false});
+
+  /// Хто відповідав (haiku / sonnet).
+  final String? model;
+  const AssistantReply(this.text, {this.stoppedAtLimit = false, this.model});
 }
 
 /// Розмова з помічником: історія (лише дописується) і цикл інструментів.
@@ -61,7 +64,9 @@ class AssistantSession {
         }
         messages.add({'role': 'assistant', 'content': turn.content});
         final uses = turn.toolUses;
-        if (turn.stopReason != 'tool_use' || uses.isEmpty) return AssistantReply(turn.text);
+        if (turn.stopReason != 'tool_use' || uses.isEmpty) {
+          return AssistantReply(turn.text, model: turn.model);
+        }
         steps++;
         // усі результати - одним повідомленням (так модель і далі
         // викликатиме інструменти паралельно)

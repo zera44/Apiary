@@ -1,8 +1,17 @@
 // Налаштування посередника помічника «Пасічник». Усе, що може змінитися без
-// оновлення застосунку, - тут (модель можна перевизначити секретом).
+// оновлення застосунку, - тут. Модель і глибину міркувань перемикають
+// секрети Supabase (без правки коду й без нового Deploy):
+//   ASSISTANT_MODEL  - haiku (типово) або sonnet, чи повна назва моделі;
+//   ASSISTANT_EFFORT - low | medium (типово) | high | xhigh | max.
 
-/** Модель за замовчуванням (секрет ASSISTANT_MODEL її перевизначає). */
+/** Модель за замовчуванням. */
 export const DEFAULT_MODEL = 'claude-haiku-5-5';
+
+/** Короткі назви для секрету ASSISTANT_MODEL. */
+export const MODEL_ALIASES: Record<string, string> = {
+  haiku: 'claude-haiku-5-5',
+  sonnet: 'claude-sonnet-5-5',
+};
 
 /** Не більше стільки звернень моделі до інструментів на одне повідомлення людини. */
 export const MAX_STEPS = 6;
@@ -10,8 +19,11 @@ export const MAX_STEPS = 6;
 /** Стеля відповіді моделі (токенів); відповіді короткі, 1-4 речення. */
 export const MAX_TOKENS = 4096;
 
-/** Глибина міркувань: коротка порада й навігація - "low" вистачає. */
-export const EFFORT = 'low';
+/** Глибина міркувань: «medium» - щоб краще зіставляти прохання з даними й
+ *  інструментами (коштує трохи більше, ніж «low»). Вище - довше думає
+ *  (повільніші відповіді) і більше вихідних токенів. */
+export const DEFAULT_EFFORT = 'medium';
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 /** Обмеження запиту від застосунку. */
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -23,5 +35,50 @@ export const ANTHROPIC_VERSION = '2023-06-01';
 export type Env = (name: string) => string | undefined;
 
 export function modelFrom(env: Env): string {
-  return env('ASSISTANT_MODEL')?.trim() || DEFAULT_MODEL;
+  const v = env('ASSISTANT_MODEL')?.trim() ?? '';
+  return MODEL_ALIASES[v.toLowerCase()] ?? (v || DEFAULT_MODEL);
 }
+
+/** Вибір людини в застосунку (плашка під полем чату): лише ці моделі.
+ *  Секрет ASSISTANT_CLIENT_CHOICE = off - сервер вибір ігнорує (напр.,
+ *  поки Sonnet не для всіх). */
+export const CLIENT_MODELS = ['haiku', 'sonnet'];
+
+/** Коротка назва для застосунку (яким персонажем показати відповідь). */
+export function aliasOf(model: string): string {
+  for (const [k, v] of Object.entries(MODEL_ALIASES)) if (v === model) return k;
+  return model.includes('sonnet') ? 'sonnet' : 'haiku';
+}
+
+export function clientChoiceAllowed(env: Env): boolean {
+  return (env('ASSISTANT_CLIENT_CHOICE')?.trim().toLowerCase() ?? '') !== 'off';
+}
+
+/** Модель і глибина для цього запиту: вибір застосунку (якщо дозволено й
+ *  значення відоме), інакше - секрети, інакше - типові. */
+export function choose(env: Env, wanted: { model?: unknown; effort?: unknown }) {
+  const allowed = clientChoiceAllowed(env);
+  const m = typeof wanted.model === 'string' ? wanted.model.trim().toLowerCase() : '';
+  const e = typeof wanted.effort === 'string' ? wanted.effort.trim().toLowerCase() : '';
+  return {
+    model: allowed && CLIENT_MODELS.includes(m) ? MODEL_ALIASES[m] : modelFrom(env),
+    effort: allowed && EFFORTS.includes(e) ? e : effortFrom(env),
+  };
+}
+
+/** Невідоме значення - типове (помилка в секреті не зламає помічника). */
+export function effortFrom(env: Env): string {
+  const v = env('ASSISTANT_EFFORT')?.trim().toLowerCase() ?? '';
+  return EFFORTS.includes(v) ? v : DEFAULT_EFFORT;
+}
+
+/** Sonnet 5.5: якщо запобіжники моделі відмовлять, сервер Anthropic сам
+ *  повторить запит іншою моделлю (server-side fallback). Для Haiku такого
+ *  немає. */
+export const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
+export function usesFallback(model: string): boolean {
+  return model.startsWith('claude-sonnet-5-5');
+}
+
+/** Відповідь, коли модель відмовилась (stop_reason «refusal»). */
+export const REFUSAL_TEXT = 'Із цим я не допоможу. Спитайте, будь ласка, інакше.';

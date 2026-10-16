@@ -606,11 +606,25 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(color: AppColors.text, fontSize: 16)),
                                   ),
-                                  Text('$pct%',
-                                      style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
-                                  const SizedBox(width: 14),
-                                  Text(uah(e.value),
-                                      style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                  const SizedBox(width: 10),
+                                  // сума над відсотком; найбільший шрифт на вузькому
+                                  // телефоні - зменшується, а не вилазить за край
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(uah(e.value),
+                                                style: TextStyle(color: AppColors.text, fontSize: 16)),
+                                            Text('$pct%',
+                                                style: TextStyle(
+                                                    color: AppColors.textMuted, fontSize: 13.5)),
+                                          ]),
+                                    ),
+                                  ),
                                 ]),
                               ),
                             ),

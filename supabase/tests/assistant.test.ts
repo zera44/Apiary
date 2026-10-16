@@ -105,6 +105,65 @@ test('модель перевизначається секретом ASSISTANT_M
   assert.equal(calls[0].body.model, 'claude-sonnet-5-5');
 });
 
+test('коротка назва: sonnet / haiku; типово - Haiku без запасної моделі', async () => {
+  const s = deps(modelReply([]), { ...SECRETS, ASSISTANT_MODEL: 'Sonnet' });
+  await handle(post(hello), s.d);
+  assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
+  // Sonnet 5.5: відмова запобіжників - сервер Anthropic сам спробує іншу модель
+  assert.equal(s.calls[0].body.fallbacks, 'default');
+  assert.equal(s.calls[0].headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
+
+  const h = deps(modelReply([]), { ...SECRETS, ASSISTANT_MODEL: 'haiku' });
+  await handle(post(hello), h.d);
+  assert.equal(h.calls[0].body.model, DEFAULT_MODEL);
+  assert.equal('fallbacks' in h.calls[0].body, false);
+  assert.equal(h.calls[0].headers['anthropic-beta'], undefined);
+});
+
+test('глибина міркувань - секретом ASSISTANT_EFFORT; невідоме значення - типове', async () => {
+  for (const [secret, sent] of [[undefined, 'medium'], ['xhigh', 'xhigh'], ['LOW', 'low'], ['дуже', 'medium']]) {
+    const env = { ...SECRETS, ...(secret ? { ASSISTANT_EFFORT: secret } : {}) };
+    const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]), env);
+    await handle(post(hello), d);
+    assert.deepEqual(calls[0].body.output_config, { effort: sent }, String(secret));
+    assert.equal(JSON.parse(logs[0]).effort, sent);
+  }
+});
+
+test('вибір у застосунку: модель і глибина з запиту; персонаж за моделлю', async () => {
+  const s = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const out = await (await handle(post({ ...hello, model: 'sonnet', effort: 'high' }), s.d)).json();
+  assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.deepEqual(s.calls[0].body.output_config, { effort: 'high' });
+  assert.equal(out.model, 'sonnet');
+  assert.match(s.calls[0].body.system[0].text, /«Пасічник»/);
+
+  const h = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const out2 = await (await handle(post({ ...hello, model: 'haiku' }), h.d)).json();
+  assert.equal(out2.model, 'haiku');
+  assert.match(h.calls[0].body.system[0].text, /«Ведмедик»/);
+});
+
+test('невідомий вибір ігнорується; ASSISTANT_CLIENT_CHOICE=off - вибір застосунку не діє', async () => {
+  const bad = deps(modelReply([]));
+  await handle(post({ ...hello, model: 'claude-opus-5-5', effort: 'turbo' }), bad.d);
+  assert.equal(bad.calls[0].body.model, DEFAULT_MODEL);
+  assert.deepEqual(bad.calls[0].body.output_config, { effort: 'medium' });
+
+  const off = deps(modelReply([]), { ...SECRETS, ASSISTANT_CLIENT_CHOICE: 'off' });
+  await handle(post({ ...hello, model: 'sonnet', effort: 'max' }), off.d);
+  assert.equal(off.calls[0].body.model, DEFAULT_MODEL);
+  assert.deepEqual(off.calls[0].body.output_config, { effort: 'medium' });
+});
+
+test('відмова запобіжників моделі - звичайна коротка відповідь застосунку', async () => {
+  const { d } = deps(modelReply([], 'refusal'));
+  const out = await (await handle(post(hello), d)).json();
+  assert.equal(out.stop_reason, 'end_turn');
+  assert.equal(out.content[0].type, 'text');
+  assert.ok(out.content[0].text.length > 0);
+});
+
 test('запит інструмента передається застосунку як є', async () => {
   const use = { type: 'tool_use', id: 'tu_1', name: 'apiaries_list', input: {} };
   const { d } = deps(modelReply([{ type: 'thinking', thinking: '', signature: 's' }, use], 'tool_use'));
@@ -186,7 +245,7 @@ test('журнал: лише числа - без тексту розмови і 
   assert.equal(logs.length, 1);
   const line = JSON.parse(logs[0]);
   assert.deepEqual(Object.keys(line).sort(), [
-    'cache_creation_input_tokens', 'cache_read_input_tokens', 'fn', 'input_tokens', 'model', 'output_tokens', 'result', 'steps',
+    'cache_creation_input_tokens', 'cache_read_input_tokens', 'effort', 'fn', 'input_tokens', 'model', 'output_tokens', 'result', 'steps',
   ]);
   assert.equal(line.input_tokens, 120);
   assert.equal(line.cache_read_input_tokens, 900);

@@ -9,8 +9,9 @@ import '../data/repository.dart';
 abstract final class AppTextScale {
   static const key = 'device_text_scale';
 
-  /// Рівні: звичайний, більший, великий, дуже великий.
-  static const levels = [1.0, 1.15, 1.3, 1.5];
+  /// Рівні: звичайний, більший, великий, дуже великий, найбільший
+  /// (на 15% більший за «дуже великий»).
+  static const levels = [1.0, 1.15, 1.3, 1.5, 1.725];
 
   /// Обраний рівень (одразу перебудовує застосунок).
   static final ValueNotifier<double> value = ValueNotifier(levels.first);

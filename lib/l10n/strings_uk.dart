@@ -130,7 +130,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get textSizeHint => 'Для зручного читання - в усьому застосунку.';
   @override
-  List<String> get textSizeLevels => const ['Звичайний', 'Більший', 'Великий', 'Дуже великий'];
+  List<String> get textSizeLevels => const ['Звичайний', 'Більший', 'Великий', 'Дуже великий', 'Найбільший'];
   @override
   String get textSizePreview => 'Вулик 12 - сьогодні оглянути';
   @override
@@ -418,6 +418,28 @@ class AppStringsUk extends AppStrings {
   @override
   String assistantMail(int n) =>
       'Пасічник відповів: $n ${plural(n, one: 'нове', few: 'нові', many: 'нових')}';
+  @override
+  String get assistantBear => 'Ведмедик';
+  @override
+  String get assistantBeekeeper => 'Пасічник';
+  @override
+  String get assistantBearHint => 'Haiku 5.5 · швидкий і дешевий';
+  @override
+  String get assistantBeekeeperHint => 'Sonnet 5.5 · кмітливіший, дорожчий';
+  @override
+  String get assistantWhoHelps => 'Хто допомагає';
+  @override
+  String get assistantEffort => 'Глибина міркувань';
+  @override
+  String get assistantEffortHintText => 'Вище - точніше на складних проханнях, але довше чекати';
+  @override
+  String get assistantEffortLow => 'Низька';
+  @override
+  String get assistantEffortMedium => 'Середня';
+  @override
+  String get assistantEffortHigh => 'Висока';
+  @override
+  String get assistantEffortXhigh => 'Дуже висока';
   @override
   String get assistantMicHold => "Тримайте кнопку й говоріть";
   @override

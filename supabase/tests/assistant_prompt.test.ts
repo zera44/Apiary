@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SCREENS, SYSTEM_PROMPT } from '../functions/assistant/prompt.ts';
+import { BEAR_PROMPT, SCREENS, SYSTEM_PROMPT, systemPromptFor } from '../functions/assistant/prompt.ts';
 
 test('описано кожен екран навігатора', () => {
   for (const s of SCREENS) {
@@ -21,6 +21,18 @@ test('характер і що робить', () => {
   ]) {
     assert.ok(SYSTEM_PROMPT.includes(must), must);
   }
+});
+
+test('завжди українською; у записи - лише сказане; знає про «Скасувати»', () => {
+  assert.match(SYSTEM_PROMPT, /Завжди українською/);
+  assert.match(SYSTEM_PROMPT, /не вигадуй коментарів/);
+  assert.match(SYSTEM_PROMPT, /\[Скасовано: …\]/);
+});
+
+test('шукає, як зробити, і розуміє з півслова', () => {
+  assert.match(SYSTEM_PROMPT, /Шукай, як зробити, а не причину відмовити/);
+  assert.match(SYSTEM_PROMPT, /«синя матка»/);
+  assert.match(SYSTEM_PROMPT, /інструмент створить нову/);
 });
 
 test('поки немає книг - порад з бджільництва не дає', () => {
@@ -43,4 +55,13 @@ test('промпт незмінний між запитами (кешуєтьс�
   assert.doesNotMatch(SYSTEM_PROMPT, /\$\{|\{\{|\d{4}-\d{2}-\d{2}/);
   // достатньо довгий для кешу (від ~512 токенів) і не роздутий
   assert.ok(SYSTEM_PROMPT.length > 2500 && SYSTEM_PROMPT.length < 12000, String(SYSTEM_PROMPT.length));
+});
+
+test('два персонажі: Haiku - Ведмедик, Sonnet - Пасічник; решта промпту однакова', () => {
+  assert.match(BEAR_PROMPT, /«Ведмедик»/);
+  assert.doesNotMatch(BEAR_PROMPT, /Ти - «Пасічник»/);
+  assert.equal(systemPromptFor('claude-haiku-5-5'), BEAR_PROMPT);
+  assert.equal(systemPromptFor('claude-sonnet-5-5'), SYSTEM_PROMPT);
+  const tail = (p: string) => p.slice(p.indexOf('# Як відповідати'));
+  assert.equal(tail(BEAR_PROMPT), tail(SYSTEM_PROMPT));
 });

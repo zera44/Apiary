@@ -209,6 +209,17 @@ abstract class AppStrings {
   String get assistantServerError;
   String get assistantDemo;
   String assistantMail(int n);
+  String get assistantBear;
+  String get assistantBeekeeper;
+  String get assistantBearHint;
+  String get assistantBeekeeperHint;
+  String get assistantWhoHelps;
+  String get assistantEffort;
+  String get assistantEffortHintText;
+  String get assistantEffortLow;
+  String get assistantEffortMedium;
+  String get assistantEffortHigh;
+  String get assistantEffortXhigh;
   String get assistantMicHold;
   String get assistantListening;
   String get assistantMicExplainTitle;
