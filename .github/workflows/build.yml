@@ -207,22 +207,28 @@ jobs:
           SUPABASE_ANON_KEY_PROD: ${{ secrets.SUPABASE_ANON_KEY_PROD }}
           SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
           SUPABASE_ANON_KEY_TEST: ${{ secrets.SUPABASE_ANON_KEY_TEST }}
-          # помічник «Пасічник» (supabase/functions/assistant/README.md): адреса
-          # посередника й тестовий код доступу. Лише тестові збірки: у реліз
-          # тестовий код не потрапляє (там - demo, доки не буде входу й лімітів)
+          # помічник (supabase/functions/assistant/README.md): адреса посередника й
+          # тестовий код доступу. ТИМЧАСОВО - і в релізі з main (поки в Anthropic
+          # стоїть ліміт витрат $5). ПЕРЕД ПУБЛІКАЦІЄЮ В GOOGLE PLAY поставити
+          # ASSISTANT_IN_RELEASE: 'false' (docs/REMINDERS.md, розділ 4, п. 6)
+          ASSISTANT_IN_RELEASE: 'true'
           ASSISTANT_URL_TEST: ${{ secrets.APIARY_ASSISTANT_URL }}
           ASSISTANT_TOKEN_TEST: ${{ secrets.APIARY_ASSISTANT_TEST_TOKEN }}
         run: |
           set -o pipefail
           if [ "$IS_RELEASE" = "true" ]; then
             SUPABASE_URL="$SUPABASE_URL_PROD"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_PROD"
+            if [ "$ASSISTANT_IN_RELEASE" = "true" ]; then
+              ASSISTANT_URL="$ASSISTANT_URL_TEST"; ASSISTANT_TOKEN="$ASSISTANT_TOKEN_TEST"
+              echo "::warning title=ПОМІЧНИК::У релізі - тестовий код помічника. Перед Google Play: ASSISTANT_IN_RELEASE: 'false'"
+            fi
           else
             SUPABASE_URL="$SUPABASE_URL_TEST"; SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY_TEST"
             ASSISTANT_URL="$ASSISTANT_URL_TEST"; ASSISTANT_TOKEN="$ASSISTANT_TOKEN_TEST"
           fi
           if [ -z "${ASSISTANT_URL:-}" ] || [ -z "${ASSISTANT_TOKEN:-}" ]; then
             ASSISTANT_URL=""; ASSISTANT_TOKEN=""
-            echo "::notice::Помічник у цій збірці - demo (немає APIARY_ASSISTANT_URL / APIARY_ASSISTANT_TEST_TOKEN або це реліз)"
+            echo "::notice::Помічник у цій збірці - demo (немає APIARY_ASSISTANT_URL / APIARY_ASSISTANT_TEST_TOKEN або реліз без ASSISTANT_IN_RELEASE)"
           fi
           unset ASSISTANT_TOKEN_TEST
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then

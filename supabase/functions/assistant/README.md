@@ -76,8 +76,10 @@ Actions → New repository secret**:
 | `APIARY_ASSISTANT_TEST_TOKEN` | код із кроку 2 |
 
 Тестова збірка гілки (Actions → Run workflow) вкладе їх у APK. Реліз із
-`main` їх **не** бере: там помічник у demo-режимі, доки не буде входу й
-лімітів (docs/REMINDERS.md).
+`main` — теж, але **тимчасово** (`ASSISTANT_IN_RELEASE: 'true'` у
+`.github/workflows/build.yml`, поки в Anthropic ліміт $5): перед
+публікацією в Google Play поставити `'false'` (docs/REMINDERS.md, розділ 4,
+п. 6).
 
 Без адреси застосунок працює з demo-моделлю (заготовлені відповіді, без
 сервера).
