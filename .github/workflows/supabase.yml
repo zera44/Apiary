@@ -4,7 +4,7 @@ name: Supabase
 # PostgreSQL (supabase/tests/run.sh), функція нічних копій - на Node.
 on:
   push:
-    branches: [ main ]
+    branches: [ main, assistant ]
     paths: [ 'supabase/**', '.github/workflows/supabase.yml' ]
   pull_request:
     paths: [ 'supabase/**', '.github/workflows/supabase.yml' ]
@@ -25,5 +25,5 @@ jobs:
           node-version: '22'
       - name: Міграції й правила доступу (PostgreSQL)
         run: supabase/tests/run.sh
-      - name: Функції (backup-commit, delete-account)
+      - name: Функції (backup-commit, delete-account, join, assistant)
         run: node --test supabase/tests/*.test.ts
