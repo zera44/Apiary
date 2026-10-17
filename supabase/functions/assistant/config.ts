@@ -26,8 +26,13 @@ export const DEFAULT_EFFORT = 'medium';
 export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 
 /** Обмеження запиту від застосунку. */
-export const MAX_BODY_BYTES = 256 * 1024;
-export const MAX_MESSAGES = 80;
+export const MAX_BODY_BYTES = 4 * 1024 * 1024;
+export const MAX_MESSAGES = 2000;
+
+/** Моделі - лише останні стільки повідомлень розмови (від початку
+ *  якогось питання людини): довга історія в чаті не ламає помічника й не
+ *  дорожчає з кожним питанням. */
+export const KEEP_MESSAGES = 60;
 
 export const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 export const ANTHROPIC_VERSION = '2023-06-01';

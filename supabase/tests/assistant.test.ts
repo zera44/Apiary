@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking } from '../functions/assistant/index.ts';
+import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
 import { DEFAULT_MODEL, MAX_STEPS } from '../functions/assistant/config.ts';
 
@@ -275,7 +275,7 @@ test('журнал: лише числа - без тексту розмови і 
   assert.equal(logs.length, 1);
   const line = JSON.parse(logs[0]);
   assert.deepEqual(Object.keys(line).sort(), [
-    'cache_creation_input_tokens', 'cache_read_input_tokens', 'effort', 'fn', 'input_tokens', 'model', 'output_tokens', 'result', 'steps',
+    'cache_creation_input_tokens', 'cache_read_input_tokens', 'effort', 'fn', 'input_tokens', 'messages', 'model', 'output_tokens', 'result', 'steps',
   ]);
   assert.equal(line.input_tokens, 120);
   assert.equal(line.cache_read_input_tokens, 900);
@@ -318,4 +318,43 @@ test('блоки міркувань із попередніх реплік пр�
   const { d, calls } = deps(modelReply([{ type: 'text', text: 'ok' }]));
   await handle(post({ messages: messages.slice(0, 7) }), d);
   assert.doesNotMatch(JSON.stringify(calls[0].body.messages), /old-haiku|old-2|old-3/);
+});
+
+// довга розмова: n питань людини, кожне - з одним інструментом і відповіддю
+function longChat(n: number) {
+  const m: any[] = [];
+  for (let i = 0; i < n; i++) {
+    m.push({ role: 'user', content: `Питання ${i}` });
+    m.push({ role: 'assistant', content: [{ type: 'tool_use', id: `t${i}`, name: 'stock_list', input: {} }] });
+    m.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: `t${i}`, content: '[]' }] });
+    m.push({ role: 'assistant', content: [{ type: 'text', text: `Відповідь ${i}` }] });
+  }
+  m.push({ role: 'user', content: 'Останнє питання' });
+  return m;
+}
+
+test('довга розмова не ламає помічника: моделі - хвіст від питання людини', async () => {
+  const msgs = longChat(40); // 161 повідомлення
+  const cut = trimHistory(msgs, 60);
+  assert.ok(cut.length <= 60);
+  assert.equal(cut[0].role, 'user');
+  assert.equal(typeof cut[0].content, 'string'); // починається з питання, не з tool_result
+  assert.equal(cut.at(-1).content, 'Останнє питання');
+  assert.deepEqual(trimHistory(longChat(3)), longChat(3)); // коротку не чіпає
+
+  const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const r = await handle(post({ messages: msgs }), d);
+  assert.equal(r.status, 200);
+  assert.ok(calls[0].body.messages.length <= 60);
+  const line = JSON.parse(logs.at(-1)!);
+  assert.equal(line.trimmed_from, 161);
+});
+
+test('відмова застосунку - у журналі з причиною', async () => {
+  const { d, logs } = deps(modelReply([]));
+  const r = await handle(post({ messages: [{ role: 'assistant', content: 'x' }] }), d);
+  assert.equal(r.status, 400);
+  const line = JSON.parse(logs.at(-1)!);
+  assert.equal(line.result, 'rejected');
+  assert.equal(line.error, 'order');
 });
