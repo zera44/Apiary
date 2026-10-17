@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/backups_screen.dart';
+import '../screens/feedback_chat_screen.dart';
 import '../screens/feedback_screen.dart';
 import '../screens/fin_add_screen.dart';
 import '../screens/finance_screen.dart';
@@ -18,6 +19,7 @@ import '../screens/stock_screen.dart';
 import '../screens/templates_screen.dart';
 import '../screens/tutorial_screen.dart';
 import '../screens/whats_new_screen.dart';
+import '../services/feedback_chat.dart';
 import '../ui/app_drawer.dart';
 import 'assistant_tools.dart';
 
@@ -56,7 +58,9 @@ Future<Widget?> assistantScreen(Repository repo, NavTarget t) async {
     case 'lesson':
       return TutorialScreen(realRepo: repo);
     case 'feedback':
-      return const FeedbackScreen();
+      return FeedbackChat.current?.available == true
+          ? FeedbackChatScreen(chat: FeedbackChat.current!)
+          : const FeedbackScreen();
   }
   return null;
 }

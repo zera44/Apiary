@@ -14,6 +14,8 @@ import '../data/sync_api.dart';
 import '../data/sync_service.dart';
 import 'app_config.dart';
 import 'backups.dart';
+import 'feedback_chat.dart';
+import 'reminders.dart';
 import 'supabase_api.dart';
 
 /// Фонові завдання (Android, WorkManager). Точного часу Android не гарантує
@@ -36,6 +38,10 @@ class BackgroundTasks {
   /// лише Wi-Fi.
   static const sync = 'apiary.sync';
   static const syncEvery = Duration(minutes: 15);
+
+  /// Відповіді розробника на відгук: раз на ~15 хв питає сервер (лише якщо
+  /// людина вже писала) і показує сповіщення.
+  static const feedback = 'apiary.feedback';
 
   /// Помічник «Пасічник»: дослати чергу повідомлень, коли з'явиться
   /// інтернет (навіть якщо застосунок закрили). Разове; невдача - система
@@ -63,6 +69,20 @@ class BackgroundTasks {
       constraints: Constraints(networkType: NetworkType.notRequired, requiresStorageNotLow: true),
     );
     await registerSync(mobile: true, replace: false);
+  }
+
+  /// Люди, що вже писали розробнику, отримують відповіді й коли застосунок
+  /// закрито.
+  static Future<void> registerFeedback() async {
+    if (!Platform.isAndroid) return;
+    await _init();
+    await Workmanager().registerPeriodicTask(
+      feedback,
+      feedback,
+      frequency: const Duration(minutes: 15),
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
   }
 
   /// Черга помічника не порожня: дослати у фоні, щойно буде мережа.
@@ -116,6 +136,10 @@ Future<bool> runBackgroundTask(String task,
         final api = await (syncApi ?? _restoreApi)();
         if (api == null) return true; // не увійшли - нічого робити
         await SyncService(repo, api: api).tick();
+        return true;
+      case BackgroundTasks.feedback:
+        final fresh = await FeedbackChat(repo).poll();
+        if (fresh.isNotEmpty) await ReminderService.notifyFeedbackReply(fresh.last.body);
         return true;
       case BackgroundTasks.assistant:
         final store = AssistantStore(repo.db);

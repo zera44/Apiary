@@ -49,9 +49,50 @@ class ReminderService {
   /// з'являється під час першого [start].
   final ValueNotifier<String?> openHiveRequest = ValueNotifier<String?>(null);
 
+  /// Натиснули на сповіщення «Розробник відповів»: відкрити розмову.
+  final ValueNotifier<bool> openFeedbackRequest = ValueNotifier<bool>(false);
+
+  static const feedbackPayload = 'feedback';
+
   void _onTapped(NotificationResponse r) {
     final id = r.payload;
-    if (id != null && id.isNotEmpty) openHiveRequest.value = id;
+    if (id == feedbackPayload) {
+      openFeedbackRequest.value = true;
+    } else if (id != null && id.isNotEmpty) {
+      openHiveRequest.value = id;
+    }
+  }
+
+  /// Сповіщення «Розробник відповів» (з фонового завдання теж: окремий
+  /// екземпляр плагіна). Текст - початок відповіді.
+  static Future<void> notifyFeedbackReply(String text) async {
+    if (!supported) return;
+    final plugin = FlutterLocalNotificationsPlugin();
+    await plugin.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@drawable/ic_notification'),
+        iOS: DarwinInitializationSettings(
+            requestAlertPermission: false, requestBadgePermission: false, requestSoundPermission: false),
+      ),
+    );
+    final one = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    await plugin.show(
+      id: 90001,
+      title: 'Розробник відповів на ваш відгук',
+      body: one.length > 120 ? '${one.substring(0, 117)}…' : one,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'feedback_replies',
+          'Відповіді розробника',
+          channelDescription: 'Відповідь на ваш відгук у застосунку',
+          importance: Importance.high,
+          priority: Priority.high,
+          visibility: NotificationVisibility.private,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      payload: feedbackPayload,
+    );
   }
   Future<void> _tail = Future.value();
   Timer? _debounce;

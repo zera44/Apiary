@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
-import '../screens/feedback_screen.dart';
+import '../screens/feedback_chat_screen.dart';
 import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
@@ -277,7 +277,7 @@ class _AppDrawerState extends State<AppDrawer> {
               iconData: Icons.school_outlined)),
           _t(6, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
             nav.pop(); // закрити меню
-            nav.push(MaterialPageRoute(builder: (_) => const FeedbackScreen()));
+            openFeedback(nav);
           })),
           ])),
           if (widget.tour || widget.hint != null) _tourFooter(),

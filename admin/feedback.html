@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vulyk: відгуки</title>
+<style>
+  :root { --bg:#1d1611; --card:#2a2018; --line:#4a3a28; --text:#f9efe0; --muted:#bfae94; --honey:#ed9d2f; --dev:#3b5b3a; --user:#3a2f25; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
+  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; flex:1; }
+  button { background:var(--honey); color:#2b1a08; border:0; border-radius:10px; padding:10px 16px; font:inherit; font-weight:700; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
+  button:disabled { opacity:.5; }
+  #login { max-width:380px; margin:20vh auto; padding:0 16px; }
+  input, textarea { width:100%; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; }
+  textarea { min-height:90px; resize:vertical; }
+  .app { display:grid; grid-template-columns: 340px 1fr; height:calc(100vh - 57px); }
+  .list { overflow:auto; border-right:1px solid var(--line); }
+  .item { padding:12px 16px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item:hover, .item.sel { background:var(--card); }
+  .item .top { display:flex; gap:8px; font-size:13px; color:var(--muted); }
+  .item .snippet { margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--honey); display:inline-block; }
+  .thread { display:flex; flex-direction:column; min-width:0; }
+  .msgs { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .m { max-width:78%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .m.user { background:var(--user); align-self:flex-start; border-bottom-left-radius:4px; }
+  .m.dev { background:var(--dev); align-self:flex-end; border-bottom-right-radius:4px; }
+  .m small { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+  .reply { padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:flex-end; }
+  .empty { color:var(--muted); padding:24px; }
+  #err { color:#e07a5f; margin-top:10px; min-height:1.4em; }
+  @media (max-width: 720px) {
+    .app { grid-template-columns: 1fr; }
+    .app.open .list { display:none; }
+    .app:not(.open) .thread { display:none; }
+  }
+</style>
+</head>
+<body>
+<div id="login">
+  <h2>Відгуки Vulyk</h2>
+  <p style="color:var(--muted)">Пароль адмінки (секрет FEEDBACK_ADMIN_PASSWORD у Supabase).</p>
+  <div style="position:relative">
+    <input id="pw" type="password" placeholder="Пароль" autocomplete="current-password" style="padding-right:48px">
+    <button type="button" id="eye" class="ghost" aria-label="Показати пароль" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px">👁</button>
+  </div>
+  <p><button id="go">Увійти</button></p>
+  <details><summary style="color:var(--muted)">Адреса функції</summary>
+    <input id="url" style="margin-top:8px">
+  </details>
+  <div id="err"></div>
+</div>
+<div id="main" hidden>
+  <header>
+    <button class="ghost" id="back" hidden>←</button>
+    <h1>Відгуки Vulyk</h1>
+    <button class="ghost" id="refresh">Оновити</button>
+    <button class="ghost" id="out">Вийти</button>
+  </header>
+  <div class="app" id="app">
+    <div class="list" id="list"></div>
+    <div class="thread" id="thread"><div class="empty">Оберіть розмову</div></div>
+  </div>
+</div>
+<script>
+const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedback';
+const $ = (id) => document.getElementById(id);
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+                del: (k) => { try { localStorage.removeItem(k); } catch {} } };
+let url = store.get('fb_url') || DEFAULT_URL, pw = store.get('fb_pw') || '', current = null, timer = null;
+$('url').value = url;
+
+async function api(body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedback-admin': pw }, body: JSON.stringify(body) });
+  if (r.status === 401) { logout('Невірний пароль'); throw new Error('401'); }
+  if (!r.ok) throw new Error('Помилка ' + r.status);
+  return r.json();
+}
+function fmt(iso) { return new Date(iso).toLocaleString('uk-UA', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+async function loadList() {
+  const { threads } = await api({ action: 'admin_list' });
+  const list = $('list'); list.replaceChildren();
+  if (!threads.length) list.append(el('div', 'empty', 'Відгуків ще немає'));
+  for (const t of threads) {
+    const it = el('div', 'item' + (t.id === current ? ' sel' : ''));
+    const top = el('div', 'top');
+    if (t.unread) top.append(el('span', 'dot'));
+    top.append(el('span', '', fmt(t.last_at)), el('span', '', t.platform || ''));
+    it.append(top, el('div', 'snippet', (t.last && t.last.from_dev ? 'Ви: ' : '') + (t.last ? t.last.body : '')));
+    it.onclick = () => openThread(t.id);
+    list.append(it);
+  }
+}
+async function openThread(id) {
+  current = id; $('app').classList.add('open'); $('back').hidden = false;
+  const { messages } = await api({ action: 'admin_thread', thread_id: id });
+  const th = $('thread'); th.replaceChildren();
+  const box = el('div', 'msgs');
+  for (const m of messages) { const d = el('div', 'm ' + (m.from_dev ? 'dev' : 'user'), m.body); d.append(el('small', '', fmt(m.at))); box.append(d); }
+  const ta = el('textarea'); ta.placeholder = 'Відповідь…';
+  const send = el('button', '', 'Надіслати');
+  send.onclick = async () => {
+    const body = ta.value.trim(); if (!body) return;
+    send.disabled = true;
+    try { await api({ action: 'admin_reply', thread_id: id, body }); await openThread(id); await loadList(); } catch (e) { send.disabled = false; alert(e.message); }
+  };
+  const reply = el('div', 'reply'); reply.append(ta, send);
+  th.append(box, reply); box.scrollTop = box.scrollHeight;
+  loadList();
+}
+function logout(msg) { store.del('fb_pw'); pw = ''; clearInterval(timer); $('main').hidden = true; $('login').hidden = false; $('err').textContent = msg || ''; }
+async function enter() {
+  pw = $('pw').value || pw; url = $('url').value.trim() || DEFAULT_URL;
+  $('err').textContent = '';
+  try { await loadList(); } catch (e) { if (e.message !== '401') $('err').textContent = e.message; return; }
+  store.set('fb_pw', pw); store.set('fb_url', url);
+  $('login').hidden = true; $('main').hidden = false;
+  timer = setInterval(() => loadList().catch(() => {}), 30000);
+}
+$('eye').onclick = () => { const i = $('pw'); i.type = i.type === 'password' ? 'text' : 'password'; };
+$('go').onclick = enter; $('pw').onkeydown = (e) => { if (e.key === 'Enter') enter(); };
+$('refresh').onclick = () => { loadList(); if (current) openThread(current); };
+$('out').onclick = () => logout();
+$('back').onclick = () => { $('app').classList.remove('open'); $('back').hidden = true; current = null; };
+if (pw) enter();
+</script>
+</body>
+</html>
