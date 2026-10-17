@@ -65,3 +65,18 @@ test('два персонажі: Haiku - Ведмедик, Sonnet - Пасічн
   const tail = (p: string) => p.slice(p.indexOf('# Як відповідати'));
   assert.equal(tail(BEAR_PROMPT), tail(SYSTEM_PROMPT));
 });
+
+test('словник мови застосунку, посилання, двоє помічників', () => {
+  for (const term of [
+    '«Характеристики»', '«Оглянути»', '«Робочий режим»', '«Редагування»', '«Номенклатура»',
+    '«Внесено на складі»', '«Перешкоди»', '«кр код»',
+  ]) {
+    assert.ok(SYSTEM_PROMPT.includes(term), term);
+  }
+  assert.match(SYSTEM_PROMPT, /\[склад\]\(stock\)/);
+  assert.match(SYSTEM_PROMPT, /\(hive:id вулика\)/);
+  assert.match(SYSTEM_PROMPT, /# Двоє помічників/);
+  assert.match(SYSTEM_PROMPT, /не вибачайся/);
+  // у промпті Ведмедика - те саме, лише ім'я інше
+  assert.ok(BEAR_PROMPT.includes('# Мова застосунку (словник)'));
+});

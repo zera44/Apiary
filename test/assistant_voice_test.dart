@@ -99,11 +99,14 @@ void main() {
     } catch (_) {} // тест без бази
   });
 
-  Future<TestGesture> press(WidgetTester tester) async {
-    final g = await tester.startGesture(tester.getCenter(find.byKey(const ValueKey('assistant-mic'))));
+  /// Дотик до мікрофона (старт або стоп).
+  Future<void> tapMic(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('assistant-mic')));
     await settle(tester);
-    return g;
   }
+
+  String field(WidgetTester tester) =>
+      tester.widget<TextField>(find.byKey(const ValueKey('assistant-input'))).controller!.text;
 
   test('сказане фразами складається; розпізнавач телефона - щоразу весь текст', () {
     final d = Dictation()
@@ -120,61 +123,83 @@ void main() {
     expect(d.text, 'відкрий склад');
   });
 
-  testWidgets('тримаю мікрофон - текст видно, відпустив - надіслано й відповідь', (tester) async {
+  testWidgets('дотик - слухаю, сказане одразу пишеться в поле; ще дотик - стоп; надсилає людина',
+      (tester) async {
     await open(tester, [say('Відкриваю склад.')]);
-    final g = await press(tester);
+    await tapMic(tester);
     expect(voice.starts, 1);
     expect(find.text(tr.assistantListening), findsOneWidget);
     voice.say(const VoiceText('відкрий'));
     await tester.pump();
-    expect(find.text('відкрий'), findsOneWidget); // видно під час мовлення
+    expect(field(tester), 'відкрий'); // видно в полі, поки людина говорить
     voice.finalText = 'відкрий склад';
-    await g.up();
+    await tapMic(tester); // стоп
+    expect(field(tester), 'відкрий склад');
+    expect(find.byKey(const ValueKey('assistant-voice-strip')), findsNothing);
+    // нічого не надіслано саме - людина бачить текст і може виправити
+    expect(await tester.runAsync(() => q.store.items()), isEmpty);
+    await tester.tap(find.byKey(const ValueKey('assistant-send')));
     await settle(tester);
     await tester.pumpAndSettle();
     expect(find.text('відкрий склад'), findsOneWidget);
     expect(find.text('Відкриваю склад.'), findsOneWidget);
+  });
+
+  testWidgets('розпізнавач сам зупинився (пауза) - текст лишається в полі', (tester) async {
+    await open(tester, []);
+    await tapMic(tester);
+    voice.say(const VoiceText('скільки вуликів', isFinal: true));
+    await settle(tester);
+    expect(field(tester), 'скільки вуликів');
     expect(find.byKey(const ValueKey('assistant-voice-strip')), findsNothing);
   });
 
-  testWidgets('нічого не сказали - нічого не надіслано', (tester) async {
+  testWidgets('дописати голосом до вже набраного', (tester) async {
     await open(tester, []);
-    final g = await press(tester);
-    await g.up();
+    await tester.enterText(find.byKey(const ValueKey('assistant-input')), 'Запиши');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('assistant-mic-more')));
     await settle(tester);
+    voice.say(const VoiceText('огляд п\'ятого', isFinal: true));
+    await settle(tester);
+    expect(field(tester), 'Запиши огляд п\'ятого');
+  });
+
+  testWidgets('нічого не розчув - підказка, нічого не надіслано', (tester) async {
+    await open(tester, []);
+    await tapMic(tester);
+    await tapMic(tester); // стоп без слів
+    expect(find.text(tr.assistantNotHeard), findsOneWidget);
+    expect(field(tester), '');
     expect(await tester.runAsync(() => q.store.items()), isEmpty);
   });
 
   testWidgets('перший раз - пояснення про мікрофон, потім - системний запит', (tester) async {
     await open(tester, [], explained: false);
-    final g = await press(tester);
-    await g.up();
+    await tester.tap(find.byKey(const ValueKey('assistant-mic')));
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantMicExplainTitle), findsOneWidget);
     expect(voice.starts, 0); // дозвіл ще не просили
     await tester.tap(find.text(tr.assistantMicExplainOk));
     await settle(tester);
     expect(await tester.runAsync(() => repo.getMeta(AssistantVoiceSettings.micExplainedKey)), '1');
-    final g2 = await press(tester);
+    await tapMic(tester);
     expect(voice.starts, 1);
-    await g2.up();
-    await settle(tester);
+    await tapMic(tester);
   });
 
   testWidgets('без інтернету й без моделі - сказати, що розпізнавання недоступне', (tester) async {
     await open(tester, []);
     voice.result = VoiceStart.offlineUnavailable;
-    final g = await press(tester);
-    await g.up();
-    await tester.pump();
+    await tapMic(tester);
     expect(find.text(tr.assistantVoiceOffline), findsOneWidget);
   });
 
   testWidgets('моделі немає - запропонувати завантажити', (tester) async {
     await open(tester, []);
     voice.result = VoiceStart.needModel;
-    final g = await press(tester);
-    await g.up();
+    await tester.tap(find.byKey(const ValueKey('assistant-mic')));
+    await settle(tester);
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantVoiceDownload), findsOneWidget);
   });
@@ -182,9 +207,7 @@ void main() {
   testWidgets('немає дозволу на мікрофон - підказка, де ввімкнути', (tester) async {
     await open(tester, []);
     voice.result = VoiceStart.noPermission;
-    final g = await press(tester);
-    await g.up();
-    await tester.pump();
+    await tapMic(tester);
     expect(find.text(tr.assistantNoMic), findsOneWidget);
   });
 

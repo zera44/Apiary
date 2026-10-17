@@ -196,7 +196,7 @@ abstract class AppStrings {
   String get assistantFailed;
   String get assistantRetry;
   String get assistantDelete;
-  String get assistantThinking;
+  String assistantThinking(String who);
   String get assistantCardTitle;
   String get assistantYes;
   String get assistantNo;
@@ -221,6 +221,7 @@ abstract class AppStrings {
   String get assistantEffortHigh;
   String get assistantEffortXhigh;
   String get assistantMicHold;
+  String get assistantNotHeard;
   String get assistantListening;
   String get assistantMicExplainTitle;
   String get assistantMicExplain;

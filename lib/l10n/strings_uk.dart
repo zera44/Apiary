@@ -392,7 +392,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantDelete => 'Видалити';
   @override
-  String get assistantThinking => 'Пасічник думає…';
+  String assistantThinking(String who) => '$who думає…';
   @override
   String get assistantCardTitle => 'Записати так?';
   @override
@@ -441,9 +441,11 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantEffortXhigh => 'Дуже висока';
   @override
-  String get assistantMicHold => "Тримайте кнопку й говоріть";
+  String get assistantNotHeard => 'Не розчув - спробуйте ще раз';
   @override
-  String get assistantListening => "Говоріть… (відпустіть - надішлю)";
+  String get assistantMicHold => 'Натисніть і говоріть';
+  @override
+  String get assistantListening => 'Слухаю… Натисніть мікрофон ще раз, щоб закінчити';
   @override
   String get assistantMicExplainTitle => "Мікрофон для пасічника";
   @override
@@ -472,7 +474,7 @@ class AppStringsUk extends AppStrings {
   String get assistantNoUkVoice =>
       "У синтезаторі мови телефону немає української - відповіді не читатимуться вголос";
   @override
-  String get assistantSection => "Пасічник-помічник";
+  String get assistantSection => 'Помічник (Ведмедик і Пасічник)';
   @override
   String get assistantSpeakSetting => "Читати відповіді вголос";
 
