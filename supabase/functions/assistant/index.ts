@@ -28,6 +28,7 @@ import {
   type Env,
   MAX_BODY_BYTES,
   MAX_MESSAGES,
+  KEEP_MESSAGES,
   MAX_STEPS,
   MAX_TOKENS,
   REFUSAL_TEXT,
@@ -105,6 +106,20 @@ export function stepsSinceHuman(messages: Message[]): number {
   return steps;
 }
 
+/** Довга розмова - лише хвіст із [keep] повідомлень, що починається з
+ *  питання людини (не посеред циклу інструментів). */
+export function trimHistory(messages: Message[], keep: number = KEEP_MESSAGES): Message[] {
+  if (messages.length <= keep) return messages;
+  for (let i = messages.length - keep; i < messages.length; i++) {
+    if (isHumanTurn(messages[i])) return messages.slice(i);
+  }
+  // увесь хвіст - один цикл інструментів: від його питання
+  for (let i = messages.length - keep - 1; i >= 0; i--) {
+    if (isHumanTurn(messages[i])) return messages.slice(i);
+  }
+  return messages;
+}
+
 /** Перевірка форми розмови; повертає причину відмови або null. */
 export function validateMessages(raw: unknown): string | null {
   if (!Array.isArray(raw) || raw.length === 0) return 'messages';
@@ -175,17 +190,28 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const key = deps.env('ANTHROPIC_API_KEY')?.trim();
   if (!key) return fail(500, 'not_configured');
 
+  // відмова застосунку - і в журнал (без тексту розмови), інакше не видно чому
+  const reject = (status: number, error: string, extra: Record<string, unknown> = {}) => {
+    deps.log(JSON.stringify({ fn: 'assistant', result: 'rejected', status, error, ...extra }));
+    return fail(status, error);
+  };
+
   const text = await req.text();
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return fail(413, 'too_large');
+  const bytes = new TextEncoder().encode(text).length;
+  if (bytes > MAX_BODY_BYTES) return reject(413, 'too_large', { bytes });
   let body: { messages?: unknown; model?: unknown; effort?: unknown };
   try {
     body = JSON.parse(text);
   } catch {
-    return fail(400, 'json');
+    return reject(400, 'json');
   }
   const bad = validateMessages(body?.messages);
-  if (bad) return fail(400, bad);
-  const messages = stripOldThinking(body.messages as Message[]);
+  if (bad) {
+    const n = Array.isArray(body?.messages) ? body.messages.length : 0;
+    return reject(400, bad, { messages: n });
+  }
+  const all = body.messages as Message[];
+  const messages = stripOldThinking(trimHistory(all));
 
   const steps = stepsSinceHuman(messages);
   if (steps >= MAX_STEPS) {
@@ -254,6 +280,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       result: 'ok',
       model,
       effort,
+      messages: messages.length,
+      ...(messages.length < all.length ? { trimmed_from: all.length } : {}),
       steps: steps + (out.stop_reason === 'tool_use' ? 1 : 0),
       input_tokens: u.input_tokens ?? 0,
       output_tokens: u.output_tokens ?? 0,
