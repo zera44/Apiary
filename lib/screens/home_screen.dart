@@ -18,11 +18,12 @@ import '../ui/app_drawer.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/icons.dart';
+import '../services/feedback_chat.dart';
 import '../ui/hive_postbox.dart';
 import '../ui/invitations_sheet.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
-import 'feedback_screen.dart';
+import 'feedback_chat_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import 'splash_screen.dart';
@@ -330,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         _Tile(
                             icon: AppIcon('pencil', size: 28, color: AppColors.text),
                             label: 'Відгук',
-                            onTap: () => push(const FeedbackScreen())),
+                            onTap: () => openFeedback(nav)),
                       ])),
                     ]),
                   ),
@@ -513,6 +514,11 @@ class _AdvisorState extends State<_Advisor> {
   /// Вхідні запрошення помічником (чекають відповіді).
   int get _invites => SharingService.current.pending.value;
 
+  /// Нові відповіді розробника на відгук, яких ще не бачили.
+  int get _feedback => FeedbackChat.current?.unread.value ?? 0;
+
+  void _openFeedbackChat() => openFeedback(Navigator.of(context));
+
   /// Нові відповіді й картки пасічника-помічника, яких ще не бачили.
   int get _assistant => AssistantQueue.current?.unread.value ?? 0;
 
@@ -526,6 +532,7 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.stockChanges.addListener(_load);
     SharingService.current.pending.addListener(_onInvites);
     AssistantQueue.current?.unread.addListener(_onInvites);
+    FeedbackChat.current?.unread.addListener(_onInvites);
     _load();
     // запрошення - із сервера (без зв'язку - з копії на телефоні)
     SharingService.current.incoming().ignore();
@@ -538,6 +545,7 @@ class _AdvisorState extends State<_Advisor> {
     widget.repo.stockChanges.removeListener(_load);
     SharingService.current.pending.removeListener(_onInvites);
     AssistantQueue.current?.unread.removeListener(_onInvites);
+    FeedbackChat.current?.unread.removeListener(_onInvites);
     super.dispose();
   }
 
@@ -621,6 +629,8 @@ class _AdvisorState extends State<_Advisor> {
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
+        if (_feedback > 0)
+          (text: 'Розробник відповів на ваш відгук', action: _openFeedbackChat),
         if (_assistant > 0) (text: tr.assistantMail(_assistant), action: _openAssistant),
         if (HomeScreen.signedInMail case final email?)
           (text: tr.accountSignedInMail(email), action: _readSignedIn),
@@ -638,7 +648,12 @@ class _AdvisorState extends State<_Advisor> {
   // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
   // що кінчаються
   int get _mail =>
-      (HomeScreen.signedInMail == null ? 0 : 1) + _invites + _assistant + _due.length + _low.length;
+      (HomeScreen.signedInMail == null ? 0 : 1) +
+      _invites +
+      _assistant +
+      _feedback +
+      _due.length +
+      _low.length;
 
   @override
   Widget build(BuildContext context) {

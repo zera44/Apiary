@@ -11,12 +11,14 @@ import 'data/repository.dart';
 import 'data/sync_service.dart';
 import 'icons/app_icons.dart';
 import 'l10n/l10n.dart';
+import 'screens/feedback_chat_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/background.dart';
 import 'services/backups.dart';
+import 'services/feedback_chat.dart';
 import 'services/reminders.dart';
 import 'services/server.dart';
 import 'services/stock_photos.dart';
@@ -62,6 +64,12 @@ Future<void> _start() async {
           scheduleBackground: BackgroundTasks.scheduleAssistant)
       .start()
       .catchError((Object e) => debugPrint('Помічник: $e')));
+  // відгук: відповіді розробника (значок на поштоматі, сповіщення)
+  unawaited(FeedbackChat(repo).start().then((_) async {
+    if (await FeedbackChat.current?.hasThread() ?? false) {
+      await BackgroundTasks.registerFeedback();
+    }
+  }).catchError((Object e) => debugPrint('Відгук: $e')));
   // вхід на сервер (збережений або тихо через Google); без мережі - пізніше
   unawaited(Server.start(repo, auth).catchError((Object _) {}));
   // нагадування про обхід; збій не повинен заважати запуску
@@ -116,10 +124,21 @@ class _ApiaryAppState extends State<ApiaryApp> {
   void initState() {
     super.initState();
     _reminders.addListener(_openFromReminder);
+    ReminderService.instance.openFeedbackRequest.addListener(_openFeedbackFromNotification);
     ReminderService.instance.beforeAskPermission = _explainNotifications;
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
     _listenLinks();
+  }
+
+  /// Натиснули «Розробник відповів» - відкрити розмову.
+  void _openFeedbackFromNotification() {
+    final r = ReminderService.instance.openFeedbackRequest;
+    if (!r.value) return;
+    final nav = _nav.currentState;
+    if (nav == null || !canUseApp(widget.auth)) return;
+    r.value = false;
+    unawaited(openFeedback(nav));
   }
 
   /// Запрошувальні посилання (vulyk://join?t=...): і коли застосунок

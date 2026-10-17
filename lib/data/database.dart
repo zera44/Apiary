@@ -418,6 +418,19 @@ class AppDatabase {
         msg TEXT NOT NULL
       )''');
 
+    // «Відгук»: розмова з розробником (лише на цьому телефоні, не
+    // синхронізується). remote_seq - номер повідомлення на сервері.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS feedback_chat (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        remote_seq INTEGER UNIQUE,
+        from_dev INTEGER NOT NULL DEFAULT 0,
+        body TEXT NOT NULL,
+        at REAL NOT NULL,
+        pending INTEGER NOT NULL DEFAULT 0,
+        unread INTEGER NOT NULL DEFAULT 0
+      )''');
+
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_group ON elements(group_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_el_apiary ON elements(apiary_id)');
     await db.execute(
