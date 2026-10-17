@@ -43,7 +43,10 @@
 <div id="login">
   <h2>Відгуки Vulyk</h2>
   <p style="color:var(--muted)">Пароль адмінки (секрет FEEDBACK_ADMIN_PASSWORD у Supabase).</p>
-  <input id="pw" type="password" placeholder="Пароль" autocomplete="current-password">
+  <div style="position:relative">
+    <input id="pw" type="password" placeholder="Пароль" autocomplete="current-password" style="padding-right:48px">
+    <button type="button" id="eye" class="ghost" aria-label="Показати пароль" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:6px 10px">👁</button>
+  </div>
   <p><button id="go">Увійти</button></p>
   <details><summary style="color:var(--muted)">Адреса функції</summary>
     <input id="url" style="margin-top:8px">
@@ -120,6 +123,7 @@ async function enter() {
   $('login').hidden = true; $('main').hidden = false;
   timer = setInterval(() => loadList().catch(() => {}), 30000);
 }
+$('eye').onclick = () => { const i = $('pw'); i.type = i.type === 'password' ? 'text' : 'password'; };
 $('go').onclick = enter; $('pw').onkeydown = (e) => { if (e.key === 'Enter') enter(); };
 $('refresh').onclick = () => { loadList(); if (current) openThread(current); };
 $('out').onclick = () => logout();
