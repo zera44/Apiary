@@ -122,7 +122,13 @@ class ReminderService {
       try {
         go = await explain();
       } catch (_) {}
-      if (!go) return; // не зараз — запитаємо наступного разу
+      if (!go) {
+        // «Не зараз» - до наступного запуску застосунку не питаємо (інакше
+        // вікно вискакувало б після кожного запису огляду, зокрема в чаті
+        // помічника)
+        _askedPermission = true;
+        return;
+      }
     }
     _askedPermission = true;
     await _plugin

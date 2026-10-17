@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildRequest, type Deps, handle, stepsSinceHuman } from '../functions/assistant/index.ts';
+import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
 import { DEFAULT_MODEL, MAX_STEPS } from '../functions/assistant/config.ts';
 
@@ -292,4 +292,30 @@ test('лише POST', async () => {
   const { d } = deps(modelReply([]));
   const r = await handle(new Request('https://x/assistant', { headers: { [TEST_TOKEN_HEADER]: TOKEN } }), d);
   assert.equal(r.status, 405);
+});
+
+test('блоки міркувань із попередніх реплік прибираються (Ведмедик <-> Пасічник), поточного циклу - ні', async () => {
+  const think = (sig: string) => ({ type: 'thinking', thinking: '', signature: sig });
+  const messages: any[] = [
+    { role: 'user', content: 'Привіт' },
+    { role: 'assistant', content: [think('old-haiku'), { type: 'text', text: 'Добрий день' }] },
+    { role: 'user', content: 'Скільки вуликів?' },
+    { role: 'assistant', content: [think('old-2'), { type: 'tool_use', id: 't0', name: 'find_hives', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't0', content: '[]' }] },
+    { role: 'assistant', content: [think('old-3')] },
+    { role: 'user', content: 'Відкрий склад' },
+    { role: 'assistant', content: [think('current'), { type: 'tool_use', id: 't1', name: 'open_screen', input: { screen: 'stock' } }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] },
+  ];
+  const out = stripOldThinking(messages);
+  const sigs = JSON.stringify(out).match(/"signature":"[^"]+"/g);
+  assert.deepEqual(sigs, ['"signature":"current"']);
+  assert.equal(out[1].content[0].text, 'Добрий день');
+  assert.equal(out[3].content[0].type, 'tool_use');
+  assert.deepEqual(out[5].content, [{ type: 'text', text: '…' }]);
+  assert.deepEqual(out[7], messages[7]);
+
+  const { d, calls } = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  await handle(post({ messages: messages.slice(0, 7) }), d);
+  assert.doesNotMatch(JSON.stringify(calls[0].body.messages), /old-haiku|old-2|old-3/);
 });

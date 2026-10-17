@@ -70,6 +70,27 @@ function isHumanTurn(m: Message): boolean {
   return m.content.some((b) => b.type !== 'tool_result');
 }
 
+/** Блоки міркувань (thinking) потрібні моделі лише в поточному циклі
+ *  інструментів. Із попередніх реплік їх прибираємо: вони прив'язані до
+ *  моделі й розмови, де виникли, і інша модель (Ведмедик <-> Пасічник) чи
+ *  змінена історія (повтор, «Нова розмова», «[Скасовано: …]») дає 400
+ *  «block is bound to a different conversation». Текст відповідей лишається. */
+export function stripOldThinking(messages: Message[]): Message[] {
+  let lastHuman = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (isHumanTurn(messages[i])) {
+      lastHuman = i;
+      break;
+    }
+  }
+  return messages.map((m, i) => {
+    if (i >= lastHuman || m.role !== 'assistant' || typeof m.content === 'string') return m;
+    const kept = m.content.filter((b) => b.type !== 'thinking' && b.type !== 'redacted_thinking');
+    if (kept.length === m.content.length) return m;
+    return { ...m, content: kept.length > 0 ? kept : [{ type: 'text', text: '…' }] };
+  });
+}
+
 /** Скільки разів модель уже зверталася до інструментів після останнього
  *  повідомлення людини. */
 export function stepsSinceHuman(messages: Message[]): number {
@@ -164,7 +185,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   }
   const bad = validateMessages(body?.messages);
   if (bad) return fail(400, bad);
-  const messages = body.messages as Message[];
+  const messages = stripOldThinking(body.messages as Message[]);
 
   const steps = stepsSinceHuman(messages);
   if (steps >= MAX_STEPS) {

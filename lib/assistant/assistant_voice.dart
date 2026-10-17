@@ -124,7 +124,11 @@ class PhoneVoice implements ChatVoice {
         return VoiceStart.ok;
       }
       _usingVosk = false;
-      _systemReady = _systemReady || await _system.initialize(onError: (_) {});
+      _systemReady = _systemReady ||
+          await _system.initialize(
+            // тиша, немає зв'язку тощо - кінець без тексту («не розчув»)
+            onError: (_) => _onText?.call(const VoiceText('', isFinal: true)),
+          );
       if (!_systemReady) return VoiceStart.needModel;
       if (!await isOnline()) return VoiceStart.offlineUnavailable;
       if (!await _system.hasPermission) return VoiceStart.noPermission;

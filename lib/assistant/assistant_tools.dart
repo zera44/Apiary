@@ -6,6 +6,7 @@ import '../data/notes.dart';
 import '../data/repository.dart';
 import '../data/user_reminders.dart';
 import '../logic/visit_reminders.dart';
+import '../ui/fin_style.dart' show kFinStockCategoryName;
 import '../ui/icons.dart' show queenTagChoices;
 import 'assistant_session.dart';
 
@@ -60,7 +61,11 @@ class WriteField {
   final String label;
   final String value;
   final bool editable;
-  const WriteField(this.key, this.label, this.value, {this.editable = true});
+
+  /// Значення на вибір (напр., колір мітки матки) - кнопками, а не текстом.
+  final List<String> choices;
+  const WriteField(this.key, this.label, this.value,
+      {this.editable = true, this.choices = const []});
 }
 
 /// Запис, що чекає на «Так» / «Ні».
@@ -335,20 +340,37 @@ class AssistantTools {
   // без підтвердження
 
   Future<Map<String, dynamic>> _openScreen(Map<String, dynamic> input) async {
-    final screen = _s(input, 'screen');
+    final target = await _target(_s(input, 'screen'), _s(input, 'id'));
+    final nav = navigate;
+    if (nav == null) {
+      offeredNav.add(target);
+      return {'status': 'запропоновано', 'note': 'Людина побачить кнопку «Відкрити»'};
+    }
+    return {'status': await nav(target) ? 'відкрито' : 'не вдалося відкрити'};
+  }
+
+  /// Куди відкрити екран [screen] з [id] (пасіка, вулик, урок) - і для
+  /// open_screen, і для посилань у відповідях. Не вийшло - null.
+  Future<NavTarget?> targetFor(String screen, String? id) async {
+    try {
+      return await _target(screen, id ?? '');
+    } on _Bad {
+      return null;
+    }
+  }
+
+  Future<NavTarget> _target(String screen, String id) async {
     if (!kAssistantScreens.contains(screen)) {
       throw _Bad('Немає екрана «$screen». Є: ${kAssistantScreens.join(', ')}');
     }
-    final id = _s(input, 'id');
-    final NavTarget target;
     switch (screen) {
       case 'hive':
-        if (id.isEmpty) throw _Bad('Для hive потрібен id вулика (з find_hives)');
+        if (id.isEmpty) throw const _Bad('Для hive потрібен id вулика (з find_hives)');
         final h = await _hive(id);
-        target = NavTarget('hive', h.name, apiaryId: h.apiaryId, elementId: h.elementId);
+        return NavTarget('hive', h.name, apiaryId: h.apiaryId, elementId: h.elementId);
       case 'map':
         final apiaries = await repo.listApiaries();
-        if (apiaries.isEmpty) throw _Bad('Пасік ще немає');
+        if (apiaries.isEmpty) throw const _Bad('Пасік ще немає');
         final a = id.isEmpty
             ? (apiaries.length == 1
                   ? apiaries.first
@@ -360,18 +382,12 @@ class AssistantTools {
                 (a) => a.id == id,
                 orElse: () => _pick(apiaries, id, (a) => a.name, 'Пасіку'),
               );
-        target = NavTarget('map', a.name, apiaryId: a.id);
+        return NavTarget('map', a.name, apiaryId: a.id);
       case 'lesson':
-        target = NavTarget('lesson', 'урок', lessonId: id.isEmpty ? null : id);
+        return NavTarget('lesson', 'урок', lessonId: id.isEmpty ? null : id);
       default:
-        target = NavTarget(screen, screen);
+        return NavTarget(screen, screen);
     }
-    final nav = navigate;
-    if (nav == null) {
-      offeredNav.add(target);
-      return {'status': 'запропоновано', 'note': 'Людина побачить кнопку «Відкрити»'};
-    }
-    return {'status': await nav(target) ? 'відкрито' : 'не вдалося відкрити'};
   }
 
   Future<Map<String, dynamic>> _apiariesList() async {
@@ -541,7 +557,7 @@ class AssistantTools {
     final cats = await repo.finCategoryMap();
     Map<String, String> named(Map<String?, double> m) => {
       for (final e in m.entries)
-        (e.key == null ? 'Склад' : cats[e.key]?.name ?? 'Інше'): _num(e.value),
+        (e.key == null ? kFinStockCategoryName : cats[e.key]?.name ?? 'Інше'): _num(e.value),
     };
     return {
       'from': _date(from),
@@ -632,6 +648,12 @@ class AssistantTools {
           'p:${e.key.id}',
           [e.key.name, if (e.key.unit != null) '(${e.key.unit})'].join(' '),
           e.value,
+          choices: switch (e.key.dataType) {
+            DataTypes.color => [for (final c in queenTagChoices) c.$1],
+            DataTypes.choice => e.key.options,
+            DataTypes.bool_ => const [DataTypes.yes, DataTypes.no],
+            _ => const [],
+          },
         ),
       if (note.isNotEmpty) WriteField('note', 'Нотатка', note),
       if (visited) WriteField('visit', 'Дата обходу', _date(now()), editable: false),

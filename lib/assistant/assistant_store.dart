@@ -66,7 +66,8 @@ class ChatItem {
       : PendingWrite(data['tool'] as String, text, [
           for (final f in (data['fields'] as List))
             WriteField(f['key'] as String, f['label'] as String, f['value'] as String,
-                editable: f['editable'] as bool? ?? true),
+                editable: f['editable'] as bool? ?? true,
+                choices: [for (final c in (f['choices'] as List? ?? const [])) '$c']),
         ]);
 
   static ChatItem fromRow(Map<String, Object?> r) => ChatItem(
@@ -149,7 +150,13 @@ class AssistantStore {
             'input': input,
             'fields': [
               for (final f in card.fields)
-                {'key': f.key, 'label': f.label, 'value': f.value, 'editable': f.editable}
+                {
+                  'key': f.key,
+                  'label': f.label,
+                  'value': f.value,
+                  'editable': f.editable,
+                  if (f.choices.isNotEmpty) 'choices': f.choices,
+                }
             ],
           },
           unread: unread);
