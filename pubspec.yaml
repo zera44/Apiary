@@ -81,8 +81,9 @@ flutter:
     - assets/icons/ui/
     # малюнки для режиму навчання (оригінали — design/guide/*.pdf)
     - assets/guide/
-    # мова розпізнавання чеків (tessdata_fast, Apache-2.0) і перелік файлів для плагіна;
-    # словник слів (lstm-word-dawg, 3,4 МБ) вилучено: на чеках без нього не гірше
+    # мова розпізнавання чеків: ukr, донавчена на чеках пасічника (гілка
+    # ocr-training, models/v2; база - tessdata_best ukr, Apache-2.0),
+    # цілочисельна, без словника; і перелік файлів для плагіна
     - assets/tessdata/
     - assets/tessdata_config.json
     # «Що нового» — генерується з історії git (tool/whats_new.py)

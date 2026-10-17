@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show compute, kIsWeb;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -25,7 +26,35 @@ class TesseractReceiptOcr implements ReceiptOcr {
   @override
   bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
-  Future<String> _tesseract(String path) => FlutterTesseractOcr.extractText(
+  static bool _modelChecked = false;
+
+  /// Плагін копіює модель (assets/tessdata/ukr.traineddata) на телефон лише
+  /// раз - якщо її там ще немає. Тож після оновлення застосунку з новою
+  /// моделлю (донавчання на чеках) стара лишилася б назавжди: копія іншого
+  /// розміру прибирається, і плагін кладе нову.
+  static Future<void> _freshModel() async {
+    if (_modelChecked) return;
+    _modelChecked = true;
+    try {
+      final asset = await rootBundle.load('assets/tessdata/ukr.traineddata');
+      final dir = await FlutterTesseractOcr.getTessdataPath();
+      await dropStaleModel(File('$dir/ukr.traineddata'), asset.lengthInBytes);
+    } catch (_) {
+      // не вийшло перевірити - працюємо з тим, що є
+    }
+  }
+
+  /// Прибрати копію моделі [copy], якщо вона не того розміру, що в
+  /// застосунку ([assetBytes]). true - прибрано.
+  static Future<bool> dropStaleModel(File copy, int assetBytes) async {
+    if (!await copy.exists() || await copy.length() == assetBytes) return false;
+    await copy.delete();
+    return true;
+  }
+
+  Future<String> _tesseract(String path) async {
+    await _freshModel();
+    return FlutterTesseractOcr.extractText(
         path,
         language: 'ukr',
         args: {
@@ -34,6 +63,7 @@ class TesseractReceiptOcr implements ReceiptOcr {
           'preserve_interword_spaces': '1',
         },
       );
+  }
 
   /// Спершу - підготовлене фото (чорне на білому, без тіней: див.
   /// logic/receipt_image.dart), воно читається значно краще. Якщо з нього не
