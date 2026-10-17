@@ -134,6 +134,17 @@ type Usage = {
   cache_creation_input_tokens?: number;
 };
 
+/** Тип і пояснення помилки Anthropic - для журналу (без тексту розмови;
+ *  пояснення обрізане). */
+async function errorInfo(res: Response): Promise<{ error_type?: string; error_message?: string }> {
+  try {
+    const j = (await res.clone().json()) as { error?: { type?: string; message?: string } };
+    return { error_type: j.error?.type, error_message: j.error?.message?.slice(0, 300) };
+  } catch {
+    return {};
+  }
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method !== 'POST') return fail(405, 'method');
 
@@ -164,18 +175,29 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // вибір у застосунку (плашка під полем чату), якщо сервер дозволяє
   const { model, effort } = choose(deps.env, body);
   const payload = buildRequest(model, messages, deps.system ?? systemPromptFor(model), deps.tools ?? TOOLS, effort);
-  let res: Response;
-  try {
-    res = await deps.fetch(ANTHROPIC_URL, {
+  // один запит до Anthropic; withFallback - разом із «запасною моделлю» (Sonnet)
+  const call = (withFallback: boolean) => {
+    const body = withFallback ? payload : { ...payload, fallbacks: undefined };
+    return deps.fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-api-key': key,
         'anthropic-version': ANTHROPIC_VERSION,
-        ...(usesFallback(model) ? { 'anthropic-beta': FALLBACK_BETA } : {}),
+        ...(withFallback ? { 'anthropic-beta': FALLBACK_BETA } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
+  };
+
+  let res: Response;
+  try {
+    res = await call(usesFallback(model));
+    // Anthropic не прийняв «запасну модель» - той самий запит без неї
+    if (res.status === 400 && usesFallback(model)) {
+      deps.log(JSON.stringify({ fn: 'assistant', result: 'retry_without_fallback', ...(await errorInfo(res)) }));
+      res = await call(false);
+    }
   } catch {
     deps.log(JSON.stringify({ fn: 'assistant', result: 'network', steps }));
     return json({ error: 'busy', retry: true }, 503);
@@ -184,7 +206,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (!res.ok) {
     // 429 (ліміт), 529 (перевантажено), 5xx - можна повторити згодом
     const retry = res.status === 429 || res.status >= 500;
-    deps.log(JSON.stringify({ fn: 'assistant', result: 'upstream', status: res.status, steps }));
+    deps.log(
+      JSON.stringify({
+        fn: 'assistant',
+        result: 'upstream',
+        status: res.status,
+        model,
+        effort,
+        steps,
+        ...(await errorInfo(res)),
+      }),
+    );
     return retry ? json({ error: 'busy', retry: true }, 503) : fail(502, 'upstream');
   }
 

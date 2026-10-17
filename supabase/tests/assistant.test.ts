@@ -156,6 +156,36 @@ test('невідомий вибір ігнорується; ASSISTANT_CLIENT_CHO
   assert.deepEqual(off.calls[0].body.output_config, { effort: 'medium' });
 });
 
+test('Anthropic не прийняв «запасну модель» - той самий запит без неї; у журналі - чому', async () => {
+  let n = 0;
+  const { d, calls, logs } = deps(() => {
+    n++;
+    return n === 1
+      ? new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'fallbacks: unknown field' } }), { status: 400 })
+      : modelReply([{ type: 'text', text: 'ok' }])();
+  }, { ...SECRETS, ASSISTANT_MODEL: 'sonnet' });
+  const r = await handle(post(hello), d);
+  assert.equal(r.status, 200);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].body.fallbacks, 'default');
+  assert.equal('fallbacks' in calls[1].body, false);
+  assert.equal(calls[1].headers['anthropic-beta'], undefined);
+  assert.match(logs[0], /retry_without_fallback/);
+  assert.match(logs[0], /fallbacks: unknown field/);
+});
+
+test('помилка Anthropic - у журналі тип і пояснення (без тексту розмови)', async () => {
+  const { d, logs } = deps(
+    () => new Response(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'messages.1: bad' } }), { status: 400 }),
+  );
+  const r = await handle(post({ messages: [{ role: 'user', content: 'Таємне' }] }), d);
+  assert.equal(r.status, 502);
+  const line = JSON.parse(logs.at(-1)!);
+  assert.equal(line.error_type, 'invalid_request_error');
+  assert.equal(line.error_message, 'messages.1: bad');
+  assert.doesNotMatch(logs.at(-1)!, /Таємне/);
+});
+
 test('відмова запобіжників моделі - звичайна коротка відповідь застосунку', async () => {
   const { d } = deps(modelReply([], 'refusal'));
   const out = await (await handle(post(hello), d)).json();
