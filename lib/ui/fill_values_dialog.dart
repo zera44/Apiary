@@ -81,8 +81,24 @@ class FillPage {
   final List<Parameter> params;
   final Map<String, String?> latest;
   final List<StockItem> stock;
+
+  /// Групи параметрів - форма ділиться на ті самі секції, що й панель вулика.
+  final List<ParamGroup> groups;
+
+  /// Параметри лише для перегляду (напр., «Кількість днів до обходу» -
+  /// рахується сама): {id: що показати}.
+  final Map<String, String?> readOnly;
+
+  /// QR-код вулика, як на панелі («№ 3» / код), або null - рядка немає.
+  final String? qr;
   const FillPage(
-      {required this.params, required this.latest, this.stock = const [], this.title});
+      {required this.params,
+      required this.latest,
+      this.stock = const [],
+      this.title,
+      this.groups = const [],
+      this.readOnly = const {},
+      this.qr});
 }
 
 /// Тримає поточну сторінку: на «Зберегти й далі» підміняє вміст тієї самої
@@ -121,6 +137,9 @@ class _FillHostState extends State<_FillHost> {
       title: _page.title,
       params: _page.params,
       latest: _page.latest,
+      groups: _page.groups,
+      readOnly: _page.readOnly,
+      qr: _page.qr,
       offerNext: widget.offerNext,
       lesson: widget.lesson,
       subtitle: widget.subtitle,
@@ -182,8 +201,16 @@ class _FillDialog extends StatefulWidget {
 
   /// Поле «Нотатка» під таблицею (огляд одного вулика).
   final bool withNote;
+
+  /// Як на панелі вулика: групи, значення лише для перегляду, QR-код.
+  final List<ParamGroup> groups;
+  final Map<String, String?> readOnly;
+  final String? qr;
   const _FillDialog(
       {super.key,
+      this.groups = const [],
+      this.readOnly = const {},
+      this.qr,
       this.infoRows = const [],
       this.withNote = false,
       this.lesson,
@@ -215,6 +242,7 @@ class _FillDialogState extends State<_FillDialog> {
   void initState() {
     super.initState();
     for (final p in widget.params) {
+      if (widget.readOnly.containsKey(p.id)) continue;
       final cur = widget.latest[p.id] ?? '';
       if (const {DataTypes.date, DataTypes.color, DataTypes.bool_, DataTypes.choice}
           .contains(p.dataType)) {
@@ -369,6 +397,7 @@ class _FillDialogState extends State<_FillDialog> {
     }
     final out = <String, String>{};
     for (final p in widget.params) {
+      if (widget.readOnly.containsKey(p.id)) continue; // лише перегляд
       final raw = (_text[p.id]?.text ?? _picked[p.id] ?? '').trim();
       final before = (widget.latest[p.id] ?? '').trim();
       // поле не чіпали — не перевіряємо й не записуємо (навіть якщо старе
@@ -441,29 +470,44 @@ class _FillDialogState extends State<_FillDialog> {
           ),
         ]);
     final feed = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
-    return Table(
-      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
-      columnWidths: stacked
-          ? const {0: FlexColumnWidth()}
-          : const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: [
-        for (final (name, value) in widget.infoRows)
-          row(
-              name,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                child: Text(value,
-                    style: TextStyle(
-                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
-              )),
-        for (final p in widget.params)
-          row(
-              p.nameWithUnit,
-              HoneyRing(
-                  on: _ring(4) && p.id == _lesson!.dateParamId,
-                  radius: 8,
-                  child: _field(p))),
+    Table table(List<TableRow> rows) => Table(
+          border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+          columnWidths: stacked
+              ? const {0: FlexColumnWidth()}
+              : const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: rows,
+        );
+    Widget shown(String? v) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+          child: Text((v == null || v.isEmpty) ? '-' : v,
+              style: TextStyle(
+                  color: (v == null || v.isEmpty) ? AppColors.textMuted : AppColors.text,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600)),
+        );
+    TableRow param(Parameter p) => row(
+        p.nameWithUnit,
+        widget.readOnly.containsKey(p.id)
+            ? shown(widget.readOnly[p.id])
+            : HoneyRing(
+                on: _ring(4) && p.id == _lesson!.dateParamId, radius: 8, child: _field(p)));
+
+    // як на панелі вулика: спершу QR-код і параметри без групи, далі групи
+    // («Обхід» тощо) медовими плашками - ті самі назви, той самий порядок
+    final byId = {for (final p in widget.params) p.id: p};
+    final used = <String>{};
+    final sections = <(String, List<Parameter>)>[];
+    for (final g in widget.groups) {
+      final items = [for (final id in g.ids) if (byId[id] != null && used.add(id)) byId[id]!];
+      if (items.isNotEmpty) sections.add((g.name, items));
+    }
+    final head = <TableRow>[
+      if (widget.qr != null) row('QR-код', shown(widget.qr)),
+      for (final (name, value) in widget.infoRows) row(name, shown(value)),
+      for (final p in widget.params) if (!used.contains(p.id)) param(p),
+    ];
+    final feedRows = <TableRow>[
         if (widget.stock.isNotEmpty)
           row(
             'Підгодівля зі складу',
@@ -508,8 +552,29 @@ class _FillDialogState extends State<_FillDialog> {
               onChanged: (_) => setState(() => _error = null),
             ),
           ),
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (head.isNotEmpty) table(head),
+      for (final (name, items) in sections) ...[
+        if (head.isNotEmpty || name != sections.first.$1) const SizedBox(height: 10),
+        Container(
+          constraints: const BoxConstraints(minHeight: 30),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          // назва групи - заокруглена «плашка» над таблицею (як на панелі)
+          decoration: BoxDecoration(color: AppColors.hive, borderRadius: BorderRadius.circular(10)),
+          child: Text(name,
+              style: const TextStyle(
+                  color: Color(0xFF2B1A08), fontSize: 14, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 6),
+        table([for (final p in items) param(p)]),
       ],
-    );
+      if (feedRows.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        table(feedRows),
+      ],
+    ]);
   }
 
   /// Текст у клітинці списку: не переноситься й не обрізається «…» — зменшується.

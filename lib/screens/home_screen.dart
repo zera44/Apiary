@@ -436,10 +436,18 @@ class _Tile extends StatelessWidget {
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
                   const SizedBox(height: 6),
-                  Text(label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.text, fontSize: 12)),
+                  // слово не рветься («Навчан-ня»): один рядок, на великому
+                  // шрифті - трохи менше, а не перенос посередині слова
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(color: AppColors.text, fontSize: 12)),
+                    ),
+                  ),
                 ]),
               ),
             ),

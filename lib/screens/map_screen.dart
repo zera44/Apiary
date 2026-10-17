@@ -1531,14 +1531,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // періодичність обходу — налаштування вулика, не показник огляду: у формі
     // її немає (змінюють тапом по значенню на панелі) — і в уроці теж
     final periodId = await repo.baseParameterId(el.type, 'visit_period');
-    final leftId = el.isHive ? await repo.baseParameterId('hive', 'visit_left') : null;
+    // урок веде по комірках форми - там без розрахункового рядка
+    final leftId =
+        el.isHive && lesson != null ? await repo.baseParameterId('hive', 'visit_left') : null;
     FillPage formPage(FillPage pg) => periodId == null && leftId == null
         ? pg
         : FillPage(
             params: [for (final p in pg.params) if (p.id != periodId && p.id != leftId) p],
             latest: pg.latest,
             stock: pg.stock,
-            title: pg.title);
+            title: pg.title,
+            groups: pg.groups,
+            readOnly: pg.readOnly,
+            qr: lesson != null ? null : pg.qr);
     final first = formPage(first0);
     final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
     if (!mounted) return;
@@ -1605,8 +1610,26 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final latest = await repo.latestParameterValues(entity);
     final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
     final title = panelElement?.id == el.id ? panelData?.title : null;
+    // як на панелі: «Кількість днів до обходу» (рахується сама) - лише для
+    // перегляду, QR-код вулика, групи параметрів
+    final leftId = el.isHive ? await repo.baseParameterId('hive', 'visit_left') : null;
+    final readOnly = <String, String?>{
+      if (leftId != null) leftId: (await repo.daysToVisit(entity))?.toString(),
+    };
+    String? qr;
+    if (el.isHive) {
+      final code = await repo.qrForObject(hiveObjectOf(el, elements));
+      final n = code == null ? null : await repo.qrNumberOf(code);
+      qr = code == null ? '-' : (n != null ? '№ $n' : code);
+    }
     return FillPage(
-        params: params, latest: latest, stock: stock, title: title ?? el.label ?? 'Вулик');
+        params: params,
+        latest: latest,
+        stock: stock,
+        title: title ?? el.label ?? 'Вулик',
+        groups: await repo.paramGroups(),
+        readOnly: readOnly,
+        qr: qr);
   }
 
   /// Записати результат форми для вулика [el].
