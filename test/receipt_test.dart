@@ -36,6 +36,14 @@ const _receipt = '''
 ''';
 
 void main() {
+  group('розпізнавання: основний і запасний рушій', () {
+    test('поза Android читає запасний рушій (Tesseract/підміна)', () async {
+      final ocr = HybridReceiptOcr(fallback: _FakeOcr('Мед 1 x 100.00'));
+      expect(ocr.supported, isTrue);
+      expect(await ocr.read('/немає.jpg'), 'Мед 1 x 100.00');
+    });
+  });
+
   group('розбір чека', () {
     test('назва в одному рядку, «кількість x ціна» - у наступному', () {
       final rows = parseReceipt(_receipt);

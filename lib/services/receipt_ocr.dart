@@ -4,13 +4,16 @@ import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:paddle_ocr_flutter/paddle_ocr_flutter.dart';
 
 import '../logic/receipt_image.dart';
 import '../logic/receipt_parser.dart';
 
-/// Розпізнавання тексту на фото чека (Tesseract, українська мова:
-/// assets/tessdata/ukr.traineddata). Працює на телефоні; на комп'ютері
-/// розпізнавання недоступне - там фото лише обирають, а таблицю заповнюють вручну.
+/// Розпізнавання тексту на фото чека. Основний рушій - PaddleOCR (нейромережа
+/// PP-OCR в ONNX Runtime, пакет paddle_ocr_flutter, моделі в assets/ocr/);
+/// запасний - Tesseract (українська: assets/tessdata/ukr.traineddata).
+/// Працює на телефоні; на комп'ютері розпізнавання недоступне - там фото
+/// лише обирають, а таблицю заповнюють вручну.
 abstract class ReceiptOcr {
   /// Чи вміє цей пристрій розпізнавати текст.
   bool get supported;
@@ -19,7 +22,33 @@ abstract class ReceiptOcr {
   Future<String> read(String imagePath);
 
   /// Підміняється в тестах.
-  static ReceiptOcr instance = TesseractReceiptOcr();
+  static ReceiptOcr instance = HybridReceiptOcr();
+}
+
+/// Спершу PaddleOCR (Android); якщо його немає, він упав або не знайшов жодної
+/// позиції - Tesseract.
+class HybridReceiptOcr implements ReceiptOcr {
+  HybridReceiptOcr({ReceiptOcr? fallback}) : _fallback = fallback ?? TesseractReceiptOcr();
+
+  final ReceiptOcr _fallback;
+
+  @override
+  bool get supported => _fallback.supported;
+
+  @override
+  Future<String> read(String imagePath) async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        if (await PaddleOcr.ready()) {
+          final r = await PaddleOcr.recognize(imagePath);
+          if (parseReceipt(r.text).isNotEmpty) return r.text;
+        }
+      } catch (_) {
+        // плагін чи модель не спрацювали - читаємо Tesseract-ом
+      }
+    }
+    return _fallback.read(imagePath);
+  }
 }
 
 class TesseractReceiptOcr implements ReceiptOcr {

@@ -58,6 +58,9 @@ dependencies:
   # застосунок скачує один раз при першому голосовому вводі); лише Android
   vosk_flutter:
     path: packages/vosk_flutter
+  # розпізнавання чеків: PaddleOCR в ONNX Runtime (Android), моделі - assets/ocr/
+  paddle_ocr_flutter:
+    path: packages/paddle_ocr_flutter
   workmanager: ^0.10.10
   # чи телефон на мобільному інтернеті (перемикач «Синхронізувати через
   # мобільний інтернет»)
@@ -86,5 +89,7 @@ flutter:
     # цілочисельна, без словника; і перелік файлів для плагіна
     - assets/tessdata/
     - assets/tessdata_config.json
+    # моделі PaddleOCR (PP-OCRv6 det small і PP-OCRv5 rec для східнослов'янських мов, Apache-2.0)
+    - assets/ocr/
     # «Що нового» — генерується з історії git (tool/whats_new.py)
     - assets/whats_new.json

@@ -301,6 +301,24 @@ void _patchAndroidSpeechQueries() {
   stdout.writeln('✓ AndroidManifest.xml (розпізнавання мови й синтезатор для помічника)');
 }
 
+/// Мінімальна версія Android - 7.0 (API 24): так вимагає ONNX Runtime, що
+/// розпізнає чеки (плагін paddle_ocr_flutter). Старіших телефонів практично немає.
+void _patchAndroidMinSdk() {
+  for (final name in ['android/app/build.gradle.kts', 'android/app/build.gradle']) {
+    final f = File(name);
+    if (!f.existsSync()) continue;
+    final s = f.readAsStringSync();
+    final t = s.replaceAll('flutter.minSdkVersion', '24');
+    if (t == s) {
+      stdout.writeln('· $name: minSdk не змінено (немає flutter.minSdkVersion)');
+      return;
+    }
+    f.writeAsStringSync(t);
+    stdout.writeln('✓ $name (minSdk 24)');
+    return;
+  }
+}
+
 void main() {
   _copyAppIcon();
   patch('android/app/src/main/AndroidManifest.xml', 'android:label="apiary"',
@@ -311,6 +329,7 @@ void main() {
   _patchAndroidBackup();
   _patchAndroidInviteLink();
   _patchAndroidSpeechQueries();
+  _patchAndroidMinSdk();
   _patchAndroidSigning();
   _patchGradleProperties();
   patch('linux/runner/my_application.cc', '"apiary"', '"$appName"');
