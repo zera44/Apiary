@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -10,6 +11,7 @@ import '../ui/guide_bubble.dart';
 import '../ui/icons.dart' show queenTagChoices;
 import '../ui/theme.dart';
 import '../ui/voice_input_bar.dart';
+import 'assistant_context.dart';
 import 'assistant_links.dart';
 import 'assistant_nav.dart';
 import 'assistant_persona.dart';
@@ -31,6 +33,11 @@ class AssistantChatScreen extends StatefulWidget {
   /// Голос (тести підставляють свій): розпізнавання й читання вголос.
   final ChatVoice? voice;
   final ReplySpeaker? speaker;
+
+  /// Чат збоку від вкладки (планшет): «Назад» - закрити панель, а про яку
+  /// вкладку говоримо - та, що зараз на екрані.
+  final bool docked;
+  final VoidCallback? onClose;
   const AssistantChatScreen({
     super.key,
     required this.repo,
@@ -38,6 +45,8 @@ class AssistantChatScreen extends StatefulWidget {
     this.navigate,
     this.voice,
     this.speaker,
+    this.docked = false,
+    this.onClose,
   });
 
   /// Відкрити чат (з головного, карти, поштомату). Без черги (сервер ще не
@@ -45,12 +54,23 @@ class AssistantChatScreen extends StatefulWidget {
   static Future<void> open(NavigatorState nav, Repository repo) async {
     final q = AssistantQueue.current;
     if (q == null) return;
+    // чат уже відкрито нижче (помічник відкрив екран поверх нього): повертаємось
+    // у нього, а говоримо про ту вкладку, звідки покликали
+    final open = _active;
+    if (open != null && open.mounted) {
+      open._pinTo(AssistantContext.current.value);
+      nav.popUntil((r) => r.settings.name == AssistantContext.chatRouteName || r.isFirst);
+      return;
+    }
     await nav.push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: AssistantContext.chatRouteName),
         builder: (_) => AssistantChatScreen(repo: repo, queue: q),
       ),
     );
   }
+
+  static _AssistantChatScreenState? _active;
 
   @override
   State<AssistantChatScreen> createState() => _AssistantChatScreenState();
@@ -62,6 +82,28 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   final _scroll = ScrollController();
   final _firstUnreadKey = GlobalKey();
   List<ChatItem> _items = const [];
+
+  /// Про яку вкладку говоримо: та, що зверху (плашка над полем), доки
+  /// людина не зняла прив'язку (хрестик). [_fixed] - екран, який відкрив
+  /// помічник чи звідки покликали: лишається, коли повертаємось у чат.
+  ScreenContext? _fixed;
+  bool _follow = true;
+
+  ScreenContext? get _ctx => _fixed ?? (_follow ? AssistantContext.current.value : null);
+
+  void _pinTo(ScreenContext? c) {
+    setState(() {
+      _fixed = c;
+      _follow = true;
+    });
+  }
+
+  void _ctxChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Номер вулика -> id: «вулик 14» у відповіді стає посиланням.
+  Map<String, String> _hiveLinks = const {};
   String? _firstUnread;
   bool _busy = false;
   bool _offline = false;
@@ -98,14 +140,19 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     // свій великий мікрофон - без загальної смужки «Голосовий ввід»
     VoiceInputHost.ownMicrophone(_input);
     q.presenter = _present;
-    q.navigator =
-        widget.navigate ?? (t) => openAssistantTarget(Navigator.of(context), widget.repo, t);
+    q.navigator = _go;
     q.onUndoable = (u) => _lastUndo = u;
     store.changes.addListener(_reload);
+    AssistantContext.current.addListener(_ctxChanged);
+    if (!widget.docked) AssistantChatScreen._active = this;
     unawaited(_start());
   }
 
   Future<void> _start() async {
+    await store.load();
+    // відкрили з поштомата: непрочитана відповідь може бути в іншій розмові
+    final unread = await store.firstUnread();
+    if (unread != null && unread.conv != store.conv) await store.switchTo(unread.conv);
     // живі картки з минулого разу (застосунок закрили, не відповівши) -
     // запис не зроблено
     for (final c in await store.items()) {
@@ -138,6 +185,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       q.onUndoable = null;
     }
     store.changes.removeListener(_reload);
+    AssistantContext.current.removeListener(_ctxChanged);
+    if (identical(AssistantChatScreen._active, this)) AssistantChatScreen._active = null;
     _stopLimit?.cancel();
     if (_listening) unawaited(_voice.cancel());
     unawaited(_speaker.stop());
@@ -158,6 +207,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final items = await store.items();
     if (!mounted) return;
     final grew = items.length > _items.length;
+    if (grew || _hiveLinks.isEmpty) {
+      _hiveLinks = await AssistantTools(widget.repo, confirm: (_) async => null).hiveLinks();
+      if (!mounted) return;
+    }
     setState(() => _items = items);
     // нові відповіді, поки чат відкрито - уголос (якщо ввімкнено)
     final fresh = [
@@ -166,8 +219,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     ];
     if (items.isNotEmpty && items.last.seq > _seenSeq) _seenSeq = items.last.seq;
     if (_speak && fresh.isNotEmpty && !_noUkVoice) {
-      final ok = await _speaker.speak(plainAssistantText(fresh.last.text),
-          persona: AssistantPersona.of(fresh.last.data['model'] as String?));
+      final ok = await _speaker.speak(
+        plainAssistantText(fresh.last.text),
+        persona: AssistantPersona.of(fresh.last.data['model'] as String?),
+      );
       if (!ok && mounted) {
         _noUkVoice = true;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
@@ -179,14 +234,24 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   /// Торкнулися посилання у відповіді - відкрити екран (вулик, пасіку…).
   Future<void> _openLink(AssistantLink l) async {
-    final t = await AssistantTools(widget.repo, confirm: (_) async => null).targetFor(l.screen, l.id);
+    final t = await AssistantTools(
+      widget.repo,
+      confirm: (_) async => null,
+    ).targetFor(l.screen, l.id);
     if (t == null || !mounted) return;
-    final nav = widget.navigate;
-    if (nav != null) {
-      await nav(t);
-    } else {
-      await openAssistantTarget(Navigator.of(context), widget.repo, t);
+    await _go(t);
+  }
+
+  /// Відкрити екран: поверх чату (на телефоні - і далі говоримо про нього:
+  /// плашка змінюється) або в основній частині екрана (збоку).
+  Future<bool> _go(NavTarget t) async {
+    final ok = widget.navigate != null
+        ? await widget.navigate!(t)
+        : await openAssistantTarget(Navigator.of(context), widget.repo, t);
+    if (ok && !widget.docked && t.screen != 'home' && mounted) {
+      _pinTo(ScreenContext.fromTarget(t));
     }
+    return ok;
   }
 
   void _toBottom() {
@@ -234,7 +299,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       _offline = false;
     });
     _lastUndo = null;
-    final online = await widget.queue.submit(text);
+    final online = await widget.queue.submit(text, context: _ctx);
     _bindUndo();
     if (!mounted) return;
     setState(() {
@@ -290,6 +355,24 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   void _say(String m) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
+
+  /// Питання чи відповідь - у буфер обміну (без розмітки посилань).
+  Future<void> _copy(String text) async {
+    await Clipboard.setData(ClipboardData(text: plainAssistantText(text)));
+    _say(tr.assistantCopied);
+  }
+
+  Widget _copyButton(ChatItem it) => SizedBox(
+    height: 30,
+    child: IconButton(
+      key: ValueKey('assistant-copy-${it.id}'),
+      tooltip: tr.assistantCopy,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _copy(it.text),
+      icon: Icon(Icons.copy_rounded, size: 18, color: AppColors.textMuted),
+    ),
+  );
 
   /// Що було в полі до диктування (сказане дописується після).
   String _prefix = '';
@@ -398,18 +481,26 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     }
   }
 
+  /// «Нова розмова»: стара лишається в списку «Розмови».
   Future<void> _newChat() async {
-    final ok = await showConfirm(
-      context,
-      title: tr.assistantNewChat,
-      text: tr.assistantNewChatConfirm,
-      confirmText: tr.assistantNewChat,
-      danger: false,
-    );
-    if (!ok) return;
     _undo.clear();
     _undone.clear();
-    await store.newConversation();
+    if (!await store.newConversation()) _say(tr.assistantConvEmpty);
+  }
+
+  Future<void> _conversations() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      builder: (_) => _ConversationsSheet(
+        store: store,
+        onSwitched: () {
+          _undo.clear();
+          _undone.clear();
+        },
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -436,6 +527,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     valueListenable: AssistantPrefs.persona,
                     builder: (_, _, _) => _assistantBubble(tr.assistantGreeting),
                   ),
+                    if (_items.isEmpty) _suggestions(),
                   for (final it in _items)
                     KeyedSubtree(
                       key: it.id == _firstUnread ? _firstUnreadKey : ValueKey(it.id),
@@ -468,9 +560,114 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ),
               ),
             if (_listening || _starting || _download != null) _voiceStrip(),
+            _contextBar(),
             _inputBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Плашка «про цю вкладку говоримо»: торкнулись - перейти в неї, хрестик -
+  /// говорити про весь застосунок.
+  Widget _contextBar() {
+    final c = _ctx;
+    final here = AssistantContext.current.value;
+    if (c == null) {
+      if (here == null || _follow) return const SizedBox.shrink();
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          key: const ValueKey('assistant-context-repin'),
+          onPressed: () => _pinTo(null),
+          icon: Icon(Icons.push_pin_outlined, size: 18, color: AppColors.create),
+          label: Text(tr.assistantContextPin(here.label), style: TextStyle(color: AppColors.create)),
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      color: AppColors.panel,
+      padding: const EdgeInsets.fromLTRB(12, 6, 8, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          key: const ValueKey('assistant-context'),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.hive, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                key: const ValueKey('assistant-context-open'),
+                borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
+                onTap: () => _openContext(c),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.layers_outlined, size: 17, color: AppColors.create),
+                    const SizedBox(width: 6),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * (widget.docked ? 0.6 : 0.62)),
+                      child: Text(c.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: AppColors.text, fontWeight: FontWeight.w700, fontSize: 14)),
+                    ),
+                  ]),
+                ),
+              ),
+              InkWell(
+                key: const ValueKey('assistant-context-close'),
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(20)),
+                onTap: () => setState(() {
+                  _fixed = null;
+                  _follow = false;
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 10, 6),
+                  child: Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Торкнулись плашки: перейти у вкладку (вона під чатом - повернутись).
+  void _openContext(ScreenContext c) {
+    if (AssistantContext.current.value == c) {
+      if (!widget.docked) Navigator.of(context).maybePop();
+      return;
+    }
+    unawaited(_go(c.target));
+  }
+
+  /// Що спитати: «Що ти вмієш?» і два найчастіші запити для цієї вкладки.
+  Widget _suggestions() {
+    final list = assistantSuggestions(_ctx);
+    return Padding(
+      padding: const EdgeInsets.only(left: 56, bottom: 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          for (var i = 0; i < list.length; i++)
+            ActionChip(
+              key: ValueKey('assistant-faq-$i'),
+              backgroundColor: AppColors.card,
+              side: BorderSide(color: AppColors.hive),
+              label: Text(list[i], style: TextStyle(color: AppColors.text)),
+              onPressed: () => unawaited(_sendText(list[i])),
+            ),
+        ],
       ),
     );
   }
@@ -479,14 +676,22 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     padding: const EdgeInsets.fromLTRB(8, 8, 4, 4),
     child: Row(
       children: [
-        CircleIconButton(
-          icon: 'back_arrow',
-          bg: AppColors.roundBtn,
-          iconColor: AppColors.text,
-          size: 44,
-          tooltip: 'Назад',
-          onPressed: () => Navigator.of(context).maybePop(),
-        ),
+        if (widget.docked)
+          IconButton(
+            key: const ValueKey('assistant-dock-close'),
+            tooltip: tr.assistantClose,
+            onPressed: widget.onClose,
+            icon: Icon(Icons.close, color: AppColors.text, size: 26),
+          )
+        else
+          CircleIconButton(
+            icon: 'back_arrow',
+            bg: AppColors.roundBtn,
+            iconColor: AppColors.text,
+            size: 44,
+            tooltip: 'Назад',
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
         const SizedBox(width: 10),
         Expanded(
           child: ValueListenableBuilder<AssistantPersona>(
@@ -498,6 +703,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800),
             ),
           ),
+        ),
+        IconButton(
+          key: const ValueKey('assistant-conversations'),
+          tooltip: tr.assistantConversations,
+          onPressed: _conversations,
+          icon: Icon(Icons.forum_outlined, color: AppColors.create, size: 26),
         ),
         IconButton(
           key: const ValueKey('assistant-new-chat'),
@@ -531,6 +742,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     String text, {
     List<Widget> below = const [],
     AssistantPersona? persona,
+    VoidCallback? onLongPress,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 10, right: 32),
     child: Row(
@@ -541,17 +753,20 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SpeechBubble(
-                child: LinkedText(
-                  text,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
-                  linkStyle: TextStyle(
-                    color: AppColors.create,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppColors.create,
+              GestureDetector(
+                onLongPress: onLongPress,
+                child: SpeechBubble(
+                  child: LinkedText(
+                    text,
+                    style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
+                    linkStyle: TextStyle(
+                      color: AppColors.create,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.create,
+                    ),
+                    onOpen: _openLink,
                   ),
-                  onOpen: _openLink,
                 ),
               ),
               ...below,
@@ -563,7 +778,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   );
 
   Widget _reply(ChatItem it) => _assistantBubble(
-    it.text,
+    linkHiveMentions(it.text, _hiveLinks),
     persona: AssistantPersona.of(it.data['model'] as String?),
     below: [
       for (final n in it.offeredNav)
@@ -574,12 +789,47 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               foregroundColor: AppColors.create,
               side: BorderSide(color: AppColors.create),
             ),
-            onPressed: () => openAssistantTarget(Navigator.of(context), widget.repo, n),
+            onPressed: () => _go(n),
             icon: const Icon(Icons.open_in_new, size: 18),
             label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
+      if (it.data['escalated_from'] != null)
+        Padding(
+          key: ValueKey('assistant-escalated-${it.id}'),
+          padding: const EdgeInsets.only(left: 6, top: 2),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.trending_up, size: 15, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                tr.assistantEscalated(
+                  AssistantPersona.of(it.data['escalated_from'] as String?).name,
+                  AssistantPersona.of(it.data['model'] as String?).name,
+                ),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ),
+          ]),
+        ),
+      if (it.data['routed_from'] != null)
+        Padding(
+          key: ValueKey('assistant-routed-${it.id}'),
+          padding: const EdgeInsets.only(left: 6, top: 2),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.swap_horiz, size: 15, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                tr.assistantRouted(AssistantPersona.of(it.data['routed_from'] as String?).name),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ),
+          ]),
+        ),
+      Padding(padding: const EdgeInsets.only(left: 4), child: _copyButton(it)),
     ],
+    onLongPress: () => _copy(it.text),
   );
 
   Widget _userBubble(ChatItem it) {
@@ -596,23 +846,27 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.input,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(3),
+          GestureDetector(
+            onLongPress: () => _copy(it.text),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.input,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(3),
+                ),
+                border: failed ? Border.all(color: AppColors.danger, width: 1.5) : null,
               ),
-              border: failed ? Border.all(color: AppColors.danger, width: 1.5) : null,
-            ),
-            child: Text(
-              it.text,
-              style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.3),
+              child: Text(
+                it.text,
+                style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.3),
+              ),
             ),
           ),
+          if (!(waiting || failed || it.status == ChatStatus.sending)) _copyButton(it),
           if (waiting || failed || it.status == ChatStatus.sending)
             Wrap(
               alignment: WrapAlignment.end,
@@ -825,7 +1079,11 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             shape: BoxShape.circle,
             border: Border.all(color: AppColors.frame, width: 2),
           ),
-          child: Icon(_listening ? Icons.stop : Icons.mic, color: Colors.white, size: _listening ? 40 : 34),
+          child: Icon(
+            _listening ? Icons.stop : Icons.mic,
+            color: Colors.white,
+            size: _listening ? 40 : 34,
+          ),
         ),
       ),
     ),
@@ -1105,16 +1363,19 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 class AssistantButton extends StatelessWidget {
   final Repository repo;
   final double size;
-  const AssistantButton({super.key, required this.repo, this.size = 48});
+
+  /// Свій обробник (плашка над навігатором: там немає ні Navigator.of, ні
+  /// підказок).
+  final VoidCallback? onTap;
+  const AssistantButton({super.key, required this.repo, this.size = 48, this.onTap});
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tr.assistantOpen,
-    child: Semantics(
+  Widget build(BuildContext context) => _tip(
+    Semantics(
       button: true,
       label: tr.assistantOpen,
       child: GestureDetector(
-        onTap: () => AssistantChatScreen.open(Navigator.of(context), repo),
+        onTap: onTap ?? () => AssistantChatScreen.open(Navigator.of(context), repo),
         child: Container(
           width: size,
           height: size,
@@ -1137,4 +1398,128 @@ class AssistantButton extends StatelessWidget {
       ),
     ),
   );
+
+  Widget _tip(Widget child) =>
+      onTap != null ? child : Tooltip(message: tr.assistantOpen, child: child);
+}
+
+/// Список розмов: відкрити стару, видалити.
+class _ConversationsSheet extends StatefulWidget {
+  final AssistantStore store;
+  final VoidCallback onSwitched;
+  const _ConversationsSheet({required this.store, required this.onSwitched});
+
+  @override
+  State<_ConversationsSheet> createState() => _ConversationsSheetState();
+}
+
+class _ConversationsSheetState extends State<_ConversationsSheet> {
+  List<Conversation> _list = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final l = await widget.store.conversations();
+    if (mounted) setState(() => _list = l);
+  }
+
+  String _when(DateTime d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)} ${two(d.hour)}:${two(d.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: Text(
+                tr.assistantConversations,
+                style: TextStyle(color: AppColors.text, fontSize: 19, fontWeight: FontWeight.w800),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final c in _list)
+                    ListTile(
+                      key: ValueKey('assistant-conv-${c.id}'),
+                      selected: c.id == store.conv,
+                      selectedTileColor: AppColors.card,
+                      leading: Icon(
+                        c.id == store.conv ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                        color: AppColors.create,
+                      ),
+                      title: Text(
+                        c.title.isEmpty ? tr.assistantConvUntitled : c.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${_when(c.updatedAt)} · ${c.messages}',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                      trailing: IconButton(
+                        key: ValueKey('assistant-conv-delete-${c.id}'),
+                        tooltip: tr.assistantConvDelete,
+                        icon: Icon(Icons.delete_outline, color: AppColors.textMuted),
+                        onPressed: () async {
+                          final ok = await showConfirm(
+                            context,
+                            title: tr.assistantConvDelete,
+                            text: tr.assistantConvDeleteText,
+                          );
+                          if (!ok) return;
+                          await store.deleteConversation(c.id);
+                          widget.onSwitched();
+                          await _load();
+                        },
+                      ),
+                      onTap: () async {
+                        widget.onSwitched();
+                        await store.switchTo(c.id);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Найчастіші запити: «Що ти вмієш?» завжди, ще два - за вкладкою.
+List<String> assistantSuggestions(ScreenContext? c) {
+  const first = 'Що ти вмієш?';
+  switch (c?.screen) {
+    case 'finance':
+    case 'finance_add':
+    case 'receipt':
+      return [first, 'Скільки я витратив цього місяця?', 'Додай витрату'];
+    case 'stock':
+      return [first, 'Чого мало на складі?', 'Додай прихід цукру'];
+    case 'apiaries':
+    case 'map':
+    case 'hive':
+      return [first, 'Які вулики треба оглянути?', 'Скільки в мене вуликів?'];
+    case 'history':
+      return [first, 'Що я записував останнім?', 'Відкрий склад'];
+    default:
+      return [first, 'Скільки в мене вуликів?', 'Які вулики треба оглянути?'];
+  }
 }

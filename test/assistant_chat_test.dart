@@ -12,6 +12,7 @@ import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
 import 'package:apiary/ui/voice_input_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -78,6 +79,31 @@ void main() {
   }
 
   tearDown(() async => repo.db.close());
+
+  testWidgets('копіювати питання й відповідь у буфер (без розмітки посилань)', (tester) async {
+    final copied = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (c) async {
+      if (c.method == 'Clipboard.setData') copied.add((c.arguments as Map)['text'] as String);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    final q = await setup(tester, [say('Цукор - на [складі](stock).')]);
+    await pumpChat(tester, q);
+    await send(tester, 'Де цукор?');
+    final items = (await tester.runAsync(() => store.items()))!;
+    expect(items.length, 2);
+    for (final it in items) {
+      await tester.tap(find.byKey(ValueKey('assistant-copy-${it.id}')));
+      await tester.pump();
+    }
+    expect(copied, ['Де цукор?', 'Цукор - на складі.']);
+    expect(find.text(tr.assistantCopied), findsWidgets);
+    // довге натискання - теж копіює
+    await tester.longPress(find.text('Де цукор?'));
+    await tester.pump();
+    expect(copied.last, 'Де цукор?');
+  });
 
   testWidgets('привітання, питання - відповідь хмаркою пасічника', (tester) async {
     final q = await setup(tester, [say('Добрий день! Чим допомогти?')]);
@@ -184,17 +210,33 @@ void main() {
     expect(q.unread.value, 0); // відкрили чат - прочитано
   });
 
-  testWidgets('«Нова розмова» - стрічка чиста', (tester) async {
-    final q = await setup(tester, [say('Так')]);
+  testWidgets('«Нова розмова» - стрічка чиста, стара лишається у списку «Розмови»', (tester) async {
+    final q = await setup(tester, [say('Так'), say('Ага')]);
     await pumpChat(tester, q);
     await send(tester, 'Раз');
     await tester.tap(find.byKey(const ValueKey('assistant-new-chat')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(tr.assistantNewChat).last);
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
     await tester.pumpAndSettle();
     expect(find.text('Раз'), findsNothing);
     expect(find.text(tr.assistantGreeting), findsOneWidget);
+
+    // друга розмова
+    await send(tester, 'Два');
+    expect(find.text('Два'), findsOneWidget);
+
+    // список: обидві; відкриваємо першу
+    await tester.tap(find.byKey(const ValueKey('assistant-conversations')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
+    await tester.pumpAndSettle();
+    expect(find.text('Раз'), findsOneWidget);
+    expect(find.text('Два'), findsWidgets);
+    await tester.tap(find.text('Раз'));
+    await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
+    await tester.pumpAndSettle();
+    expect(find.text('Раз'), findsOneWidget);
+    expect(find.text('Так'), findsOneWidget);
+    expect(find.text('Два'), findsNothing);
   });
 
   testWidgets('телефон 360 dp, найбільший шрифт: чат і картка без переповнень', (tester) async {
@@ -220,6 +262,9 @@ void main() {
       home: AssistantChatScreen(repo: repo, queue: q, navigate: (_) async => true),
     ));
     await settle(tester);
+    await tester.pumpAndSettle();
+    // самий низ стрічки (довгі повідомлення на великому шрифті не вміщаються)
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text(tr.assistantWaiting), findsOneWidget);

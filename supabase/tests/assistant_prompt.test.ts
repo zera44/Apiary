@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BEAR_PROMPT, SCREENS, SYSTEM_PROMPT, systemPromptFor } from '../functions/assistant/prompt.ts';
+import { BEAR_PROMPT, ROBOT_PROMPT, SCREENS, SYSTEM_PROMPT, systemPromptFor } from '../functions/assistant/prompt.ts';
 
 test('описано кожен екран навігатора', () => {
   for (const s of SCREENS) {
@@ -35,11 +35,27 @@ test('шукає, як зробити, і розуміє з півслова', (
   assert.match(SYSTEM_PROMPT, /інструмент створить нову/);
 });
 
-test('поки немає книг - порад з бджільництва не дає', () => {
-  assert.match(SYSTEM_PROMPT, /Порад з бджільництва .* поки НЕ даєш/);
-  assert.match(SYSTEM_PROMPT, /порадник з'явиться згодом/);
-  // жодних порад про лікування в самому промпті
-  assert.doesNotMatch(SYSTEM_PROMPT, /ветеринар|дозуванн|акарицид/);
+test('поради - лише з книг через search_books, із цитатою й джерелом', () => {
+  assert.match(SYSTEM_PROMPT, /Поради з бджільництва .* ЛИШЕ з книг бази/);
+  assert.match(SYSTEM_PROMPT, /спершу виклич search_books/);
+  // частина книг англійською: шукати й англійською, цитувати в перекладі
+  assert.match(SYSTEM_PROMPT, /не вийшло - спробуй англійською/);
+  assert.match(SYSTEM_PROMPT, /у перекладі з позначкою «\(переклад\)»/);
+  assert.match(SYSTEM_PROMPT, /завжди називай джерело з короткою цитатою/);
+  assert.match(SYSTEM_PROMPT, /У моїх книгах про це нічого не знайшов/);
+  assert.match(SYSTEM_PROMPT, /З власних знань порад не давай ніколи/);
+  // жодних конкретних порад (препарати, дози) у самому промпті
+  assert.doesNotMatch(SYSTEM_PROMPT, /акарицид|амітраз|щавлев|мурашин/i);
+});
+
+test('є відповідь на «Що ти вмієш?»', () => {
+  assert.match(SYSTEM_PROMPT, /# Що ти вмієш/);
+  assert.match(SYSTEM_PROMPT, /Не вигадуй інших умінь/);
+});
+
+test('рядок «[Екран: …]» - людина пише з цього екрана', () => {
+  assert.match(SYSTEM_PROMPT, /\[Екран: …\]/);
+  assert.match(SYSTEM_PROMPT, /Рядка немає - говоримо про весь застосунок/);
 });
 
 test('описано поняття застосунку', () => {
@@ -62,8 +78,11 @@ test('два персонажі: Haiku - Ведмедик, Sonnet - Пасічн
   assert.doesNotMatch(BEAR_PROMPT, /Ти - «Пасічник»/);
   assert.equal(systemPromptFor('claude-haiku-5-5'), BEAR_PROMPT);
   assert.equal(systemPromptFor('claude-sonnet-5-5'), SYSTEM_PROMPT);
+  assert.equal(systemPromptFor('claude-opus-5-5'), ROBOT_PROMPT);
+  assert.match(ROBOT_PROMPT, /«Робопасічник», робот-помічник/);
   const tail = (p: string) => p.slice(p.indexOf('# Як відповідати'));
   assert.equal(tail(BEAR_PROMPT), tail(SYSTEM_PROMPT));
+  assert.equal(tail(ROBOT_PROMPT), tail(SYSTEM_PROMPT));
 });
 
 test('словник мови застосунку, посилання, двоє помічників', () => {
@@ -75,7 +94,8 @@ test('словник мови застосунку, посилання, двоє
   }
   assert.match(SYSTEM_PROMPT, /\[склад\]\(stock\)/);
   assert.match(SYSTEM_PROMPT, /\(hive:id вулика\)/);
-  assert.match(SYSTEM_PROMPT, /# Двоє помічників/);
+  assert.match(SYSTEM_PROMPT, /# Помічники/);
+  assert.match(SYSTEM_PROMPT, /Пасічник передає Ведмедику/);
   assert.match(SYSTEM_PROMPT, /не вибачайся/);
   // у промпті Ведмедика - те саме, лише ім'я інше
   assert.ok(BEAR_PROMPT.includes('# Мова застосунку (словник)'));

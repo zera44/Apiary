@@ -268,14 +268,57 @@ void main() {
     expect((await store.items()).first.text, 'Скільки цукру?');
   });
 
-  test('«Нова розмова» - чисто, але черга лишається', () async {
-    final q = queue(FakeModel([say('Так')]));
+  test('«Нова розмова» - чисто; стара розмова зберігається разом із чергою', () async {
+    final m = FakeModel([say('Так'), say('Бачу')]);
+    final q = queue(m);
+    await store.load();
     await q.submit('Раз');
     online = false;
     await q.submit('Два');
-    await store.newConversation();
-    expect(await statuses(), ['user:queued:Два']);
+    final first = store.conv;
+    expect(await store.newConversation(), isTrue);
+    expect(store.conv, isNot(first));
+    expect(await store.items(), isEmpty);
     expect(await store.history(), isEmpty);
+    // порожню нову розмову не плодимо
+    expect(await store.newConversation(), isFalse);
+    // стара ціла
+    await store.switchTo(first);
+    expect(await statuses(), ['user:sent:Раз', 'assistant::Так', 'user:queued:Два']);
+    expect((await store.history()).isNotEmpty, isTrue);
+    // назва - початок першого питання
+    expect((await store.conversations()).first.title, 'Раз');
+  });
+
+  test('відповідь іде в ту розмову, з якої питали, навіть після переходу', () async {
+    final m = FakeModel([say('Відповідь на Раз')]);
+    final q = queue(m);
+    await store.load();
+    online = false;
+    await q.submit('Раз');
+    final first = store.conv;
+    await store.newConversation();
+    online = true;
+    await q.process();
+    expect(await store.items(), isEmpty); // нова розмова чиста
+    await store.switchTo(first);
+    expect(await statuses(), ['user:sent:Раз', 'assistant::Відповідь на Раз']);
+  });
+
+  test('видалення розмови прибирає її й історію; поточна - перехід на іншу', () async {
+    final q = queue(FakeModel([say('Так'), say('Ні')]));
+    await store.load();
+    await q.submit('Раз');
+    final first = store.conv;
+    await store.newConversation();
+    await q.submit('Два');
+    final second = store.conv;
+    await store.deleteConversation(second);
+    expect(store.conv, first);
+    expect((await store.conversations()).map((c) => c.id), [first]);
+    await store.deleteConversation(first);
+    expect(await store.items(), isEmpty); // створено нову порожню
+    expect((await store.conversations()).length, 1);
   });
 
   test('фонове завдання дошле чергу (застосунок закрито)', () async {

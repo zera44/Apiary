@@ -1,3 +1,5 @@
+import 'assistant/assistant_host.dart';
+import 'assistant/assistant_context.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -208,7 +210,10 @@ class _ApiaryAppState extends State<ApiaryApp> {
       theme: buildAppTheme(),
       // голосовий ввід (Vosk) над клавіатурою для всіх текстових полів
       // розмір шрифту з налаштувань - для всіх екранів
-      builder: (context, child) => AppTextScale.apply(VoiceInputHost(child: child ?? const SizedBox())),
+      navigatorObservers: [AssistantContext.observer],
+      builder: (context, child) => AppTextScale.apply(VoiceInputHost(
+          child: AssistantHost(
+              repo: widget.repo, navigator: _nav, child: child ?? const SizedBox()))),
       // вхід обов'язковий: хто вже увійшов — одразу на головний екран
       // (поки вхід у збірці не налаштовано — одразу головний екран)
       home: !canUseApp(widget.auth)

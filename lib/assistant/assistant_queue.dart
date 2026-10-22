@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
+import 'assistant_context.dart';
 import 'assistant_model.dart';
 import 'assistant_session.dart';
 import 'assistant_store.dart';
@@ -96,6 +97,7 @@ class AssistantQueue {
   /// (повтори після паузи) - дослати чергу.
   Future<void> start() async {
     current = this;
+    await store.load();
     await store.releaseStuck();
     await refreshUnread();
     _timer ??= Timer.periodic(const Duration(minutes: 1), (_) => unawaited(process()));
@@ -117,11 +119,11 @@ class AssistantQueue {
 
   /// Нове повідомлення людини. Повертає false, якщо зв'язку немає (у чаті -
   /// «Немає зв'язку - надішлю, щойно з'явиться»).
-  Future<bool> submit(String text) async {
+  Future<bool> submit(String text, {ScreenContext? context}) async {
     final t = text.trim();
     if (t.isEmpty) return true;
     final online = await isOnline();
-    final item = await store.addUser(t);
+    final item = await store.addUser(t, data: context == null ? null : {'ctx': context.toJson()});
     if (!online) {
       await store.update(item.id, {'queued': 1});
       await _scheduleBackground();
@@ -182,29 +184,42 @@ class AssistantQueue {
       defer: live
           ? null
           : (tool, input, card) async =>
-              cards.add((await store.addCard(tool, input, card, unread: !chatVisible)).id),
+              cards.add((await store.addCard(tool, input, card,
+                      unread: !chatVisible, inConv: item.conv))
+                  .id),
       onUndoable: onUndoable,
+      searchBooks: model is BookSearch
+          ? (q, limit) => (model as BookSearch).searchBooks(q, limit: limit)
+          : null,
     );
-    final history = await store.history();
+    final history = await store.history(inConv: item.conv);
     final start = history.length;
     final session = AssistantSession(model, history: history);
     try {
       final notes = [..._undone];
+      // вкладка, про яку людина говорила, коли писала (модель вважає її головною)
+      final ctx = ScreenContext.fromJson(item.data['ctx']);
+      final base = ctx == null ? item.text : '${item.text}\n\n${ctx.promptLine}';
       final text = notes.isEmpty
-          ? item.text
-          : '${item.text}\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
+          ? base
+          : '$base\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
       final reply = await session.ask(text, tools: tools.run, today: now());
       _undone.removeRange(0, notes.length);
-      await store.appendHistory(session.messages.sublist(start));
+      await store.appendHistory(session.messages.sublist(start), inConv: item.conv);
       await store.update(item.id, {'status': ChatStatus.sent, 'error': null});
       await store.addAssistant(reply.text,
-          nav: tools.offeredNav, unread: !chatVisible, replyTo: item.id, model: reply.model);
+          nav: tools.offeredNav,
+          unread: !chatVisible,
+          replyTo: item.id,
+          model: reply.model,
+          extra: {'routed_from': ?reply.routedFrom, 'escalated_from': ?reply.escalatedFrom},
+          inConv: item.conv);
       // картки - після відповіді, що про них каже
       for (final id in cards) {
         final c = (await store.item(id))!;
         await store.delete(id);
         await store.addCard(c.data['tool'] as String, Map<String, dynamic>.from(c.data['input'] as Map),
-            c.card!, unread: !chatVisible);
+            c.card!, unread: !chatVisible, inConv: item.conv);
       }
       return true;
     } on AssistantException catch (e) {

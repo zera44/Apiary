@@ -19,7 +19,16 @@ class ModelTurn {
 
   /// Хто відповідав (haiku / sonnet) - за ним персонаж у чаті.
   final String? model;
-  const ModelTurn(this.content, this.stopReason, {this.model});
+
+  /// Кого обрала людина, якщо сервер передав просте прохання іншому
+  /// (Пасічник -> Ведмедик); null - відповідав обраний.
+  final String? routedFrom;
+
+  /// Хто не впорався, якщо сервер підняв питання на рівень вище
+  /// (Ведмедик -> Пасічник -> Робопасічник); [model] - хто відповів.
+  final String? escalatedFrom;
+  const ModelTurn(this.content, this.stopReason,
+      {this.model, this.routedFrom, this.escalatedFrom});
 
   /// Текст відповіді (усі текстові блоки).
   String get text => [
@@ -60,6 +69,14 @@ class AssistantException implements Exception {
   String toString() => 'AssistantException($kind)';
 }
 
+/// Пошук у книгах з бджільництва (інструмент search_books): уміє справжня
+/// модель через посередника; demo й тестові моделі - ні (інструмент
+/// скаже, що книг немає).
+abstract interface class BookSearch {
+  /// {books: чи є книги в базі, results: [{book, author, year, chapter, page, text}]}.
+  Future<Map<String, dynamic>> searchBooks(String query, {int limit = 5});
+}
+
 abstract class AssistantModel {
   /// Чи це справжня модель (а не demo).
   bool get isRemote;
@@ -85,7 +102,7 @@ abstract class AssistantModel {
 }
 
 /// Справжня модель через посередника.
-class RemoteAssistantModel implements AssistantModel {
+class RemoteAssistantModel implements AssistantModel, BookSearch {
   final Uri url;
   final String token;
   final http.Client? client;
@@ -100,6 +117,38 @@ class RemoteAssistantModel implements AssistantModel {
 
   @override
   bool get isRemote => true;
+
+  @override
+  Future<Map<String, dynamic>> searchBooks(String query, {int limit = 5}) async {
+    final c = client ?? http.Client();
+    http.Response r;
+    try {
+      r = await c
+          .post(url,
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+                tokenHeader: token,
+              },
+              body: jsonEncode({'action': 'search_books', 'query': query, 'limit': limit}))
+          .timeout(const Duration(seconds: 20));
+    } on SocketException {
+      throw const AssistantException(AssistantFailure.offline);
+    } on http.ClientException {
+      throw const AssistantException(AssistantFailure.offline);
+    } on TimeoutException {
+      throw const AssistantException(AssistantFailure.offline);
+    } finally {
+      if (client == null) c.close();
+    }
+    if (r.statusCode == 200) {
+      return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    }
+    throw AssistantException(r.statusCode == 401 || r.statusCode == 403
+        ? AssistantFailure.unauthorized
+        : r.statusCode == 429 || r.statusCode == 503
+            ? AssistantFailure.busy
+            : AssistantFailure.server);
+  }
 
   @override
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
@@ -134,6 +183,8 @@ class RemoteAssistantModel implements AssistantModel {
           ],
           j['stop_reason'] as String? ?? 'end_turn',
           model: j['model'] as String?,
+          routedFrom: j['routed_from'] as String?,
+          escalatedFrom: j['escalated_from'] as String?,
         );
       case 401:
       case 403:

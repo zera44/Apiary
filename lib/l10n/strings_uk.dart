@@ -377,6 +377,20 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantNewChat => 'Нова розмова';
   @override
+  String get assistantConversations => 'Розмови';
+  @override
+  String get assistantConvUntitled => 'Нова розмова';
+  @override
+  String get assistantConvEmpty => 'Ця розмова ще порожня';
+  @override
+  String get assistantConvDelete => 'Видалити розмову?';
+  @override
+  String get assistantConvDeleteText => 'Розмова зникне разом з відповідями. Записане в пасіку лишиться.';
+  @override
+  String get assistantCopy => 'Копіювати';
+  @override
+  String get assistantCopied => 'Скопійовано';
+  @override
   String get assistantNewChatConfirm =>
       'Почати нову розмову? Попередня зникне з цього телефона (повідомлення в черзі лишаться).';
   @override
@@ -426,6 +440,19 @@ class AppStringsUk extends AppStrings {
   String get assistantBearHint => 'Швидкий - для простих справ';
   @override
   String get assistantBeekeeperHint => 'Досвідченіший - краще розуміє складні прохання';
+  @override
+  String get assistantClose => 'Закрити';
+  @override
+  String assistantContextPin(String screen) => 'Говорити про «$screen»';
+  @override
+  String get assistantRobo => 'Робопасічник';
+  @override
+  String get assistantRoboHint => 'Найрозумніший і найдорожчий - для найскладнішого';
+  @override
+  String assistantRouted(String who) => '$who передав просте прохання Ведмедику - так швидше й дешевше';
+  @override
+  String assistantEscalated(String from, String to) =>
+      '$from не впорався з цим питанням - відповідає $to';
   @override
   String get assistantWhoHelps => 'Хто допомагає';
   @override

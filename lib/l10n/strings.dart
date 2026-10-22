@@ -190,6 +190,13 @@ abstract class AppStrings {
   String get assistantSend;
   String get assistantNewChat;
   String get assistantNewChatConfirm;
+  String get assistantConversations;
+  String get assistantConvUntitled;
+  String get assistantConvEmpty;
+  String get assistantConvDelete;
+  String get assistantConvDeleteText;
+  String get assistantCopy;
+  String get assistantCopied;
   String get assistantOffline;
   String get assistantWaiting;
   String get assistantSending;
@@ -213,6 +220,12 @@ abstract class AppStrings {
   String get assistantBeekeeper;
   String get assistantBearHint;
   String get assistantBeekeeperHint;
+  String get assistantClose;
+  String assistantContextPin(String screen);
+  String get assistantRobo;
+  String get assistantRoboHint;
+  String assistantRouted(String who);
+  String assistantEscalated(String from, String to);
   String get assistantWhoHelps;
   String get assistantEffort;
   String get assistantEffortHintText;
