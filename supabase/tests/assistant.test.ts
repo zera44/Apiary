@@ -382,7 +382,8 @@ test('кроки рахуються лише після останнього п�
 });
 
 test('після 6 кроків модель не викликається', async () => {
-  const { d, calls, logs } = deps(modelReply([]));
+  // нормальна відповідь (порожню модель сервер вважає «не впоралась» і піднімає рівень)
+  const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]));
   const below = await handle(post({ messages: conversation(MAX_STEPS - 1) }), d);
   assert.equal(below.status, 200);
   assert.equal(calls.length, 1);
