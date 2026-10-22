@@ -263,6 +263,9 @@ void main() {
     ));
     await settle(tester);
     await tester.pumpAndSettle();
+    // самий низ стрічки (довгі повідомлення на великому шрифті не вміщаються)
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text(tr.assistantWaiting), findsOneWidget);
   });

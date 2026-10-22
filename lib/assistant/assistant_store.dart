@@ -251,7 +251,8 @@ class AssistantStore {
     return (await item(id))!;
   }
 
-  Future<ChatItem> addUser(String text) => _add(ChatRole.user, text, status: ChatStatus.queued);
+  Future<ChatItem> addUser(String text, {Map<String, dynamic>? data}) =>
+      _add(ChatRole.user, text, status: ChatStatus.queued, data: data);
 
   Future<ChatItem> addAssistant(String text,
           {List<NavTarget> nav = const [],

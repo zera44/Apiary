@@ -441,6 +441,10 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantBeekeeperHint => 'Досвідченіший - краще розуміє складні прохання';
   @override
+  String get assistantClose => 'Закрити';
+  @override
+  String assistantContextPin(String screen) => 'Говорити про «$screen»';
+  @override
   String get assistantRobo => 'Робопасічник';
   @override
   String get assistantRoboHint => 'Найрозумніший і найдорожчий - для найскладнішого';

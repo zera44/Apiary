@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
+import 'assistant_context.dart';
 import 'assistant_model.dart';
 import 'assistant_session.dart';
 import 'assistant_store.dart';
@@ -118,11 +119,11 @@ class AssistantQueue {
 
   /// Нове повідомлення людини. Повертає false, якщо зв'язку немає (у чаті -
   /// «Немає зв'язку - надішлю, щойно з'явиться»).
-  Future<bool> submit(String text) async {
+  Future<bool> submit(String text, {ScreenContext? context}) async {
     final t = text.trim();
     if (t.isEmpty) return true;
     final online = await isOnline();
-    final item = await store.addUser(t);
+    final item = await store.addUser(t, data: context == null ? null : {'ctx': context.toJson()});
     if (!online) {
       await store.update(item.id, {'queued': 1});
       await _scheduleBackground();
@@ -193,9 +194,12 @@ class AssistantQueue {
     final session = AssistantSession(model, history: history);
     try {
       final notes = [..._undone];
+      // вкладка, про яку людина говорила, коли писала (модель вважає її головною)
+      final ctx = ScreenContext.fromJson(item.data['ctx']);
+      final base = ctx == null ? item.text : '${item.text}\n\n${ctx.promptLine}';
       final text = notes.isEmpty
-          ? item.text
-          : '${item.text}\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
+          ? base
+          : '$base\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
       final reply = await session.ask(text, tools: tools.run, today: now());
       _undone.removeRange(0, notes.length);
       await store.appendHistory(session.messages.sublist(start), inConv: item.conv);

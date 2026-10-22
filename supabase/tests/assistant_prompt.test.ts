@@ -45,6 +45,11 @@ test('поки немає книг - порад з бджільництва не
   assert.match(SYSTEM_PROMPT, /З власних знань порад не давай ніколи/);
 });
 
+test('є відповідь на «Що ти вмієш?»', () => {
+  assert.match(SYSTEM_PROMPT, /# Що ти вмієш/);
+  assert.match(SYSTEM_PROMPT, /Не вигадуй інших умінь/);
+});
+
 test('рядок «[Екран: …]» - людина пише з цього екрана', () => {
   assert.match(SYSTEM_PROMPT, /\[Екран: …\]/);
   assert.match(SYSTEM_PROMPT, /Рядка немає - говоримо про весь застосунок/);
