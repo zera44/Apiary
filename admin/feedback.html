@@ -7,6 +7,7 @@
 <style>
   :root { --bg:#1d1611; --card:#2a2018; --line:#4a3a28; --text:#f9efe0; --muted:#bfae94; --honey:#ed9d2f; --dev:#3b5b3a; --user:#3a2f25; }
   * { box-sizing: border-box; }
+  [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
   header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
   header h1 { font-size:18px; margin:0; flex:1; }
@@ -32,7 +33,27 @@
   .reply { padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:flex-end; }
   .empty { color:var(--muted); padding:24px; }
   #err { color:#e07a5f; margin-top:10px; min-height:1.4em; }
+  .tab { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; padding:8px 14px; }
+  .tab.on { background:var(--honey); color:#2b1a08; border-color:var(--honey); font-weight:700; }
+  #books { padding:16px; height:calc(100vh - 57px); overflow:auto; max-width:920px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .card h3 { margin:0 0 10px; font-size:16px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
+  .row.one { grid-template-columns: 1fr; }
+  label.f { display:block; color:var(--muted); font-size:13px; margin-bottom:4px; }
+  .book { display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--line); }
+  .book:first-child { border-top:0; }
+  .book .meta { flex:1; min-width:0; overflow-wrap:anywhere; }
+  .book .sub { color:var(--muted); font-size:13px; }
+  .book.off .t { opacity:.5; text-decoration:line-through; }
+  .hit { padding:10px 0; border-top:1px solid var(--line); overflow-wrap:anywhere; }
+  .hit .src { color:var(--honey); font-size:13px; font-weight:700; }
+  .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
+  .bar > div { height:100%; width:0; background:var(--honey); transition:width .2s; }
+  #bstatus { color:var(--muted); margin-top:8px; min-height:1.4em; white-space:pre-wrap; }
+  button.danger { background:transparent; color:#e07a5f; border:1px solid #e07a5f; font-weight:400; padding:6px 10px; }
   @media (max-width: 720px) {
+    .row { grid-template-columns: 1fr; }
     .app { grid-template-columns: 1fr; }
     .app.open .list { display:none; }
     .app:not(.open) .thread { display:none; }
@@ -56,7 +77,9 @@
 <div id="main" hidden>
   <header>
     <button class="ghost" id="back" hidden>←</button>
-    <h1>Відгуки Vulyk</h1>
+    <h1>Vulyk</h1>
+    <button class="tab on" id="tab-fb">Відгуки</button>
+    <button class="tab" id="tab-books">Книги</button>
     <button class="ghost" id="refresh">Оновити</button>
     <button class="ghost" id="out">Вийти</button>
   </header>
@@ -64,9 +87,40 @@
     <div class="list" id="list"></div>
     <div class="thread" id="thread"><div class="empty">Оберіть розмову</div></div>
   </div>
+  <div id="books" hidden>
+    <div class="card">
+      <h3>Додати книгу</h3>
+      <div class="row">
+        <div><label class="f" for="b-title">Назва *</label><input id="b-title"></div>
+        <div><label class="f" for="b-author">Автор</label><input id="b-author"></div>
+      </div>
+      <div class="row">
+        <div><label class="f" for="b-year">Рік</label><input id="b-year" inputmode="numeric"></div>
+        <div><label class="f" for="b-source">Звідки й на яких правах</label><input id="b-source" placeholder="власний примірник, дозвіл автора…"></div>
+      </div>
+      <div class="row one">
+        <div><label class="f" for="b-file">Файл: PDF (з текстом), TXT або MD</label><input id="b-file" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></div>
+      </div>
+      <button id="b-go">Завантажити в базу</button>
+      <div class="bar"><div id="b-bar"></div></div>
+      <div id="bstatus"></div>
+    </div>
+    <div class="card">
+      <h3>Перевірити пошук</h3>
+      <div class="row" style="grid-template-columns:1fr auto"><input id="b-q" placeholder="напр.: підгодівля сироп восени"><button id="b-search">Знайти</button></div>
+      <div id="b-hits"></div>
+    </div>
+    <div class="card">
+      <h3>Книги в базі</h3>
+      <div id="b-list"></div>
+    </div>
+  </div>
 </div>
 <script>
 const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedback';
+const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
+// pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 const $ = (id) => document.getElementById(id);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
@@ -74,8 +128,9 @@ const store = { get: (k) => { try { return localStorage.getItem(k); } catch { re
 let url = store.get('fb_url') || DEFAULT_URL, pw = store.get('fb_pw') || '', current = null, timer = null;
 $('url').value = url;
 
-async function api(body) {
-  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedback-admin': pw }, body: JSON.stringify(body) });
+const booksUrl = () => (/\/feedback\/?$/.test(url) ? url.replace(/\/feedback\/?$/, '/books') : DEFAULT_BOOKS_URL);
+async function api(body, endpoint) {
+  const r = await fetch(endpoint || url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-feedback-admin': pw }, body: JSON.stringify(body) });
   if (r.status === 401) { logout('Невірний пароль'); throw new Error('401'); }
   if (!r.ok) throw new Error('Помилка ' + r.status);
   return r.json();
@@ -125,9 +180,164 @@ async function enter() {
 }
 $('eye').onclick = () => { const i = $('pw'); i.type = i.type === 'password' ? 'text' : 'password'; };
 $('go').onclick = enter; $('pw').onkeydown = (e) => { if (e.key === 'Enter') enter(); };
-$('refresh').onclick = () => { loadList(); if (current) openThread(current); };
+$('refresh').onclick = () => { if (!$('books').hidden) { loadBooks(); return; } loadList(); if (current) openThread(current); };
 $('out').onclick = () => logout();
 $('back').onclick = () => { $('app').classList.remove('open'); $('back').hidden = true; current = null; };
+
+// ---------------------------------------------------------------- книги
+function showTab(books) {
+  $('books').hidden = !books; $('app').hidden = books;
+  $('tab-books').classList.toggle('on', books); $('tab-fb').classList.toggle('on', !books);
+  if (books) { $('back').hidden = true; loadBooks().catch((e) => { $('bstatus').textContent = e.message; }); }
+  else if (current) $('back').hidden = false;
+}
+$('tab-fb').onclick = () => showTab(false);
+$('tab-books').onclick = () => showTab(true);
+const bapi = (body) => api(body, booksUrl());
+const bsay = (t) => { $('bstatus').textContent = t; };
+const progress = (x) => { $('b-bar').style.width = Math.round(Math.max(0, Math.min(1, x)) * 100) + '%'; };
+
+async function loadBooks() {
+  const { books } = await bapi({ action: 'list' });
+  const box = $('b-list'); box.replaceChildren();
+  if (!books.length) box.append(el('div', 'empty', 'Книг ще немає. Додайте першу вище.'));
+  for (const b of books) {
+    const row = el('div', 'book' + (b.enabled ? '' : ' off'));
+    const meta = el('div', 'meta');
+    meta.append(el('div', 't', b.title));
+    meta.append(el('div', 'sub', [b.author, b.year, b.pages ? b.pages + ' с.' : '', b.chunks + ' уривків', b.source].filter(Boolean).join(' · ')));
+    const on = el('input'); on.type = 'checkbox'; on.checked = b.enabled; on.title = 'Помічник користується цією книгою';
+    on.style.width = 'auto';
+    on.onchange = async () => { try { await bapi({ action: 'set_enabled', book_id: b.id, enabled: on.checked }); await loadBooks(); } catch (e) { alert(e.message); } };
+    const del = el('button', 'danger', 'Видалити');
+    del.onclick = async () => {
+      if (!confirm('Видалити «' + b.title + '» разом з усіма уривками?')) return;
+      try { await bapi({ action: 'delete', book_id: b.id }); await loadBooks(); } catch (e) { alert(e.message); }
+    };
+    row.append(meta, el('label', 'sub', 'увімкнена'), on, del);
+    box.append(row);
+  }
+}
+
+// -- текст з файлу
+
+/** UTF-8, а якщо не вийшло (старі файли) - windows-1251. */
+async function readText(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch { return new TextDecoder('windows-1251').decode(buf); }
+}
+
+async function loadPdfJs() {
+  if (window.pdfjsLib) return;
+  await new Promise((ok, bad) => {
+    const s = document.createElement('script'); s.src = PDFJS + 'pdf.min.js';
+    s.onload = ok; s.onerror = () => bad(new Error('Не вдалося завантажити pdf.js (потрібен інтернет)'));
+    document.head.append(s);
+  });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+}
+
+/** Сторінки PDF: [{page, text}]; text - рядки склеєно в абзац. */
+async function readPdf(file, onPage) {
+  await loadPdfJs();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const tc = await (await pdf.getPage(i)).getTextContent();
+    let line = '', lastY = null; const lines = [];
+    for (const it of tc.items) {
+      const y = it.transform[5];
+      if (lastY !== null && Math.abs(y - lastY) > 2) { lines.push(line); line = ''; }
+      line += it.str; lastY = y;
+    }
+    lines.push(line);
+    pages.push({ page: i, text: lines.join(' ').replace(/-\s+(?=\p{Ll})/gu, '').replace(/\s+/g, ' ').trim() });
+    onPage(i, pdf.numPages);
+  }
+  return pages;
+}
+
+const MAXC = 1200, MINC = 40;
+
+/** Уривки ~1200 знаків: за абзацами, довгі - за реченнями. page = null, якщо сторінок немає. */
+function chunkPages(pages) {
+  const out = [];
+  for (const p of pages) {
+    const parts = p.text.split(/\n{2,}/).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const pieces = [];
+    for (const part of parts) {
+      if (part.length <= MAXC) { pieces.push(part); continue; }
+      for (const s of part.split(/(?<=[.!?…])\s+/u)) {
+        if (s.length <= MAXC) pieces.push(s);
+        else for (let i = 0; i < s.length; i += MAXC) pieces.push(s.slice(i, i + MAXC));
+      }
+    }
+    let cur = '';
+    const flush = () => { if (cur.length >= MINC) out.push({ page: p.page, text: cur }); else if (cur && out.length && out[out.length - 1].page === p.page) out[out.length - 1].text += ' ' + cur; cur = ''; };
+    for (const piece of pieces) {
+      if (cur && (cur + ' ' + piece).length > MAXC) flush();
+      cur = cur ? cur + ' ' + piece : piece;
+    }
+    flush();
+  }
+  return out;
+}
+
+$('b-go').onclick = async () => {
+  const title = $('b-title').value.trim(), file = $('b-file').files[0];
+  if (!title || !file) { bsay('Потрібні назва й файл.'); return; }
+  const year = parseInt($('b-year').value, 10);
+  $('b-go').disabled = true; progress(0);
+  try {
+    bsay('Читаю файл…');
+    let pages;
+    if (/\.pdf$/i.test(file.name)) {
+      pages = await readPdf(file, (i, n) => { bsay('Читаю сторінку ' + i + ' з ' + n + '…'); progress(i / n * 0.4); });
+      const chars = pages.reduce((s, p) => s + p.text.length, 0);
+      if (chars < pages.length * 40) throw new Error('У PDF майже немає тексту - схоже, це скан. Потрібен PDF з текстовим шаром (або спершу розпізнайте його).');
+    } else {
+      pages = [{ page: null, text: (await readText(file)).replace(/\r\n?/g, '\n') }];
+    }
+    const chunks = chunkPages(pages);
+    if (!chunks.length) throw new Error('Не знайшов тексту для уривків.');
+    bsay('Створюю книгу…');
+    const { id } = await bapi({ action: 'add_book', title, author: $('b-author').value.trim(), year: Number.isFinite(year) ? year : null, source: $('b-source').value.trim() });
+    try {
+      const BATCH = 40;
+      for (let i = 0; i < chunks.length; i += BATCH) {
+        await bapi({ action: 'add_chunks', book_id: id, start: i, chunks: chunks.slice(i, i + BATCH) });
+        bsay('Завантажено уривків: ' + Math.min(i + BATCH, chunks.length) + ' з ' + chunks.length);
+        progress(0.4 + 0.6 * Math.min(i + BATCH, chunks.length) / chunks.length);
+      }
+      await bapi({ action: 'finish', book_id: id, pages: pages.filter((p) => p.page).length, chunks: chunks.length });
+    } catch (e) {
+      await bapi({ action: 'delete', book_id: id }).catch(() => {}); // недозавантажену книгу не лишаємо
+      throw e;
+    }
+    bsay('Готово: ' + chunks.length + ' уривків.'); progress(1);
+    for (const f of ['b-title', 'b-author', 'b-year', 'b-source', 'b-file']) $(f).value = '';
+    await loadBooks();
+  } catch (e) { bsay('Не вийшло: ' + e.message); progress(0); }
+  finally { $('b-go').disabled = false; }
+};
+
+$('b-search').onclick = async () => {
+  const q = $('b-q').value.trim(); if (!q) return;
+  const box = $('b-hits'); box.replaceChildren();
+  try {
+    const { results } = await bapi({ action: 'search', query: q });
+    if (!results.length) box.append(el('div', 'empty', 'Нічого не знайдено (так само відповість і помічник).'));
+    for (const r of results) {
+      const h = el('div', 'hit');
+      h.append(el('div', 'src', [r.title, r.author, r.page ? 'с. ' + r.page : ''].filter(Boolean).join(', ')));
+      h.append(el('div', '', r.body.length > 500 ? r.body.slice(0, 500) + '…' : r.body));
+      box.append(h);
+    }
+  } catch (e) { box.append(el('div', 'empty', e.message)); }
+};
+$('b-q').onkeydown = (e) => { if (e.key === 'Enter') $('b-search').click(); };
+
 if (pw) enter();
 </script>
 </body>

@@ -188,6 +188,9 @@ class AssistantQueue {
                       unread: !chatVisible, inConv: item.conv))
                   .id),
       onUndoable: onUndoable,
+      searchBooks: model is BookSearch
+          ? (q, limit) => (model as BookSearch).searchBooks(q, limit: limit)
+          : null,
     );
     final history = await store.history(inConv: item.conv);
     final start = history.length;

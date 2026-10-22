@@ -131,8 +131,12 @@ class AssistantTools {
     required this.confirm,
     this.defer,
     this.onUndoable,
+    this.searchBooks,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
+
+  /// Пошук у книгах (справжня модель через посередника); null - немає.
+  final Future<Map<String, dynamic>> Function(String query, int limit)? searchBooks;
 
   /// Запропоновані (не відкриті) екрани - для кнопок «Відкрити …».
   final List<NavTarget> offeredNav = [];
@@ -168,6 +172,7 @@ class AssistantTools {
     'hive_history',
     'stock_list',
     'finance_summary',
+    'search_books',
   };
   static const writeTools = {
     'record_inspection',
@@ -189,6 +194,7 @@ class AssistantTools {
         'hive_history' => await _hiveHistory(input),
         'stock_list' => await _stockList(input),
         'finance_summary' => await _financeSummary(input),
+        'search_books' => await _searchBooks(input),
         'record_inspection' => await _recordInspection(input),
         'stock_receive' => await _stockMove(input, receive: true),
         'stock_issue' => await _stockMove(input, receive: false),
@@ -537,6 +543,27 @@ class AssistantTools {
         for (final n in notes.take(20)) {'date': _date(at(n.date)), 'text': n.text},
       ],
     };
+  }
+
+  /// Уривки з книг для порад; без книг чи пошуку - зрозуміла примітка, щоб
+  /// модель не відповідала з власних знань.
+  Future<Map<String, dynamic>> _searchBooks(Map<String, dynamic> input) async {
+    final q = _s(input, 'query');
+    if (q.isEmpty) throw const _Bad('Потрібен запит: кілька ключових слів');
+    final limit = (input['limit'] is num ? (input['limit'] as num).toInt() : 5).clamp(1, 8);
+    final search = searchBooks;
+    if (search == null) {
+      return {'results': [], 'note': 'Книг у базі ще немає - порадити не можу.'};
+    }
+    final r = await search(q, limit);
+    final results = [for (final x in (r['results'] as List? ?? const [])) x];
+    if (r['books'] != true) {
+      return {'results': [], 'note': 'Книг у базі ще немає - порадити не можу.'};
+    }
+    if (results.isEmpty) {
+      return {'results': [], 'note': 'У книгах про це нічого не знайдено - порадити не можу.'};
+    }
+    return {'results': results};
   }
 
   Future<Map<String, dynamic>> _stockList(Map<String, dynamic> input) async {
