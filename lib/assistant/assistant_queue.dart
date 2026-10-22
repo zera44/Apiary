@@ -96,6 +96,7 @@ class AssistantQueue {
   /// (повтори після паузи) - дослати чергу.
   Future<void> start() async {
     current = this;
+    await store.load();
     await store.releaseStuck();
     await refreshUnread();
     _timer ??= Timer.periodic(const Duration(minutes: 1), (_) => unawaited(process()));
@@ -182,10 +183,12 @@ class AssistantQueue {
       defer: live
           ? null
           : (tool, input, card) async =>
-              cards.add((await store.addCard(tool, input, card, unread: !chatVisible)).id),
+              cards.add((await store.addCard(tool, input, card,
+                      unread: !chatVisible, inConv: item.conv))
+                  .id),
       onUndoable: onUndoable,
     );
-    final history = await store.history();
+    final history = await store.history(inConv: item.conv);
     final start = history.length;
     final session = AssistantSession(model, history: history);
     try {
@@ -195,16 +198,20 @@ class AssistantQueue {
           : '${item.text}\n\n${[for (final n in notes) '[Скасовано: $n]'].join('\n')}';
       final reply = await session.ask(text, tools: tools.run, today: now());
       _undone.removeRange(0, notes.length);
-      await store.appendHistory(session.messages.sublist(start));
+      await store.appendHistory(session.messages.sublist(start), inConv: item.conv);
       await store.update(item.id, {'status': ChatStatus.sent, 'error': null});
       await store.addAssistant(reply.text,
-          nav: tools.offeredNav, unread: !chatVisible, replyTo: item.id, model: reply.model);
+          nav: tools.offeredNav,
+          unread: !chatVisible,
+          replyTo: item.id,
+          model: reply.model,
+          inConv: item.conv);
       // картки - після відповіді, що про них каже
       for (final id in cards) {
         final c = (await store.item(id))!;
         await store.delete(id);
         await store.addCard(c.data['tool'] as String, Map<String, dynamic>.from(c.data['input'] as Map),
-            c.card!, unread: !chatVisible);
+            c.card!, unread: !chatVisible, inConv: item.conv);
       }
       return true;
     } on AssistantException catch (e) {

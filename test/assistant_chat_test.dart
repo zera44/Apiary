@@ -184,17 +184,33 @@ void main() {
     expect(q.unread.value, 0); // відкрили чат - прочитано
   });
 
-  testWidgets('«Нова розмова» - стрічка чиста', (tester) async {
-    final q = await setup(tester, [say('Так')]);
+  testWidgets('«Нова розмова» - стрічка чиста, стара лишається у списку «Розмови»', (tester) async {
+    final q = await setup(tester, [say('Так'), say('Ага')]);
     await pumpChat(tester, q);
     await send(tester, 'Раз');
     await tester.tap(find.byKey(const ValueKey('assistant-new-chat')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(tr.assistantNewChat).last);
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
     await tester.pumpAndSettle();
     expect(find.text('Раз'), findsNothing);
     expect(find.text(tr.assistantGreeting), findsOneWidget);
+
+    // друга розмова
+    await send(tester, 'Два');
+    expect(find.text('Два'), findsOneWidget);
+
+    // список: обидві; відкриваємо першу
+    await tester.tap(find.byKey(const ValueKey('assistant-conversations')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
+    await tester.pumpAndSettle();
+    expect(find.text('Раз'), findsOneWidget);
+    expect(find.text('Два'), findsWidgets);
+    await tester.tap(find.text('Раз'));
+    await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 80)));
+    await tester.pumpAndSettle();
+    expect(find.text('Раз'), findsOneWidget);
+    expect(find.text('Так'), findsOneWidget);
+    expect(find.text('Два'), findsNothing);
   });
 
   testWidgets('телефон 360 dp, найбільший шрифт: чат і картка без переповнень', (tester) async {

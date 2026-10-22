@@ -45,8 +45,11 @@ class ChatItem {
   /// Повідомлення людини пішло не одразу (було в черзі).
   final bool queued;
   final bool unread;
+
+  /// Розмова, до якої належить рядок.
+  final int conv;
   const ChatItem(this.seq, this.id, this.role, this.text, this.status, this.attempts, this.nextTry,
-      this.error, this.data, this.queued, this.unread);
+      this.error, this.data, this.queued, this.unread, [this.conv = 1]);
 
   bool get isUser => role == ChatRole.user;
   bool get isCard => role == ChatRole.card;
@@ -84,7 +87,17 @@ class ChatItem {
         r['data'] == null ? const {} : jsonDecode(r['data'] as String) as Map<String, dynamic>,
         r['queued'] == 1,
         r['unread'] == 1,
+        (r['conv'] as int?) ?? 1,
       );
+}
+
+/// Розмова зі списку «Розмови».
+class Conversation {
+  final int id;
+  final String title;
+  final DateTime updatedAt;
+  final int messages;
+  const Conversation(this.id, this.title, this.updatedAt, this.messages);
 }
 
 Map<String, dynamic> navJson(NavTarget t) => {
@@ -104,8 +117,110 @@ class AssistantStore {
   /// Змінилася стрічка (новий рядок, стан, прочитано).
   final ValueNotifier<int> changes = ValueNotifier<int>(0);
 
-  Future<List<ChatItem>> items() async =>
-      [for (final r in await db.query('assistant_chat', orderBy: 'seq')) ChatItem.fromRow(r)];
+  /// Поточна розмова (її показує чат). Нові рядки йдуть у неї, якщо не
+  /// вказано іншу (відповідь на повідомлення зі старої розмови).
+  int conv = 1;
+
+  static const _convKey = 'assistant_conv';
+
+  /// Прочитати поточну розмову з бази й подбати, щоб вона існувала.
+  Future<void> load() async {
+    final m = await db.query('app_meta', where: 'key = ?', whereArgs: [_convKey]);
+    final saved = m.isEmpty ? null : int.tryParse('${m.first['value']}');
+    final has = saved == null
+        ? <Map<String, Object?>>[]
+        : await db.query('assistant_convs', where: 'id = ?', whereArgs: [saved]);
+    if (has.isNotEmpty) {
+      conv = saved!;
+      return;
+    }
+    // перший запуск після оновлення: усе старе - розмова 1
+    final first = await db.query('assistant_convs', orderBy: 'id', limit: 1);
+    conv = first.isEmpty ? await _createConv(id: 1) : first.first['id'] as int;
+    await _saveCurrent();
+  }
+
+  Future<int> _createConv({int? id}) async => db.insert('assistant_convs', {
+        'id': ?id,
+        'title': '',
+        'created_at': Repository.now(),
+        'updated_at': Repository.now(),
+      });
+
+  Future<void> _saveCurrent() async => db.insert('app_meta', {'key': _convKey, 'value': '$conv'},
+      conflictAlgorithm: ConflictAlgorithm.replace);
+
+  Future<List<ChatItem>> items() async => [
+        for (final r in await db.query('assistant_chat',
+            where: 'conv = ?', whereArgs: [conv], orderBy: 'seq'))
+          ChatItem.fromRow(r)
+      ];
+
+  /// Усі розмови, нові зверху (порожні не показуємо, крім поточної).
+  Future<List<Conversation>> conversations() async {
+    final rows = await db.rawQuery('''
+      SELECT c.id, c.title, c.updated_at,
+             (SELECT COUNT(*) FROM assistant_chat m WHERE m.conv = c.id AND m.role != 'card') AS n
+      FROM assistant_convs c ORDER BY c.updated_at DESC, c.id DESC''');
+    return [
+      for (final r in rows)
+        if ((r['n'] as int) > 0 || r['id'] == conv)
+          Conversation(
+              r['id'] as int,
+              r['title'] as String,
+              DateTime.fromMicrosecondsSinceEpoch(((r['updated_at'] as num) * 1e6).round()),
+              r['n'] as int),
+    ];
+  }
+
+  /// Відкрити іншу розмову.
+  Future<void> switchTo(int id) async {
+    if (id == conv) return;
+    conv = id;
+    await _saveCurrent();
+    changes.value++;
+  }
+
+  /// «Нова розмова»: стара лишається в списку, чат - з чистого аркуша.
+  /// Якщо поточна ще порожня - нова не потрібна. Повертає true, якщо
+  /// створено.
+  Future<bool> newConversation() async {
+    final n = await db.rawQuery(
+        "SELECT COUNT(*) AS n FROM assistant_chat WHERE conv = ? AND role != 'card'", [conv]);
+    if ((n.first['n'] as int) == 0) return false;
+    conv = await _createConv();
+    await _saveCurrent();
+    changes.value++;
+    return true;
+  }
+
+  /// Видалити розмову разом з історією; поточну - переходимо на іншу чи нову.
+  Future<void> deleteConversation(int id) async {
+    await db.delete('assistant_chat', where: 'conv = ?', whereArgs: [id]);
+    await db.delete('assistant_history', where: 'conv = ?', whereArgs: [id]);
+    await db.delete('assistant_convs', where: 'id = ?', whereArgs: [id]);
+    if (id == conv) {
+      final rest = await db.query('assistant_convs', orderBy: 'updated_at DESC', limit: 1);
+      conv = rest.isEmpty ? await _createConv() : rest.first['id'] as int;
+      await _saveCurrent();
+    }
+    changes.value++;
+  }
+
+  /// Назва розмови - початок першого питання; час - останнє повідомлення.
+  Future<void> _touch(int c, {String? firstText}) async {
+    final one = firstText?.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final named = one != null && one.isNotEmpty;
+    await db.rawUpdate(
+        'UPDATE assistant_convs SET updated_at = ?'
+        '${named ? ", title = CASE WHEN title = '' THEN ? ELSE title END" : ''}'
+        ' WHERE id = ?',
+        [
+          Repository.now(),
+          if (named) one.length > 60 ? '${one.substring(0, 57)}…' : one,
+          c,
+        ]);
+  }
 
   Future<ChatItem?> item(String id) async {
     final r = await db.query('assistant_chat', where: 'id = ?', whereArgs: [id]);
@@ -113,9 +228,15 @@ class AssistantStore {
   }
 
   Future<ChatItem> _add(String role, String text,
-      {String status = '', Map<String, dynamic>? data, bool queued = false, bool unread = false}) async {
+      {String status = '',
+      Map<String, dynamic>? data,
+      bool queued = false,
+      bool unread = false,
+      int? inConv}) async {
     final id = Repository.newId();
+    final c = inConv ?? conv;
     await db.insert('assistant_chat', {
+      'conv': c,
       'id': id,
       'role': role,
       'text': text,
@@ -125,6 +246,7 @@ class AssistantStore {
       'unread': unread ? 1 : 0,
       'created_at': Repository.now(),
     });
+    await _touch(c, firstText: role == ChatRole.user ? text : null);
     changes.value++;
     return (await item(id))!;
   }
@@ -132,18 +254,26 @@ class AssistantStore {
   Future<ChatItem> addUser(String text) => _add(ChatRole.user, text, status: ChatStatus.queued);
 
   Future<ChatItem> addAssistant(String text,
-          {List<NavTarget> nav = const [], bool unread = false, String? replyTo, String? model}) =>
+          {List<NavTarget> nav = const [],
+          bool unread = false,
+          String? replyTo,
+          String? model,
+          Map<String, dynamic> extra = const {},
+          int? inConv}) =>
       _add(ChatRole.assistant, text,
           data: {
             if (nav.isNotEmpty) 'nav': [for (final n in nav) navJson(n)],
             'reply_to': ?replyTo,
             'model': ?model,
+            ...extra,
           },
-          unread: unread);
+          unread: unread,
+          inConv: inConv);
 
   Future<ChatItem> addCard(String tool, Map<String, dynamic> input, PendingWrite card,
-          {bool unread = false}) =>
+          {bool unread = false, int? inConv}) =>
       _add(ChatRole.card, card.title,
+          inConv: inConv,
           status: ChatStatus.pending,
           data: {
             'tool': tool,
@@ -221,21 +351,15 @@ class AssistantStore {
 
   // розмова для моделі (лише дописується)
 
-  Future<List<Map<String, dynamic>>> history() async => [
-        for (final r in await db.query('assistant_history', orderBy: 'seq'))
+  Future<List<Map<String, dynamic>>> history({int? inConv}) async => [
+        for (final r in await db.query('assistant_history',
+            where: 'conv = ?', whereArgs: [inConv ?? conv], orderBy: 'seq'))
           jsonDecode(r['msg'] as String) as Map<String, dynamic>
       ];
 
-  Future<void> appendHistory(Iterable<Map<String, dynamic>> messages) async {
+  Future<void> appendHistory(Iterable<Map<String, dynamic>> messages, {int? inConv}) async {
     for (final m in messages) {
-      await db.insert('assistant_history', {'msg': jsonEncode(m)});
+      await db.insert('assistant_history', {'msg': jsonEncode(m), 'conv': inConv ?? conv});
     }
-  }
-
-  /// «Нова розмова»: стрічка й розмова - з чистого аркуша (черга лишається).
-  Future<void> newConversation() async {
-    await db.delete('assistant_history');
-    await db.delete('assistant_chat', where: "NOT (role = 'user' AND status IN ('queued', 'sending', 'failed'))");
-    changes.value++;
   }
 }

@@ -377,6 +377,20 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantNewChat => 'Нова розмова';
   @override
+  String get assistantConversations => 'Розмови';
+  @override
+  String get assistantConvUntitled => 'Нова розмова';
+  @override
+  String get assistantConvEmpty => 'Ця розмова ще порожня';
+  @override
+  String get assistantConvDelete => 'Видалити розмову?';
+  @override
+  String get assistantConvDeleteText => 'Розмова зникне разом з відповідями. Записане в пасіку лишиться.';
+  @override
+  String get assistantCopy => 'Копіювати';
+  @override
+  String get assistantCopied => 'Скопійовано';
+  @override
   String get assistantNewChatConfirm =>
       'Почати нову розмову? Попередня зникне з цього телефона (повідомлення в черзі лишаться).';
   @override

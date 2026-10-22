@@ -190,6 +190,13 @@ abstract class AppStrings {
   String get assistantSend;
   String get assistantNewChat;
   String get assistantNewChatConfirm;
+  String get assistantConversations;
+  String get assistantConvUntitled;
+  String get assistantConvEmpty;
+  String get assistantConvDelete;
+  String get assistantConvDeleteText;
+  String get assistantCopy;
+  String get assistantCopied;
   String get assistantOffline;
   String get assistantWaiting;
   String get assistantSending;

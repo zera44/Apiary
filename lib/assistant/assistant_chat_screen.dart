@@ -106,6 +106,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   }
 
   Future<void> _start() async {
+    await store.load();
+    // відкрили з поштомата: непрочитана відповідь може бути в іншій розмові
+    final unread = await store.firstUnread();
+    if (unread != null && unread.conv != store.conv) await store.switchTo(unread.conv);
     // живі картки з минулого разу (застосунок закрили, не відповівши) -
     // запис не зроблено
     for (final c in await store.items()) {
@@ -398,18 +402,26 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     }
   }
 
+  /// «Нова розмова»: стара лишається в списку «Розмови».
   Future<void> _newChat() async {
-    final ok = await showConfirm(
-      context,
-      title: tr.assistantNewChat,
-      text: tr.assistantNewChatConfirm,
-      confirmText: tr.assistantNewChat,
-      danger: false,
-    );
-    if (!ok) return;
     _undo.clear();
     _undone.clear();
-    await store.newConversation();
+    if (!await store.newConversation()) _say(tr.assistantConvEmpty);
+  }
+
+  Future<void> _conversations() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      builder: (_) => _ConversationsSheet(
+        store: store,
+        onSwitched: () {
+          _undo.clear();
+          _undone.clear();
+        },
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -498,6 +510,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800),
             ),
           ),
+        ),
+        IconButton(
+          key: const ValueKey('assistant-conversations'),
+          tooltip: tr.assistantConversations,
+          onPressed: _conversations,
+          icon: Icon(Icons.forum_outlined, color: AppColors.create, size: 26),
         ),
         IconButton(
           key: const ValueKey('assistant-new-chat'),
@@ -1137,4 +1155,93 @@ class AssistantButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Список розмов: відкрити стару, видалити.
+class _ConversationsSheet extends StatefulWidget {
+  final AssistantStore store;
+  final VoidCallback onSwitched;
+  const _ConversationsSheet({required this.store, required this.onSwitched});
+
+  @override
+  State<_ConversationsSheet> createState() => _ConversationsSheetState();
+}
+
+class _ConversationsSheetState extends State<_ConversationsSheet> {
+  List<Conversation> _list = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final l = await widget.store.conversations();
+    if (mounted) setState(() => _list = l);
+  }
+
+  String _when(DateTime d) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)} ${two(d.hour)}:${two(d.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = widget.store;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: Text(tr.assistantConversations,
+                  style: TextStyle(color: AppColors.text, fontSize: 19, fontWeight: FontWeight.w800)),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final c in _list)
+                    ListTile(
+                      key: ValueKey('assistant-conv-${c.id}'),
+                      selected: c.id == store.conv,
+                      selectedTileColor: AppColors.card,
+                      leading: Icon(c.id == store.conv ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                          color: AppColors.create),
+                      title: Text(c.title.isEmpty ? tr.assistantConvUntitled : c.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600)),
+                      subtitle: Text('${_when(c.updatedAt)} · ${c.messages}',
+                          style: TextStyle(color: AppColors.textMuted)),
+                      trailing: IconButton(
+                        key: ValueKey('assistant-conv-delete-${c.id}'),
+                        tooltip: tr.assistantConvDelete,
+                        icon: Icon(Icons.delete_outline, color: AppColors.textMuted),
+                        onPressed: () async {
+                          final ok = await showConfirm(context,
+                              title: tr.assistantConvDelete, text: tr.assistantConvDeleteText);
+                          if (!ok) return;
+                          await store.deleteConversation(c.id);
+                          widget.onSwitched();
+                          await _load();
+                        },
+                      ),
+                      onTap: () async {
+                        widget.onSwitched();
+                        await store.switchTo(c.id);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

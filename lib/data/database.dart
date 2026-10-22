@@ -417,6 +417,17 @@ class AppDatabase {
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
         msg TEXT NOT NULL
       )''');
+    // розмови з помічником: «Нова розмова» зберігає стару. До появи
+    // таблиці все лежало в розмові 1.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS assistant_convs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL DEFAULT '',
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+      )''');
+    await _ensureColumn(db, 'assistant_chat', 'conv', 'INTEGER NOT NULL DEFAULT 1');
+    await _ensureColumn(db, 'assistant_history', 'conv', 'INTEGER NOT NULL DEFAULT 1');
 
     // «Відгук»: розмова з розробником (лише на цьому телефоні, не
     // синхронізується). remote_seq - номер повідомлення на сервері.
