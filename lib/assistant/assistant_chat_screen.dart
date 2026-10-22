@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -170,8 +171,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     ];
     if (items.isNotEmpty && items.last.seq > _seenSeq) _seenSeq = items.last.seq;
     if (_speak && fresh.isNotEmpty && !_noUkVoice) {
-      final ok = await _speaker.speak(plainAssistantText(fresh.last.text),
-          persona: AssistantPersona.of(fresh.last.data['model'] as String?));
+      final ok = await _speaker.speak(
+        plainAssistantText(fresh.last.text),
+        persona: AssistantPersona.of(fresh.last.data['model'] as String?),
+      );
       if (!ok && mounted) {
         _noUkVoice = true;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
@@ -183,7 +186,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   /// Торкнулися посилання у відповіді - відкрити екран (вулик, пасіку…).
   Future<void> _openLink(AssistantLink l) async {
-    final t = await AssistantTools(widget.repo, confirm: (_) async => null).targetFor(l.screen, l.id);
+    final t = await AssistantTools(
+      widget.repo,
+      confirm: (_) async => null,
+    ).targetFor(l.screen, l.id);
     if (t == null || !mounted) return;
     final nav = widget.navigate;
     if (nav != null) {
@@ -294,6 +300,24 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   void _say(String m) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
+
+  /// Питання чи відповідь - у буфер обміну (без розмітки посилань).
+  Future<void> _copy(String text) async {
+    await Clipboard.setData(ClipboardData(text: plainAssistantText(text)));
+    _say(tr.assistantCopied);
+  }
+
+  Widget _copyButton(ChatItem it) => SizedBox(
+    height: 30,
+    child: IconButton(
+      key: ValueKey('assistant-copy-${it.id}'),
+      tooltip: tr.assistantCopy,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _copy(it.text),
+      icon: Icon(Icons.copy_rounded, size: 18, color: AppColors.textMuted),
+    ),
+  );
 
   /// Що було в полі до диктування (сказане дописується після).
   String _prefix = '';
@@ -549,6 +573,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     String text, {
     List<Widget> below = const [],
     AssistantPersona? persona,
+    VoidCallback? onLongPress,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 10, right: 32),
     child: Row(
@@ -559,17 +584,20 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SpeechBubble(
-                child: LinkedText(
-                  text,
-                  style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
-                  linkStyle: TextStyle(
-                    color: AppColors.create,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                    decorationColor: AppColors.create,
+              GestureDetector(
+                onLongPress: onLongPress,
+                child: SpeechBubble(
+                  child: LinkedText(
+                    text,
+                    style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.35),
+                    linkStyle: TextStyle(
+                      color: AppColors.create,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppColors.create,
+                    ),
+                    onOpen: _openLink,
                   ),
-                  onOpen: _openLink,
                 ),
               ),
               ...below,
@@ -597,7 +625,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
+      Padding(padding: const EdgeInsets.only(left: 4), child: _copyButton(it)),
     ],
+    onLongPress: () => _copy(it.text),
   );
 
   Widget _userBubble(ChatItem it) {
@@ -614,23 +644,27 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.input,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(3),
+          GestureDetector(
+            onLongPress: () => _copy(it.text),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.input,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(3),
+                ),
+                border: failed ? Border.all(color: AppColors.danger, width: 1.5) : null,
               ),
-              border: failed ? Border.all(color: AppColors.danger, width: 1.5) : null,
-            ),
-            child: Text(
-              it.text,
-              style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.3),
+              child: Text(
+                it.text,
+                style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.3),
+              ),
             ),
           ),
+          if (!(waiting || failed || it.status == ChatStatus.sending)) _copyButton(it),
           if (waiting || failed || it.status == ChatStatus.sending)
             Wrap(
               alignment: WrapAlignment.end,
@@ -843,7 +877,11 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             shape: BoxShape.circle,
             border: Border.all(color: AppColors.frame, width: 2),
           ),
-          child: Icon(_listening ? Icons.stop : Icons.mic, color: Colors.white, size: _listening ? 40 : 34),
+          child: Icon(
+            _listening ? Icons.stop : Icons.mic,
+            color: Colors.white,
+            size: _listening ? 40 : 34,
+          ),
         ),
       ),
     ),
@@ -1197,8 +1235,10 @@ class _ConversationsSheetState extends State<_ConversationsSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Text(tr.assistantConversations,
-                  style: TextStyle(color: AppColors.text, fontSize: 19, fontWeight: FontWeight.w800)),
+              child: Text(
+                tr.assistantConversations,
+                style: TextStyle(color: AppColors.text, fontSize: 19, fontWeight: FontWeight.w800),
+              ),
             ),
             Flexible(
               child: ListView(
@@ -1209,21 +1249,30 @@ class _ConversationsSheetState extends State<_ConversationsSheet> {
                       key: ValueKey('assistant-conv-${c.id}'),
                       selected: c.id == store.conv,
                       selectedTileColor: AppColors.card,
-                      leading: Icon(c.id == store.conv ? Icons.chat_bubble : Icons.chat_bubble_outline,
-                          color: AppColors.create),
-                      title: Text(c.title.isEmpty ? tr.assistantConvUntitled : c.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600)),
-                      subtitle: Text('${_when(c.updatedAt)} · ${c.messages}',
-                          style: TextStyle(color: AppColors.textMuted)),
+                      leading: Icon(
+                        c.id == store.conv ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                        color: AppColors.create,
+                      ),
+                      title: Text(
+                        c.title.isEmpty ? tr.assistantConvUntitled : c.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        '${_when(c.updatedAt)} · ${c.messages}',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
                       trailing: IconButton(
                         key: ValueKey('assistant-conv-delete-${c.id}'),
                         tooltip: tr.assistantConvDelete,
                         icon: Icon(Icons.delete_outline, color: AppColors.textMuted),
                         onPressed: () async {
-                          final ok = await showConfirm(context,
-                              title: tr.assistantConvDelete, text: tr.assistantConvDeleteText);
+                          final ok = await showConfirm(
+                            context,
+                            title: tr.assistantConvDelete,
+                            text: tr.assistantConvDeleteText,
+                          );
                           if (!ok) return;
                           await store.deleteConversation(c.id);
                           widget.onSwitched();
