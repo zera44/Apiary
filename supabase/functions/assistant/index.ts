@@ -24,6 +24,7 @@ import {
   ANTHROPIC_VERSION,
   aliasOf,
   choose,
+  clientChoiceAllowed,
   FALLBACK_BETA,
   type Env,
   MAX_BODY_BYTES,
@@ -223,7 +224,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // вибір у застосунку (плашка під полем чату), якщо сервер дозволяє;
   // прості прохання Пасічник передає Ведмедику (застосунок це показує)
   const chosen = choose(deps.env, body);
-  const { model, routedFrom } = route(chosen.model, messages, deps.env);
+  // передача - лише коли Пасічника обрала людина (не коли модель задано секретом)
+  const pickedSonnet =
+    clientChoiceAllowed(deps.env) && typeof body.model === 'string' && body.model.trim().toLowerCase() === 'sonnet';
+  const { model, routedFrom } = pickedSonnet
+    ? route(chosen.model, messages, deps.env)
+    : { model: chosen.model, routedFrom: undefined as string | undefined };
   const effort = chosen.effort;
   const payload = buildRequest(model, messages, deps.system ?? systemPromptFor(model), deps.tools ?? TOOLS, effort);
   // один запит до Anthropic; withFallback - разом із «запасною моделлю» (Sonnet)

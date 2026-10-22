@@ -228,6 +228,12 @@ test('Ведмедик і Робопасічник не переключають
   assert.equal(or.model, 'opus');
   assert.equal(or.routed_from, undefined);
 
+  // модель задано секретом (людина не обирала Пасічника) - без передачі
+  const sec = deps(modelReply([{ type: 'text', text: 'ok' }]), { ...SECRETS, ASSISTANT_MODEL: 'sonnet' });
+  const os = await (await handle(post(hello), sec.d)).json();
+  assert.equal(sec.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(os.routed_from, undefined);
+
   const off = deps(modelReply([{ type: 'text', text: 'ok' }]), { ...SECRETS, ASSISTANT_ROUTING: 'off' });
   const oo = await (await handle(post({ ...hello, model: 'sonnet' }), off.d)).json();
   assert.equal(off.calls[0].body.model, 'claude-sonnet-5-5');
