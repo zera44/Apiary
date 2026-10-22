@@ -231,6 +231,13 @@ test('search_books: збій бази чи немає службового кл�
   assert.equal(await searchBooks((n) => A_ENV[n], (() => new Response('[]')) as unknown as typeof fetch, 'x', 99).then((r) => r?.books), false);
 });
 
+test('search_books: модель знає, що книги бувають англійською', async () => {
+  const { TOOLS } = await import('../functions/assistant/tools.ts');
+  const d = TOOLS.find((t) => t.name === 'search_books')!.description;
+  assert.match(d, /англійською/);
+  assert.match(d, /autumn feeding sugar syrup/);
+});
+
 test('адмін-сторінка: вкладка «Книги» - наша функція, без innerHTML, pdf.js з пінінгом версії', () => {
   const html = readFileSync(new URL('../../admin/feedback.html', import.meta.url), 'utf8');
   assert.match(html, /functions\/v1\/books/);

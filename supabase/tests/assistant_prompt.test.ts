@@ -38,6 +38,9 @@ test('шукає, як зробити, і розуміє з півслова', (
 test('поради - лише з книг через search_books, із цитатою й джерелом', () => {
   assert.match(SYSTEM_PROMPT, /Поради з бджільництва .* ЛИШЕ з книг бази/);
   assert.match(SYSTEM_PROMPT, /спершу виклич search_books/);
+  // частина книг англійською: шукати й англійською, цитувати в перекладі
+  assert.match(SYSTEM_PROMPT, /не вийшло - спробуй англійською/);
+  assert.match(SYSTEM_PROMPT, /у перекладі з позначкою «\(переклад\)»/);
   assert.match(SYSTEM_PROMPT, /завжди називай джерело з короткою цитатою/);
   assert.match(SYSTEM_PROMPT, /У моїх книгах про це нічого не знайшов/);
   assert.match(SYSTEM_PROMPT, /З власних знань порад не давай ніколи/);
