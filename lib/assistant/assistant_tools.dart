@@ -8,6 +8,7 @@ import '../data/user_reminders.dart';
 import '../logic/visit_reminders.dart';
 import '../ui/fin_style.dart' show kFinStockCategoryName;
 import '../ui/icons.dart' show queenTagChoices;
+import 'assistant_links.dart';
 import 'assistant_session.dart';
 
 /// Інструменти помічника «Пасічник» - виконує їх застосунок (дані на
@@ -351,6 +352,20 @@ class AssistantTools {
 
   /// Куди відкрити екран [screen] з [id] (пасіка, вулик, урок) - і для
   /// open_screen, і для посилань у відповідях. Не вийшло - null.
+  /// Номер вулика -> id (лише однозначні): посилання на «вулик 14» у
+  /// відповідях, які модель написала без розмітки.
+  Future<Map<String, String>> hiveLinks() async {
+    final by = <String, List<String>>{};
+    for (final h in await _allHives()) {
+      final k = hiveKey(h.name);
+      if (k.isNotEmpty) (by[k] ??= []).add(h.id);
+    }
+    return {
+      for (final e in by.entries)
+        if (e.value.length == 1) e.key: e.value.single,
+    };
+  }
+
   Future<NavTarget?> targetFor(String screen, String? id) async {
     try {
       return await _target(screen, id ?? '');

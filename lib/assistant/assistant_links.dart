@@ -30,6 +30,51 @@ List<Object> parseAssistantLinks(String s) {
   return out;
 }
 
+/// «вулик 14», «вулика 1», «вуликом №3», «вулики 1, 5 та 14»: слово й
+/// номер (з літерою: 14а), далі - ще номери через кому / і / й / та.
+final _hiveRef = RegExp(
+  r'(?<![\p{L}\d])(вулик[\p{L}]{0,3})(\s*(?:№\s*)?)(\d{1,5}[\p{L}]?)(?![\p{L}\d])'
+  r'((?:\s*(?:,|і|й|та)\s*(?:№\s*)?\d{1,5}[\p{L}]?(?![\p{L}\d]))*)',
+  caseSensitive: false,
+  unicode: true,
+);
+final _hiveNum = RegExp(r'\d{1,5}[\p{L}]?(?![\p{L}\d])', unicode: true);
+
+/// Згадки вуликів, які модель написала звичайним текстом, - посиланнями.
+/// [known]: номер вулика (як у [hiveKey]) -> id; лише вулики, що є й
+/// однозначні. Готові посилання [..](..) не чіпаємо.
+String linkHiveMentions(String s, Map<String, String> known) {
+  if (known.isEmpty) return s;
+  String link(String text, String number) {
+    final id = known[number.toLowerCase()];
+    return id == null ? text : '[$text](hive:$id)';
+  }
+
+  String plain(String t) => t.replaceAllMapped(_hiveRef, (m) {
+        final rest = m[4] ?? '';
+        return link('${m[1]}${m[2]}${m[3]}', m[3]!) +
+            rest.replaceAllMapped(_hiveNum, (n) => link(n[0]!, n[0]!));
+      });
+
+  final out = StringBuffer();
+  var at = 0;
+  for (final m in _link.allMatches(s)) {
+    out
+      ..write(plain(s.substring(at, m.start)))
+      ..write(m[0]);
+    at = m.end;
+  }
+  out.write(plain(s.substring(at)));
+  return out.toString();
+}
+
+/// Номер вулика з його назви: «Вулик №14» -> «14», «14а» -> «14а».
+String hiveKey(String name) => name
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .replaceFirst(RegExp(r'^вулик\s*(№\s*)?'), '');
+
 /// Текст без розмітки посилань (читання вголос, сповіщення).
 String plainAssistantText(String s) => [
   for (final p in parseAssistantLinks(s)) p is AssistantLink ? p.text : p as String,

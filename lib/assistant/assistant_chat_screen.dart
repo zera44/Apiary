@@ -63,6 +63,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   final _scroll = ScrollController();
   final _firstUnreadKey = GlobalKey();
   List<ChatItem> _items = const [];
+
+  /// Номер вулика -> id: «вулик 14» у відповіді стає посиланням.
+  Map<String, String> _hiveLinks = const {};
   String? _firstUnread;
   bool _busy = false;
   bool _offline = false;
@@ -163,6 +166,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final items = await store.items();
     if (!mounted) return;
     final grew = items.length > _items.length;
+    if (grew || _hiveLinks.isEmpty) {
+      _hiveLinks = await AssistantTools(widget.repo, confirm: (_) async => null).hiveLinks();
+      if (!mounted) return;
+    }
     setState(() => _items = items);
     // нові відповіді, поки чат відкрито - уголос (якщо ввімкнено)
     final fresh = [
@@ -609,7 +616,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   );
 
   Widget _reply(ChatItem it) => _assistantBubble(
-    it.text,
+    linkHiveMentions(it.text, _hiveLinks),
     persona: AssistantPersona.of(it.data['model'] as String?),
     below: [
       for (final n in it.offeredNav)

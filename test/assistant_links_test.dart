@@ -43,6 +43,23 @@ void main() {
     expect(plainAssistantText('[Ось](garage)'), '[Ось](garage)'); // невідомий екран - як є
   });
 
+  test('«вулик 14», «вулика 1», «вулики 1, 5 та 14» - посилання лише на вулики, що є', () {
+    final known = {'1': 'e:a', '14': 'e:b', '14а': 'e:c'};
+    expect(linkHiveMentions('Огляньте вулик 14 і Вулика №1.', known),
+        'Огляньте [вулик 14](hive:e:b) і [Вулика №1](hive:e:a).');
+    expect(linkHiveMentions('вулики 1, 5 та 14 сильні', known),
+        '[вулики 1](hive:e:a), 5 та [14](hive:e:b) сильні');
+    expect(linkHiveMentions('вулик 14а і вулик 140', known), '[вулик 14а](hive:e:c) і вулик 140');
+    // готове посилання не дублюється; без вуликів - текст як є
+    expect(linkHiveMentions('[Вулик 14](hive:e:b) і вулик 1', known),
+        '[Вулик 14](hive:e:b) і [вулик 1](hive:e:a)');
+    expect(linkHiveMentions('вулик 14', const {}), 'вулик 14');
+    // «1 вулик», «вулик» без номера, «14 кг» - не вулики
+    expect(linkHiveMentions('Є 1 вулик; додайте 14 кг', known), 'Є 1 вулик; додайте 14 кг');
+    expect(hiveKey('Вулик №14'), '14');
+    expect(hiveKey(' 14А '), '14а');
+  });
+
   Future<AssistantQueue> open(WidgetTester tester, List<ModelTurn> script) async {
     await tester.runAsync(() async {
       repo = Repository(await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath,
@@ -101,6 +118,22 @@ void main() {
     expect(opened.last.apiaryId, apiary);
     await tapWord('налаштування');
     expect(opened.last.screen, 'settings');
+  });
+
+  testWidgets('«вулик 100» звичайним текстом - теж посилання на вулик', (tester) async {
+    final queue = await open(tester, []);
+    await tester.runAsync(() => queue.store.addAssistant('Огляньте вулик 100 сьогодні.'));
+    await settle(tester);
+    await tester.pumpAndSettle();
+    final rich = find.byWidgetPredicate(
+        (w) => w is RichText && w.text.toPlainText().contains('вулик 100'));
+    final box = tester.renderObject<RenderParagraph>(rich.last);
+    final i = box.text.toPlainText().indexOf('вулик 100') + 1;
+    final offset = box.getOffsetForCaret(TextPosition(offset: i), Rect.zero);
+    await tester.tapAt(box.localToGlobal(offset + const Offset(2, 8)));
+    await settle(tester);
+    expect(opened.last.screen, 'hive');
+    expect(opened.last.elementId, hive);
   });
 
   testWidgets('«Ведмедик думає…» - ім\'я обраного помічника', (tester) async {
