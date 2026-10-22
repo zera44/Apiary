@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
-import { DEFAULT_MODEL, MAX_STEPS } from '../functions/assistant/config.ts';
+import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, route } from '../functions/assistant/config.ts';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const SECRETS: Record<string, string> = {
@@ -54,6 +54,8 @@ const post = (body: unknown, token: string | null = TOKEN) =>
   });
 
 const hello = { messages: [{ role: 'user', content: 'Скільки в мене пасік?' }] };
+// складне питання: Пасічник відповідає сам (просте він передає Ведмедику)
+const heavy = { messages: [{ role: 'user', content: 'Поясни, чому слабка сім\'я у вулику 5' }] };
 
 test('неправильний чи відсутній тестовий код - відмова, модель не викликається', async () => {
   for (const t of [null, 'wrong', TOKEN + 'x']) {
@@ -132,7 +134,7 @@ test('глибина міркувань - секретом ASSISTANT_EFFORT; н�
 
 test('вибір у застосунку: модель і глибина з запиту; персонаж за моделлю', async () => {
   const s = deps(modelReply([{ type: 'text', text: 'ok' }]));
-  const out = await (await handle(post({ ...hello, model: 'sonnet', effort: 'high' }), s.d)).json();
+  const out = await (await handle(post({ ...heavy, model: 'sonnet', effort: 'high' }), s.d)).json();
   assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
   assert.deepEqual(s.calls[0].body.output_config, { effort: 'high' });
   assert.equal(out.model, 'sonnet');
@@ -154,6 +156,83 @@ test('невідомий вибір ігнорується; ASSISTANT_CLIENT_CHO
   await handle(post({ ...hello, model: 'sonnet', effort: 'max' }), off.d);
   assert.equal(off.calls[0].body.model, DEFAULT_MODEL);
   assert.deepEqual(off.calls[0].body.output_config, { effort: 'medium' });
+});
+
+test('просте / складне: що Пасічник передає Ведмедику', () => {
+  for (const s of [
+    'Скільки в мене пасік?', 'Відкрий фінанси', 'Запиши огляд вулика 5: сила 8', 'покажи склад',
+    'Додай прихід цукру 10 кг', 'Нагадай завтра оглянути вулик 3',
+  ]) {
+    assert.equal(isSimpleRequest(s), true, s);
+  }
+  for (const s of [
+    'Поясни, чому слабка сім\'я', 'Порадь, що робити з варроа', 'Як краще підготувати вулики до зими?',
+    'Що написано в книгах про роїння?', 'Відкрий вулик 5 і порадь, чим підгодувати', '', 'Привіт',
+    'x'.repeat(300) + ' відкрий',
+  ]) {
+    assert.equal(isSimpleRequest(s), false, s);
+  }
+});
+
+test('текст людини для вибору: без службових рядків, повз результати інструментів', () => {
+  const msgs = [
+    { role: 'user', content: 'Відкрий склад\n\n[Сьогодні: 2026-10-22, четвер]\n[Екран: finance]' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 't', name: 'open_screen', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't', content: 'ok' }] },
+  ];
+  assert.equal(lastHumanText(msgs), 'Відкрий склад');
+});
+
+test('Пасічник: просте прохання непомітно йде на Haiku, але застосунок бачить routed_from', async () => {
+  const s = deps(modelReply([{ type: 'text', text: 'У вас 2 пасіки.' }]));
+  const out = await (await handle(post({ ...hello, model: 'sonnet', effort: 'high' }), s.d)).json();
+  assert.equal(s.calls[0].body.model, 'claude-haiku-5-5');
+  assert.equal(s.calls[0].body.fallbacks, undefined);
+  assert.equal(s.calls[0].headers['anthropic-beta'], undefined);
+  assert.match(s.calls[0].body.system[0].text, /«Ведмедик»/);
+  assert.equal(out.model, 'haiku'); // хто відповів
+  assert.equal(out.routed_from, 'sonnet'); // кого обрала людина
+  assert.ok(s.logs.some((l) => l.includes('"routed_from":"sonnet"')));
+
+  // складне лишається Sonnet; routed_from немає
+  const c = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const out2 = await (await handle(post({ ...heavy, model: 'sonnet' }), c.d)).json();
+  assert.equal(c.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(out2.model, 'sonnet');
+  assert.equal(out2.routed_from, undefined);
+});
+
+test('весь цикл інструментів одного питання - на одній моделі', async () => {
+  const msgs = [
+    { role: 'user', content: 'Відкрий склад\n[Сьогодні: 2026-10-22]' },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 't1', name: 'open_screen', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] },
+  ];
+  const s = deps(modelReply([{ type: 'text', text: 'Відкрив.' }]));
+  await handle(post({ messages: msgs, model: 'sonnet' }), s.d);
+  assert.equal(s.calls[0].body.model, 'claude-haiku-5-5');
+});
+
+test('Ведмедик і Робопасічник не переключаються; ASSISTANT_ROUTING=off вимикає передачу', async () => {
+  const b = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const ob = await (await handle(post({ ...hello, model: 'haiku' }), b.d)).json();
+  assert.equal(ob.routed_from, undefined);
+
+  const r = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const or = await (await handle(post({ ...hello, model: 'opus', effort: 'high' }), r.d)).json();
+  assert.equal(r.calls[0].body.model, 'claude-opus-5-5');
+  assert.equal(r.calls[0].body.fallbacks, 'default'); // запасна модель - як у Sonnet
+  assert.equal(r.calls[0].headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
+  assert.match(r.calls[0].body.system[0].text, /«Робопасічник»/);
+  assert.equal(or.model, 'opus');
+  assert.equal(or.routed_from, undefined);
+
+  const off = deps(modelReply([{ type: 'text', text: 'ok' }]), { ...SECRETS, ASSISTANT_ROUTING: 'off' });
+  const oo = await (await handle(post({ ...hello, model: 'sonnet' }), off.d)).json();
+  assert.equal(off.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(oo.routed_from, undefined);
+  assert.deepEqual(route('claude-sonnet-5-5', hello.messages, () => undefined).routedFrom, 'sonnet');
 });
 
 test('Anthropic не прийняв «запасну модель» - той самий запит без неї; у журналі - чому', async () => {

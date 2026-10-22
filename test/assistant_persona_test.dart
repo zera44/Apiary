@@ -25,10 +25,15 @@ Future<void> settle(WidgetTester tester) async {
 /// обраної моделі (як справжній посередник - поле model).
 class EchoServer {
   final bodies = <Map<String, dynamic>>[];
+
+  /// Сервер передає просте прохання Пасічника Ведмедику (поле routed_from).
+  bool routeSimple = false;
   http.Client get client => MockClient((r) async {
         final b = jsonDecode(r.body) as Map<String, dynamic>;
         bodies.add(b);
-        final model = b['model'] == 'sonnet' ? 'sonnet' : 'haiku';
+        final asked = b['model'] as String?;
+        final routed = routeSimple && asked == 'sonnet';
+        final model = routed ? 'haiku' : (asked == 'sonnet' || asked == 'opus' ? asked : 'haiku');
         return http.Response.bytes(
             utf8.encode(jsonEncode({
               'content': [
@@ -36,6 +41,7 @@ class EchoServer {
               ],
               'stop_reason': 'end_turn',
               'model': model,
+              if (routed) 'routed_from': 'sonnet',
             })),
             200);
       });
@@ -53,14 +59,14 @@ void main() {
 
   setUpAll(sqfliteFfiInit);
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {EchoServer? srv}) async {
     await tester.runAsync(() async {
       repo = Repository(await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath,
           singleInstance: false));
       await repo.init();
       await AssistantPrefs.load(repo);
     });
-    server = EchoServer();
+    server = srv ?? EchoServer();
     q = AssistantQueue(
       repo,
       AssistantStore(repo.db),
@@ -121,6 +127,43 @@ void main() {
     // людині - без назв моделей; лише три рівні
     expect(find.textContaining('Haiku'), findsNothing);
     expect(find.textContaining('Sonnet'), findsNothing);
+  });
+
+  testWidgets('Робопасічник: третій у списку, іде в запит як opus, з роботом', (tester) async {
+    await open(tester);
+    await tester.tap(find.byKey(const ValueKey('assistant-chooser')));
+    await tester.pumpAndSettle();
+    expect(find.text(tr.assistantRobo), findsOneWidget);
+    expect(find.text(tr.assistantRoboHint), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('persona-opus')));
+    await settle(tester);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), 'opus');
+    await send(tester, 'Привіт');
+    expect(server.bodies.last['model'], 'opus');
+    expect(find.text('Відповідає opus'), findsOneWidget);
+    expect(hasImage(AssistantPersona.robo.image), isTrue);
+    expect(find.textContaining('Opus'), findsNothing); // людині - без назв моделей
+    expect(AssistantPersona.of('opus'), AssistantPersona.robo);
+    expect(AssistantPersona.robo.name, 'Робопасічник');
+  });
+
+  testWidgets('перемикання помітне: відповів Ведмедик, підпис «Пасічник передав просте…»',
+      (tester) async {
+    await open(tester, srv: EchoServer()..routeSimple = true);
+    await tester.runAsync(() => AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper));
+    await send(tester, 'Відкрий склад');
+    final items = (await tester.runAsync(q.store.items))!;
+    final reply = items.firstWhere((i) => i.role == ChatRole.assistant);
+    expect(reply.data['model'], 'haiku');
+    expect(reply.data['routed_from'], 'sonnet');
+    expect(find.text(tr.assistantRouted(tr.assistantBeekeeper)), findsOneWidget);
+    expect(hasImage(AssistantPersona.bear.image), isTrue); // обличчя того, хто відповів
+    // звичайна відповідь (без передачі) - без підпису
+    server.routeSimple = false;
+    await send(tester, 'Поясни докладніше');
+    expect(find.text(tr.assistantRouted(tr.assistantBeekeeper)), findsOneWidget);
   });
 
   testWidgets('кожна відповідь - з обличчям того, хто відповідав', (tester) async {

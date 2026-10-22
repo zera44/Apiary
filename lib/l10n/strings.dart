@@ -220,6 +220,9 @@ abstract class AppStrings {
   String get assistantBeekeeper;
   String get assistantBearHint;
   String get assistantBeekeeperHint;
+  String get assistantRobo;
+  String get assistantRoboHint;
+  String assistantRouted(String who);
   String get assistantWhoHelps;
   String get assistantEffort;
   String get assistantEffortHintText;

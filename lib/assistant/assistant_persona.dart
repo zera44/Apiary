@@ -3,14 +3,18 @@ import 'package:flutter/foundation.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
 
-/// Хто допомагає в чаті: два персонажі на двох моделях. Людина обирає
+/// Хто допомагає в чаті: три персонажі на трьох моделях. Людина обирає
 /// плашкою під полем чату (як вибір моделі в Claude).
 enum AssistantPersona {
   /// Haiku 5.5 - швидкий і дешевий.
   bear('haiku', 'Haiku 5.5', 'assets/guide/bear_on_toggle.webp'),
 
-  /// Sonnet 5.5 - кмітливіший, дорожчий.
-  beekeeper('sonnet', 'Sonnet 5.5', 'assets/guide/beekeeper.webp');
+  /// Sonnet 5.5 - кмітливіший, дорожчий. Прості прохання (відкрий, запиши,
+  /// скільки) сервер помітно передає Ведмедику: швидше й дешевше.
+  beekeeper('sonnet', 'Sonnet 5.5', 'assets/guide/beekeeper.webp'),
+
+  /// Opus 5.5 - найрозумніший і найдорожчий (книги, складні поради).
+  robo('opus', 'Opus 5.5', 'assets/guide/robot.webp');
 
   /// Як модель називає сервер (поле model у запиті й відповіді). Людині
   /// показуємо лише персонажа - без назв моделей.
@@ -19,16 +23,37 @@ enum AssistantPersona {
   final String image;
   const AssistantPersona(this.model, this.modelLabel, this.image);
 
-  String get name => this == bear ? tr.assistantBear : tr.assistantBeekeeper;
-  String get hint => this == bear ? tr.assistantBearHint : tr.assistantBeekeeperHint;
+  String get name => switch (this) {
+        bear => tr.assistantBear,
+        beekeeper => tr.assistantBeekeeper,
+        robo => tr.assistantRobo,
+      };
+  String get hint => switch (this) {
+        bear => tr.assistantBearHint,
+        beekeeper => tr.assistantBeekeeperHint,
+        robo => tr.assistantRoboHint,
+      };
 
   /// За назвою моделі з сервера; невідома (старі відповіді) - [bear].
-  static AssistantPersona of(String? model) => model == 'sonnet' ? beekeeper : bear;
+  static AssistantPersona of(String? model) => switch (model) {
+        'sonnet' => beekeeper,
+        'opus' => robo,
+        _ => bear,
+      };
 
   /// Голос персонажа (синтезатор телефона): Ведмедик - вищий і жвавіший,
-  /// Пасічник - нижчий і розміреніший. 1.0 / 0.5 - звичайні.
-  double get pitch => this == bear ? 1.35 : 0.8;
-  double get rate => this == bear ? 0.55 : 0.45;
+  /// Пасічник - нижчий і розміреніший, Робопасічник - рівний і повільний.
+  /// 1.0 / 0.5 - звичайні.
+  double get pitch => switch (this) {
+        bear => 1.35,
+        beekeeper => 0.8,
+        robo => 0.6,
+      };
+  double get rate => switch (this) {
+        bear => 0.55,
+        beekeeper => 0.45,
+        robo => 0.4,
+      };
 }
 
 /// Глибина міркувань (output_config.effort): низька, середня, висока.

@@ -632,6 +632,21 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
+      if (it.data['routed_from'] != null)
+        Padding(
+          key: ValueKey('assistant-routed-${it.id}'),
+          padding: const EdgeInsets.only(left: 6, top: 2),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.swap_horiz, size: 15, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                tr.assistantRouted(AssistantPersona.of(it.data['routed_from'] as String?).name),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ),
+          ]),
+        ),
       Padding(padding: const EdgeInsets.only(left: 4), child: _copyButton(it)),
     ],
     onLongPress: () => _copy(it.text),

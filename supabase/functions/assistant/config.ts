@@ -11,6 +11,7 @@ export const DEFAULT_MODEL = 'claude-haiku-5-5';
 export const MODEL_ALIASES: Record<string, string> = {
   haiku: 'claude-haiku-5-5',
   sonnet: 'claude-sonnet-5-5',
+  opus: 'claude-opus-5-5',
 };
 
 /** Не більше стільки звернень моделі до інструментів на одне повідомлення людини. */
@@ -47,12 +48,12 @@ export function modelFrom(env: Env): string {
 /** Вибір людини в застосунку (плашка під полем чату): лише ці моделі.
  *  Секрет ASSISTANT_CLIENT_CHOICE = off - сервер вибір ігнорує (напр.,
  *  поки Sonnet не для всіх). */
-export const CLIENT_MODELS = ['haiku', 'sonnet'];
+export const CLIENT_MODELS = ['haiku', 'sonnet', 'opus'];
 
 /** Коротка назва для застосунку (яким персонажем показати відповідь). */
 export function aliasOf(model: string): string {
   for (const [k, v] of Object.entries(MODEL_ALIASES)) if (v === model) return k;
-  return model.includes('sonnet') ? 'sonnet' : 'haiku';
+  return model.includes('opus') ? 'opus' : model.includes('sonnet') ? 'sonnet' : 'haiku';
 }
 
 export function clientChoiceAllowed(env: Env): boolean {
@@ -77,12 +78,55 @@ export function effortFrom(env: Env): string {
   return EFFORTS.includes(v) ? v : DEFAULT_EFFORT;
 }
 
-/** Sonnet 5.5: якщо запобіжники моделі відмовлять, сервер Anthropic сам
- *  повторить запит іншою моделлю (server-side fallback). Для Haiku такого
- *  немає. */
+/** Sonnet 5.5 і Opus 5.5: якщо запобіжники моделі відмовлять, сервер
+ *  Anthropic сам повторить запит іншою моделлю (server-side fallback). Для
+ *  Haiku такого немає. */
 export const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 export function usesFallback(model: string): boolean {
-  return model.startsWith('claude-sonnet-5-5');
+  return model.startsWith('claude-sonnet-5-5') || model.startsWith('claude-opus-5-5');
+}
+
+/** Складне - лишається Пасічнику (Sonnet): поради, пояснення, книги, аналіз. */
+const HEAVY =
+  /порад|рекоменд|чому|навіщо|поясн|розкаж|книг|цитат|джерел|аналіз|порівн|план|прогноз|що (мені |нам )?(робити|зробити|краще)|як (краще|правильно|лікувати|боротися|підготувати|уникнути|допомогти)|хвороб|лікув|варроа|кліщ|нозем|роїн|рій|рої|зимівл|підгодів|чи варто|чи треба|чи можна|оціни|погано|слабк|загин/i;
+
+/** Просте: відкрити, показати, знайти, записати, порахувати. */
+const SIMPLE =
+  /(^|[^\p{L}])(відкр|покаж|перейд|знайд|запиш|запис|внес|додай|додайте|змін|познач|видал|спиш|спис|порах|скільки|нагада|онов|відміт|скану|встанов|постав)/iu;
+
+/** Текст останнього повідомлення людини (без службових рядків «[…]»). */
+export function lastHumanText(messages: { role: string; content: unknown }[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== 'user') continue;
+    const c = m.content;
+    const text = typeof c === 'string'
+      ? c
+      : Array.isArray(c)
+        ? c.filter((b) => b?.type === 'text').map((b) => String(b.text ?? '')).join('\n')
+        : '';
+    if (text.trim()) return text.replace(/\[[^\]\n]*\]/g, ' ').trim();
+  }
+  return '';
+}
+
+/** Чи просте прохання: коротке, з дією «відкрий / запиши / скільки», без
+ *  ознак складного. Сумнів - не просте. */
+export function isSimpleRequest(text: string): boolean {
+  const t = text.trim();
+  if (!t || t.length > 200) return false;
+  return SIMPLE.test(t) && !HEAVY.test(t);
+}
+
+/** Пасічник (Sonnet) прості прохання помітно передає Ведмедику (Haiku) -
+ *  у 20 разів дешевше; складне відповідає сам. Решта моделей - як обрано.
+ *  routedFrom - кого обрала людина (застосунок покаже, хто відповів). */
+export function route(model: string, messages: { role: string; content: unknown }[], env: Env) {
+  const off = (env('ASSISTANT_ROUTING')?.trim().toLowerCase() ?? '') === 'off';
+  if (!off && model === MODEL_ALIASES.sonnet && isSimpleRequest(lastHumanText(messages))) {
+    return { model: MODEL_ALIASES.haiku, routedFrom: 'sonnet' as string | undefined };
+  }
+  return { model, routedFrom: undefined as string | undefined };
 }
 
 /** Відповідь, коли модель відмовилась (stop_reason «refusal»). */

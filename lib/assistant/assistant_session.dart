@@ -19,7 +19,11 @@ class AssistantReply {
 
   /// Хто відповідав (haiku / sonnet).
   final String? model;
-  const AssistantReply(this.text, {this.stoppedAtLimit = false, this.model});
+
+  /// Кого обрала людина, якщо відповів інший (див. [ModelTurn.routedFrom]).
+  final String? routedFrom;
+  const AssistantReply(this.text,
+      {this.stoppedAtLimit = false, this.model, this.routedFrom});
 }
 
 /// Розмова з помічником: історія (лише дописується) і цикл інструментів.
@@ -65,7 +69,7 @@ class AssistantSession {
         messages.add({'role': 'assistant', 'content': turn.content});
         final uses = turn.toolUses;
         if (turn.stopReason != 'tool_use' || uses.isEmpty) {
-          return AssistantReply(turn.text, model: turn.model);
+          return AssistantReply(turn.text, model: turn.model, routedFrom: turn.routedFrom);
         }
         steps++;
         // усі результати - одним повідомленням (так модель і далі

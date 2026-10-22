@@ -441,6 +441,12 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantBeekeeperHint => 'Досвідченіший - краще розуміє складні прохання';
   @override
+  String get assistantRobo => 'Робопасічник';
+  @override
+  String get assistantRoboHint => 'Найрозумніший і найдорожчий - для найскладнішого';
+  @override
+  String assistantRouted(String who) => '$who передав просте прохання Ведмедику - так швидше й дешевше';
+  @override
   String get assistantWhoHelps => 'Хто допомагає';
   @override
   String get assistantEffort => 'Глибина міркувань';

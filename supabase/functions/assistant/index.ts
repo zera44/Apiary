@@ -32,6 +32,7 @@ import {
   MAX_STEPS,
   MAX_TOKENS,
   REFUSAL_TEXT,
+  route,
   usesFallback,
 } from './config.ts';
 import { type AccessCheck, checkAccess } from './access.ts';
@@ -219,8 +220,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     return fail(422, 'step_limit');
   }
 
-  // вибір у застосунку (плашка під полем чату), якщо сервер дозволяє
-  const { model, effort } = choose(deps.env, body);
+  // вибір у застосунку (плашка під полем чату), якщо сервер дозволяє;
+  // прості прохання Пасічник передає Ведмедику (застосунок це показує)
+  const chosen = choose(deps.env, body);
+  const { model, routedFrom } = route(chosen.model, messages, deps.env);
+  const effort = chosen.effort;
   const payload = buildRequest(model, messages, deps.system ?? systemPromptFor(model), deps.tools ?? TOOLS, effort);
   // один запит до Anthropic; withFallback - разом із «запасною моделлю» (Sonnet)
   const call = (withFallback: boolean) => {
@@ -279,6 +283,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       fn: 'assistant',
       result: 'ok',
       model,
+      ...(routedFrom ? { routed_from: routedFrom } : {}),
       effort,
       messages: messages.length,
       ...(messages.length < all.length ? { trimmed_from: all.length } : {}),
@@ -293,6 +298,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     content: out.content ?? [],
     stop_reason: out.stop_reason ?? 'end_turn',
     model: aliasOf(model),
+    ...(routedFrom ? { routed_from: routedFrom } : {}),
     steps_left: MAX_STEPS - steps - (out.stop_reason === 'tool_use' ? 1 : 0),
   });
 }

@@ -205,6 +205,7 @@ class AssistantQueue {
           unread: !chatVisible,
           replyTo: item.id,
           model: reply.model,
+          extra: {'routed_from': ?reply.routedFrom},
           inConv: item.conv);
       // картки - після відповіді, що про них каже
       for (final id in cards) {
