@@ -28,12 +28,18 @@ class EchoServer {
 
   /// Сервер передає просте прохання Пасічника Ведмедику (поле routed_from).
   bool routeSimple = false;
+
+  /// Сервер підняв питання на рівень вище (поле escalated_from).
+  bool escalate = false;
   http.Client get client => MockClient((r) async {
         final b = jsonDecode(r.body) as Map<String, dynamic>;
         bodies.add(b);
         final asked = b['model'] as String?;
         final routed = routeSimple && asked == 'sonnet';
-        final model = routed ? 'haiku' : (asked == 'sonnet' || asked == 'opus' ? asked : 'haiku');
+        final up = escalate && asked == 'haiku';
+        final model = up
+            ? 'sonnet'
+            : routed ? 'haiku' : (asked == 'sonnet' || asked == 'opus' ? asked : 'haiku');
         return http.Response.bytes(
             utf8.encode(jsonEncode({
               'content': [
@@ -42,6 +48,7 @@ class EchoServer {
               'stop_reason': 'end_turn',
               'model': model,
               if (routed) 'routed_from': 'sonnet',
+              if (up) 'escalated_from': 'haiku',
             })),
             200);
       });
@@ -164,6 +171,17 @@ void main() {
     server.routeSimple = false;
     await send(tester, 'Поясни докладніше');
     expect(find.text(tr.assistantRouted(tr.assistantBeekeeper)), findsOneWidget);
+  });
+
+  testWidgets('ескалація помітна: Ведмедик не впорався - відповів Пасічник', (tester) async {
+    await open(tester, srv: EchoServer()..escalate = true);
+    await send(tester, 'Складне питання');
+    final items = (await tester.runAsync(q.store.items))!;
+    final reply = items.firstWhere((i) => i.role == ChatRole.assistant);
+    expect(reply.data['model'], 'sonnet');
+    expect(reply.data['escalated_from'], 'haiku');
+    expect(find.text(tr.assistantEscalated(tr.assistantBear, tr.assistantBeekeeper)), findsOneWidget);
+    expect(hasImage(AssistantPersona.beekeeper.image), isTrue);
   });
 
   testWidgets('кожна відповідь - з обличчям того, хто відповідав', (tester) async {

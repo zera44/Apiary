@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
-import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, route } from '../functions/assistant/config.ts';
+import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, struggled } from '../functions/assistant/config.ts';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const SECRETS: Record<string, string> = {
@@ -156,6 +156,81 @@ test('невідомий вибір ігнорується; ASSISTANT_CLIENT_CHO
   await handle(post({ ...hello, model: 'sonnet', effort: 'max' }), off.d);
   assert.equal(off.calls[0].body.model, DEFAULT_MODEL);
   assert.deepEqual(off.calls[0].body.output_config, { effort: 'medium' });
+});
+
+// відповіді по черзі: перший запит - перша, другий - друга...
+const sequence = (...rs: (() => Response)[]) => {
+  let i = 0;
+  return () => rs[Math.min(i++, rs.length - 1)]();
+};
+const textReply = (t: string, stop = 'end_turn') => modelReply([{ type: 'text', text: t }], stop);
+
+test('ознаки «не впорався»: обрізано, порожньо, визнав - так; нормальна відповідь, інструмент, відмова - ні', () => {
+  const text = (t: string, stop_reason = 'end_turn') => ({ content: [{ type: 'text', text: t }], stop_reason });
+  assert.equal(struggled(text('Не вдалося це зробити.')), 'gave_up');
+  assert.equal(struggled(text('На жаль, не можу цього зробити.')), 'gave_up');
+  assert.equal(struggled(text('Я не розумію, про що ви.')), 'gave_up');
+  assert.equal(struggled(text('Частина відповіді', 'max_tokens')), 'max_tokens');
+  assert.equal(struggled({ content: [], stop_reason: 'end_turn' }), 'empty');
+  assert.equal(struggled(text('У вас 2 пасіки.')), null);
+  assert.equal(struggled(text('Не знайшов таких вуликів.')), null); // порожній результат - не слабкість моделі
+  assert.equal(struggled({ content: [{ type: 'tool_use', id: 't' }], stop_reason: 'tool_use' }), null);
+  assert.equal(struggled(text('Із цим я не допоможу.', 'refusal')), null);
+  assert.equal(nextModel('claude-haiku-5-5'), 'claude-sonnet-5-5');
+  assert.equal(nextModel('claude-sonnet-5-5'), 'claude-opus-5-5');
+  assert.equal(nextModel('claude-opus-5-5'), null);
+  assert.equal(nextModel('щось інше'), null);
+});
+
+test('Ведмедик не впорався - Пасічник, потім Робопасічник; застосунок бачить escalated_from', async () => {
+  const s = deps(sequence(textReply('Не вдалося зрозуміти запит.'), textReply('Не можу цього зробити.'), textReply('Ось відповідь.')));
+  const out = await (await handle(post({ ...hello, model: 'haiku' }), s.d)).json();
+  assert.deepEqual(s.calls.map((c) => c.body.model), ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5']);
+  assert.match(s.calls[1].body.system[0].text, /«Пасічник»/);
+  assert.match(s.calls[2].body.system[0].text, /«Робопасічник»/);
+  assert.equal(out.model, 'opus');
+  assert.equal(out.escalated_from, 'haiku');
+  assert.equal(out.content[0].text, 'Ось відповідь.');
+  assert.deepEqual(s.calls[2].body.messages, hello.messages); // та сама розмова
+  assert.ok(s.logs.some((l) => l.includes('"result":"escalate"') && l.includes('"why":"gave_up"')));
+});
+
+test('один рівень, якщо вищий впорався; нормальна відповідь не ескалується', async () => {
+  const s = deps(sequence(textReply('Порожня відповідь', 'max_tokens'), textReply('Готово.')));
+  const out = await (await handle(post({ ...hello, model: 'haiku' }), s.d)).json();
+  assert.equal(s.calls.length, 2);
+  assert.equal(out.model, 'sonnet');
+  assert.equal(out.escalated_from, 'haiku');
+
+  const ok = deps(textReply('У вас 2 пасіки.'));
+  const o2 = await (await handle(post({ ...hello, model: 'haiku' }), ok.d)).json();
+  assert.equal(ok.calls.length, 1);
+  assert.equal(o2.escalated_from, undefined);
+});
+
+test('Робопасічник - найвищий рівень: далі нікуди; ASSISTANT_ESCALATE=off вимикає', async () => {
+  const top = deps(textReply('Не вдалося.'));
+  const o1 = await (await handle(post({ ...hello, model: 'opus' }), top.d)).json();
+  assert.equal(top.calls.length, 1);
+  assert.equal(o1.escalated_from, undefined);
+
+  const off = deps(textReply('Не вдалося.'), { ...SECRETS, ASSISTANT_ESCALATE: 'off' });
+  await handle(post({ ...hello, model: 'haiku' }), off.d);
+  assert.equal(off.calls.length, 1);
+});
+
+test('запит інструмента не ескалюється; Haiku, який передали з Пасічника, піднімається назад до нього', async () => {
+  const tool = deps(modelReply([{ type: 'tool_use', id: 't1', name: 'open_screen', input: {} }], 'tool_use'));
+  await handle(post({ ...hello, model: 'haiku' }), tool.d);
+  assert.equal(tool.calls.length, 1);
+
+  // Пасічник обраний, просте питання -> Haiku не впорався -> знову Sonnet: «передав» не показуємо
+  const s = deps(sequence(textReply('Не вийшло.'), textReply('Відкрив.')));
+  const out = await (await handle(post({ messages: [{ role: 'user', content: 'Відкрий склад' }], model: 'sonnet' }), s.d)).json();
+  assert.deepEqual(s.calls.map((c) => c.body.model), ['claude-haiku-5-5', 'claude-sonnet-5-5']);
+  assert.equal(out.model, 'sonnet');
+  assert.equal(out.routed_from, undefined);
+  assert.equal(out.escalated_from, 'haiku');
 });
 
 test('просте / складне: що Пасічник передає Ведмедику', () => {

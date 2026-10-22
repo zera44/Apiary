@@ -23,7 +23,12 @@ class ModelTurn {
   /// Кого обрала людина, якщо сервер передав просте прохання іншому
   /// (Пасічник -> Ведмедик); null - відповідав обраний.
   final String? routedFrom;
-  const ModelTurn(this.content, this.stopReason, {this.model, this.routedFrom});
+
+  /// Хто не впорався, якщо сервер підняв питання на рівень вище
+  /// (Ведмедик -> Пасічник -> Робопасічник); [model] - хто відповів.
+  final String? escalatedFrom;
+  const ModelTurn(this.content, this.stopReason,
+      {this.model, this.routedFrom, this.escalatedFrom});
 
   /// Текст відповіді (усі текстові блоки).
   String get text => [
@@ -139,6 +144,7 @@ class RemoteAssistantModel implements AssistantModel {
           j['stop_reason'] as String? ?? 'end_turn',
           model: j['model'] as String?,
           routedFrom: j['routed_from'] as String?,
+          escalatedFrom: j['escalated_from'] as String?,
         );
       case 401:
       case 403:

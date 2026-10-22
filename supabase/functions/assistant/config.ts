@@ -118,6 +118,39 @@ export function isSimpleRequest(text: string): boolean {
   return SIMPLE.test(t) && !HEAVY.test(t);
 }
 
+/** Драбина помічників: Ведмедик -> Пасічник -> Робопасічник. */
+export const LADDER = [MODEL_ALIASES.haiku, MODEL_ALIASES.sonnet, MODEL_ALIASES.opus];
+
+/** Модель на рівень вище; null - це вже найсильніша (чи не з драбини). */
+export function nextModel(model: string): string | null {
+  const i = LADDER.indexOf(model);
+  return i >= 0 && i < LADDER.length - 1 ? LADDER[i + 1] : null;
+}
+
+/** Модель сама визнала, що не може / не вийшло. */
+const GAVE_UP =
+  /не (зміг|змогла|вдалося|вдалось|вийшло|можу (цього |це )?(зробити|допомогти|відповісти)|розумію|впевнен)|не маю (змоги|можливості)|на жаль,? (я )?не/i;
+
+/** Чи модель не впоралась і варто спитати сильнішу: обрізана відповідь
+ *  (max_tokens), порожня чи така, де модель визнає, що не вийшло. Запити
+ *  інструментів і відмова запобіжників (refusal - це не про силу моделі)
+ *  не рахуються. */
+export function struggled(out: { content?: { type: string; text?: unknown }[]; stop_reason?: string }): string | null {
+  const stop = out.stop_reason ?? 'end_turn';
+  if (stop === 'max_tokens') return 'max_tokens';
+  if (stop !== 'end_turn') return null;
+  const blocks = out.content ?? [];
+  if (blocks.some((b) => b.type === 'tool_use')) return null;
+  const text = blocks.filter((b) => b.type === 'text').map((b) => String(b.text ?? '')).join('\n').trim();
+  if (!text) return 'empty';
+  return GAVE_UP.test(text) ? 'gave_up' : null;
+}
+
+/** Ескалація на рівень вище вимикається секретом ASSISTANT_ESCALATE = off. */
+export function escalationOn(env: Env): boolean {
+  return (env('ASSISTANT_ESCALATE')?.trim().toLowerCase() ?? '') !== 'off';
+}
+
 /** Пасічник (Sonnet) прості прохання помітно передає Ведмедику (Haiku) -
  *  у 20 разів дешевше; складне відповідає сам. Решта моделей - як обрано.
  *  routedFrom - кого обрала людина (застосунок покаже, хто відповів). */

@@ -794,6 +794,24 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
+      if (it.data['escalated_from'] != null)
+        Padding(
+          key: ValueKey('assistant-escalated-${it.id}'),
+          padding: const EdgeInsets.only(left: 6, top: 2),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.trending_up, size: 15, color: AppColors.textMuted),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                tr.assistantEscalated(
+                  AssistantPersona.of(it.data['escalated_from'] as String?).name,
+                  AssistantPersona.of(it.data['model'] as String?).name,
+                ),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ),
+          ]),
+        ),
       if (it.data['routed_from'] != null)
         Padding(
           key: ValueKey('assistant-routed-${it.id}'),

@@ -225,6 +225,7 @@ abstract class AppStrings {
   String get assistantRobo;
   String get assistantRoboHint;
   String assistantRouted(String who);
+  String assistantEscalated(String from, String to);
   String get assistantWhoHelps;
   String get assistantEffort;
   String get assistantEffortHintText;

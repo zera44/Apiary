@@ -451,6 +451,9 @@ class AppStringsUk extends AppStrings {
   @override
   String assistantRouted(String who) => '$who передав просте прохання Ведмедику - так швидше й дешевше';
   @override
+  String assistantEscalated(String from, String to) =>
+      '$from не впорався з цим питанням - відповідає $to';
+  @override
   String get assistantWhoHelps => 'Хто допомагає';
   @override
   String get assistantEffort => 'Глибина міркувань';
