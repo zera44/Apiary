@@ -23,7 +23,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 
 const HIVE_ID = str('id вулика з find_hives (e:… або g:…) або його назва, напр. «5»');
 
-export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'stock_list', 'finance_summary'];
+export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'stock_list', 'finance_summary', 'search_books'];
 export const WRITE_TOOLS = ['record_inspection', 'stock_receive', 'stock_issue', 'add_finance_entry', 'create_reminder'];
 
 export const TOOLS: ToolDef[] = [
@@ -65,6 +65,16 @@ export const TOOLS: ToolDef[] = [
     name: 'stock_list',
     description: 'Залишки на складі: назва, кількість, одиниця, low - якщо менше мінімуму.',
     input_schema: obj({ query: str('частина назви') }),
+  },
+  {
+    name: 'search_books',
+    description:
+      'Пошук у книгах з бджільництва - ЄДИНЕ джерело порад (рої, матки, хвороби, лікування, підгодівля, ' +
+      'зимівля, догляд). Запит - 2-5 ключових слів по суті питання мовою книги: книги бувають українською й ' +
+      'англійською, тож якщо українською порожньо - повтори англійською (напр. «підгодівля цукровий сироп восени», ' +
+      'потім «autumn feeding sugar syrup»). Повертає до 5 уривків: книга, автор, рік, розділ, сторінка, текст; порожньо - у книгах ' +
+      'цього немає (або книг ще немає: поле note).',
+    input_schema: obj({ query: str('Ключові слова'), limit: { type: 'integer', minimum: 1, maximum: 8, description: 'Скільки уривків (типово 5)' } }, ['query']),
   },
   {
     name: 'finance_summary',

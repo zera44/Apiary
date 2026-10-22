@@ -39,6 +39,7 @@ import {
   struggled,
   usesFallback,
 } from './config.ts';
+import { searchBooks } from './kb.ts';
 import { type AccessCheck, checkAccess } from './access.ts';
 import { systemPromptFor } from './prompt.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
@@ -204,11 +205,23 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const text = await req.text();
   const bytes = new TextEncoder().encode(text).length;
   if (bytes > MAX_BODY_BYTES) return reject(413, 'too_large', { bytes });
-  let body: { messages?: unknown; model?: unknown; effort?: unknown };
+  let body: { messages?: unknown; model?: unknown; effort?: unknown; action?: unknown; query?: unknown; limit?: unknown };
   try {
     body = JSON.parse(text);
   } catch {
     return reject(400, 'json');
+  }
+  // пошук у книгах (інструмент search_books; виконує застосунок через нас)
+  if (body?.action === 'search_books') {
+    const q = typeof body.query === 'string' ? body.query.trim() : '';
+    if (!q) return reject(400, 'query');
+    const found = await searchBooks(deps.env, deps.fetch, q, Number(body.limit));
+    if (!found) {
+      deps.log(JSON.stringify({ fn: 'assistant', result: 'books_unavailable' }));
+      return json({ error: 'busy', retry: true }, 503);
+    }
+    deps.log(JSON.stringify({ fn: 'assistant', result: 'books', books: found.books, hits: found.results.length, query_words: q.split(/\s+/).length }));
+    return json(found);
   }
   const bad = validateMessages(body?.messages);
   if (bad) {
