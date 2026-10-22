@@ -1,0 +1,10 @@
+train 750 dropped(out-of-dict) 0
+base 
+ep1 loss 0.837 311s 
+ep2 loss 0.398 624s 
+ep3 loss 0.282 928s 
+ep4 loss 0.211 1228s 
+ep5 loss 0.178 1549s 
+ep6 loss 0.159 1858s 
+ep7 loss 0.133 2178s 
+ep8 loss 0.140 2482s 

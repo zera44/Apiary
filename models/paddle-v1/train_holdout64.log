@@ -1,0 +1,17 @@
+train 671 dropped(out-of-dict) 0
+base eval_old.txt 30.3% | eval_new.txt 19.6%
+ep1 loss 0.965 277s eval_old.txt 18.2% | eval_new.txt 6.7%
+  saved best 18.157471880021426
+ep2 loss 0.430 579s eval_old.txt 18.6% | eval_new.txt 6.4%
+ep3 loss 0.308 887s eval_old.txt 17.8% | eval_new.txt 6.7%
+  saved best 17.782538832351367
+ep4 loss 0.253 1191s eval_old.txt 19.4% | eval_new.txt 7.2%
+ep5 loss 0.192 1491s eval_old.txt 19.0% | eval_new.txt 6.8%
+ep6 loss 0.162 1794s eval_old.txt 18.9% | eval_new.txt 6.2%
+ep7 loss 0.144 2091s eval_old.txt 18.2% | eval_new.txt 5.8%
+ep8 loss 0.135 2389s eval_old.txt 17.6% | eval_new.txt 5.7%
+  saved best 17.62185324049277
+ep9 loss 0.127 2684s eval_old.txt 18.3% | eval_new.txt 6.2%
+ep10 loss 0.112 2977s eval_old.txt 18.2% | eval_new.txt 6.1%
+ep11 loss 0.104 3269s eval_old.txt 18.3% | eval_new.txt 5.4%
+ep12 loss 0.103 3551s eval_old.txt 18.3% | eval_new.txt 5.5%
