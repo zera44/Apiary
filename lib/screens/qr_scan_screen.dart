@@ -111,6 +111,38 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   bool get _receiptOn => widget.receiptRepo != null;
 
+  /// Режим «Чек» (перемикач угорі): камера шукає контур чека, а не QR-код.
+  bool _receipt = false;
+
+  void _setMode(bool receipt) {
+    if (_receipt == receipt) return;
+    setState(() {
+      _receipt = receipt;
+      _qr = null;
+      _qrSince = null;
+      _quad = null;
+      _quadSince = null;
+      _quadMisses = 0;
+    });
+  }
+
+  Widget _modeSwitch() {
+    Widget tab(String text, bool receipt) => Expanded(
+          child: PillButton(
+            text: text,
+            bg: _receipt == receipt ? AppColors.accent : AppColors.roundBtn,
+            fg: _receipt == receipt ? Colors.white : AppColors.text,
+            height: 40,
+            fontSize: 13,
+            onPressed: () => _setMode(receipt),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Row(children: [tab('Код вулика', false), const SizedBox(width: 8), tab('Чек', true)]),
+    );
+  }
+
   /// Частка (0..1) витриманого часу над QR-кодом або над чеком.
   double get _progress {
     final now = DateTime.now();
@@ -141,12 +173,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
       Navigator.of(context).pop(_qr);
       return;
     }
-    if (_receiptOn && _qr == null && !_manualOpen && !_capturing && _ticks % 3 == 0) {
+    if (_receiptOn && _receipt && !_manualOpen && !_capturing && _ticks % 3 == 0) {
       unawaited(_analyse());
-    }
-    if (_qr != null && _quad != null) {
-      _quad = null;
-      _quadSince = null;
     }
     setState(() {});
   }
@@ -162,7 +190,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
       final data = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
       final w = img.width, h = img.height;
       img.dispose();
-      if (data == null || !mounted || _done || _qr != null) return;
+      if (data == null || !mounted || _done || !_receipt) return;
       final q = detectReceipt(data.buffer.asUint8List(), w, h);
       final now = DateTime.now();
       if (q == null) {
@@ -248,7 +276,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_done || _manualOpen) return;
+    if (_done || _manualOpen || _receipt) return;
     for (final b in capture.barcodes) {
       final v = b.rawValue?.trim();
       if (v != null && v.isNotEmpty) {
@@ -280,8 +308,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
   String get _hint {
     if (_qr != null) return 'QR-код знайдено - тримайте камеру нерухомо';
     if (_quad != null) return 'Чек знайдено - тримайте телефон нерухомо';
-    return _receiptOn
-        ? 'Наведіть камеру на QR-код вулика або на чек і потримайте кілька секунд'
+    return _receipt
+        ? 'Покладіть чек рівно на контрастний фон, наведіть камеру й потримайте кілька секунд'
         : 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
   }
 
@@ -311,6 +339,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   painter: _FramePainter(
                     quad: _quad,
                     qr: _qr != null,
+                    idleFrame: !_receipt,
                     progress: p,
                     color: AppColors.accent,
                   ),
@@ -333,13 +362,16 @@ class _QrScanScreenState extends State<QrScanScreen> {
               right: 0,
               child: Container(
                 color: Colors.black54,
-                child: TopBar(
-                    title: _receiptOn ? 'Сканувати код або чек' : widget.title,
-                    onBack: () {
-                      if (_done) return;
-                      _done = true; // камера ще працює під час закриття - не закривати вдруге
-                      Navigator.pop(context);
-                    }),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  TopBar(
+                      title: _receipt ? 'Сканувати чек' : widget.title,
+                      onBack: () {
+                        if (_done) return;
+                        _done = true; // камера ще працює під час закриття - не закривати вдруге
+                        Navigator.pop(context);
+                      }),
+                  if (_receiptOn) _modeSwitch(),
+                ]),
               ),
             ),
             Positioned(
@@ -354,7 +386,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                         fontSize: 14,
                         shadows: [Shadow(blurRadius: 6, color: Colors.black87)])),
                 const SizedBox(height: 12),
-                if (_receiptOn) ...[
+                if (_receipt) ...[
                   Row(children: [
                     Expanded(
                       child: PillButton(
@@ -377,6 +409,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   ]),
                   const SizedBox(height: 8),
                 ],
+                if (!_receipt)
                 PillButton(
                   text: 'Ввести код вручну',
                   bg: AppColors.roundBtn,
@@ -385,7 +418,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   width: double.infinity,
                   onPressed: _manual,
                 ),
-                if (widget.skipLabel != null) ...[
+                if (!_receipt && widget.skipLabel != null) ...[
                   const SizedBox(height: 8),
                   PillButton(
                     text: widget.skipLabel!,
@@ -414,10 +447,11 @@ class _QrScanScreenState extends State<QrScanScreen> {
 class _FramePainter extends CustomPainter {
   final ReceiptQuad? quad;
   final bool qr;
+  final bool idleFrame;
   final double progress;
   final Color color;
   const _FramePainter(
-      {required this.quad, required this.qr, required this.progress, required this.color});
+      {required this.quad, required this.qr, required this.idleFrame, required this.progress, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -435,6 +469,7 @@ class _FramePainter extends CustomPainter {
       path = Path()..addRRect(RRect.fromRectAndRadius(r, const Radius.circular(20)));
     }
     if (!found) {
+      if (!idleFrame) return;
       canvas.drawPath(
           path,
           Paint()
@@ -463,5 +498,5 @@ class _FramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FramePainter o) =>
-      o.progress != progress || o.qr != qr || o.quad != quad;
+      o.progress != progress || o.qr != qr || o.quad != quad || o.idleFrame != idleFrame;
 }
