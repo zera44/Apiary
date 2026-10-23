@@ -1192,7 +1192,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   /// Плашка «Ведмедик · Середня»: хто допомагає й наскільки глибоко думає.
   Widget _chooserChip() => ListenableBuilder(
-    listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active, AssistantPrefs.effort]),
+    listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active]),
     builder: (_, _) {
       final p = AssistantPrefs.active.value;
       return Semantics(
@@ -1230,10 +1230,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                           text: p.name,
                           style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700),
                         ),
-                        TextSpan(
-                          text: '  ${effortLabel(AssistantPrefs.effort.value)}',
-                          style: TextStyle(color: AppColors.textMuted),
-                        ),
                       ],
                     ),
                     maxLines: 1,
@@ -1258,7 +1254,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     showDragHandle: true,
     builder: (ctx) => SafeArea(
       child: ListenableBuilder(
-        listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active, AssistantPrefs.effort]),
+        listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active]),
         builder: (_, _) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
@@ -1294,23 +1290,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     }
                     AssistantPrefs.setPersona(widget.repo, p);
                   },
-                ),
-              const SizedBox(height: 14),
-              Text(
-                tr.assistantEffort,
-                style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w700),
-              ),
-              Text(
-                tr.assistantEffortHintText,
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5),
-              ),
-              const SizedBox(height: 6),
-              for (final e in kAssistantEfforts)
-                _option(
-                  key: ValueKey('effort-$e'),
-                  selected: AssistantPrefs.effort.value == e,
-                  title: effortLabel(e),
-                  onTap: () => AssistantPrefs.setEffort(widget.repo, e),
                 ),
             ],
           ),

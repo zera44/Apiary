@@ -120,17 +120,14 @@ void main() {
     expect(find.text(tr.assistantBeekeeperHint), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('persona-sonnet')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('effort-high')));
-    await settle(tester);
     await tester.tapAt(const Offset(10, 10)); // закрити
     await tester.pumpAndSettle();
 
     expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), 'sonnet');
-    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.effortKey)), 'high');
     expect(find.text(tr.assistantBeekeeper), findsWidgets);
     await send(tester, 'Привіт');
     expect(server.bodies.last['model'], 'sonnet');
-    expect(server.bodies.last['effort'], 'high');
+    expect(server.bodies.last['effort'], 'medium'); // глибина завжди середня
     // людині - без назв моделей; лише три рівні
     expect(find.textContaining('Haiku'), findsNothing);
     expect(find.textContaining('Sonnet'), findsNothing);
@@ -209,16 +206,10 @@ void main() {
     repo = Repository(await AppDatabase.open(databaseFactoryFfiNoIsolate, inMemoryDatabasePath,
         singleInstance: false));
     await repo.init();
-    await repo.setMeta(AssistantPrefs.effortKey, 'turbo');
     expect(await AssistantPrefs.requestOptions(repo), {'model': 'haiku', 'active': 'haiku', 'effort': 'medium'});
     await AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper);
-    await AssistantPrefs.setEffort(repo, 'high');
-    expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'active': 'sonnet', 'effort': 'high'});
+    expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'active': 'sonnet', 'effort': 'medium'});
     expect(AssistantPersona.of(null), AssistantPersona.bear);
-    // колишня «дуже висока» - тепер середня
-    await repo.setMeta(AssistantPrefs.effortKey, 'xhigh');
-    expect((await AssistantPrefs.requestOptions(repo))['effort'], 'medium');
-    expect(kAssistantEfforts, ['low', 'medium', 'high']);
     // голоси різні
     expect(AssistantPersona.bear.pitch, greaterThan(AssistantPersona.beekeeper.pitch));
   });

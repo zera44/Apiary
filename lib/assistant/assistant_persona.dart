@@ -67,24 +67,15 @@ enum AssistantPersona {
       };
 }
 
-/// Глибина міркувань (output_config.effort): низька, середня, висока.
-/// Вищі рівні для «відкрий / знайди / запиши» лише довше думають.
-const kAssistantEfforts = ['low', 'medium', 'high'];
-
-String effortLabel(String e) => switch (e) {
-      'low' => tr.assistantEffortLow,
-      'high' => tr.assistantEffortHigh,
-      _ => tr.assistantEffortMedium,
-    };
+/// Глибина міркувань (output_config.effort) однакова для всіх помічників - середня.
+const kAssistantEffort = 'medium';
 
 /// Вибір людини: на телефоні, іде з кожним запитом (сервер може його
 /// вимкнути - секрет ASSISTANT_CLIENT_CHOICE = off).
 class AssistantPrefs {
   static const modelKey = 'assistant_model';
-  static const effortKey = 'assistant_effort';
 
   static const defaultPersona = AssistantPersona.bear;
-  static const defaultEffort = 'medium';
 
   /// Поточний вибір (чат, кнопка на карті).
   static final persona = ValueNotifier<AssistantPersona>(defaultPersona);
@@ -94,7 +85,6 @@ class AssistantPrefs {
   /// аватар і заголовок, його ж сервер дізнається з кожним запитом.
   static final active = ValueNotifier<AssistantPersona>(defaultPersona);
   static const activeKey = 'assistant_active';
-  static final effort = ValueNotifier<String>(defaultEffort);
 
   static Future<void> load(Repository repo) async {
     final chosen = AssistantPersona.of(await repo.getMeta(modelKey));
@@ -102,8 +92,6 @@ class AssistantPrefs {
     persona.value = chosen.locked ? AssistantPersona.beekeeper : chosen;
     final a = AssistantPersona.of(await repo.getMeta(activeKey));
     active.value = a;
-    final e = await repo.getMeta(effortKey);
-    effort.value = kAssistantEfforts.contains(e) ? e! : defaultEffort;
   }
 
   static Future<void> setPersona(Repository repo, AssistantPersona p) async {
@@ -119,15 +107,9 @@ class AssistantPrefs {
     await repo.setMeta(activeKey, p.model);
   }
 
-  static Future<void> setEffort(Repository repo, String e) async {
-    if (!kAssistantEfforts.contains(e)) return;
-    effort.value = e;
-    await repo.setMeta(effortKey, e);
-  }
-
   /// Що додати до запиту (з бази - працює й у фоновому завданні).
   static Future<Map<String, String>> requestOptions(Repository repo) async {
     await load(repo);
-    return {'model': persona.value.model, 'active': active.value.model, 'effort': effort.value};
+    return {'model': persona.value.model, 'active': active.value.model, 'effort': kAssistantEffort};
   }
 }
