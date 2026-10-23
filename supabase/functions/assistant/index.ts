@@ -32,6 +32,7 @@ import {
   KEEP_MESSAGES,
   MAX_STEPS,
   MAX_TOKENS,
+  effortFor,
   escalationOn,
   nextModel,
   REFUSAL_TEXT,
@@ -252,13 +253,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     : { model: chosen.model, routedFrom: undefined as string | undefined });
   const routedModel = routed.model;
   let routedFrom = routed.routedFrom;
-  const effort = chosen.effort;
   type Out = { content?: Block[]; stop_reason?: string; usage?: Usage };
 
   // один запит до Anthropic для моделі m (withFallback - разом із «запасною
   // моделлю»: Sonnet і Opus)
   const attempt = async (m: string): Promise<{ out: Out } | { err: Response }> => {
-    const payload = buildRequest(m, messages, deps.system ?? systemPromptFor(m), deps.tools ?? TOOLS, effort);
+    const payload = buildRequest(m, messages, deps.system ?? systemPromptFor(m), deps.tools ?? TOOLS, effortFor(m));
     const call = (withFallback: boolean) => {
       const body = withFallback ? payload : { ...payload, fallbacks: undefined };
       return deps.fetch(ANTHROPIC_URL, {
@@ -295,7 +295,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           result: 'upstream',
           status: res.status,
           model: m,
-          effort,
+          effort: effortFor(m),
           steps,
           ...(await errorInfo(res)),
         }),
@@ -336,7 +336,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       model,
       ...(routedFrom ? { routed_from: routedFrom } : {}),
       ...(escalatedFrom ? { escalated_from: escalatedFrom } : {}),
-      effort,
+      effort: effortFor(model),
       messages: messages.length,
       ...(messages.length < all.length ? { trimmed_from: all.length } : {}),
       steps: steps + (out.stop_reason === 'tool_use' ? 1 : 0),

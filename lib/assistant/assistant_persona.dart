@@ -67,8 +67,8 @@ enum AssistantPersona {
       };
 }
 
-/// Глибина міркувань (output_config.effort) однакова для всіх помічників - середня.
-const kAssistantEffort = 'medium';
+/// Глибина міркувань (output_config.effort): середня; Робопасічнику сервер сам ставить xhigh.
+const kAssistantEffort = 'medium'; // сервер сам ставить xhigh для Робопасічника
 
 /// Вибір людини: на телефоні, іде з кожним запитом (сервер може його
 /// вимкнути - секрет ASSISTANT_CLIENT_CHOICE = off).

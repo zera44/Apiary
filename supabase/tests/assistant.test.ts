@@ -122,13 +122,15 @@ test('коротка назва: sonnet / haiku; типово - Haiku без з�
   assert.equal(h.calls[0].headers['anthropic-beta'], undefined);
 });
 
-test('глибина міркувань - секретом ASSISTANT_EFFORT; невідоме значення - типове', async () => {
-  for (const [secret, sent] of [[undefined, 'medium'], ['xhigh', 'xhigh'], ['LOW', 'low'], ['дуже', 'medium']]) {
-    const env = { ...SECRETS, ...(secret ? { ASSISTANT_EFFORT: secret } : {}) };
-    const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]), env);
-    await handle(post(hello), d);
-    assert.deepEqual(calls[0].body.output_config, { effort: sent }, String(secret));
-    assert.equal(JSON.parse(logs[0]).effort, sent);
+test('глибина міркувань за моделлю: Ведмедик і Пасічник - medium, Робопасічник - xhigh; вибір і секрет не діють', async () => {
+  for (const [model, sent] of [['haiku', 'medium'], ['sonnet', 'medium'], ['opus', 'xhigh']]) {
+    for (const wanted of [undefined, 'low', 'max']) {
+      const env = { ...SECRETS, ...(wanted ? { ASSISTANT_EFFORT: wanted } : {}) };
+      const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]), env);
+      await handle(post({ ...heavy, model, effort: wanted ?? 'high' }), d);
+      assert.deepEqual(calls[0].body.output_config, { effort: sent }, `${model} ${wanted}`);
+      assert.equal(JSON.parse(logs[0]).effort, sent);
+    }
   }
 });
 
@@ -136,7 +138,7 @@ test('вибір у застосунку: модель і глибина з за
   const s = deps(modelReply([{ type: 'text', text: 'ok' }]));
   const out = await (await handle(post({ ...heavy, model: 'sonnet', effort: 'high' }), s.d)).json();
   assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
-  assert.deepEqual(s.calls[0].body.output_config, { effort: 'high' });
+  assert.deepEqual(s.calls[0].body.output_config, { effort: 'medium' });
   assert.equal(out.model, 'sonnet');
   assert.match(s.calls[0].body.system[0].text, /«Пасічник»/);
 
@@ -328,7 +330,7 @@ test('Ведмедик і Робопасічник не переключають
   assert.equal(r.calls[0].body.model, 'claude-opus-5-5');
   assert.equal(r.calls[0].body.fallbacks, 'default'); // запасна модель - як у Sonnet
   assert.equal(r.calls[0].headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
-  assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'xhigh' });
   assert.match(r.calls[0].body.system[0].text, /«Робопасічник»/);
   assert.equal(or.model, 'opus');
   assert.equal(or.routed_from, undefined);

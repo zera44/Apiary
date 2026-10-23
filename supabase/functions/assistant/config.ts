@@ -72,6 +72,12 @@ export function choose(env: Env, wanted: { model?: unknown; effort?: unknown }) 
   };
 }
 
+/** Глибина міркувань за моделлю: Робопасічник (Opus) - xhigh, усі інші - medium.
+ *  Вибір людини й секрет ASSISTANT_EFFORT не впливають. */
+export function effortFor(model: string): string {
+  return model.includes('opus') ? 'xhigh' : 'medium';
+}
+
 /** Невідоме значення - типове (помилка в секреті не зламає помічника). */
 export function effortFrom(env: Env): string {
   const v = env('ASSISTANT_EFFORT')?.trim().toLowerCase() ?? '';
