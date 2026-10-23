@@ -31,8 +31,10 @@ Future<FillResult?> showFillValuesDialog(
   VoidCallback? onHistory,
   List<(String, String)> infoRows = const [],
   bool withNote = false,
+  List<ParamGroup> groups = const [],
 }) {
   Widget host() => _FillHost(
+        groups: groups,
         first: FillPage(params: params, latest: latest, stock: stock, title: title),
         offerNext: lesson == null && offerNext,
         onNext: onNext,
@@ -96,8 +98,10 @@ class _FillHost extends StatefulWidget {
   final VoidCallback? onHistory;
   final List<(String, String)> infoRows;
   final bool withNote;
+  final List<ParamGroup> groups;
   const _FillHost(
-      {this.infoRows = const [],
+      {this.groups = const [],
+      this.infoRows = const [],
       this.withNote = false,
       required this.first,
       required this.offerNext,
@@ -127,6 +131,7 @@ class _FillHostState extends State<_FillHost> {
       onHistory: widget.onHistory,
       infoRows: widget.infoRows,
       withNote: widget.withNote,
+      groups: widget.groups,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
       onNext: onNext == null
           ? null
@@ -182,8 +187,10 @@ class _FillDialog extends StatefulWidget {
 
   /// Поле «Нотатка» під таблицею (огляд одного вулика).
   final bool withNote;
+  final List<ParamGroup> groups;
   const _FillDialog(
       {super.key,
+      this.groups = const [],
       this.infoRows = const [],
       this.withNote = false,
       this.lesson,
@@ -441,29 +448,21 @@ class _FillDialogState extends State<_FillDialog> {
           ),
         ]);
     final feed = _feedItem == null ? null : widget.stock.firstWhere((s) => s.id == _feedItem);
-    return Table(
-      border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
-      columnWidths: stacked
-          ? const {0: FlexColumnWidth()}
-          : const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: [
-        for (final (name, value) in widget.infoRows)
-          row(
-              name,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-                child: Text(value,
-                    style: TextStyle(
-                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
-              )),
-        for (final p in widget.params)
-          row(
-              p.nameWithUnit,
-              HoneyRing(
-                  on: _ring(4) && p.id == _lesson!.dateParamId,
-                  radius: 8,
-                  child: _field(p))),
+    Table table(List<TableRow> rows) => Table(
+          border: TableBorder.all(color: grid, width: 1, borderRadius: BorderRadius.circular(10)),
+          columnWidths: stacked
+              ? const {0: FlexColumnWidth()}
+              : const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(1)},
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: rows,
+        );
+    TableRow paramRow(Parameter p) => row(
+        p.nameWithUnit,
+        HoneyRing(
+            on: _ring(4) && p.id == _lesson!.dateParamId,
+            radius: 8,
+            child: _field(p)));
+    final feedRows = <TableRow>[
         if (widget.stock.isNotEmpty)
           row(
             'Підгодівля зі складу',
@@ -508,8 +507,55 @@ class _FillDialogState extends State<_FillDialog> {
               onChanged: (_) => setState(() => _error = null),
             ),
           ),
+    ];
+
+    // параметри за групами, як на панелі «Характеристики»: спершу без групи,
+    // далі кожна група під своєю плашкою (лише обрані для цього вулика)
+    final byId = {for (final p in widget.params) p.id: p};
+    final used = <String>{};
+    final sections = <(String, List<Parameter>)>[];
+    for (final g in widget.groups) {
+      final items = [for (final id in g.ids) if (byId[id] != null && used.add(id)) byId[id]!];
+      if (items.isNotEmpty) sections.add((g.name, items));
+    }
+    final loose = [for (final p in widget.params) if (!used.contains(p.id)) p];
+    final head = <TableRow>[
+      for (final (name, value) in widget.infoRows)
+        row(
+            name,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+              child: Text(value,
+                  style: TextStyle(
+                      color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
+            )),
+      for (final p in loose) paramRow(p),
+      if (sections.isEmpty) ...feedRows,
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (head.isNotEmpty) table(head),
+      for (final (name, items) in sections) ...[
+        const SizedBox(height: 10),
+        Container(
+          height: 30,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+              color: AppColors.hive, borderRadius: BorderRadius.circular(10)),
+          child: Text(name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Color(0xFF2B1A08), fontSize: 14, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 6),
+        table([for (final p in items) paramRow(p)]),
       ],
-    );
+      if (sections.isNotEmpty && feedRows.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        table(feedRows),
+      ],
+    ]);
   }
 
   /// Текст у клітинці списку: не переноситься й не обрізається «…» — зменшується.

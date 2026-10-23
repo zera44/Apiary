@@ -1542,8 +1542,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
     if (!mounted) return;
     if (lesson != null) setState(() => _lessonFormOpen = true);
+    // групи параметрів («Обхід», «Корпус 1»…) - як на панелі «Характеристики»
+    final fillGroups = await repo.paramGroups();
+    if (!mounted) return;
     final result = await showFillValuesDialog(
       context,
+      groups: fillGroups,
       params: first.params,
       latest: first.latest,
       stock: first.stock,
