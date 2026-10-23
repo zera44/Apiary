@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../logic/unit_convert.dart';
 import '../data/finance.dart';
 import '../data/models.dart';
 import '../data/notes.dart';
@@ -173,6 +174,7 @@ class AssistantTools {
     'stock_list',
     'finance_summary',
     'search_books',
+    'convert_units',
   };
   static const writeTools = {
     'record_inspection',
@@ -195,6 +197,7 @@ class AssistantTools {
         'stock_list' => await _stockList(input),
         'finance_summary' => await _financeSummary(input),
         'search_books' => await _searchBooks(input),
+        'convert_units' => await _convertUnits(input),
         'record_inspection' => await _recordInspection(input),
         'stock_receive' => await _stockMove(input, receive: true),
         'stock_issue' => await _stockMove(input, receive: false),
@@ -585,6 +588,43 @@ class AssistantTools {
       if (items.length > 50) 'more': items.length - 50,
     };
   }
+
+  /// Переведення одиниць (кг <-> л через густину) і, за бажанням, сума за ціною.
+  Future<Map<String, dynamic>> _convertUnits(Map<String, dynamic> input) async {
+    final value = double.tryParse(_s(input, 'value').replaceAll(',', '.').replaceAll(RegExp(r'\s'), ''));
+    if (value == null) throw const _Bad('value: число');
+    final density = double.tryParse(_s(input, 'density').replaceAll(',', '.'));
+    final substance = _s(input, 'substance');
+    final d = density ?? densityOf(substance);
+    final r = convertUnits(value, _s(input, 'from'), _s(input, 'to'), density: d);
+    final out = <String, dynamic>{
+      'value': _round(value),
+      'from': normalizeUnit(_s(input, 'from')),
+      'result': _round(r.value),
+      'unit': r.unit,
+      if (r.density != null)
+        'density_kg_per_l': r.density,
+      if (r.density != null)
+        'note': 'Через густину ${r.density} кг/л'
+            '${substance.isEmpty ? '' : ' (' + substance + ')'}: це наближення - скажи людині, яку густину взято',
+    };
+    // сума: ціна за одиницю price_unit
+    final priceText = _s(input, 'price');
+    if (priceText.isNotEmpty) {
+      final price = double.tryParse(priceText.replaceAll(',', '.').replaceAll(RegExp(r'\s'), ''));
+      if (price == null) throw const _Bad('price: число');
+      final pu = _s(input, 'price_unit');
+      final qty = pu.isEmpty
+          ? r.value
+          : convertUnits(value, _s(input, 'from'), pu, density: d).value;
+      out['price'] = price;
+      out['price_unit'] = pu.isEmpty ? r.unit : normalizeUnit(pu);
+      out['total'] = (qty * price * 100).roundToDouble() / 100;
+    }
+    return out;
+  }
+
+  static double _round(double v) => (v * 1000).roundToDouble() / 1000;
 
   Future<Map<String, dynamic>> _financeSummary(Map<String, dynamic> input) async {
     final today = now();

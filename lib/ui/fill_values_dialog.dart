@@ -8,6 +8,7 @@ import 'date_picker.dart';
 import 'guide_bubble.dart';
 import 'icons.dart';
 import 'theme.dart';
+import 'thousands_input.dart';
 
 /// Форма "Заповнити": поле на кожен прив'язаний параметр. Тип даних
 /// обмежує ввід (ціле / дробове), для "Дата" — календар, для "Колір" —
@@ -502,6 +503,7 @@ class _FillDialogState extends State<_FillDialog> {
               key: const ValueKey('feed-amount'),
               controller: _feedAmount,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: thousandsInput,
               style: TextStyle(color: AppColors.text, fontSize: 15),
               decoration: _cellInput,
               onChanged: (_) => setState(() => _error = null),

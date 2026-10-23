@@ -11,6 +11,7 @@ import '../ui/date_picker.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
+import '../ui/thousands_input.dart';
 
 /// Нова витрата / дохід. Одна таблиця «Товар / К-сть / Ціна» і для ручного
 /// введення, і для розпізнаного чека; категорія - з довідника; рядки з «на
@@ -396,6 +397,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
           controller: _sum,
           textAlign: TextAlign.center,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: thousandsInput,
           style: TextStyle(color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w700),
           decoration: InputDecoration(
             hintText: '0',
@@ -691,6 +693,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
               controller: l.qty,
               style: style,
               keyboardType: numKb,
+              inputFormatters: thousandsInput,
               decoration: dense.copyWith(
                 suffixIcon: locked
                     ? Padding(
@@ -730,6 +733,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
               controller: l.price,
               style: style,
               keyboardType: numKb,
+              inputFormatters: thousandsInput,
               decoration: dense.copyWith(hintText: '0'),
               onChanged: (_) => _changed(),
             ),

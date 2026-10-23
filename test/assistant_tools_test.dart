@@ -362,6 +362,16 @@ void main() {
     expect(jsonDecode(result['content'] as String)['status'], 'підтверджено');
   });
 
+  test('convert_units: 500 кг меду по 100 грн за літр', () async {
+    final r = await ok(tools(), 'convert_units', {
+      'value': 500, 'from': 'кг', 'to': 'л', 'substance': 'мед', 'price': 100, 'price_unit': 'л',
+    });
+    expect(r['result'], closeTo(357.143, 1e-3));
+    expect(r['total'], closeTo(35714.29, 1e-6));
+    expect(r['density_kg_per_l'], 1.4);
+    expect(await bad(tools(), 'convert_units', {'value': 1, 'from': 'кг', 'to': 'л'}), contains('густина'));
+  });
+
   test('назви інструментів збігаються з описом для моделі (tools.ts)', () async {
     final ts = await File('supabase/functions/assistant/tools.ts').readAsString();
     final names = RegExp(r"name: '([a-z_]+)'").allMatches(ts).map((m) => m[1]).toSet();

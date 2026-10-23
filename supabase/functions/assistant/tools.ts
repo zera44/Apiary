@@ -23,7 +23,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 
 const HIVE_ID = str('id вулика з find_hives (e:… або g:…) або його назва, напр. «5»');
 
-export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'stock_list', 'finance_summary', 'search_books'];
+export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'stock_list', 'finance_summary', 'search_books', 'convert_units'];
 export const WRITE_TOOLS = ['record_inspection', 'stock_receive', 'stock_issue', 'add_finance_entry', 'create_reminder'];
 
 export const TOOLS: ToolDef[] = [
@@ -80,6 +80,25 @@ export const TOOLS: ToolDef[] = [
     name: 'finance_summary',
     description: 'Доходи, витрати й баланс за період (типово - з початку місяця), за категоріями.',
     input_schema: obj({ from: str('YYYY-MM-DD'), to: str('YYYY-MM-DD') }),
+  },
+  {
+    name: 'convert_units',
+    description:
+      'Перевести кількість в іншу одиницю: т, ц, кг, г, л, мл. Між масою й об\'ємом (кг <-> л) потрібна речовина: ' +
+      'мед ≈ 1,4 кг/л, вода 1, сироп 1,3, олія 0,92, віск 0,96, молоко 1,03 (або своя density в кг/л). ' +
+      'З price (і price_unit - одиниця ціни) одразу повертає суму total. Для сум, коли кількість і ціна в різних одиницях.',
+    input_schema: obj(
+      {
+        value: { type: 'number', description: 'Кількість' },
+        from: str('Одиниця кількості: т, ц, кг, г, л, мл'),
+        to: str('В яку одиницю перевести'),
+        substance: str('Речовина для кг <-> л: мед, вода, сироп, олія, віск, молоко'),
+        density: { type: 'number', description: 'Густина, кг/л (якщо речовини немає в списку)' },
+        price: { type: 'number', description: 'Ціна за одиницю price_unit - щоб порахувати суму' },
+        price_unit: str('Одиниця, за яку вказано ціну (за замовчуванням - to)'),
+      },
+      ['value', 'from', 'to'],
+    ),
   },
   {
     name: 'record_inspection',

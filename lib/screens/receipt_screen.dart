@@ -10,6 +10,7 @@ import '../services/receipt_ocr.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'stock_screen.dart';
+import '../ui/thousands_input.dart';
 
 /// Чек після сканування: розпізнані позиції в таблиці «Товар / Кількість /
 /// Ціна». Усе можна виправити, зайве - зняти галочкою чи видалити; «Додати на
@@ -242,6 +243,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             controller: l.qty,
             style: style,
             keyboardType: numKb,
+            inputFormatters: thousandsInput,
             decoration: dense.copyWith(
               suffixIcon: PopupMenuButton<String>(
                 tooltip: 'Одиниця',
@@ -268,6 +270,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             controller: l.price,
             style: style,
             keyboardType: numKb,
+            inputFormatters: thousandsInput,
             decoration: dense.copyWith(hintText: '0'),
             onChanged: (_) => setState(() {}),
           ),

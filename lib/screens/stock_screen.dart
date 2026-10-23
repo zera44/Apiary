@@ -15,6 +15,7 @@ import '../ui/date_picker.dart';
 import '../ui/icons.dart';
 import '../ui/theme.dart';
 import 'history_hub_screen.dart' show StockHistoryScreen;
+import '../ui/thousands_input.dart';
 
 /// Склад: три вкладки.
 /// «Прихід» — плитки номенклатури (з фото), під кожною «Прихід», внизу
@@ -750,6 +751,7 @@ class _ItemDialogState extends State<_ItemDialog> {
             TextField(
               controller: _min,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: thousandsInput,
               style: TextStyle(color: AppColors.text),
               decoration: InputDecoration(
                 labelText: 'Мінімальний залишок',
@@ -767,6 +769,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                   child: TextField(
                     controller: _recvAmount,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: thousandsInput,
                     style: TextStyle(color: AppColors.text),
                     decoration: InputDecoration(
                         labelText: 'Кількість',
@@ -779,6 +782,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                   child: TextField(
                     controller: _recvTotal,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: thousandsInput,
                     style: TextStyle(color: AppColors.text),
                     decoration: const InputDecoration(labelText: 'Вартість', suffixText: 'грн'),
                     onChanged: (_) => setState(() => _error = null),
@@ -949,7 +953,7 @@ class _MoveDialogState extends State<_MoveDialog> {
   @override
   Widget build(BuildContext context) {
     final it = widget.item;
-    final numeric = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))];
+    final numeric = thousandsInput;
     final (title, button, color) = switch (op) {
       StockOp.receive => ('Прихід', 'Зберегти', AppColors.accent),
       StockOp.writeOff => ('Списання', 'Списати', AppColors.danger),
