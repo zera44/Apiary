@@ -524,7 +524,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
                 children: [
                   ValueListenableBuilder<AssistantPersona>(
-                    valueListenable: AssistantPrefs.persona,
+                    valueListenable: AssistantPrefs.active,
                     builder: (_, _, _) => _assistantBubble(tr.assistantGreeting),
                   ),
                     if (_items.isEmpty) _suggestions(),
@@ -541,7 +541,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     Padding(
                       padding: const EdgeInsets.only(left: 56, top: 4),
                       child: Text(
-                        tr.assistantThinking(AssistantPrefs.persona.value.name),
+                        tr.assistantThinking(AssistantPrefs.active.value.name),
                         style: TextStyle(color: AppColors.textMuted, fontStyle: FontStyle.italic),
                       ),
                     ),
@@ -695,7 +695,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: ValueListenableBuilder<AssistantPersona>(
-            valueListenable: AssistantPrefs.persona,
+            valueListenable: AssistantPrefs.active,
             builder: (_, p, _) => Text(
               p.name,
               maxLines: 1,
@@ -748,7 +748,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        _avatar(persona ?? AssistantPrefs.persona.value),
+        _avatar(persona ?? AssistantPrefs.active.value),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -805,7 +805,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: Text(
                 tr.assistantEscalated(
                   AssistantPersona.of(it.data['escalated_from'] as String?).name,
-                  AssistantPersona.of(it.data['model'] as String?).name,
+                  AssistantPersona.of(it.data['model'] as String?).nameAcc,
                 ),
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
               ),
@@ -821,7 +821,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             const SizedBox(width: 4),
             Flexible(
               child: Text(
-                tr.assistantRouted(AssistantPersona.of(it.data['routed_from'] as String?).name),
+                tr.assistantRouted(AssistantPersona.of(it.data['model'] as String?).nameAcc),
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ),
@@ -1192,9 +1192,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   /// Плашка «Ведмедик · Середня»: хто допомагає й наскільки глибоко думає.
   Widget _chooserChip() => ListenableBuilder(
-    listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.effort]),
+    listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active, AssistantPrefs.effort]),
     builder: (_, _) {
-      final p = AssistantPrefs.persona.value;
+      final p = AssistantPrefs.active.value;
       return Semantics(
         button: true,
         label: '${tr.assistantWhoHelps}: ${p.name}',
@@ -1258,7 +1258,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     showDragHandle: true,
     builder: (ctx) => SafeArea(
       child: ListenableBuilder(
-        listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.effort]),
+        listenable: Listenable.merge([AssistantPrefs.persona, AssistantPrefs.active, AssistantPrefs.effort]),
         builder: (_, _) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           child: Column(
@@ -1272,7 +1272,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               for (final p in AssistantPersona.values)
                 _option(
                   key: ValueKey('persona-${p.model}'),
-                  selected: AssistantPrefs.persona.value == p,
+                  selected: AssistantPrefs.active.value == p,
+                  locked: p.locked,
                   leading: ClipOval(
                     child: Image.asset(
                       p.image,
@@ -1284,8 +1285,15 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     ),
                   ),
                   title: p.name,
-                  subtitle: p.hint,
-                  onTap: () => AssistantPrefs.setPersona(widget.repo, p),
+                  subtitle: p.locked ? tr.assistantRoboLocked : p.hint,
+                  onTap: () {
+                    if (p.locked) {
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(SnackBar(content: Text(tr.assistantRoboLocked)));
+                      return;
+                    }
+                    AssistantPrefs.setPersona(widget.repo, p);
+                  },
                 ),
               const SizedBox(height: 14),
               Text(
@@ -1317,6 +1325,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     required String title,
     String? subtitle,
     Widget? leading,
+    bool locked = false,
     required VoidCallback onTap,
   }) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1351,7 +1360,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 ],
               ),
             ),
-            if (selected) Icon(Icons.check_circle, color: AppColors.create),
+            if (locked)
+              Icon(Icons.lock_outline, size: 20, color: AppColors.textMuted)
+            else if (selected)
+              Icon(Icons.check_circle, color: AppColors.create),
           ],
         ),
       ),
@@ -1386,7 +1398,7 @@ class AssistantButton extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: ValueListenableBuilder<AssistantPersona>(
-            valueListenable: AssistantPrefs.persona,
+            valueListenable: AssistantPrefs.active,
             builder: (_, p, _) => Image.asset(
               p.image,
               fit: BoxFit.cover,

@@ -162,5 +162,26 @@ export function route(model: string, messages: { role: string; content: unknown 
   return { model, routedFrom: undefined as string | undefined };
 }
 
+/** Повернення вниз: застосунок надсилає active - хто відповідав востаннє.
+ *  Якщо система підняла розмову вище за обраного людиною (Ведмедик ->
+ *  Пасічник -> Робопасічник), то для простого прохання вона повертається до
+ *  Ведмедика, для звичайного (не «важкого») - до обраного, а на важкому
+ *  лишається там, де була. null - піднімати/знижувати нема чого. */
+export function routeActive(
+  base: string,
+  active: unknown,
+  messages: { role: string; content: unknown }[],
+  env: Env,
+) {
+  const off = (env('ASSISTANT_ROUTING')?.trim().toLowerCase() ?? '') === 'off';
+  const a = typeof active === 'string' ? active.trim().toLowerCase() : '';
+  const act = a === 'sonnet' || a === 'opus' ? MODEL_ALIASES[a] : null;
+  if (off || !act || LADDER.indexOf(act) <= LADDER.indexOf(base)) return null;
+  const text = lastHumanText(messages);
+  if (isSimpleRequest(text)) return { model: MODEL_ALIASES.haiku, routedFrom: aliasOf(act) as string | undefined };
+  if (!HEAVY.test(text)) return { model: base, routedFrom: aliasOf(act) as string | undefined };
+  return { model: act, routedFrom: undefined as string | undefined };
+}
+
 /** Відповідь, коли модель відмовилась (stop_reason «refusal»). */
 export const REFUSAL_TEXT = 'Із цим я не допоможу. Спитайте, будь ласка, інакше.';

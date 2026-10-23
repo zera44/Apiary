@@ -35,36 +35,20 @@ class AssistantHost extends StatefulWidget {
   /// Чат збоку відкрито (лише на широкому екрані).
   static final dockOpen = ValueNotifier<bool>(false);
 
-  /// Екрани, де плашки немає: головний і карта мають свою кнопку,
-  /// навчання й відгук - свій потік.
-  static const hiddenOn = {'map', 'lessons', 'feedback'};
+  /// Екрани, де плашки немає: навчання й відгук - свій потік. На решті
+  /// (разом з картою) іконка завжди в одному місці.
+  static const hiddenOn = {'lessons', 'feedback'};
 
   @override
   State<AssistantHost> createState() => _AssistantHostState();
 }
 
 class _AssistantHostState extends State<AssistantHost> {
-  Offset? _pos; // частки екрана: (x, y) лівого верхнього кута плашки
-  static const _fabKey = 'assistant_fab';
   static const _size = 52.0;
 
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_loadPos());
-  }
-
-  Future<void> _loadPos() async {
-    final s = await widget.repo.getMeta(_fabKey);
-    final p = s?.split(',');
-    if (p != null && p.length == 2) {
-      final x = double.tryParse(p[0]);
-      final y = double.tryParse(p[1]);
-      if (x != null && y != null && mounted) {
-        setState(() => _pos = Offset(x.clamp(0.0, 1.0), y.clamp(0.0, 1.0)));
-      }
-    }
-  }
+  /// Місце іконки однакове на всіх екранах і не переміщується.
+  static const _right = 12.0;
+  static const _bottom = 96.0;
 
   void _toggleOrOpen(bool wide) {
     if (wide) {
@@ -133,28 +117,13 @@ class _AssistantHostState extends State<AssistantHost> {
   }
 
   Widget _fab(BoxConstraints box, bool wide) {
-    final w = box.maxWidth, h = box.maxHeight;
-    final p = _pos;
-    final left = p == null ? w - _size - 12 : p.dx * (w - _size);
-    final top = p == null ? h - _size - 96 : p.dy * (h - _size);
     return Positioned(
-      left: left,
-      top: top,
-      child: GestureDetector(
+      right: _right,
+      bottom: _bottom,
+      child: Material(
         key: const ValueKey('assistant-fab'),
-        onPanUpdate: (d) => setState(() {
-          final nx = ((left + d.delta.dx) / (w - _size)).clamp(0.0, 1.0);
-          final ny = ((top + d.delta.dy) / (h - _size)).clamp(0.0, 1.0);
-          _pos = Offset(nx, ny);
-        }),
-        onPanEnd: (_) {
-          final p = _pos;
-          if (p != null) unawaited(widget.repo.setMeta(_fabKey, '${p.dx},${p.dy}'));
-        },
-        child: Material(
-          type: MaterialType.transparency,
-          child: AssistantButton(repo: widget.repo, size: _size, onTap: () => _toggleOrOpen(wide)),
-        ),
+        type: MaterialType.transparency,
+        child: AssistantButton(repo: widget.repo, size: _size, onTap: () => _toggleOrOpen(wide)),
       ),
     );
   }

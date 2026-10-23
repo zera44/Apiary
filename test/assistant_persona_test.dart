@@ -136,24 +136,33 @@ void main() {
     expect(find.textContaining('Sonnet'), findsNothing);
   });
 
-  testWidgets('Робопасічник: третій у списку, іде в запит як opus, з роботом', (tester) async {
+  testWidgets('Робопасічник: у списку під замочком, обрати його не можна', (tester) async {
     await open(tester);
     await tester.tap(find.byKey(const ValueKey('assistant-chooser')));
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantRobo), findsOneWidget);
-    expect(find.text(tr.assistantRoboHint), findsOneWidget);
+    expect(find.text(tr.assistantRoboLocked), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('persona-opus')));
     await settle(tester);
-    await tester.tapAt(const Offset(10, 10));
-    await tester.pumpAndSettle();
-    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), 'opus');
-    await send(tester, 'Привіт');
-    expect(server.bodies.last['model'], 'opus');
-    expect(find.text('Відповідає opus'), findsOneWidget);
-    expect(hasImage(AssistantPersona.robo.image), isTrue);
-    expect(find.textContaining('Opus'), findsNothing); // людині - без назв моделей
+    expect(AssistantPrefs.persona.value, AssistantPersona.bear);
+    expect(AssistantPrefs.active.value, AssistantPersona.bear);
+    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), isNot('opus'));
+    expect(AssistantPersona.robo.locked, isTrue);
     expect(AssistantPersona.of('opus'), AssistantPersona.robo);
     expect(AssistantPersona.robo.name, 'Робопасічник');
+    expect(AssistantPersona.robo.nameAcc, 'Робопасічника');
+  });
+
+  testWidgets('система перейшла на Робопасічника - аватар і заголовок змінилися, у запит іде active',
+      (tester) async {
+    await open(tester);
+    await tester.runAsync(() => AssistantPrefs.setActive(repo, AssistantPersona.robo));
+    await tester.pumpAndSettle();
+    expect(hasImage(AssistantPersona.robo.image), isTrue);
+    await send(tester, 'Привіт');
+    expect(server.bodies.last['model'], 'haiku'); // обране людиною лишилось
+    expect(server.bodies.last['active'], 'opus');
   });
 
   testWidgets('перемикання помітне: відповів Ведмедик, підпис «Пасічник передав просте…»',
@@ -165,12 +174,12 @@ void main() {
     final reply = items.firstWhere((i) => i.role == ChatRole.assistant);
     expect(reply.data['model'], 'haiku');
     expect(reply.data['routed_from'], 'sonnet');
-    expect(find.text(tr.assistantRouted(tr.assistantBeekeeper)), findsOneWidget);
+    expect(find.text(tr.assistantRouted(tr.assistantBearAcc)), findsOneWidget);
     expect(hasImage(AssistantPersona.bear.image), isTrue); // обличчя того, хто відповів
     // звичайна відповідь (без передачі) - без підпису
     server.routeSimple = false;
     await send(tester, 'Поясни докладніше');
-    expect(find.text(tr.assistantRouted(tr.assistantBeekeeper)), findsOneWidget);
+    expect(find.text(tr.assistantRouted(tr.assistantBearAcc)), findsOneWidget);
   });
 
   testWidgets('ескалація помітна: Ведмедик не впорався - відповів Пасічник', (tester) async {
@@ -180,7 +189,7 @@ void main() {
     final reply = items.firstWhere((i) => i.role == ChatRole.assistant);
     expect(reply.data['model'], 'sonnet');
     expect(reply.data['escalated_from'], 'haiku');
-    expect(find.text(tr.assistantEscalated(tr.assistantBear, tr.assistantBeekeeper)), findsOneWidget);
+    expect(find.text(tr.assistantEscalated(tr.assistantBear, tr.assistantBeekeeperAcc)), findsOneWidget);
     expect(hasImage(AssistantPersona.beekeeper.image), isTrue);
   });
 
@@ -201,10 +210,10 @@ void main() {
         singleInstance: false));
     await repo.init();
     await repo.setMeta(AssistantPrefs.effortKey, 'turbo');
-    expect(await AssistantPrefs.requestOptions(repo), {'model': 'haiku', 'effort': 'medium'});
+    expect(await AssistantPrefs.requestOptions(repo), {'model': 'haiku', 'active': 'haiku', 'effort': 'medium'});
     await AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper);
     await AssistantPrefs.setEffort(repo, 'high');
-    expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'effort': 'high'});
+    expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'active': 'sonnet', 'effort': 'high'});
     expect(AssistantPersona.of(null), AssistantPersona.bear);
     // колишня «дуже висока» - тепер середня
     await repo.setMeta(AssistantPrefs.effortKey, 'xhigh');

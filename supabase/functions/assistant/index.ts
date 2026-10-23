@@ -36,6 +36,7 @@ import {
   nextModel,
   REFUSAL_TEXT,
   route,
+  routeActive,
   struggled,
   usesFallback,
 } from './config.ts';
@@ -243,9 +244,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // передача - лише коли Пасічника обрала людина (не коли модель задано секретом)
   const pickedSonnet =
     clientChoiceAllowed(deps.env) && typeof body.model === 'string' && body.model.trim().toLowerCase() === 'sonnet';
-  const routed = pickedSonnet
+  // систему могло підняти вище за обраного (active) - тоді вона сама вирішує,
+  // лишатися там чи повернутися до простішого
+  const stepped = clientChoiceAllowed(deps.env) ? routeActive(chosen.model, body.active, messages, deps.env) : null;
+  const routed = stepped ?? (pickedSonnet
     ? route(chosen.model, messages, deps.env)
-    : { model: chosen.model, routedFrom: undefined as string | undefined };
+    : { model: chosen.model, routedFrom: undefined as string | undefined });
   const routedModel = routed.model;
   let routedFrom = routed.routedFrom;
   const effort = chosen.effort;

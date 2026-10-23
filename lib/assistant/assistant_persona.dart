@@ -23,6 +23,17 @@ enum AssistantPersona {
   final String image;
   const AssistantPersona(this.model, this.modelLabel, this.image);
 
+  /// Робопасічника обрати не можна: до нього переходить сама система, коли
+  /// Пасічник не впорався, і повертається, щойно задача стає простою.
+  bool get locked => this == robo;
+
+  /// Назва в знахідному відмінку («переходжу на …»).
+  String get nameAcc => switch (this) {
+        bear => tr.assistantBearAcc,
+        beekeeper => tr.assistantBeekeeperAcc,
+        robo => tr.assistantRoboAcc,
+      };
+
   String get name => switch (this) {
         bear => tr.assistantBear,
         beekeeper => tr.assistantBeekeeper,
@@ -77,17 +88,35 @@ class AssistantPrefs {
 
   /// Поточний вибір (чат, кнопка на карті).
   static final persona = ValueNotifier<AssistantPersona>(defaultPersona);
+
+  /// Хто відповідає ЗАРАЗ: обраний людиною або той, на кого систему перемкнуло
+  /// (Робопасічник, коли складно; Ведмедик, коли просто). Його показують
+  /// аватар і заголовок, його ж сервер дізнається з кожним запитом.
+  static final active = ValueNotifier<AssistantPersona>(defaultPersona);
+  static const activeKey = 'assistant_active';
   static final effort = ValueNotifier<String>(defaultEffort);
 
   static Future<void> load(Repository repo) async {
-    persona.value = AssistantPersona.of(await repo.getMeta(modelKey));
+    final chosen = AssistantPersona.of(await repo.getMeta(modelKey));
+    // Робопасічника обирати не можна (у старих збереженнях міг бути обраний)
+    persona.value = chosen.locked ? AssistantPersona.beekeeper : chosen;
+    final a = AssistantPersona.of(await repo.getMeta(activeKey));
+    active.value = a;
     final e = await repo.getMeta(effortKey);
     effort.value = kAssistantEfforts.contains(e) ? e! : defaultEffort;
   }
 
   static Future<void> setPersona(Repository repo, AssistantPersona p) async {
+    if (p.locked) return;
     persona.value = p;
     await repo.setMeta(modelKey, p.model);
+    await setActive(repo, p); // людина обрала сама - далі відповідає цей
+  }
+
+  /// Систему перемкнуло на іншого помічника (або знову на обраного).
+  static Future<void> setActive(Repository repo, AssistantPersona p) async {
+    active.value = p;
+    await repo.setMeta(activeKey, p.model);
   }
 
   static Future<void> setEffort(Repository repo, String e) async {
@@ -99,6 +128,6 @@ class AssistantPrefs {
   /// Що додати до запиту (з бази - працює й у фоновому завданні).
   static Future<Map<String, String>> requestOptions(Repository repo) async {
     await load(repo);
-    return {'model': persona.value.model, 'effort': effort.value};
+    return {'model': persona.value.model, 'active': active.value.model, 'effort': effort.value};
   }
 }

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
-import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, struggled } from '../functions/assistant/config.ts';
+import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, routeActive, struggled } from '../functions/assistant/config.ts';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const SECRETS: Record<string, string> = {
@@ -275,6 +275,36 @@ test('Пасічник: просте прохання непомітно йде 
   assert.equal(c.calls[0].body.model, 'claude-sonnet-5-5');
   assert.equal(out2.model, 'sonnet');
   assert.equal(out2.routed_from, undefined);
+});
+
+test('Робопасічник: простий запит повертає до Ведмедика, звичайний - до обраного, важкий - лишає', async () => {
+  // просте на Робопасічнику -> Ведмедик
+  const a = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const oa = await (await handle(post({ ...hello, model: 'sonnet', active: 'opus' }), a.d)).json();
+  assert.equal(a.calls[0].body.model, 'claude-haiku-5-5');
+  assert.equal(oa.model, 'haiku');
+  assert.equal(oa.routed_from, 'opus');
+
+  // не просте й не важке -> обраний людиною (Пасічник)
+  const plain = { messages: [{ role: 'user', content: 'Дякую, зрозуміло' }] };
+  const b = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const ob = await (await handle(post({ ...plain, model: 'sonnet', active: 'opus' }), b.d)).json();
+  assert.equal(b.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(ob.routed_from, 'opus');
+
+  // важке - лишається Робопасічник
+  const c = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const oc = await (await handle(post({ ...heavy, model: 'sonnet', active: 'opus' }), c.d)).json();
+  assert.equal(c.calls[0].body.model, 'claude-opus-5-5');
+  assert.equal(oc.model, 'opus');
+  assert.equal(oc.routed_from, undefined);
+
+  // Ведмедик, піднятий до Пасічника: просте - назад до Ведмедика
+  const d2 = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const od = await (await handle(post({ ...hello, model: 'haiku', active: 'sonnet' }), d2.d)).json();
+  assert.equal(d2.calls[0].body.model, 'claude-haiku-5-5');
+  assert.equal(od.routed_from, 'sonnet');
+  assert.equal(routeActive('claude-haiku-5-5', undefined, hello.messages, () => undefined), null);
 });
 
 test('весь цикл інструментів одного питання - на одній моделі', async () => {
