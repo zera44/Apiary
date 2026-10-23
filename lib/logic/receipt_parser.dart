@@ -56,7 +56,8 @@ final _priceLine = RegExp(
 final _skip = RegExp(
   r'(пдв|податк|фн(?=\s|$|[.:№])|пн(?=\s|$|[.:№])|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
   r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
-  r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість)',
+  r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість|гарантій|епз|платіжн|рнн|термін|'
+  r'\*{2,}|rrn|auth|visa|master)',
   caseSensitive: false,
 );
 
@@ -209,6 +210,8 @@ List<ReceiptRow> parseReceipt(String text) {
 
   void add(String name, double qty, String? unit, double price) {
     if (!_hasWord(name) || _skip.hasMatch(name.toLowerCase())) return;
+    // номери карток і коди з чека (4412 **** 4) не є кількістю та ціною
+    if (qty > 999 || price > 100000 || qty * price > 1000000) return;
     rows.add(ReceiptRow(name: name, qty: qty, unit: _guessUnit(unit, qty), price: price));
   }
 

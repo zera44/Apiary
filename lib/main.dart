@@ -25,7 +25,6 @@ import 'services/reminders.dart';
 import 'services/server.dart';
 import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
-import 'ui/common.dart' show showConfirm;
 import 'ui/theme.dart';
 import 'ui/text_scale.dart';
 import 'package:app_links/app_links.dart';
@@ -127,7 +126,6 @@ class _ApiaryAppState extends State<ApiaryApp> {
     super.initState();
     _reminders.addListener(_openFromReminder);
     ReminderService.instance.openFeedbackRequest.addListener(_openFeedbackFromNotification);
-    ReminderService.instance.beforeAskPermission = _explainNotifications;
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
     _listenLinks();
@@ -166,22 +164,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
   void dispose() {
     _reminders.removeListener(_openFromReminder);
     unawaited(_links?.cancel());
-    ReminderService.instance.beforeAskPermission = null;
     widget.sync?.stop();
     super.dispose();
-  }
-
-  /// Перед системним запитом: навіщо застосунку сповіщення.
-  Future<bool> _explainNotifications() async {
-    final ctx = _nav.currentContext;
-    if (ctx == null || !ctx.mounted) return false;
-    return showConfirm(ctx,
-        title: 'Нагадування про обхід',
-        text: 'Дозвольте сповіщення, щоб застосунок нагадував оглянути вулик, коли '
-            'настав час обходу. Без них нагадувань не буде.',
-        confirmText: 'Далі',
-        cancelText: 'Не зараз',
-        danger: false);
   }
 
   /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей

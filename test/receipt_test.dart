@@ -178,6 +178,15 @@ void main() {
       expect(find.text('+ Додати рядок'), findsOneWidget);
     });
   });
+
+  test('службові рядки з номером картки й гарантією не стають товарами', () {
+    final rows = parseReceipt('Гарантійний термін 14 днів 1 x 1134\n'
+        'ЕПЗ 4412345678 x 4\n'
+        'Мед липовий 1 x 134.00 134.00\n'
+        'СУМА 134.00');
+    expect(rows.map((r) => r.name), ['Мед липовий']);
+    expect(rows.single.total, 134);
+  });
 }
 
 class _NoOcr implements ReceiptOcr {
