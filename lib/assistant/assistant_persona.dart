@@ -23,6 +23,17 @@ enum AssistantPersona {
   final String image;
   const AssistantPersona(this.model, this.modelLabel, this.image);
 
+  /// Робопасічника обрати не можна: до нього переходить сама система, коли
+  /// Пасічник не впорався, і повертається, щойно задача стає простою.
+  bool get locked => this == robo;
+
+  /// Назва в знахідному відмінку («переходжу на …»).
+  String get nameAcc => switch (this) {
+        bear => tr.assistantBearAcc,
+        beekeeper => tr.assistantBeekeeperAcc,
+        robo => tr.assistantRoboAcc,
+      };
+
   String get name => switch (this) {
         bear => tr.assistantBear,
         beekeeper => tr.assistantBeekeeper,
@@ -56,49 +67,49 @@ enum AssistantPersona {
       };
 }
 
-/// Глибина міркувань (output_config.effort): низька, середня, висока.
-/// Вищі рівні для «відкрий / знайди / запиши» лише довше думають.
-const kAssistantEfforts = ['low', 'medium', 'high'];
-
-String effortLabel(String e) => switch (e) {
-      'low' => tr.assistantEffortLow,
-      'high' => tr.assistantEffortHigh,
-      _ => tr.assistantEffortMedium,
-    };
+/// Глибина міркувань (output_config.effort): середня; Робопасічнику сервер сам ставить xhigh.
+const kAssistantEffort = 'medium'; // сервер сам ставить xhigh для Робопасічника
 
 /// Вибір людини: на телефоні, іде з кожним запитом (сервер може його
 /// вимкнути - секрет ASSISTANT_CLIENT_CHOICE = off).
 class AssistantPrefs {
   static const modelKey = 'assistant_model';
-  static const effortKey = 'assistant_effort';
 
   static const defaultPersona = AssistantPersona.bear;
-  static const defaultEffort = 'medium';
 
   /// Поточний вибір (чат, кнопка на карті).
   static final persona = ValueNotifier<AssistantPersona>(defaultPersona);
-  static final effort = ValueNotifier<String>(defaultEffort);
+
+  /// Хто відповідає ЗАРАЗ: обраний людиною або той, на кого систему перемкнуло
+  /// (Робопасічник, коли складно; Ведмедик, коли просто). Його показують
+  /// аватар і заголовок, його ж сервер дізнається з кожним запитом.
+  static final active = ValueNotifier<AssistantPersona>(defaultPersona);
+  static const activeKey = 'assistant_active';
 
   static Future<void> load(Repository repo) async {
-    persona.value = AssistantPersona.of(await repo.getMeta(modelKey));
-    final e = await repo.getMeta(effortKey);
-    effort.value = kAssistantEfforts.contains(e) ? e! : defaultEffort;
+    final chosen = AssistantPersona.of(await repo.getMeta(modelKey));
+    // Робопасічника обирати не можна (у старих збереженнях міг бути обраний)
+    persona.value = chosen.locked ? AssistantPersona.beekeeper : chosen;
+    final a = AssistantPersona.of(await repo.getMeta(activeKey));
+    active.value = a;
   }
 
   static Future<void> setPersona(Repository repo, AssistantPersona p) async {
+    if (p.locked) return;
     persona.value = p;
     await repo.setMeta(modelKey, p.model);
+    await setActive(repo, p); // людина обрала сама - далі відповідає цей
   }
 
-  static Future<void> setEffort(Repository repo, String e) async {
-    if (!kAssistantEfforts.contains(e)) return;
-    effort.value = e;
-    await repo.setMeta(effortKey, e);
+  /// Систему перемкнуло на іншого помічника (або знову на обраного).
+  static Future<void> setActive(Repository repo, AssistantPersona p) async {
+    active.value = p;
+    await repo.setMeta(activeKey, p.model);
   }
 
   /// Що додати до запиту (з бази - працює й у фоновому завданні).
   static Future<Map<String, String>> requestOptions(Repository repo) async {
     await load(repo);
-    return {'model': persona.value.model, 'effort': effort.value};
+    return {'model': persona.value.model, 'active': active.value.model, 'effort': kAssistantEffort};
   }
 }

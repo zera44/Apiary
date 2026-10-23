@@ -113,47 +113,6 @@ jobs:
       # будь-яких інших кроків, які могли б тихо переписати файл версій).
       - name: Залежності
         run: flutter pub get --enforce-lockfile
-      # Плагін розпізнавання тексту має застарілий build.gradle (jcenter, AGP 7.1):
-      # з сучасним Gradle не збирається. Підміняємо на мінімальний сучасний.
-      - name: Полагодити gradle плагіна розпізнавання
-        shell: bash
-        run: |
-          d=$(ls -d "$HOME"/.pub-cache/hosted/pub.dev/flutter_tesseract_ocr-*/ | head -1)
-          cat > "${d}android/build.gradle" <<'EOF2'
-          group 'io.paratoner.flutter_tesseract_ocr'
-          version '1.0'
-
-          rootProject.allprojects {
-              repositories {
-                  flatDir {
-                      dirs project(':flutter_tesseract_ocr').file('libs')
-                  }
-              }
-          }
-
-          apply plugin: 'com.android.library'
-
-          android {
-              namespace "io.paratoner.flutter_tesseract_ocr"
-              compileSdk 34
-              defaultConfig {
-                  minSdk 21
-              }
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-              }
-          }
-
-          dependencies {
-              api(name: 'tesseract4android-release', ext: 'aar')
-          }
-          EOF2
-          echo "::notice title=GRADLE::патч застосовано до $d"
-          # зразкове фото з пакета (37 КБ) застосунку не потрібне - лишаємо 1x1
-          if [ -f "${d}images/test_11.jpg" ]; then
-            echo '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/9oACAEBAAA/ALtf/9k=' | base64 -d > "${d}images/test_11.jpg"
-          fi
       - name: Згенерувати платформні файли
         env:
           APIARY_SIGNING: '1'
@@ -161,7 +120,7 @@ jobs:
           flutter create --no-pub --platforms=android --org org.apiary --project-name apiary .
           dart run tool/patch_platforms.dart
           # Пам'ять Gradle: типові 8 ГБ + 4 ГБ метаданих разом із демоном Kotlin
-          # і збіркою нативних бібліотек (Vosk, Tesseract) вичерпували 16 ГБ
+          # і збіркою нативних бібліотек (Vosk, ONNX Runtime) вичерпували 16 ГБ
           # раннера - GitHub вбивав машину посеред збірки (exit 143)
           sed -i '/^org.gradle.jvmargs=/d' android/gradle.properties
           cat >> android/gradle.properties <<'EOF2'

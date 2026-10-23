@@ -2,7 +2,7 @@
 
 /// Розібрати введену кількість. null — не число або від'ємне.
 double? parseAmount(String s) {
-  final t = s.trim().replaceAll(' ', '').replaceAll(',', '.');
+  final t = s.replaceAll(RegExp(r'\s'), '').replaceAll(',', '.');
   if (t.isEmpty) return null;
   final v = double.tryParse(t);
   if (v == null || v.isNaN || v.isInfinite || v < 0) return null;

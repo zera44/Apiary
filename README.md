@@ -11,7 +11,7 @@ SQLite. Синхронізація із сервером (Supabase) готуєт
 
 ## Розробка
 
-Застосунок лише для Android (версії для Windows більше немає).
+Застосунок лише для Android.
 
 1. Встанови **Flutter SDK**: https://docs.flutter.dev/get-started/install
    і Android Studio (Android SDK); перевір, чого бракує: `flutter doctor`.

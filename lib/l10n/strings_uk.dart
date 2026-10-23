@@ -445,14 +445,23 @@ class AppStringsUk extends AppStrings {
   @override
   String assistantContextPin(String screen) => 'Говорити про «$screen»';
   @override
+  String get assistantBearAcc => 'Ведмедика';
+  @override
+  String get assistantBeekeeperAcc => 'Пасічника';
+  @override
+  String get assistantRoboAcc => 'Робопасічника';
+  @override
+  String get assistantRoboLocked =>
+      'Вмикається сам, коли Пасічник не впорався, і вимикається, коли задача проста';
+  @override
   String get assistantRobo => 'Робопасічник';
   @override
   String get assistantRoboHint => 'Найрозумніший і найдорожчий - для найскладнішого';
   @override
-  String assistantRouted(String who) => '$who передав просте прохання Ведмедику - так швидше й дешевше';
+  String assistantRouted(String who) => 'Це просте питання - переходжу на $who';
   @override
   String assistantEscalated(String from, String to) =>
-      '$from не впорався з цим питанням - відповідає $to';
+      '$from не впорався з цим питанням - переходжу на $to';
   @override
   String get assistantWhoHelps => 'Хто допомагає';
   @override

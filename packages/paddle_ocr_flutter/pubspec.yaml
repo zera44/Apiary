@@ -1,0 +1,19 @@
+name: paddle_ocr_flutter
+description: "Офлайн-розпізнавання тексту чеків (PaddleOCR PP-OCR: детекція рядків + читання, ONNX Runtime) для «Моя пасіка». Лише Android."
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.38.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: org.apiary.paddle_ocr
+        pluginClass: PaddleOcrPlugin

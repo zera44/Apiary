@@ -14,7 +14,6 @@ build/
 # їх треба зберігати в git)
 /android/
 /ios/
-/windows/
 /linux/
 /macos/
 /web/

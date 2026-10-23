@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../assistant/assistant_chat_screen.dart';
 import '../data/models.dart';
 import '../data/notes.dart';
 import '../data/repository.dart';
@@ -1543,8 +1542,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
     if (!mounted) return;
     if (lesson != null) setState(() => _lessonFormOpen = true);
+    // групи параметрів («Обхід», «Корпус 1»…) - як на панелі «Характеристики»
+    final fillGroups = await repo.paramGroups();
+    if (!mounted) return;
     final result = await showFillValuesDialog(
       context,
+      groups: fillGroups,
       params: first.params,
       latest: first.latest,
       stock: first.stock,
@@ -2296,13 +2299,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 right: 10,
                 child: IgnorePointer(
                     child: HoneyRing(on: true, child: GearButton(size: 48, onPressed: () {}))),
-              ),
-            // пасічник-помічник: під шестернею (не в уроках і не на фоні)
-            if (!widget.tutorial && widget.lesson == null && !widget.backdrop && !panelOpen)
-              Positioned(
-                top: 64,
-                right: 10,
-                child: AssistantButton(key: const ValueKey('map-assistant'), repo: repo),
               ),
             // зум і перемикач режимів - не на фоні головного екрана (там лише
             // видно карту, а знизу - пошта й «Вийти»)

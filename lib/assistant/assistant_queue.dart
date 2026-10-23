@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../data/repository.dart';
 import 'assistant_context.dart';
 import 'assistant_model.dart';
+import 'assistant_persona.dart';
 import 'assistant_session.dart';
 import 'assistant_store.dart';
 import 'assistant_tools.dart';
@@ -214,6 +215,10 @@ class AssistantQueue {
           model: reply.model,
           extra: {'routed_from': ?reply.routedFrom, 'escalated_from': ?reply.escalatedFrom},
           inConv: item.conv);
+      // аватар і заголовок - того, хто щойно відповів (система могла перемкнути)
+      if (reply.model != null) {
+        await AssistantPrefs.setActive(repo, AssistantPersona.of(reply.model));
+      }
       // картки - після відповіді, що про них каже
       for (final id in cards) {
         final c = (await store.item(id))!;

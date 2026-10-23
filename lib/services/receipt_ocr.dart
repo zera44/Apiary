@@ -1,16 +1,14 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show compute, kIsWeb;
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
+import 'package:paddle_ocr_flutter/paddle_ocr_flutter.dart';
 
-import '../logic/receipt_image.dart';
-import '../logic/receipt_parser.dart';
 
-/// Розпізнавання тексту на фото чека (Tesseract, українська мова:
-/// assets/tessdata/ukr.traineddata). Працює на телефоні; на комп'ютері
-/// розпізнавання недоступне - там фото лише обирають, а таблицю заповнюють вручну.
+/// Розпізнавання тексту на фото чека: PaddleOCR (нейромережа PP-OCR в ONNX
+/// Runtime, пакет paddle_ocr_flutter, моделі в assets/ocr/), повністю офлайн.
+/// Працює на Android; деінде розпізнавання недоступне - там фото лише
+/// обирають, а таблицю заповнюють вручну.
 abstract class ReceiptOcr {
   /// Чи вміє цей пристрій розпізнавати текст.
   bool get supported;
@@ -19,76 +17,19 @@ abstract class ReceiptOcr {
   Future<String> read(String imagePath);
 
   /// Підміняється в тестах.
-  static ReceiptOcr instance = TesseractReceiptOcr();
+  static ReceiptOcr instance = PaddleReceiptOcr();
 }
 
-class TesseractReceiptOcr implements ReceiptOcr {
+class PaddleReceiptOcr implements ReceiptOcr {
   @override
-  bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+  bool get supported => !kIsWeb && Platform.isAndroid;
 
-  static bool _modelChecked = false;
-
-  /// Плагін копіює модель (assets/tessdata/ukr.traineddata) на телефон лише
-  /// раз - якщо її там ще немає. Тож після оновлення застосунку з новою
-  /// моделлю (донавчання на чеках) стара лишилася б назавжди: копія іншого
-  /// розміру прибирається, і плагін кладе нову.
-  static Future<void> _freshModel() async {
-    if (_modelChecked) return;
-    _modelChecked = true;
-    try {
-      final asset = await rootBundle.load('assets/tessdata/ukr.traineddata');
-      final dir = await FlutterTesseractOcr.getTessdataPath();
-      await dropStaleModel(File('$dir/ukr.traineddata'), asset.lengthInBytes);
-    } catch (_) {
-      // не вийшло перевірити - працюємо з тим, що є
-    }
-  }
-
-  /// Прибрати копію моделі [copy], якщо вона не того розміру, що в
-  /// застосунку ([assetBytes]). true - прибрано.
-  static Future<bool> dropStaleModel(File copy, int assetBytes) async {
-    if (!await copy.exists() || await copy.length() == assetBytes) return false;
-    await copy.delete();
-    return true;
-  }
-
-  Future<String> _tesseract(String path) async {
-    await _freshModel();
-    return FlutterTesseractOcr.extractText(
-        path,
-        language: 'ukr',
-        args: {
-          // psm 6 - один суцільний блок тексту: так чек читається рядок за рядком
-          'psm': '6',
-          'preserve_interword_spaces': '1',
-        },
-      );
-  }
-
-  /// Спершу - підготовлене фото (чорне на білому, без тіней: див.
-  /// logic/receipt_image.dart), воно читається значно краще. Якщо з нього не
-  /// вийшло жодної позиції - ще раз з оригіналу.
   @override
   Future<String> read(String imagePath) async {
-    String? prepared;
-    try {
-      final bytes = await compute(prepareReceiptImage, await File(imagePath).readAsBytes());
-      if (bytes != null) {
-        prepared = '$imagePath.ocr.png';
-        await File(prepared).writeAsBytes(bytes, flush: true);
-      }
-    } catch (_) {
-      prepared = null; // не вдалося підготувати - читаємо як є
+    if (!supported || !await PaddleOcr.ready()) {
+      throw StateError('PaddleOCR недоступний на цьому пристрої');
     }
-    if (prepared != null) {
-      try {
-        final text = await _tesseract(prepared);
-        if (parseReceipt(text).isNotEmpty) return text;
-      } finally {
-        File(prepared).delete().ignore();
-      }
-    }
-    return _tesseract(imagePath);
+    return (await PaddleOcr.recognize(imagePath)).text;
   }
 }
 

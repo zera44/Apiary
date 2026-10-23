@@ -2,8 +2,8 @@
 # Зібрати тестовий APK на своєму комп'ютері - ті самі кроки, що в CI
 # (.github/workflows/build.yml), без GitHub Actions.
 #
-# Потрібно: Flutter 3.47.5, Android Studio (Android SDK) і Git Bash (на
-# Windows). Ключі - у файлі tool/local.env (його немає в git):
+# Потрібно: Flutter 3.47.5, Android Studio (Android SDK) і bash.
+# Ключі - у файлі tool/local.env (його немає в git):
 #
 #   SUPABASE_URL=https://<ref>.supabase.co
 #   SUPABASE_ANON_KEY=sb_publishable_...
@@ -48,47 +48,6 @@ trap restore EXIT
 
 echo "== Залежності"
 flutter pub get --enforce-lockfile
-
-echo "== Плагін розпізнавання чеків: сучасний build.gradle"
-d=""
-for c in "${PUB_CACHE:-}" "$HOME/.pub-cache" "${LOCALAPPDATA:-}/Pub/Cache" "${APPDATA:-}/Pub/Cache"; do
-  [ -n "$c" ] || continue
-  d=$(ls -d "$c"/hosted/pub.dev/flutter_tesseract_ocr-*/ 2>/dev/null | head -1 || true)
-  [ -n "$d" ] && break
-done
-if [ -z "$d" ]; then
-  echo "✗ не знайдено пакет flutter_tesseract_ocr у кеші pub"; exit 1
-fi
-cat > "${d}android/build.gradle" <<'EOF2'
-group 'io.paratoner.flutter_tesseract_ocr'
-version '1.0'
-
-rootProject.allprojects {
-    repositories {
-        flatDir {
-            dirs project(':flutter_tesseract_ocr').file('libs')
-        }
-    }
-}
-
-apply plugin: 'com.android.library'
-
-android {
-    namespace "io.paratoner.flutter_tesseract_ocr"
-    compileSdk 34
-    defaultConfig {
-        minSdk 21
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-}
-
-dependencies {
-    api(name: 'tesseract4android-release', ext: 'aar')
-}
-EOF2
 
 echo "== Платформні файли Android"
 flutter create --no-pub --platforms=android --org org.apiary --project-name apiary .

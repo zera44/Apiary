@@ -222,6 +222,10 @@ abstract class AppStrings {
   String get assistantBeekeeperHint;
   String get assistantClose;
   String assistantContextPin(String screen);
+  String get assistantBearAcc;
+  String get assistantBeekeeperAcc;
+  String get assistantRoboAcc;
+  String get assistantRoboLocked;
   String get assistantRobo;
   String get assistantRoboHint;
   String assistantRouted(String who);

@@ -10,6 +10,7 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
+import '../ui/thousands_input.dart';
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
 class FinEntryTile extends StatelessWidget {
@@ -178,6 +179,7 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
               controller: amountCtrl,
               enabled: !amountLocked,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: thousandsInput,
               decoration: InputDecoration(
                   labelText: 'Сума, ₴',
                   helperText: amountLocked ? 'Сума складається з рядків таблиці' : null),

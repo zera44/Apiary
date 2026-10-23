@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 
 import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
 import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
-import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, struggled } from '../functions/assistant/config.ts';
+import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, routeActive, struggled } from '../functions/assistant/config.ts';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const SECRETS: Record<string, string> = {
@@ -122,13 +122,15 @@ test('коротка назва: sonnet / haiku; типово - Haiku без з�
   assert.equal(h.calls[0].headers['anthropic-beta'], undefined);
 });
 
-test('глибина міркувань - секретом ASSISTANT_EFFORT; невідоме значення - типове', async () => {
-  for (const [secret, sent] of [[undefined, 'medium'], ['xhigh', 'xhigh'], ['LOW', 'low'], ['дуже', 'medium']]) {
-    const env = { ...SECRETS, ...(secret ? { ASSISTANT_EFFORT: secret } : {}) };
-    const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]), env);
-    await handle(post(hello), d);
-    assert.deepEqual(calls[0].body.output_config, { effort: sent }, String(secret));
-    assert.equal(JSON.parse(logs[0]).effort, sent);
+test('глибина міркувань за моделлю: Ведмедик і Пасічник - medium, Робопасічник - xhigh; вибір і секрет не діють', async () => {
+  for (const [model, sent] of [['haiku', 'medium'], ['sonnet', 'medium'], ['opus', 'xhigh']]) {
+    for (const wanted of [undefined, 'low', 'max']) {
+      const env = { ...SECRETS, ...(wanted ? { ASSISTANT_EFFORT: wanted } : {}) };
+      const { d, calls, logs } = deps(modelReply([{ type: 'text', text: 'ok' }]), env);
+      await handle(post({ ...heavy, model, effort: wanted ?? 'high' }), d);
+      assert.deepEqual(calls[0].body.output_config, { effort: sent }, `${model} ${wanted}`);
+      assert.equal(JSON.parse(logs[0]).effort, sent);
+    }
   }
 });
 
@@ -136,7 +138,7 @@ test('вибір у застосунку: модель і глибина з за
   const s = deps(modelReply([{ type: 'text', text: 'ok' }]));
   const out = await (await handle(post({ ...heavy, model: 'sonnet', effort: 'high' }), s.d)).json();
   assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
-  assert.deepEqual(s.calls[0].body.output_config, { effort: 'high' });
+  assert.deepEqual(s.calls[0].body.output_config, { effort: 'medium' });
   assert.equal(out.model, 'sonnet');
   assert.match(s.calls[0].body.system[0].text, /«Пасічник»/);
 
@@ -277,6 +279,36 @@ test('Пасічник: просте прохання непомітно йде 
   assert.equal(out2.routed_from, undefined);
 });
 
+test('Робопасічник: простий запит повертає до Ведмедика, звичайний - до обраного, важкий - лишає', async () => {
+  // просте на Робопасічнику -> Ведмедик
+  const a = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const oa = await (await handle(post({ ...hello, model: 'sonnet', active: 'opus' }), a.d)).json();
+  assert.equal(a.calls[0].body.model, 'claude-haiku-5-5');
+  assert.equal(oa.model, 'haiku');
+  assert.equal(oa.routed_from, 'opus');
+
+  // не просте й не важке -> обраний людиною (Пасічник)
+  const plain = { messages: [{ role: 'user', content: 'Дякую, зрозуміло' }] };
+  const b = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const ob = await (await handle(post({ ...plain, model: 'sonnet', active: 'opus' }), b.d)).json();
+  assert.equal(b.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.equal(ob.routed_from, 'opus');
+
+  // важке - лишається Робопасічник
+  const c = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const oc = await (await handle(post({ ...heavy, model: 'sonnet', active: 'opus' }), c.d)).json();
+  assert.equal(c.calls[0].body.model, 'claude-opus-5-5');
+  assert.equal(oc.model, 'opus');
+  assert.equal(oc.routed_from, undefined);
+
+  // Ведмедик, піднятий до Пасічника: просте - назад до Ведмедика
+  const d2 = deps(modelReply([{ type: 'text', text: 'ok' }]));
+  const od = await (await handle(post({ ...hello, model: 'haiku', active: 'sonnet' }), d2.d)).json();
+  assert.equal(d2.calls[0].body.model, 'claude-haiku-5-5');
+  assert.equal(od.routed_from, 'sonnet');
+  assert.equal(routeActive('claude-haiku-5-5', undefined, hello.messages, () => undefined), null);
+});
+
 test('весь цикл інструментів одного питання - на одній моделі', async () => {
   const msgs = [
     { role: 'user', content: 'Відкрий склад\n[Сьогодні: 2026-10-22]' },
@@ -298,7 +330,7 @@ test('Ведмедик і Робопасічник не переключають
   assert.equal(r.calls[0].body.model, 'claude-opus-5-5');
   assert.equal(r.calls[0].body.fallbacks, 'default'); // запасна модель - як у Sonnet
   assert.equal(r.calls[0].headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
-  assert.deepEqual(r.calls[0].body.output_config, { effort: 'high' });
+  assert.deepEqual(r.calls[0].body.output_config, { effort: 'xhigh' });
   assert.match(r.calls[0].body.system[0].text, /«Робопасічник»/);
   assert.equal(or.model, 'opus');
   assert.equal(or.routed_from, undefined);
