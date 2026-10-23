@@ -53,7 +53,7 @@ void _patchAndroidCompressedLibs() {
     final s = f.readAsStringSync();
     if (s.contains('useLegacyPackaging')) return;
     final kts = name.endsWith('.kts');
-    // плагіни (Tesseract, Vosk) приносять бібліотеки й для x86/x86_64, а
+    // плагіни (ONNX Runtime, Vosk) приносять бібліотеки й для x86/x86_64, а
     // збірка CI - лише ARM (як і Flutter у ній): x86 не вкладаємо. Лише в CI:
     // локальний запуск на емуляторі x86_64 без них не працював би.
     const x86 = ['**/x86/**', '**/x86_64/**'];

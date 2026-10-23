@@ -196,6 +196,99 @@ bool _qtyFirst(List<String> lines) {
   return first > after;
 }
 
+
+/// «ШК 4820217000055» / «Штрихкод 2099901024039»: початок позиції в чеках, де
+/// кожному товару передує його штрихкод (АТБ, «Вигідна покупка» тощо).
+final _barcodeLine = RegExp(r'^(?:[ШЩ]К|штрихкод)(?![а-яіїєґa-z])', caseSensitive: false);
+
+/// «Арт № 138807 Навушники» - артикул перед назвою.
+final _articlePrefix = RegExp(r'^арт\.?\s*[^\s\d]{0,2}\d?\s*\d{4,}\s*', caseSensitive: false);
+
+/// Рядок, що закінчується сумою: «… 31,90 А», «… 134,00 А».
+final _moneyEnd = RegExp(
+    r'^(?<name>.*?)\s*(?<sum>\d+[.,]\s?\d{2})\s*[A-Za-zА-ЯІЇЄҐа-яіїєґ]?\s*(?:грн\.?)?\s*$');
+
+/// Службовий кінець назви: «Гарантійний термін 1 рік».
+final _nameNoise = RegExp(r'гарантій|термін', caseSensitive: false);
+
+/// Знижка під позицією: «ЗНИЖКА -3,16», «ЦІНА КГ/Л ЗІ ЗНИЖКОЮ 29,32».
+final _discountLine = RegExp(r'^(?:зни[а-яіїєґ]{1,2}ка|ціна\s)', caseSensitive: false);
+
+/// «СУМА ЗІ ЗНИЖКОЮ 58,64» (OCR часом читає «СНМА»).
+final _discountSum = RegExp(r'^[сc][а-яіa-z]{2,3}\s+[зз3][іi]\s', caseSensitive: false);
+
+double? _lastMoney(String l) {
+  final all = RegExp(r'(\d+[.,]\s?\d{2})(?!\d)').allMatches(l).toList();
+  if (all.isEmpty) return null;
+  return _num(all.last.group(1)!.replaceAll(' ', ''));
+}
+
+/// Чеки, де кожну позицію відкриває штрихкод: усе між «ШК …» і рядком із сумою
+/// - назва (в одному-двох рядках); «2 x 30,90 61,80» - кількість і ціна; під
+/// ними може бути знижка. Усе поза такими блоками (реквізити, картка, ПДВ,
+/// «Гарантійний термін») - не товар. Порожній список - у чеку немає штрихкодів.
+List<ReceiptRow> _barcodeBlocks(List<String> lines) {
+  final rows = <ReceiptRow>[];
+  bool bc(String l) => _barcodeLine.hasMatch(l);
+  for (var i = 0; i < lines.length; i++) {
+    if (!bc(lines[i])) continue;
+    // «1X 134,00» перед штрихкодом - кількість
+    double? qty;
+    if (i > 0) {
+      final qi = _qtyInfo(lines[i - 1]);
+      if (qi != null && !_hasWord(_cleanName(qi.m.namedGroup('name') ?? ''))) qty = qi.qty;
+    }
+    final name = <String>[];
+    double? sum;
+    String? unit;
+    var j = i + 1;
+    for (; j < lines.length; j++) {
+      final l = lines[j];
+      if (bc(l) || _end.hasMatch(l.toLowerCase())) break;
+      final qi = _qtyInfo(l);
+      if (qi != null) {
+        final n = _cleanName(qi.m.namedGroup('name') ?? '');
+        if (_hasWord(n)) name.add(n);
+        qty = qi.qty;
+        unit = qi.m.namedGroup('unit');
+        sum = _num(qi.m.namedGroup('sum')) ?? qi.qty * qi.price;
+        j++;
+        break;
+      }
+      final m = _moneyEnd.firstMatch(l);
+      if (m != null) {
+        final n = _cleanName(m.namedGroup('name')!.replaceFirst(_articlePrefix, ''));
+        if (_hasWord(n) && !_nameNoise.hasMatch(n)) name.add(n);
+        sum = _num(m.namedGroup('sum')!.replaceAll(' ', ''));
+        j++;
+        break;
+      }
+      final n = _cleanName(l.replaceFirst(_articlePrefix, ''));
+      if (_hasWord(n)) name.add(n);
+    }
+    if (sum == null) continue; // блок без суми - не позиція
+    // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено
+    for (var k = j; k < lines.length && k < j + 4; k++) {
+      final l = lines[k];
+      final low = l.toLowerCase();
+      if (bc(l)) break;
+      if (_discountSum.hasMatch(low)) {
+        sum = _lastMoney(l) ?? sum;
+      } else if (!_discountLine.hasMatch(low)) {
+        break;
+      }
+    }
+    final title = name.join(' ').trim();
+    if (!_hasWord(title)) continue;
+    final q = (qty == null || qty <= 0) ? 1.0 : qty;
+    rows.add(ReceiptRow(
+        name: title, qty: q, unit: _guessUnit(unit, q), price: _to(sum / q, 2)));
+  }
+  // штрихкод тут не відкриває позицію (інший порядок рядків): хай читає звичайний розбір
+  if (rows.length * 2 < lines.where(bc).length) return [];
+  return rows;
+}
+
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
 List<ReceiptRow> parseReceipt(String text) {
   final rows = <ReceiptRow>[];
@@ -206,6 +299,8 @@ List<ReceiptRow> parseReceipt(String text) {
       .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
       .where((l) => l.isNotEmpty)
       .toList();
+  final blocks = _barcodeBlocks(lines);
+  if (blocks.isNotEmpty) return blocks;
   final qtyFirst = _qtyFirst(lines);
 
   void add(String name, double qty, String? unit, double price) {
