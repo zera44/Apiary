@@ -41,11 +41,10 @@ Future<String?> _manualEntry(BuildContext context) async {
   return t.isEmpty ? null : t;
 }
 
-/// Повноекранна камера для всього: код вулика й чек. Камера сама розуміє, що
-/// в кадрі. QR-код - з'являється рамка; чек - обводиться його контур. Тримайте
-/// телефон нерухомо кілька секунд ([qrHold] для коду, [receiptHold] для чека),
-/// і код зчитується, а чек знімається. Ручні кнопки лишаються на випадок,
-/// коли автоматика не бачить (темно, блиск, чек лежить на світлому).
+/// Повноекранна камера: код вулика й чек (перемикач угорі). QR-код: з'являється
+/// рамка, тримайте телефон нерухомо [qrHold], і код зчитується. Чек: обводиться
+/// його контур, знімає кнопка «Зняти» (без відліку); «Камерою телефона» й «З
+/// галереї» дають найякісніше фото.
 class QrScanScreen extends StatefulWidget {
   final String title;
 
@@ -60,9 +59,6 @@ class QrScanScreen extends StatefulWidget {
 
   /// Скільки тримати камеру над QR-кодом.
   static const qrHold = Duration(seconds: 3);
-
-  /// Скільки тримати камеру над чеком.
-  static const receiptHold = Duration(milliseconds: 3500);
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
@@ -91,7 +87,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   // чек: контур у кадрі, відколи він стоїть на місці
   ReceiptQuad? _quad;
-  DateTime? _quadSince;
   int _quadMisses = 0;
   bool _analysing = false;
   bool _capturing = false;
@@ -121,7 +116,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
       _qr = null;
       _qrSince = null;
       _quad = null;
-      _quadSince = null;
       _quadMisses = 0;
     });
   }
@@ -148,11 +142,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
     final now = DateTime.now();
     if (_qr != null && _qrSince != null) {
       return (now.difference(_qrSince!).inMilliseconds / QrScanScreen.qrHold.inMilliseconds)
-          .clamp(0.0, 1.0);
-    }
-    if (_quad != null && _quadSince != null) {
-      return (now.difference(_quadSince!).inMilliseconds /
-              QrScanScreen.receiptHold.inMilliseconds)
           .clamp(0.0, 1.0);
     }
     return 0;
@@ -192,22 +181,13 @@ class _QrScanScreenState extends State<QrScanScreen> {
       img.dispose();
       if (data == null || !mounted || _done || !_receipt) return;
       final q = detectReceipt(data.buffer.asUint8List(), w, h);
-      final now = DateTime.now();
       if (q == null) {
         // один пропущений кадр не скидає відлік (рука трохи тремтить)
-        if (++_quadMisses >= 2) {
-          _quad = null;
-          _quadSince = null;
-        }
+        if (++_quadMisses >= 2) _quad = null;
         return;
       }
       _quadMisses = 0;
-      final prev = _quad;
-      if (prev == null || !q.similarTo(prev)) _quadSince = now;
       _quad = q;
-      if (_quadSince != null && now.difference(_quadSince!) >= QrScanScreen.receiptHold) {
-        await _captureReceipt(q);
-      }
     } catch (_) {
       // кадр не вдалося прочитати - спробуємо наступного разу
     } finally {
@@ -216,7 +196,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   /// Зберегти чек із екрана (обрізаний по контуру) й відкрити таблицю витрати.
-  Future<void> _captureReceipt(ReceiptQuad q) async {
+  Future<void> _captureReceipt(ReceiptQuad? q) async {
     final repo = widget.receiptRepo;
     if (repo == null || _capturing || _done) return;
     _capturing = true;
@@ -224,7 +204,8 @@ class _QrScanScreenState extends State<QrScanScreen> {
       final ro = _previewKey.currentContext?.findRenderObject();
       if (ro is! RenderRepaintBoundary) return;
       final full = await ro.toImage(pixelRatio: MediaQuery.devicePixelRatioOf(context));
-      final xs = [for (final c in q.corners) c.dx], ys = [for (final c in q.corners) c.dy];
+      final xs = q == null ? const [0.0, 1.0] : [for (final c in q.corners) c.dx];
+      final ys = q == null ? const [0.0, 1.0] : [for (final c in q.corners) c.dy];
       final x0 = (xs.reduce((a, b) => a < b ? a : b) - 0.03).clamp(0.0, 1.0);
       final x1 = (xs.reduce((a, b) => a > b ? a : b) + 0.03).clamp(0.0, 1.0);
       final y0 = (ys.reduce((a, b) => a < b ? a : b) - 0.03).clamp(0.0, 1.0);
@@ -246,8 +227,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
       await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
           builder: (_) => FinAddScreen(repo: repo, kind: kFinExpense, imagePath: file.path)));
     } catch (_) {
-      _quad = null;
-      _quadSince = null;
+      // знімок не вдався - можна ще раз
     } finally {
       _capturing = false;
     }
@@ -307,17 +287,15 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   String get _hint {
     if (_qr != null) return 'QR-код знайдено - тримайте камеру нерухомо';
-    if (_quad != null) return 'Чек знайдено - тримайте телефон нерухомо';
     return _receipt
-        ? 'Покладіть чек рівно на контрастний фон, наведіть камеру й потримайте кілька секунд'
+        ? 'Покладіть чек рівно на контрастний фон і натисніть «Зняти»'
         : 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
   }
 
   @override
   Widget build(BuildContext context) {
     final p = _progress;
-    final total = (_qr != null ? QrScanScreen.qrHold : QrScanScreen.receiptHold).inMilliseconds / 1000;
-    final left = (total * (1 - p)).ceil().clamp(1, 9);
+    final left = (QrScanScreen.qrHold.inMilliseconds / 1000 * (1 - p)).ceil().clamp(1, 9);
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) _done = true;
@@ -344,7 +322,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                     color: AppColors.accent,
                   ),
                   child: Center(
-                    child: (_qr != null || _quad != null) && p < 1
+                    child: _qr != null && p < 1
                         ? Text('$left',
                             style: const TextStyle(
                                 color: Colors.white,
@@ -387,11 +365,20 @@ class _QrScanScreenState extends State<QrScanScreen> {
                         shadows: [Shadow(blurRadius: 6, color: Colors.black87)])),
                 const SizedBox(height: 12),
                 if (_receipt) ...[
+                  PillButton(
+                    text: 'Зняти',
+                    bg: AppColors.accent,
+                    height: 48,
+                    width: double.infinity,
+                    onPressed: () => _captureReceipt(_quad),
+                  ),
+                  const SizedBox(height: 8),
                   Row(children: [
                     Expanded(
                       child: PillButton(
-                        text: 'Фото чека',
-                        bg: AppColors.accent,
+                        text: 'Камерою телефона',
+                        bg: AppColors.roundBtn,
+                        fg: AppColors.text,
                         height: 44,
                         onPressed: () => _receiptPhoto(camera: true),
                       ),
