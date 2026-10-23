@@ -2,8 +2,8 @@
 # Зібрати тестовий APK на своєму комп'ютері - ті самі кроки, що в CI
 # (.github/workflows/build.yml), без GitHub Actions.
 #
-# Потрібно: Flutter 3.47.5, Android Studio (Android SDK) і Git Bash (на
-# Windows). Ключі - у файлі tool/local.env (його немає в git):
+# Потрібно: Flutter 3.47.5, Android Studio (Android SDK) і bash.
+# Ключі - у файлі tool/local.env (його немає в git):
 #
 #   SUPABASE_URL=https://<ref>.supabase.co
 #   SUPABASE_ANON_KEY=sb_publishable_...
