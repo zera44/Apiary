@@ -187,13 +187,6 @@ void main() {
     expect(rows.map((r) => r.name), ['Мед липовий']);
     expect(rows.single.total, 134);
   });
-}
-
-class _NoOcr implements ReceiptOcr {
-  @override
-  bool get supported => false;
-  @override
-  Future<String> read(String imagePath) async => throw StateError('no');
 
   group('чеки зі штрихкодами (справжній текст PaddleOCR з фото)', () {
     test('«Вигідна покупка»: одна позиція, без гарантії, картки й реквізитів', () {
@@ -289,4 +282,11 @@ e mail: in@atbmarket.com
       expect(total, closeTo(121.84, 0.011));
     });
   });
+}
+
+class _NoOcr implements ReceiptOcr {
+  @override
+  bool get supported => false;
+  @override
+  Future<String> read(String imagePath) async => throw StateError('no');
 }

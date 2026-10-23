@@ -267,13 +267,14 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
       if (_hasWord(n)) name.add(n);
     }
     if (sum == null) continue; // блок без суми - не позиція
+    var paid = sum;
     // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено
     for (var k = j; k < lines.length && k < j + 4; k++) {
       final l = lines[k];
       final low = l.toLowerCase();
       if (bc(l)) break;
       if (_discountSum.hasMatch(low)) {
-        sum = _lastMoney(l) ?? sum;
+        paid = _lastMoney(l) ?? paid;
       } else if (!_discountLine.hasMatch(low)) {
         break;
       }
@@ -282,7 +283,7 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
     if (!_hasWord(title)) continue;
     final q = (qty == null || qty <= 0) ? 1.0 : qty;
     rows.add(ReceiptRow(
-        name: title, qty: q, unit: _guessUnit(unit, q), price: _to(sum / q, 2)));
+        name: title, qty: q, unit: _guessUnit(unit, q), price: _to(paid / q, 2)));
   }
   // штрихкод тут не відкриває позицію (інший порядок рядків): хай читає звичайний розбір
   if (rows.length * 2 < lines.where(bc).length) return [];
