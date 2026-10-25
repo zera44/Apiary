@@ -290,6 +290,131 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
   return rows;
 }
 
+/// «ШТРИХ-КОД 2087375320948» ПІСЛЯ назви (Фудком та подібні каси): позицію
+/// закриває штрихкод.
+final _barcodeAfterLine = RegExp(r'^штрих[-\s]?код(?![а-яіїєґa-z])', caseSensitive: false);
+
+/// «- 33% -43,57 А» або «ЗНИЖКА -0,85 А» - знижка до позиції вище.
+final _pctDiscount = RegExp(r'^-\s*\d+\s*%');
+final _namedDiscount = RegExp(r'^зни[а-яіїєґ]{1,2}ка', caseSensitive: false);
+
+/// Чеки, де позицію закриває «ШТРИХ-КОД …» після назви: усе між двома
+/// штрихкодами - одна позиція («кількість x ціна», назва в 1-2 рядках, сума
+/// з літерою податку); знижка стоїть одразу після штрихкоду. Порядок рядків
+/// усередині блоку не важливий: фото з нахилом ставить суму вище за назву.
+/// Порожній список - такого формату в чеку немає.
+List<ReceiptRow> _barcodeAfter(List<String> lines) {
+  final marks = <int>[
+    for (var i = 0; i < lines.length; i++)
+      if (_barcodeAfterLine.hasMatch(lines[i])) i
+  ];
+  if (marks.length < 2) return [];
+
+  // перша позиція починається після останнього службового рядка шапки
+  var firstItem = marks.first;
+  for (var i = 0; i < marks.first; i++) {
+    final l = lines[i];
+    if (_skip.hasMatch(l.toLowerCase())) continue;
+    if (_moneyEnd.hasMatch(l) || _qtyInfo(l) != null) {
+      firstItem = i;
+      break;
+    }
+  }
+  var from = 0;
+  for (var i = 0; i < firstItem; i++) {
+    if (_skip.hasMatch(lines[i].toLowerCase())) from = i + 1;
+  }
+
+  final rows = <ReceiptRow>[];
+  for (final m in marks) {
+    if (from < m) _afterSegment(lines.sublist(from, m), rows);
+    from = m + 1;
+  }
+  // штрихкодів багато, а позицій майже немає - формат не той
+  if (rows.length * 2 < marks.length) return [];
+  return rows;
+}
+
+void _afterSegment(List<String> seg, List<ReceiptRow> rows) {
+  bool isQty(String l) {
+    final q = _qtyInfo(l);
+    return q != null && !_hasWord(_cleanName(q.m.namedGroup('name') ?? ''));
+  }
+
+  bool isService(String l) =>
+      _namedDiscount.hasMatch(l.toLowerCase()) ||
+      _pctDiscount.hasMatch(l) ||
+      _skip.hasMatch(l.toLowerCase()) ||
+      _end.hasMatch(l.toLowerCase());
+
+  var lastSum = -1;
+  for (var i = 0; i < seg.length; i++) {
+    if (!isQty(seg[i]) && !isService(seg[i]) && _moneyEnd.hasMatch(seg[i])) lastSum = i;
+  }
+
+  final parts = <String>[];
+  double? qty, qprice, sum;
+  String? unit;
+  var added = false;
+
+  void close() {
+    final s = sum;
+    final title = parts.join(' ').trim();
+    if (s != null && _hasWord(title)) {
+      var q = 1.0, p = s;
+      final cq = qty, cp = qprice;
+      if (cq != null && cq > 0 && cp != null) {
+        final r = _reconcile(cq, cp, s);
+        q = r.$1;
+        p = r.$2;
+      }
+      rows.add(ReceiptRow(name: title, qty: q, unit: _guessUnit(unit, q), price: _to(p, 2)));
+      added = true;
+    }
+    parts.clear();
+    qty = qprice = sum = null;
+    unit = null;
+  }
+
+  for (var i = 0; i < seg.length; i++) {
+    final l = seg[i];
+    final low = l.toLowerCase();
+    if (_namedDiscount.hasMatch(low) || _pctDiscount.hasMatch(l)) {
+      final d = _lastMoney(l);
+      if (d != null && rows.isNotEmpty && rows.last.qty > 0) {
+        final r = rows.last;
+        r.price = _to((r.qty * r.price - d) / r.qty, 2);
+      }
+      continue;
+    }
+    if (isQty(l)) {
+      final q = _qtyInfo(l)!;
+      qty = q.qty;
+      qprice = q.price;
+      unit = q.m.namedGroup('unit');
+      sum = _num(q.m.namedGroup('sum')) ?? sum;
+      continue;
+    }
+    if (isService(l)) continue;
+    final m = _moneyEnd.firstMatch(l);
+    if (m != null) {
+      final n = _cleanName(m.namedGroup('name')!.replaceFirst(_articlePrefix, ''));
+      if (_hasWord(n) && !_nameNoise.hasMatch(n)) parts.add(n);
+      sum = _num(m.namedGroup('sum')!.replaceAll(' ', ''));
+      if (i != lastSum) close();
+      continue;
+    }
+    // «т», «г» - хвіст назви, що не вмістився в рядок
+    if (added && parts.isEmpty && qty == null && RegExp('^[$_letters]{1,2}\\.?\$').hasMatch(l)) {
+      rows.last.name = '${rows.last.name} ${l.toLowerCase()}';
+      continue;
+    }
+    final n = _cleanName(l.replaceFirst(_articlePrefix, ''));
+    if (_hasWord(n)) parts.add(n);
+  }
+  close();
+}
+
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
 List<ReceiptRow> parseReceipt(String text) {
   final rows = <ReceiptRow>[];
@@ -302,6 +427,8 @@ List<ReceiptRow> parseReceipt(String text) {
       .toList();
   final blocks = _barcodeBlocks(lines);
   if (blocks.isNotEmpty) return blocks;
+  final after = _barcodeAfter(lines);
+  if (after.isNotEmpty) return after;
   final qtyFirst = _qtyFirst(lines);
 
   void add(String name, double qty, String? unit, double price) {

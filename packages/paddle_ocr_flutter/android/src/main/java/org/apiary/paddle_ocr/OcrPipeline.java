@@ -128,6 +128,17 @@ final class OcrPipeline {
         return res;
     }
 
+    /** Рамка [i] стоїть НАД/ПІД однією з рамок рядка [line] (їхні проміжки по горизонталі перекриваються): це два різні рядки, а не частини одного. */
+    private static boolean stacked(List<Integer> line, int i, double[] x, List<Row> rows) {
+        double wi = rows.get(i).box.width();
+        for (int j : line) {
+            double wj = rows.get(j).box.width();
+            double ov = Math.min(x[i] + wi / 2, x[j] + wj / 2) - Math.max(x[i] - wi / 2, x[j] - wj / 2);
+            if (ov > 0.3 * Math.min(wi, wj)) return true;
+        }
+        return false;
+    }
+
     /** Рамки -> рядки тексту: загальний нахил фото знімається, рамки на одній висоті зливаються (назва + ціна). */
     static List<String> toLines(List<Row> rows) {
         List<Double> ang = new ArrayList<>();
@@ -153,7 +164,7 @@ final class OcrPipeline {
             double t = y[i] - hh[i] / 2, bt = y[i] + hh[i] / 2;
             if (!lines.isEmpty()) {
                 double ov = Math.min(bot, bt) - Math.max(top, t);
-                if (ov >= 0.5 * Math.min(bot - top, bt - t)) {
+                if (ov >= 0.5 * Math.min(bot - top, bt - t) && !stacked(lines.get(lines.size() - 1), i, x, rows)) {
                     lines.get(lines.size() - 1).add(i);
                     top = Math.min(top, t);
                     bot = Math.max(bot, bt);
