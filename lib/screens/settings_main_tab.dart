@@ -549,13 +549,15 @@ class _OrientationSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                       onTap: () => AppOrientation.set(repo, o),
                       child: Container(
-                        height: 72,
+                        // не нижча за 72; найбільший шрифт - росте
+                        constraints: const BoxConstraints(minHeight: 72),
+                        alignment: Alignment.center,
                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                         decoration: BoxDecoration(
                           color: o == current ? AppColors.create : AppColors.darkBtn,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
                           Icon(_icons[o.index],
                               color: o == current ? AppColors.bg : AppColors.text, size: 26),
                           const SizedBox(height: 4),

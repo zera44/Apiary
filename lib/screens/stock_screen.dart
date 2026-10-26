@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../assistant/assistant_host.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -231,7 +233,7 @@ class _StockScreenState extends State<StockScreen> {
       });
 
   Widget _inventoryList(List<StockItem> list) => ListView.separated(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.fromLTRB(12, 12, 12, AssistantHost.clearance(below: 72)),
         itemCount: list.length,
         separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
@@ -275,7 +277,8 @@ class _StockScreenState extends State<StockScreen> {
           text: text,
           bg: _op == op ? AppColors.accent : AppColors.darkBtn,
           fg: _op == op ? Colors.white : AppColors.text,
-          height: 40,
+          // великий шрифт: «Прихід і списання» у два рядки - вкладка вища
+          height: math.max(40, MediaQuery.textScalerOf(context).scale(13) * 1.1 * 2 + 10),
           fontSize: 13,
           onPressed: () => setState(() => _op = op),
         ),
@@ -330,13 +333,23 @@ class _StockScreenState extends State<StockScreen> {
                       : (_op == StockOp.inventory && _invList)
                           ? _inventoryList(list)
                           : GridView.builder(
-                          padding: const EdgeInsets.all(12),
-                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 170,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.62,
-                          ),
+                          // знизу - місце, щоб «Списати» останнього ряду підняти над помічником
+                          padding: EdgeInsets.fromLTRB(12, 12, 12, AssistantHost.clearance(below: 72)),
+                          // телефон боком: плитки нижчі за ширину, щоб «Прихід» і
+                          // «Списати» було видно без прокрутки
+                          gridDelegate: MediaQuery.sizeOf(context).height < 500
+                              ? const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 190,
+                                  mainAxisSpacing: 14,
+                                  crossAxisSpacing: 12,
+                                  mainAxisExtent: 200,
+                                )
+                              : const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 170,
+                                  mainAxisSpacing: 14,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.62,
+                                ),
                           itemCount: list.length,
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),

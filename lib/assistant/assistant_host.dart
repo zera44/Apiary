@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -38,6 +39,12 @@ class AssistantHost extends StatefulWidget {
   /// Екрани, де плашки немає: навчання й відгук - свій потік. На решті
   /// (разом з картою) іконка завжди в одному місці.
   static const hiddenOn = {'lessons', 'feedback'};
+
+  /// Відступ знизу для прокручуваного вмісту: останні кнопки можна підняти
+  /// вище плашки помічника. [below] - висота того, що під вмістом (нижня
+  /// кнопка «Додати» з відступами тощо).
+  static double clearance({double below = 0}) =>
+      math.max(16, _AssistantHostState._bottom + _AssistantHostState._size + 12 - below);
 
   @override
   State<AssistantHost> createState() => _AssistantHostState();
@@ -107,7 +114,7 @@ class _AssistantHostState extends State<AssistantHost> {
                       ),
                   ],
                 ),
-                if (showFab) _fab(box, wide),
+                if (showFab) _fab(box, wide, mq.viewPadding.bottom),
               ],
             );
           },
@@ -116,10 +123,12 @@ class _AssistantHostState extends State<AssistantHost> {
     );
   }
 
-  Widget _fab(BoxConstraints box, bool wide) {
+  /// [inset] - системна панель навігації: без неї плашка сідає на нижні
+  /// кнопки екранів (вони всередині SafeArea).
+  Widget _fab(BoxConstraints box, bool wide, double inset) {
     return Positioned(
       right: _right,
-      bottom: _bottom,
+      bottom: _bottom + inset,
       child: Material(
         key: const ValueKey('assistant-fab'),
         type: MaterialType.transparency,

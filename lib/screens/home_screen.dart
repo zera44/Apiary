@@ -480,10 +480,18 @@ class _Tile extends StatelessWidget {
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   IconTheme(data: IconThemeData(color: AppColors.text), child: icon),
                   const SizedBox(height: 6),
-                  Text(label,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.text, fontSize: 12)),
+                  // в один рядок: на найбільшому шрифті підпис зменшується,
+                  // а не рветься посеред слова («Навча / ння»)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(label,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(color: AppColors.text, fontSize: 12)),
+                    ),
+                  ),
                 ]),
               ),
             ),
@@ -729,10 +737,13 @@ class _AdvisorState extends State<_Advisor> {
           onTap: action ?? () => setState(() => _i++),
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
-            // фіксована висота: довша репліка не розсуває екран, але вміщається
-            // повністю (найдовші поради - до шести рядків); більший шрифт -
-            // і вища
-            height: (widget.compact ? 96 : 150) * MediaQuery.textScalerOf(context).scale(1),
+            // висота за текстом, у межах: найдовші поради (до шести рядків)
+            // вміщаються повністю, а коротке «Сьогодні оглянути: 15» не лишає
+            // великої порожньої хмарки; більший шрифт - і межі вищі
+            constraints: BoxConstraints(
+              minHeight: (widget.compact ? 72 : 96) * MediaQuery.textScalerOf(context).scale(1),
+              maxHeight: (widget.compact ? 96 : 150) * MediaQuery.textScalerOf(context).scale(1),
+            ),
             padding: const EdgeInsets.fromLTRB(12, 9, 10, 7),
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -746,10 +757,14 @@ class _AdvisorState extends State<_Advisor> {
               border: Border.all(
                   color: action != null ? AppColors.danger : AppColors.create, width: 1.5),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
+            child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Flexible(
                   child: Align(
                 alignment: Alignment.topLeft,
+                heightFactor: 1,
                 child: Text.rich(
                   // **слово** — медовим напівжирним
                   TextSpan(children: [

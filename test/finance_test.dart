@@ -5,6 +5,7 @@ import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
 import 'package:apiary/screens/finance_screen.dart' show openFinEntry;
 import 'package:apiary/services/receipt_ocr.dart';
+import 'package:apiary/ui/common.dart' show PillButton;
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -373,6 +374,54 @@ void main() {
       final entries =
           (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
       expect(entries.where((e) => !e.fromStock).single.amount, 331);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('запис журналу: «Скасувати запис» - лише після підтвердження', (tester) async {
+      final inc = (await tester.runAsync(() => repo.listFinCategories(kind: kFinIncome)))!.first;
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinIncome, categoryId: inc.id, amount: 500, date: DateTime(2026, 10, 3)));
+      final e = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      final cats = {
+        for (final c in (await tester.runAsync(() => repo.listFinCategories()))!) c.id: c
+      };
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var changed = true;
+      await tester.pumpWidget(MaterialApp(
+        theme: buildAppTheme(),
+        home: Builder(
+          builder: (ctx) => Scaffold(
+            body: TextButton(
+              onPressed: () async => changed = await openFinEntry(ctx, repo, e, cats),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      Future<bool> cancelled() async =>
+          (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single.cancelled;
+      // передумали: «Закрити» у підтвердженні - запис лишається
+      await tester.tap(find.text('open'));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('fin-entry-cancel')));
+      await settle(tester);
+      expect(find.text('Скасувати запис?'), findsOneWidget);
+      await tester.tap(find.text('Закрити'));
+      await settle(tester);
+      await settle(tester);
+      expect(changed, isFalse);
+      expect(await cancelled(), isFalse);
+      // підтвердили - скасовано
+      await tester.tap(find.text('open'));
+      await settle(tester);
+      await tester.tap(find.byKey(const ValueKey('fin-entry-cancel')));
+      await settle(tester);
+      await tester.tap(find.widgetWithText(PillButton, 'Скасувати запис'));
+      await settle(tester);
+      await settle(tester);
+      expect(changed, isTrue);
+      expect(await cancelled(), isTrue);
       expect(tester.takeException(), isNull);
     });
 

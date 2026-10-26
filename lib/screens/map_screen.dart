@@ -1540,6 +1540,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             title: pg.title);
     final first = formPage(first0);
     final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
+    var done = 0; // скільки вуликів записано в цьому обході
+    _FillUndo? last; // останнє збереження - для «Відмінити»
     if (!mounted) return;
     if (lesson != null) setState(() => _lessonFormOpen = true);
     // групи параметрів («Обхід», «Корпус 1»…) - як на панелі «Характеристики»
@@ -1559,15 +1561,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // наступний вулик на карті й підставити його дані в ту саму форму
       // (вікно не закривається); далі нікого — огляд закривається
       onNext: (r) async {
+        final prev = cur;
+        final prevTitle = await _hiveTitle(prev);
+        String notice;
+        last = null;
         switch (r.action) {
           case FillAction.skip:
             skipped.add(ownerKeyOf(cur));
+            notice = '«$prevTitle» пропущено';
           case FillAction.noChange:
-            await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
+            last = await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
             _fillSaved = true;
+            done++;
+            notice = '«$prevTitle»: змін немає · оглянуто $done';
           case FillAction.save:
-            await _saveFill(cur, r);
+            last = await _saveFill(cur, r);
             _fillSaved = true;
+            done++;
+            notice = '«$prevTitle» збережено · оглянуто $done';
         }
         final n = await _nextTarget(cur, skipped: skipped);
         if (n == null || !mounted) return null;
@@ -1579,13 +1590,57 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         cur = here;
         await _showOnMap(here, openPanel: panelWasOpen);
         final pg = await _fillPage(here);
-        return pg == null ? null : formPage(pg);
+        if (pg == null) return null;
+        final undo = last;
+        final f = formPage(pg);
+        return FillPage(
+          params: f.params,
+          latest: f.latest,
+          stock: f.stock,
+          title: f.title,
+          notice: notice,
+          // «Відмінити»: записане для попереднього вулика скасовується, форма
+          // повертається до нього
+          onUndo: undo == null
+              ? null
+              : () async {
+                  await _undoFill(undo);
+                  last = null;
+                  done--;
+                  if (!mounted) return null;
+                  cur = prev;
+                  await _showOnMap(prev, openPanel: panelWasOpen);
+                  final back = await _fillPage(prev);
+                  return back == null ? null : formPage(back);
+                },
+        );
       },
     );
     if (lesson != null && mounted) setState(() => _lessonFormOpen = false);
     if (result != null) {
-      await _saveFill(cur, result);
+      last = await _saveFill(cur, result);
       _fillSaved = true;
+      if (el.isHive) done++;
+    }
+    // обхід закінчився (останній вулик записано): підсумок і «Відмінити»
+    // останнє збереження
+    final undoLast = last;
+    if (undoLast != null && lesson == null && mounted) {
+      final title = await _hiveTitle(cur);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        content: Text(done > 1 ? 'Огляд «$title» збережено. Оглянуто: $done' : 'Огляд «$title» збережено'),
+        duration: const Duration(seconds: 5),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Відмінити',
+          onPressed: () {
+            if (mounted) unawaited(_undoFill(undoLast));
+          },
+        ),
+      ));
     }
     // урок: огляд зроблено — одразу далі, до меню навігації
     if (result != null && lesson != null && mounted) {
@@ -1612,10 +1667,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         params: params, latest: latest, stock: stock, title: title ?? el.label ?? 'Вулик');
   }
 
-  /// Записати результат форми для вулика [el].
-  Future<void> _saveFill(MapElement el, FillResult result) async {
+  /// Назва вулика для повідомлень обходу.
+  Future<String> _hiveTitle(MapElement el) async =>
+      (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик';
+
+  /// Записати результат форми для вулика [el]. Повертає, що треба зробити,
+  /// щоб це збереження відмінити.
+  Future<_FillUndo> _saveFill(MapElement el, FillResult result) async {
     final entity = el.entity;
     final values = result.values;
+    final before = await repo.latestParameterValues(entity);
+    String? moveId;
+    String? noteId;
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
     }
@@ -1626,12 +1689,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         await repo.writeOffStock(feed.itemId, feed.amount,
             reason: 'Підгодівля',
             comment: (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик');
+        moveId = await repo.lastStockMoveId(feed.itemId);
       } on StateError catch (e) {
         if (mounted) await showInfo(context, e.message, title: 'Не списано');
       }
     }
     final note = result.note;
-    if (note != null && el.isHive) await repo.addInspectionNote(entity, note);
+    if (note != null && el.isHive) noteId = await repo.addInspectionNote(entity, note);
     if (el.isHive) {
       // обхід зроблено: дата останнього обходу = сьогодні, якщо її самі
       // не змінювали в цій формі
@@ -1640,9 +1704,43 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         await repo.markVisited(entity, elType: el.type);
       }
     }
+    final after = await repo.latestParameterValues(entity);
     unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
     await _refreshOverdue();
+    return _FillUndo(
+      entity: entity,
+      restore: {
+        for (final k in after.keys)
+          if (after[k] != before[k]) k: before[k] ?? '',
+      },
+      noteId: noteId,
+      moveId: moveId,
+    );
+  }
+
+  /// Відмінити збереження огляду: попередні значення - новими записами
+  /// (історія не стирається, як і зі сторнуванням на складі), нотатка
+  /// видаляється, підгодівля повертається на склад.
+  Future<void> _undoFill(_FillUndo u) async {
+    for (final e in u.restore.entries) {
+      await repo.addParameterRecord(e.key, e.value, u.entity);
+    }
+    final note = u.noteId;
+    if (note != null) await repo.deleteHiveNote(note);
+    final move = u.moveId;
+    if (move != null) {
+      try {
+        await repo.cancelStockMove(move);
+      } on StateError catch (e) {
+        if (mounted) await showInfo(context, e.message, title: 'Підгодівлю не повернуто');
+      }
+    }
+    unawaited(ReminderService.instance.reschedule());
+    if (!mounted) return;
+    await _refreshPanel();
+    await _refreshOverdue();
+    _showWarning('Огляд відмінено', duration: const Duration(milliseconds: 1500));
   }
 
   /// «Оглянуто, змін немає»: лише дата огляду = сьогодні, без форми.
@@ -2515,4 +2613,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (elements.isEmpty) await _onAddObject();
   }
 
+}
+
+/// Що відкотити, щоб відмінити збереження огляду: попередні значення
+/// параметрів ('' - значення не було), нотатка огляду, підгодівля зі складу.
+class _FillUndo {
+  final EntityRef entity;
+  final Map<String, String> restore;
+  final String? noteId;
+  final String? moveId;
+  const _FillUndo({required this.entity, required this.restore, this.noteId, this.moveId});
 }

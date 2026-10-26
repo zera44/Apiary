@@ -490,6 +490,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('форма: в обході видно «… збережено», «Відмінити» повертає попередній вулик', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() => repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, -4, groupLabel: 'Вулик 2'));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
+        .firstWhere((e) => e.isHive && e.groupId == groupId);
+    final today = Repository.formatVisitDate(DateTime.now());
+    Future<bool> visited() async => (await tester.runAsync(() => repo.visitTargets()))!
+        .any((t) => t.key == 'g:$groupId' && t.lastVisit == today);
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a, focusElementId: hive.id, openFill: true)));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.byTooltip('Зберегти'));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    expect(await visited(), isTrue);
+    expect(find.byKey(const ValueKey('fill-notice')), findsOneWidget);
+    expect(find.textContaining('збережено · оглянуто 1'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('fill-undo')));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    // огляд відмінено: вулик знову не оглянутий, форма - знову на ньому
+    expect(await visited(), isFalse);
+    expect(find.byKey(const ValueKey('fill-notice')), findsNothing);
+    expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Вулик 2')),
+        findsNothing);
+    await tester.tap(find.byTooltip('Закрити'));
+    await settle(tester);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('головний: «Сьогодні оглянути: N» веде до простроченого вулика з формою', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));

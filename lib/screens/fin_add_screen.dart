@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_host.dart';
 import '../data/finance.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -777,6 +778,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
         for (final l in _lines) _row(l),
         Row(children: [
           TextButton(
+            // ціль не менше 48 dp: кнопка в самому низу картки
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
             child: Text('+ рядок', style: TextStyle(color: AppColors.create)),
           ),
@@ -849,7 +852,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
             Expanded(
               child: ListView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.only(bottom: 16),
+                // знизу - місце, щоб «×» і «+ рядок» підняти над помічником
+                padding: EdgeInsets.only(bottom: AssistantHost.clearance(below: 72)),
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),

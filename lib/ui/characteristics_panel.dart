@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_host.dart';
 import '../data/models.dart';
 import '../logic/merge_layout.dart';
 import 'cell_style.dart';
@@ -142,6 +143,8 @@ class CharacteristicsPanel extends StatelessWidget {
             return v.isEmpty ? 'Перешкода' : 'Перешкода - $v';
           }();
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold);
+    // телефон боком: менший значок, щоб під заголовком було видно значення
+    final low = MediaQuery.sizeOf(context).height < 500;
 
     return Material(
       color: AppColors.panel,
@@ -171,21 +174,22 @@ class CharacteristicsPanel extends StatelessWidget {
               // урок: будуємо все одразу - кнопка уроку внизу панелі має існувати,
               // щоб її підсвітити й прокрутити до неї (на малому екрані вона нижче)
               cacheExtent: lesson != null ? 4000 : null,
-              padding: const EdgeInsets.fromLTRB(18, 0, 14, 18),
+              // знизу - місце, щоб останні рядки підняти над помічником
+              padding: EdgeInsets.fromLTRB(18, 0, 14, AssistantHost.clearance(below: 12)),
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: GestureDetector(
                     onTap: editable ? onIcon : null,
                     child: SizedBox.square(
-                      dimension: 72,
+                      dimension: low ? 44 : 72,
                       child: CustomPaint(
                         painter: _IconBoxPainter(data.type, data.variant, data.icon, color, editable),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: low ? 6 : 10),
                 GestureDetector(
                   onTap: editable ? onRename : null,
                   child: Text(data.title,

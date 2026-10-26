@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_host.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/cell_value.dart';
@@ -103,7 +104,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
                           child: Text('Ще немає жодного шаблону',
                               style: TextStyle(color: AppColors.textMuted)))
                       : GridView.builder(
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.fromLTRB(12, 12, 12, AssistantHost.clearance(below: 72)),
                           gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                             maxCrossAxisExtent: 150,
                             mainAxisSpacing: 12,
