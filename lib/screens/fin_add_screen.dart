@@ -128,6 +128,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final cats = await repo.listFinCategories(kind: _kind);
     final stock = await repo.listStockItems();
     final prices = await repo.lastStockPrices();
+    final last = await repo.getMeta(_lastCatKey);
     if (!mounted) return;
     setState(() {
       _cats = cats;
@@ -135,7 +136,16 @@ class _FinAddScreenState extends State<FinAddScreen> {
       _prices = prices;
       if (_catId != null && !cats.any((c) => c.id == _catId)) _catId = null;
     });
+    // ще не обрали - категорія минулого запису цього виду (видалена - ніяка)
+    if (_catId == null) {
+      for (final c in cats) {
+        if (c.id == last) _pickCategory(c);
+      }
+    }
   }
+
+  /// Остання категорія - окремо для витрат і для доходів.
+  String get _lastCatKey => 'fin_last_cat:$_kind';
 
   // ------------------------------------------------------------- розрахунки
 
@@ -356,6 +366,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 toStock: l.toStock)
         ],
       );
+      await repo.setMeta(_lastCatKey, cat.id);
       if (!mounted) return;
       final toStock = used.where((l) => l.toStock).length;
       Navigator.pop(
@@ -394,7 +405,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
       child: Column(children: [
         Text('Сума', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         TextField(
+          key: const ValueKey('fin-sum'),
           controller: _sum,
+          // вручну - одразу клавіатура для суми (як у Складі); з чека - ні
+          autofocus: widget.imagePath == null,
           textAlign: TextAlign.center,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: thousandsInput,
