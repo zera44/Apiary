@@ -239,6 +239,27 @@ void main() {
     expect(find.text('Два'), findsNothing);
   });
 
+  testWidgets('чат відкрився - клавіатура одразу в полі; є непрочитане - ні', (tester) async {
+    bool focused() => tester
+        .widget<EditableText>(find.descendant(
+            of: find.byKey(const ValueKey('assistant-input')), matching: find.byType(EditableText)))
+        .focusNode
+        .hasFocus;
+    final q = await setup(tester, [say('Склад порожній.')]);
+    await pumpChat(tester, q);
+    expect(focused(), isTrue);
+
+    await tester.pumpWidget(const SizedBox());
+    online = false;
+    await tester.runAsync(() => q.submit('Що на складі?'));
+    online = true;
+    await tester.runAsync(q.process); // відповідь прийшла, поки чат закрито
+    expect(q.unread.value, 1);
+    await pumpChat(tester, q);
+    expect(find.text('Склад порожній.'), findsOneWidget);
+    expect(focused(), isFalse);
+  });
+
   testWidgets('телефон 360 dp, найбільший шрифт: чат і картка без переповнень', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
