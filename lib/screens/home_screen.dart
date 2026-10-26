@@ -27,6 +27,7 @@ import 'feedback_chat_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import 'splash_screen.dart';
+import 'fin_add_screen.dart';
 import 'finance_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
@@ -319,7 +320,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icon(Icons.account_balance_wallet_outlined,
                                 size: 30, color: AppColors.text),
                             label: 'Фінанси',
-                            onTap: () => push(FinanceScreen(repo: repo))),
+                            onTap: () => push(FinanceScreen(repo: repo)),
+                            onLongPress: () => push(FinAddScreen(repo: repo))),
                         _Tile(
                             icon: AppIcon('box', size: 28, color: AppColors.text),
                             label: 'Склад',
@@ -414,7 +416,10 @@ class _Tile extends StatelessWidget {
   final Widget icon;
   final String label;
   final VoidCallback onTap;
-  const _Tile({required this.icon, required this.label, required this.onTap});
+
+  /// Утримання - швидка дія розділу (напр., «Фінанси» - одразу нова витрата).
+  final VoidCallback? onLongPress;
+  const _Tile({required this.icon, required this.label, required this.onTap, this.onLongPress});
   @override
   Widget build(BuildContext context) => Expanded(
         child: Padding(
@@ -425,6 +430,7 @@ class _Tile extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
               onTap: onTap,
+              onLongPress: onLongPress,
               child: Container(
                 // не нижча за 78; більший шрифт - росте (сусідні плитки
                 // вирівнює IntrinsicHeight)
@@ -500,6 +506,7 @@ class _AdvisorState extends State<_Advisor> {
     'Утримайте вулик на карті - і одразу перетягуйте його на нове місце.',
     'В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик.',
     'Обрали новий параметр зі списку і не знаходите кнопку «Зберегти»? Це тому, що всі зміни зберігаються автоматично.',
+    'Утримайте «Фінанси» - і одразу відкриється нова витрата.',
     'Наклейте QR-наліпки - і вулик відкриється з камери за секунду.',
     'Задайте мінімальний залишок на складі - я нагадаю, коли час докупити.',
     'Звіт по пасіці в Excel - у меню ☰ → «Історія».',

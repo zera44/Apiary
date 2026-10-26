@@ -1945,6 +1945,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('головний: утримання «Фінанси» - одразу нова витрата', (tester) async {
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.longPress(find.text('Фінанси'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Нова витрата'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('вулик-скринька: запрошення помічником - значок, список, «Прийняти»', (tester) async {
     final server = FakeSharingServer()
       ..register('u-olena', 'olena@gmail.com')
