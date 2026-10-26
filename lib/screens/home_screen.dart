@@ -574,46 +574,90 @@ class _AdvisorState extends State<_Advisor> {
         _i = 0;
       });
 
-  /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
+  /// Список прострочених вуликів: «Усе без змін» позначеним, «Почати обхід»
+  /// з першого або тап по вулику. Зняли позначку - ці вулики лишаються на
+  /// огляд: після «Усе без змін» обхід одразу йде по них.
   Future<void> _showDueList() async {
-    final pick = await showDialog<VisitTarget?>(
+    final skip = <String>{}; // ключі вуликів без позначки
+    final pick = await showDialog<({VisitTarget? open, List<VisitTarget> same})>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Сьогодні оглянути'),
-        content: SizedBox(
-          width: 320,
-          child: ListView(shrinkWrap: true, children: [
-            for (final d in _due)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(d.t.name, style: TextStyle(color: AppColors.text)),
-                subtitle: Text(d.t.apiaryName.isEmpty ? 'Моя пасіка' : d.t.apiaryName,
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
-                onTap: () => Navigator.pop(ctx, d.t),
-              ),
-          ]),
-        ),
-        actions: [
-          Column(mainAxisSize: MainAxisSize.min, children: [
-            PillButton(
-                text: 'Почати обхід',
-                bg: AppColors.accent,
-                width: double.infinity,
-                onPressed: () => Navigator.pop(ctx, _due.first.t)),
-            const SizedBox(height: 8),
-            PillButton(
-                text: 'Закрити',
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                width: double.infinity,
-                onPressed: () => Navigator.pop(ctx)),
-          ]),
-        ],
-      ),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setLocal) {
+        final same = [for (final d in _due) if (!skip.contains(d.t.key)) d.t];
+        final rest = [for (final d in _due) if (skip.contains(d.t.key)) d.t];
+        return AlertDialog(
+          title: const Text('Сьогодні оглянути'),
+          content: SizedBox(
+            width: 320,
+            child: ListView(shrinkWrap: true, children: [
+              for (final d in _due)
+                ListTile(
+                  key: ValueKey('due-${d.t.key}'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Checkbox(
+                    key: ValueKey('due-check-${d.t.key}'),
+                    value: !skip.contains(d.t.key),
+                    onChanged: (v) => setLocal(() => v == true ? skip.remove(d.t.key) : skip.add(d.t.key)),
+                  ),
+                  title: Text(d.t.name, style: TextStyle(color: AppColors.text)),
+                  subtitle: Text(d.t.apiaryName.isEmpty ? 'Моя пасіка' : d.t.apiaryName,
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
+                  onTap: () => Navigator.pop(ctx, (open: d.t, same: const <VisitTarget>[])),
+                ),
+            ]),
+          ),
+          actions: [
+            Column(mainAxisSize: MainAxisSize.min, children: [
+              if (same.isNotEmpty) ...[
+                PillButton(
+                    key: const ValueKey('due-all-same'),
+                    text: 'Усе без змін (${same.length})',
+                    bg: AppColors.accent,
+                    width: double.infinity,
+                    onPressed: () => Navigator.pop(ctx, (open: rest.firstOrNull, same: same))),
+                const SizedBox(height: 8),
+              ],
+              PillButton(
+                  text: 'Почати обхід',
+                  bg: same.isEmpty ? AppColors.accent : AppColors.darkBtn,
+                  fg: same.isEmpty ? Colors.white : AppColors.text,
+                  width: double.infinity,
+                  onPressed: () => Navigator.pop(
+                      ctx, (open: (rest.firstOrNull ?? _due.first.t), same: const <VisitTarget>[]))),
+              const SizedBox(height: 8),
+              PillButton(
+                  text: 'Закрити',
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  width: double.infinity,
+                  onPressed: () => Navigator.pop(ctx)),
+            ]),
+          ],
+        );
+      }),
     );
-    if (pick != null) await _openDue(pick);
+    if (pick == null) return;
+    if (pick.same.isNotEmpty) await _markSame(pick.same);
+    final open = pick.open;
+    if (open != null && mounted) await _openDue(open);
+  }
+
+  /// «Усе без змін»: дата обходу - сьогодні, внизу «Відмінити» на 5 с.
+  Future<void> _markSame(List<VisitTarget> same) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final marks = await widget.repo.markVisitedMany(same);
+    final n = same.length;
+    messenger.hideCurrentSnackBar();
+    final ctrl = messenger.showSnackBar(SnackBar(
+      content: Text('Без змін: $n ${pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів')}'),
+      duration: const Duration(seconds: 5),
+      persist: false,
+      action: SnackBarAction(label: 'Відмінити', onPressed: () {}),
+    ));
+    ctrl.closed.then((reason) async {
+      if (reason == SnackBarClosedReason.action) await widget.repo.undoVisitMarks(marks);
+    }).ignore();
   }
 
   Future<void> _openDue(VisitTarget t) async {

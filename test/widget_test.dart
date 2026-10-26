@@ -517,6 +517,59 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('головний: «Усе без змін» - дата обходу позначеним, без позначки лишаються, «Відмінити»',
+      (tester) async {
+    late String start;
+    late String other;
+    await tester.runAsync(() async {
+      final period = (await repo.baseParameterId('hive', 'visit_period'))!;
+      start = (await repo.baseParameterId('hive', 'visit_start'))!;
+      other = await repo.addElement(apiaryId, 6, 6, label: 'Вулик 8');
+      for (final r in [EntityRef.group(groupId), EntityRef.element(other)]) {
+        await repo.addParameterRecord(period, '7', r);
+        await repo.addParameterRecord(start, '01.01.2020', r);
+      }
+    });
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    Future<String?> date(EntityRef r) async =>
+        (await tester.runAsync(() => repo.latestParameterValues(r)))![start];
+    final today = Repository.formatVisitDate(DateTime.now());
+
+    // усі позначені: один тап - обидва оглянуті
+    await tester.tap(find.text('Сьогодні оглянути: 2'));
+    await settle(tester);
+    await tester.tap(find.text('Усе без змін (2)'));
+    await settle(tester);
+    expect(await date(EntityRef.group(groupId)), today);
+    expect(await date(EntityRef.element(other)), today);
+    expect(find.text('Без змін: 2 вулики'), findsOneWidget);
+    // «Відмінити» - знову прострочені
+    await tester.tap(find.text('Відмінити'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester); // смужка ховається, потім скасування
+    }
+    expect(await date(EntityRef.group(groupId)), '01.01.2020');
+    expect(await date(EntityRef.element(other)), '01.01.2020');
+
+    // зняли позначку з «Вулик 8» - він не позначається, обхід іде по ньому
+    await tester.tap(find.text('Сьогодні оглянути: 2'));
+    await settle(tester);
+    await tester.tap(find.byKey(ValueKey('due-check-e:$other')));
+    await settle(tester);
+    await tester.tap(find.text('Усе без змін (1)'));
+    for (var i = 0; i < 5; i++) {
+      await settle(tester);
+    }
+    expect(await date(EntityRef.group(groupId)), today);
+    expect(await date(EntityRef.element(other)), '01.01.2020');
+    expect(find.byType(MapScreen), findsOneWidget);
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('меню: «Прив\'язати наліпки підряд» - вулики без коду по черзі', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));

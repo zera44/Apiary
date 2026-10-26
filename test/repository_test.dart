@@ -67,6 +67,35 @@ void main() {
     expect((await repo.parameterHistory(startId, entity: ref)).length, 1);
   });
 
+  test('«Усе без змін»: дата обходу вуликам і групі разом, «Відмінити» повертає попередню', () async {
+    final a = await repo.addElement(apiaryId, 1, 1, label: 'Вулик 5');
+    final b = await repo.addElement(apiaryId, 2, 1, label: 'Вулик 6');
+    final gid = await repo.addGroup(apiaryId, {'0,0': 'hive'}, 4, 4, groupLabel: 'Вулик 9');
+    final startId = (await repo.baseParameterId('hive', 'visit_start'))!;
+    await repo.markVisited(EntityRef.element(a), when: DateTime(2026, 10, 1));
+    await repo.markVisited(EntityRef.element(b), when: DateTime(2026, 10, 3)); // уже сьогодні
+    final targets = await repo.visitTargets();
+    final marks = await repo.markVisitedMany(targets, when: DateTime(2026, 10, 3));
+    expect(marks.length, 2); // b - без дубля
+    Future<String?> date(EntityRef r) async => (await repo.latestParameterValues(r))[startId];
+    expect(await date(EntityRef.element(a)), '03.10.2026');
+    expect(await date(EntityRef.group(gid)), '03.10.2026');
+    expect((await repo.parameterHistory(startId, entity: EntityRef.element(b))).length, 1);
+
+    // ще не надіслане - просто зникає
+    await repo.undoVisitMarks(marks);
+    expect(await date(EntityRef.element(a)), '01.10.2026');
+    expect(await date(EntityRef.group(gid)), isNull);
+    expect((await repo.parameterHistory(startId, entity: EntityRef.element(a))).length, 1);
+
+    // уже надіслане - попередня дата повертається новим записом
+    final again = await repo.markVisitedMany(targets, when: DateTime(2026, 10, 3));
+    await repo.db.update('parameter_records', {'synced': 1});
+    await repo.undoVisitMarks(again);
+    expect(await date(EntityRef.element(a)), '01.10.2026');
+    expect((await repo.parameterHistory(startId, entity: EntityRef.element(a))).length, 3);
+  });
+
   test('цілі нагадувань: період + дата, групи одним записом, видалені не беруться', () async {
     final a = await repo.addElement(apiaryId, 1, 1, label: 'Вулик 5');
     final b = await repo.addElement(apiaryId, 2, 1, label: 'Вулик 6');

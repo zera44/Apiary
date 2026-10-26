@@ -22,6 +22,9 @@ import 'notes.dart';
 const kVisitDateName = 'Дата останнього обходу';
 const _kOldVisitDateName = 'Дата початку обходу';
 
+/// Запис дати обходу з «Усе без змін» і попередня дата - щоб скасувати.
+typedef VisitMark = ({String id, String parameterId, EntityRef ref, String? prev});
+
 /// Базові характеристики: обов'язкові для КОЖНОГО об'єкта свого типу.
 /// (стабільний ключ, назва за замовчуванням, одиниця, тип даних)
 const Map<String, List<(String, String, String?, String)>> kBaseParameters = {
@@ -1803,6 +1806,65 @@ class Repository {
     final latest = await latestParameterValues(e);
     if (latest[id] == text) return;
     await addParameterRecord(id, text, e);
+  }
+
+  /// «Усе без змін»: дата обходу = сьогодні всім [targets] разом (як «Змін
+  /// немає» по черзі, лише без форми). Повертає, що записано, - для
+  /// [undoVisitMarks]. Кому дата вже сьогоднішня - не дублюється.
+  Future<List<VisitMark>> markVisitedMany(Iterable<VisitTarget> targets, {DateTime? when}) async {
+    final id = await baseParameterId('hive', 'visit_start');
+    if (id == null) return const [];
+    final text = formatVisitDate(when ?? clock.now());
+    final marks = <VisitMark>[];
+    await db.transaction((txn) async {
+      final t = now();
+      for (final target in targets) {
+        final key = target.key;
+        final ref = key.startsWith('g:')
+            ? EntityRef.group(key.substring(2))
+            : EntityRef.element(target.elementId);
+        if (target.lastVisit == text) continue;
+        final rid = newId();
+        await txn.insert('parameter_records', {
+          'id': rid,
+          'group_id': ref.groupId,
+          'element_id': ref.elementId,
+          'parameter_id': id,
+          'value': text,
+          'created_at': t,
+          'synced': 0,
+        });
+        marks.add((id: rid, parameterId: id, ref: ref, prev: target.lastVisit));
+      }
+    });
+    if (marks.isNotEmpty) _remindersDirty();
+    return marks;
+  }
+
+  /// Скасувати [markVisitedMany]. Історія на сервері лише дописується: ще не
+  /// надіслане - прибираємо, надіслане - повертаємо попередню дату новим записом.
+  Future<void> undoVisitMarks(List<VisitMark> marks) async {
+    if (marks.isEmpty) return;
+    await db.transaction((txn) async {
+      final t = now();
+      for (final m in marks) {
+        final gone = await txn.delete('parameter_records',
+            where: 'id = ? AND synced = 0', whereArgs: [m.id]);
+        final prev = m.prev;
+        if (gone == 0 && prev != null) {
+          await txn.insert('parameter_records', {
+            'id': newId(),
+            'group_id': m.ref.groupId,
+            'element_id': m.ref.elementId,
+            'parameter_id': m.parameterId,
+            'value': prev,
+            'created_at': t,
+            'synced': 0,
+          });
+        }
+      }
+    });
+    _remindersDirty();
   }
 
   /// Скільки днів лишилось до обходу цього вулика (0 - пора), або null, якщо
