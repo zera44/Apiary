@@ -429,9 +429,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.gear:
         return (
           [
-            GuideBubble.highlight('Шестерня'),
+            const TextSpan(text: 'Шаблони - у '),
+            GuideBubble.highlight('«Налаштуваннях»'),
             const TextSpan(
-                text: ' - налаштування й шаблони. А набір параметрів вулика збирай у '
+                text: ' меню. А набір параметрів вулика збирай у '
                     '«Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
           ],
           () => setState(() => _lesson = _Lesson.congrats)
@@ -508,6 +509,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))
       ..addListener(() => setState(() {}));
     repo.notesChanges.addListener(_loadNotesCount);
+    widget.lesson?.addListener(_onLessonStep);
     _init();
   }
 
@@ -582,6 +584,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   @override
   void dispose() {
     repo.notesChanges.removeListener(_loadNotesCount);
+    widget.lesson?.removeListener(_onLessonStep);
     _shake.dispose();
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
@@ -1429,11 +1432,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     await _refreshPanel();
   }
 
-  /// Шестерня «Налаштування» (в уроці - з пасічником).
+  /// Урок «Шаблони»: «Налаштування» (в уроці меню ☰ немає - пасічник
+  /// відкриває їх сам, на «Продовжити»).
+  bool _settingsOpen = false;
   Future<void> _openSettings() async {
-    final l = widget.lesson;
-    l?.advance(2, 3);
-    await SettingsScreen.open(Navigator.of(context), repo, lesson: l);
+    if (_settingsOpen) return;
+    _settingsOpen = true;
+    try {
+      await SettingsScreen.open(Navigator.of(context), repo, lesson: widget.lesson);
+    } finally {
+      _settingsOpen = false;
+    }
+  }
+
+  void _onLessonStep() {
+    final l = widget.lesson!;
+    if (l.id == 'templates' && l.step == 3 && mounted) unawaited(_openSettings());
   }
 
   // ---------------------------------------------------------------------
@@ -2210,7 +2224,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // (як у редакторі шаблону); кнопки внизу теж лишаються
             ..._selectionButtons(box.biggest),
             // «козирьок»: меню навігації - з одного боку, назва пасіки (з олівцем
-            // для перейменування) - по центру, шестерня налаштувань - з іншого
+            // для перейменування) - по центру, помічник - з іншого (його кнопка
+            // поверх усіх екранів, [AssistantSlot]; налаштування - у меню ☰)
             Positioned(
               key: _topKey,
               top: 0,
@@ -2327,24 +2342,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             ),
                     )),
             ),
-            // налаштування (у навчанні шестерні немає, крім кроку про неї: підсвічена, без дії)
-            if (!widget.tutorial)
-              Positioned(
-                top: 8,
-                right: 10,
-                child: LessonTarget(
-                  lesson: widget.lesson,
-                  name: 'gear',
-                  child: GearButton(size: 48, onPressed: _openSettings),
-                ),
-              )
-            else if (_lesson == _Lesson.gear)
-              Positioned(
-                top: 8,
-                right: 10,
-                child: IgnorePointer(
-                    child: HoneyRing(on: true, child: GearButton(size: 48, onPressed: () {}))),
-              ),
             // зум і перемикач режимів - не на фоні головного екрана (там лише
             // видно карту, а знизу - пошта й «Вийти»)
             if (!widget.backdrop) ...[

@@ -8,7 +8,7 @@ import '../tutorial/lesson.dart';
 import 'settings_main_tab.dart';
 import 'templates_screen.dart';
 
-/// Шестерня «Налаштування» (карта й головний екран).
+/// Шестерня «Налаштування» (головний екран; на карті - пункт меню ☰).
 class GearButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final double size;

@@ -12,7 +12,9 @@ import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
 import '../screens/receipt_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/splash_screen.dart';
 import '../screens/stock_screen.dart';
+import '../screens/template_editor_screen.dart';
 import '../screens/templates_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'assistant_tools.dart';
@@ -91,6 +93,15 @@ const kScreenLabels = {
 /// Екрани, на яких знайомий екран розпізнано. Новий екран тут - і в чаті
 /// з'явиться плашка «Фінанси», а в моделі - рядок «[Екран: …]».
 ScreenContext? screenContextOf(Widget w) {
+  // урок (пісочниця): помічника там немає
+  if ((w is MapScreen && (w.tutorial || w.lesson != null)) ||
+      (w is SettingsScreen && w.lesson != null) ||
+      (w is TemplatesScreen && w.lesson != null) ||
+      (w is TemplateEditorScreen && w.lesson != null) ||
+      (w is ParametersScreen && w.lesson != null)) {
+    return const ScreenContext('lesson', 'Навчання');
+  }
+  if (w is SplashScreen) return const ScreenContext('splash', 'Вхід');
   if (w is FinanceScreen) return const ScreenContext('finance', 'Фінанси');
   if (w is FinAddScreen) return const ScreenContext('finance_add', 'Новий запис');
   if (w is StockScreen) return const ScreenContext('stock', 'Склад');

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'assistant_chat_screen.dart';
 import 'assistant_context.dart';
@@ -10,8 +11,9 @@ import 'assistant_nav.dart';
 import 'assistant_queue.dart';
 import 'assistant_tools.dart';
 
-/// Помічник на екранах застосунку: кругла плашка виклику на кожній вкладці
-/// (як на карті) і, коли екран широкий (планшет), чат збоку від вкладки.
+/// Помічник на екранах застосунку: кругла плашка виклику у верхньому правому
+/// куті кожного екрана (на місці колишньої шестерні; шапки лишають під неї
+/// місце, [AssistantSlot]) і, коли екран широкий (планшет), чат збоку від вкладки.
 ///
 /// Вкладається в `MaterialApp.builder` над навігатором.
 class AssistantHost extends StatefulWidget {
@@ -35,21 +37,16 @@ class AssistantHost extends StatefulWidget {
   /// Чат збоку відкрито (лише на широкому екрані).
   static final dockOpen = ValueNotifier<bool>(false);
 
-  /// Екрани, де плашки немає: навчання й відгук - свій потік. На решті
-  /// (разом з картою) іконка завжди в одному місці.
-  static const hiddenOn = {'lessons', 'feedback'};
+  /// Екрани, де плашки немає: навчання (і самі уроки), відгук - свій потік,
+  /// заставка входу. На решті (разом з головним і картою) іконка завжди в
+  /// одному місці.
+  static const hiddenOn = {'lessons', 'lesson', 'feedback', 'splash'};
 
   @override
   State<AssistantHost> createState() => _AssistantHostState();
 }
 
 class _AssistantHostState extends State<AssistantHost> {
-  static const _size = 52.0;
-
-  /// Місце іконки однакове на всіх екранах і не переміщується.
-  static const _right = 12.0;
-  static const _bottom = 96.0;
-
   void _toggleOrOpen(bool wide) {
     if (wide) {
       AssistantHost.dockOpen.value = !AssistantHost.dockOpen.value;
@@ -76,12 +73,14 @@ class _AssistantHostState extends State<AssistantHost> {
             final mq = MediaQuery.of(context);
             final panel = docked ? AssistantHost.dockWidth : 0.0;
             final ctx = AssistantContext.current.value;
-            final showFab =
-                q != null &&
-                !docked &&
-                ctx != null &&
-                !AssistantHost.hiddenOn.contains(ctx.screen) &&
-                !AssistantContext.chatOnTop.value;
+            // місце в шапці лишається й під вікном (щоб шапка не стрибала)
+            final slot =
+                q != null && !docked && !AssistantHost.hiddenOn.contains(ctx?.screen);
+            final showFab = slot && !AssistantContext.chatOnTop.value;
+            if (AssistantSlot.shown.value != slot) {
+              WidgetsBinding.instance
+                  .addPostFrameCallback((_) => AssistantSlot.shown.value = slot);
+            }
             return Stack(
               children: [
                 Row(
@@ -107,7 +106,7 @@ class _AssistantHostState extends State<AssistantHost> {
                       ),
                   ],
                 ),
-                if (showFab) _fab(box, wide),
+                if (showFab) _fab(mq, wide),
               ],
             );
           },
@@ -116,14 +115,16 @@ class _AssistantHostState extends State<AssistantHost> {
     );
   }
 
-  Widget _fab(BoxConstraints box, bool wide) {
+  /// Місце іконки однакове на всіх екранах і не переміщується.
+  Widget _fab(MediaQueryData mq, bool wide) {
     return Positioned(
-      right: _right,
-      bottom: _bottom,
+      right: mq.padding.right + AssistantSlot.right,
+      top: mq.padding.top + AssistantSlot.top,
       child: Material(
         key: const ValueKey('assistant-fab'),
         type: MaterialType.transparency,
-        child: AssistantButton(repo: widget.repo, size: _size, onTap: () => _toggleOrOpen(wide)),
+        child: AssistantButton(
+            repo: widget.repo, size: AssistantSlot.size, onTap: () => _toggleOrOpen(wide)),
       ),
     );
   }

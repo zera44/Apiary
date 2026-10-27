@@ -354,27 +354,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // сканер QR — значком у лівому верхньому куті
+          // сканер QR і налаштування - значками в лівому верхньому куті (меню ☰
+          // тут немає; праворуч угорі - помічник, як на всіх екранах)
           Positioned(
             top: 12,
             left: 12,
-            child: CircleIconButton(
-              icon: 'qr',
-              bg: AppColors.darkBtn,
-              iconColor: AppColors.text,
-              size: 48,
-              tooltip: 'Сканувати QR-код',
-              onPressed: () => AppDrawer.openHiveByQr(nav, repo),
-            ),
-          ),
-          // налаштування (характеристики, шаблони) - шестерня праворуч угорі
-          Positioned(
-            top: 12,
-            right: 12,
-            child: GearButton(
-                size: 48,
+            child: Row(children: [
+              CircleIconButton(
+                icon: 'qr',
                 bg: AppColors.darkBtn,
-                onPressed: () => SettingsScreen.open(nav, repo)),
+                iconColor: AppColors.text,
+                size: 48,
+                tooltip: 'Сканувати QR-код',
+                onPressed: () => AppDrawer.openHiveByQr(nav, repo),
+              ),
+              const SizedBox(width: 10),
+              GearButton(
+                  size: 48,
+                  bg: AppColors.darkBtn,
+                  onPressed: () => SettingsScreen.open(nav, repo)),
+            ]),
           ),
           const Positioned.fill(child: ScreenFrame()),
           _StartupPrompts(repo: repo),

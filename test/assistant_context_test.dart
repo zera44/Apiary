@@ -12,6 +12,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
 import 'package:apiary/screens/finance_screen.dart';
 import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/ui/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -196,14 +197,22 @@ void main() {
       home: const Scaffold(body: Center(child: Text('головний'))),
     ));
     await settle(tester);
-    // головний екран - плашки немає
-    expect(find.byKey(const ValueKey('assistant-fab')), findsNothing);
+    // головний екран - плашка теж є, у верхньому правому куті (місце шестерні)
+    expect(find.byKey(const ValueKey('assistant-fab')), findsOneWidget);
+    final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+    final fab = tester.getRect(find.byKey(const ValueKey('assistant-fab')));
+    expect(fab.top, AssistantSlot.top);
+    expect(fab.right, screen.width - AssistantSlot.right);
 
     unawaited(nav.currentState!.push(MaterialPageRoute<void>(builder: (_) => StockScreen(repo: repo))));
     await settle(tester);
     await tester.pumpAndSettle();
     expect(AssistantContext.current.value?.screen, 'stock');
     expect(find.byKey(const ValueKey('assistant-fab')), findsOneWidget);
+    // на тому самому місці; шапка вкладки лишає під нього місце
+    expect(tester.getRect(find.byKey(const ValueKey('assistant-fab'))), fab);
+    expect(AssistantSlot.shown.value, isTrue);
+    expect(tester.getSize(find.byType(TopBar).first).height, AssistantSlot.headerHeight);
 
     await tester.tap(find.byKey(const ValueKey('assistant-fab')));
     await settle(tester);
