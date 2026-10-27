@@ -72,6 +72,9 @@ class AssistantChatScreen extends StatefulWidget {
 
   static _AssistantChatScreenState? _active;
 
+  /// Тиша в розмові, після якої чат відкривається з нової розмови.
+  static const freshAfter = Duration(minutes: 30);
+
   @override
   State<AssistantChatScreen> createState() => _AssistantChatScreenState();
 }
@@ -79,6 +82,7 @@ class AssistantChatScreen extends StatefulWidget {
 class _AssistantChatScreenState extends State<AssistantChatScreen> {
   AssistantStore get store => widget.queue.store;
   final _input = TextEditingController();
+  final _inputFocus = FocusNode();
   final _scroll = ScrollController();
   final _firstUnreadKey = GlobalKey();
   List<ChatItem> _items = const [];
@@ -160,6 +164,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         await store.update(c.id, {'status': ChatStatus.rejected});
       }
     }
+    // нічого нового, а розмова давно стихла - нове питання з чистого аркуша
+    if (unread == null) await store.freshIfIdle(AssistantChatScreen.freshAfter);
     _firstUnread = (await store.firstUnread())?.id;
     _speak = await AssistantVoiceSettings.speak(widget.repo);
     await _reload();
@@ -171,6 +177,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         Scrollable.ensureVisible(ctx, alignment: 0.1);
       } else {
         _toBottom();
+        // одразу писати; є непрочитане - клавіатура його не закриває
+        if (mounted && !widget.docked && !_listening) _inputFocus.requestFocus();
       }
     });
     unawaited(widget.queue.process());
@@ -199,6 +207,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       }
     }
     _input.dispose();
+    _inputFocus.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -1138,6 +1147,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: TextField(
                 key: const ValueKey('assistant-input'),
                 controller: _input,
+                focusNode: _inputFocus,
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.send,

@@ -194,6 +194,23 @@ class AssistantStore {
     return true;
   }
 
+  /// Нова розмова сама, якщо в поточній давно ([idle]) тиша: нове питання -
+  /// з чистого аркуша, стара лишається в «Розмови». Не чіпаємо, поки
+  /// повідомлення людини ще в дорозі чи картка чекає на відповідь.
+  Future<bool> freshIfIdle(Duration idle) async {
+    final c = await db.query('assistant_convs',
+        columns: ['updated_at'], where: 'id = ?', whereArgs: [conv]);
+    if (c.isEmpty) return false;
+    final at = (c.first['updated_at'] as num).toDouble();
+    if (Repository.now() - at < idle.inMicroseconds / 1e6) return false;
+    final busy = await db.rawQuery(
+        'SELECT COUNT(*) AS n FROM assistant_chat WHERE conv = ? AND '
+        "((role = 'user' AND status IN ('queued', 'sending')) OR (role = 'card' AND status = 'pending'))",
+        [conv]);
+    if ((busy.first['n'] as int) > 0) return false;
+    return newConversation();
+  }
+
   /// Видалити розмову разом з історією; поточну - переходимо на іншу чи нову.
   Future<void> deleteConversation(int id) async {
     await db.delete('assistant_chat', where: 'conv = ?', whereArgs: [id]);

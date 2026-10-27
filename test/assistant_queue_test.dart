@@ -7,6 +7,7 @@ import 'package:apiary/assistant/assistant_tools.dart';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/services/background.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -288,6 +289,28 @@ void main() {
     expect((await store.history()).isNotEmpty, isTrue);
     // назва - початок першого питання
     expect((await store.conversations()).first.title, 'Раз');
+  });
+
+  test('нова розмова сама після 30 хв тиші; не поки питання в дорозі', () async {
+    final q = queue(FakeModel([say('Так')]));
+    final t0 = DateTime(2026, 5, 10, 12);
+    Future<bool> fresh(Duration after) =>
+        withClock(Clock.fixed(t0.add(after)), () => store.freshIfIdle(const Duration(minutes: 30)));
+    await store.load();
+    expect(await fresh(const Duration(hours: 5)), isFalse); // порожня - не плодимо
+    await withClock(Clock.fixed(t0), () => q.submit('Раз'));
+    final first = store.conv;
+    expect(await fresh(const Duration(minutes: 10)), isFalse);
+    // питання ще чекає на інтернет - лишаємось у цій розмові
+    online = false;
+    await withClock(Clock.fixed(t0), () => q.submit('Два'));
+    expect(await fresh(const Duration(hours: 1)), isFalse);
+    expect(store.conv, first);
+    await repo.db.update('assistant_chat', {'status': ChatStatus.sent}, where: "role = 'user'");
+    expect(await fresh(const Duration(minutes: 31)), isTrue);
+    expect(store.conv, isNot(first));
+    expect(await store.items(), isEmpty);
+    expect((await store.conversations()).length, 2); // стара - у «Розмови»
   });
 
   test('відповідь іде в ту розмову, з якої питали, навіть після переходу', () async {
