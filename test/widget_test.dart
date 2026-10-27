@@ -102,9 +102,11 @@ void main() {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    await tester.ensureVisible(find.text(action));
+    // лише в меню: «Сканувати» є ще й кнопкою на карті
+    final item = find.descendant(of: find.byType(Drawer), matching: find.text(action));
+    await tester.ensureVisible(item);
     await settle(tester);
-    await tester.tap(find.text(action));
+    await tester.tap(item);
     await settle(tester);
   }
 
@@ -372,11 +374,11 @@ void main() {
     expect(find.byType(MapScreen), findsOneWidget);
     expect(find.text('Заповнити параметри'), findsNothing); // форма - лише після скану
     expect(find.text('Оглянути: 1 вулик (червоні)'), findsOneWidget);
-    expect(find.text('Сканувати вулик'), findsOneWidget);
+    expect(find.text('Сканувати'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('карта: «Сканувати вулик» - огляд цього вулика, після «Зберегти» знову сканер', (tester) async {
+  testWidgets('карта: «Сканувати» - огляд цього вулика, після «Зберегти» знову сканер', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() => repo.linkQr('https://vulyk.app/h/1', EntityRef.group(groupId)));
@@ -386,7 +388,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    await tester.tap(find.text('Сканувати вулик'));
+    await tester.tap(find.byKey(const ValueKey('map-scan-hive')));
     await settle(tester);
     // на комп'ютері камери немає - код вводиться вручну
     await tester.enterText(find.byType(TextField).last, 'https://vulyk.app/h/1');

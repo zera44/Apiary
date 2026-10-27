@@ -95,7 +95,7 @@ class AppDrawer extends StatefulWidget {
   }
 
   /// Обхід: карта пасіки поверх головного екрана, без форми - вулики, які
-  /// пора оглянути, обведені червоним, а «Сканувати вулик» відкриває огляд.
+  /// пора оглянути, обведені червоним, а «Сканувати» відкриває огляд.
   static void openRound(NavigatorState nav, Repository repo, Apiary apiary) {
     nav.popUntil((r) => r.isFirst);
     nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: repo, apiary: apiary)));
