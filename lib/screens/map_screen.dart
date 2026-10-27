@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../data/models.dart';
 import '../data/notes.dart';
 import '../data/repository.dart';
+import '../l10n/l10n.dart';
 import '../logic/cell_value.dart' show parseCellKey;
 import '../logic/geometry.dart';
 import '../logic/hive_objects.dart';
@@ -161,6 +162,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   /// Будь-який урок: «Базові поняття» чи урок із [MapScreen.lesson].
   bool get _guided => widget.tutorial || widget.lesson != null;
+
+  /// Куди веде «Зберегти й далі»: як відкрили карту, а після «Сканувати
+  /// вулик» - знову камера.
+  late NextHive _next = widget.next;
 
   final grid = GridController(cellSize: 34, minCell: 18, maxCell: 56);
   List<MapElement> elements = [];
@@ -424,9 +429,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.gear:
         return (
           [
-            GuideBubble.highlight('Шестерня'),
+            const TextSpan(text: 'Шаблони - у '),
+            GuideBubble.highlight('«Налаштуваннях»'),
             const TextSpan(
-                text: ' - налаштування й шаблони. А набір параметрів вулика збирай у '
+                text: ' меню. А набір параметрів вулика збирай у '
                     '«Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
           ],
           () => setState(() => _lesson = _Lesson.congrats)
@@ -503,6 +509,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _shake = AnimationController(vsync: this, duration: const Duration(milliseconds: 320))
       ..addListener(() => setState(() {}));
     repo.notesChanges.addListener(_loadNotesCount);
+    widget.lesson?.addListener(_onLessonStep);
     _init();
   }
 
@@ -577,6 +584,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   @override
   void dispose() {
     repo.notesChanges.removeListener(_loadNotesCount);
+    widget.lesson?.removeListener(_onLessonStep);
     _shake.dispose();
     _warnTimer?.cancel();
     _blockedFlash?.cancel();
@@ -914,7 +922,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   String get _statusText {
-    if (!selectMode) return '';
+    if (!selectMode) {
+      final n = _dueHere;
+      return n == 0 || widget.backdrop || _guided || panelOpen
+          ? ''
+          : 'Оглянути: $n ${pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів')} (червоні)';
+    }
     if (pendingTemplate != null) {
       return 'Тапай - ставити «${pendingTemplate!.name}», тягни - перемістити';
     }
@@ -1419,11 +1432,22 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     await _refreshPanel();
   }
 
-  /// Шестерня «Налаштування» (в уроці - з пасічником).
+  /// Урок «Шаблони»: «Налаштування» (в уроці меню ☰ немає - пасічник
+  /// відкриває їх сам, на «Продовжити»).
+  bool _settingsOpen = false;
   Future<void> _openSettings() async {
-    final l = widget.lesson;
-    l?.advance(2, 3);
-    await SettingsScreen.open(Navigator.of(context), repo, lesson: l);
+    if (_settingsOpen) return;
+    _settingsOpen = true;
+    try {
+      await SettingsScreen.open(Navigator.of(context), repo, lesson: widget.lesson);
+    } finally {
+      _settingsOpen = false;
+    }
+  }
+
+  void _onLessonStep() {
+    final l = widget.lesson!;
+    if (l.id == 'templates' && l.step == 3 && mounted) unawaited(_openSettings());
   }
 
   // ---------------------------------------------------------------------
@@ -1652,7 +1676,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final a = away;
     if (a != null && mounted) {
       AppDrawer.openHive(Navigator.of(context), repo, a.apiary, a.elementId,
-          fill: true, next: widget.next);
+          fill: true, next: _next);
     }
   }
 
@@ -1767,7 +1791,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// ([here]) чи на іншій пасіці ([away]); null — далі нікого.
   Future<({MapElement? here, ({Apiary apiary, String elementId})? away})?> _nextTarget(
       MapElement cur, {Set<String> skipped = const {}}) async {
-    switch (widget.next) {
+    switch (_next) {
       case NextHive.order:
         // один представник на вулик/групу: верхня-ліва клітинка
         final reps = <String, MapElement>{};
@@ -2141,6 +2165,41 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     );
   }
 
+  /// Скільки вуликів цієї пасіки пора оглянути (обведені червоним).
+  int get _dueHere =>
+      {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) ownerKeyOf(e)}.length;
+
+  /// «Сканувати»: пасічник підійшов, сканує наліпку - огляд цього
+  /// вулика; після «Зберегти» камера знову, для наступного.
+  Future<void> _scanHive() async {
+    if (_qrBusy) return;
+    final code = await scanQrCode(context, title: 'Сканувати вулик');
+    if (code == null || !mounted) return;
+    final found = await repo.findByQr(code);
+    if (!mounted) return;
+    if (found == null) {
+      final why = await repo.qrProblem(code);
+      if (!mounted) return;
+      await showInfo(
+          context,
+          '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code\n\n'
+          'Прив\'язати: меню ☰ → «QR-код».',
+          title: 'Вулик не знайдено');
+      return;
+    }
+    if (found.apiary.id != widget.apiary.id) {
+      AppDrawer.openHive(Navigator.of(context), repo, found.apiary, found.element.id,
+          fill: true, next: NextHive.qr);
+      return;
+    }
+    final el = elements.where((e) => e.id == found.element.id).firstOrNull ?? found.element;
+    setState(() {
+      _next = NextHive.qr;
+      panelOpen = false;
+    });
+    await _fillThenPanel(el);
+  }
+
   /// З сповіщення / QR: спершу лише форма «Заповнити параметри»,
   /// панель вулика з'являється після «Зберегти».
   Future<void> _fillThenPanel(MapElement el) async {
@@ -2263,7 +2322,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // (як у редакторі шаблону); кнопки внизу теж лишаються
             ..._selectionButtons(box.biggest),
             // «козирьок»: меню навігації - з одного боку, назва пасіки (з олівцем
-            // для перейменування) - по центру, шестерня налаштувань - з іншого
+            // для перейменування) - по центру, помічник - з іншого (його кнопка
+            // поверх усіх екранів, [AssistantSlot]; налаштування - у меню ☰)
             Positioned(
               key: _topKey,
               top: 0,
@@ -2380,24 +2440,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             ),
                     )),
             ),
-            // налаштування (у навчанні шестерні немає, крім кроку про неї: підсвічена, без дії)
-            if (!widget.tutorial)
-              Positioned(
-                top: 8,
-                right: 10,
-                child: LessonTarget(
-                  lesson: widget.lesson,
-                  name: 'gear',
-                  child: GearButton(size: 48, onPressed: _openSettings),
-                ),
-              )
-            else if (_lesson == _Lesson.gear)
-              Positioned(
-                top: 8,
-                right: 10,
-                child: IgnorePointer(
-                    child: HoneyRing(on: true, child: GearButton(size: 48, onPressed: () {}))),
-              ),
             // зум і перемикач режимів - не на фоні головного екрана (там лише
             // видно карту, а знизу - пошта й «Вийти»)
             if (!widget.backdrop) ...[
@@ -2416,6 +2458,35 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               bottom: _toggleBottom,
               child: _modeToggle(),
             ),
+            // обхід: підійшов до вулика - сканує наліпку
+            if (!selectMode && !panelOpen && !_guided)
+              Positioned(
+                right: 14,
+                bottom: _toggleBottom + (kToggleH - 52) / 2,
+                child: Material(
+                  color: _dueHere > 0 ? AppColors.accent : AppColors.roundBtn,
+                  borderRadius: BorderRadius.circular(26),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    key: const ValueKey('map-scan-hive'),
+                    onTap: _scanHive,
+                    child: Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.qr_code_scanner,
+                            size: 24, color: _dueHere > 0 ? Colors.white : AppColors.text),
+                        const SizedBox(width: 8),
+                        Text('Сканувати',
+                            style: TextStyle(
+                                color: _dueHere > 0 ? Colors.white : AppColors.text,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
             ],
             // редагування: «Додати» — поруч із перемикачем, під пальцем
             if (selectMode)

@@ -859,8 +859,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
         body: SafeArea(
           child: Stack(children: [
             Column(children: [
-              SizedBox(
-                height: 50,
+              // праворуч угорі - помічник ([AssistantSlot])
+              AssistantSlotSpace(builder: (context, reserve) => SizedBox(
+                height: reserve > 0 ? AssistantSlot.headerHeight : 50,
                 child: Row(children: [
                   const SizedBox(width: 12),
                   CircleIconButton(
@@ -881,8 +882,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                               color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                   ),
+                  SizedBox(width: reserve),
                 ]),
-              ),
+              )),
               Expanded(
                 child: LayoutBuilder(builder: (context, box) {
                   return Stack(children: [

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../assistant/assistant_host.dart';
 import '../data/models.dart';
 import '../logic/merge_layout.dart';
 import 'cell_style.dart';
@@ -174,8 +173,7 @@ class CharacteristicsPanel extends StatelessWidget {
               // урок: будуємо все одразу - кнопка уроку внизу панелі має існувати,
               // щоб її підсвітити й прокрутити до неї (на малому екрані вона нижче)
               cacheExtent: lesson != null ? 4000 : null,
-              // знизу - місце, щоб останні рядки підняти над помічником
-              padding: EdgeInsets.fromLTRB(18, 0, 14, AssistantHost.clearance(below: 12)),
+              padding: const EdgeInsets.fromLTRB(18, 0, 14, 18),
               children: [
                 Align(
                   alignment: Alignment.centerLeft,

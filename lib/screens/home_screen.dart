@@ -27,6 +27,7 @@ import 'feedback_chat_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import 'splash_screen.dart';
+import 'fin_add_screen.dart';
 import 'finance_screen.dart';
 import 'stock_screen.dart';
 import '../ui/pill_choice.dart';
@@ -284,7 +285,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _Tile(
           icon: Icon(Icons.account_balance_wallet_outlined, size: 30, color: AppColors.text),
           label: 'Фінанси',
-          onTap: () => push(FinanceScreen(repo: repo))),
+          onTap: () => push(FinanceScreen(repo: repo)),
+          onLongPress: () => push(FinAddScreen(repo: repo))),
       _Tile(
           icon: AppIcon('box', size: 28, color: AppColors.text),
           label: 'Склад',
@@ -395,27 +397,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // сканер QR — значком у лівому верхньому куті
+          // сканер QR і налаштування - значками в лівому верхньому куті (меню ☰
+          // тут немає; праворуч угорі - помічник, як на всіх екранах)
           Positioned(
             top: 12,
             left: 12,
-            child: CircleIconButton(
-              icon: 'qr',
-              bg: AppColors.darkBtn,
-              iconColor: AppColors.text,
-              size: 48,
-              tooltip: 'Сканувати QR-код',
-              onPressed: () => AppDrawer.openHiveByQr(nav, repo),
-            ),
-          ),
-          // налаштування (характеристики, шаблони) - шестерня праворуч угорі
-          Positioned(
-            top: 12,
-            right: 12,
-            child: GearButton(
-                size: 48,
+            child: Row(children: [
+              CircleIconButton(
+                icon: 'qr',
                 bg: AppColors.darkBtn,
-                onPressed: () => SettingsScreen.open(nav, repo)),
+                iconColor: AppColors.text,
+                size: 48,
+                tooltip: 'Сканувати QR-код',
+                onPressed: () => AppDrawer.openHiveByQr(nav, repo),
+              ),
+              const SizedBox(width: 10),
+              GearButton(
+                  size: 48,
+                  bg: AppColors.darkBtn,
+                  onPressed: () => SettingsScreen.open(nav, repo)),
+            ]),
           ),
           const Positioned.fill(child: ScreenFrame()),
           _StartupPrompts(repo: repo),
@@ -457,7 +458,10 @@ class _Tile extends StatelessWidget {
   final Widget icon;
   final String label;
   final VoidCallback onTap;
-  const _Tile({required this.icon, required this.label, required this.onTap});
+
+  /// Утримання - швидка дія розділу (напр., «Фінанси» - одразу нова витрата).
+  final VoidCallback? onLongPress;
+  const _Tile({required this.icon, required this.label, required this.onTap, this.onLongPress});
   @override
   Widget build(BuildContext context) => Expanded(
         child: Padding(
@@ -468,6 +472,7 @@ class _Tile extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
               onTap: onTap,
+              onLongPress: onLongPress,
               child: Container(
                 // не нижча за 78; більший шрифт - росте (сусідні плитки
                 // вирівнює IntrinsicHeight)
@@ -552,8 +557,10 @@ class _Advisor extends StatefulWidget {
 class _AdvisorState extends State<_Advisor> {
   static const _tips = [
     'Утримайте вулик на карті - і одразу перетягуйте його на нове місце.',
+    'Обхід: на карті червоні - ті, кого пора оглянути. Підійдіть до вулика й натисніть «Сканувати».',
     'В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик.',
     'Обрали новий параметр зі списку і не знаходите кнопку «Зберегти»? Це тому, що всі зміни зберігаються автоматично.',
+    'Утримайте «Фінанси» - і одразу відкриється нова витрата.',
     'Наклейте QR-наліпки - і вулик відкриється з камери за секунду.',
     'Задайте мінімальний залишок на складі - я нагадаю, коли час докупити.',
     'Звіт по пасіці в Excel - у меню ☰ → «Історія».',
@@ -628,8 +635,11 @@ class _AdvisorState extends State<_Advisor> {
         _i = 0;
       });
 
-  /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
+  /// «Сьогодні оглянути»: карта пасіки з червоними вуликами (огляд - сканом
+  /// наліпки на вулику). Прострочені на кількох пасіках - спершу список.
   Future<void> _showDueList() async {
+    final apiaries = {for (final d in _due) d.t.apiaryName};
+    if (apiaries.length == 1) return _openRound(_due.first.t);
     final pick = await showDialog<VisitTarget?>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -652,7 +662,7 @@ class _AdvisorState extends State<_Advisor> {
         actions: [
           Column(mainAxisSize: MainAxisSize.min, children: [
             PillButton(
-                text: 'Почати обхід',
+                text: 'Показати на карті',
                 bg: AppColors.accent,
                 width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, _due.first.t)),
@@ -667,17 +677,18 @@ class _AdvisorState extends State<_Advisor> {
         ],
       ),
     );
-    if (pick != null) await _openDue(pick);
+    if (pick != null) await _openRound(pick);
   }
 
-  Future<void> _openDue(VisitTarget t) async {
+  /// Карта пасіки вулика [t] (обхід).
+  Future<void> _openRound(VisitTarget t) async {
     final nav = Navigator.of(context);
     final el = await widget.repo.getElement(t.elementId);
     final aid = el?.apiaryId;
     if (el == null || aid == null) return;
     final a = await widget.repo.getApiary(aid);
     if (a == null || !nav.mounted) return;
-    AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
+    AppDrawer.openRound(nav, widget.repo, a);
   }
 
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у

@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../assistant/assistant_host.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
@@ -661,14 +660,13 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           ),
                           Expanded(
                             child: ListView(
-                                padding: EdgeInsets.fromLTRB(8, 0, 16, AssistantHost.clearance()),
+                                padding: const EdgeInsets.fromLTRB(8, 0, 16, 100),
                                 children: rows),
                           ),
                         ])
-                      // знизу - місце під кнопку «+» і помічника (не закривають суму
-                      // в останньому рядку)
+                      // знизу - місце під кнопку «+» (не закриває суму в останньому рядку)
                       : ListView(
-                          padding: EdgeInsets.fromLTRB(16, 0, 16, AssistantHost.clearance()),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                           children: [summary, const SizedBox(height: 12), ...rows]),
             ),
           ]),

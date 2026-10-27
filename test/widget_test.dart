@@ -102,9 +102,11 @@ void main() {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    await tester.ensureVisible(find.text(action));
+    // лише в меню: «Сканувати» є ще й кнопкою на карті
+    final item = find.descendant(of: find.byType(Drawer), matching: find.text(action));
+    await tester.ensureVisible(item);
     await settle(tester);
-    await tester.tap(find.text(action));
+    await tester.tap(item);
     await settle(tester);
   }
 
@@ -351,11 +353,17 @@ void main() {
     expect(find.textContaining('Не вдалося увійти'), findsOneWidget);
   });
 
-  testWidgets('натискання на нагадування відкриває вулик одразу з формою', (tester) async {
+  testWidgets('натискання на нагадування відкриває карту пасіки з вуликами для обходу', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
         .firstWhere((e) => e.isHive);
+    await tester.runAsync(() async {
+      final period = (await repo.baseParameterId('hive', 'visit_period'))!;
+      final start = (await repo.baseParameterId('hive', 'visit_start'))!;
+      await repo.addParameterRecord(period, '7', EntityRef.group(groupId));
+      await repo.addParameterRecord(start, '01.01.2020', EntityRef.group(groupId));
+    });
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     ReminderService.instance.openHiveRequest.value = hive.id;
@@ -364,10 +372,37 @@ void main() {
     }
     expect(ReminderService.instance.openHiveRequest.value, isNull);
     expect(find.byType(MapScreen), findsOneWidget);
-    expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.byTooltip('Закрити'));
+    expect(find.text('Заповнити параметри'), findsNothing); // форма - лише після скану
+    expect(find.text('Оглянути: 1 вулик (червоні)'), findsOneWidget);
+    expect(find.text('Сканувати'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('карта: «Сканувати» - огляд цього вулика, після «Зберегти» знову сканер', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() => repo.linkQr('https://vulyk.app/h/1', EntityRef.group(groupId)));
+    final apiary = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(MaterialApp(
+        theme: buildAppTheme(), home: MapScreen(repo: repo, apiary: apiary)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.byKey(const ValueKey('map-scan-hive')));
     await settle(tester);
-    expect(find.text('Лежак 1'), findsWidgets); // панель цього вулика
+    // на комп'ютері камери немає - код вводиться вручну
+    await tester.enterText(find.byType(TextField).last, 'https://vulyk.app/h/1');
+    await tester.tap(find.text('Зберегти').last);
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Змін немає').last);
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    // обхід сканом: далі знову сканер (тут - введення коду вручну)
+    expect(find.text('Введіть код (посилання) вручну'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -525,7 +560,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('головний: «Сьогодні оглянути: N» веде до простроченого вулика з формою', (tester) async {
+  testWidgets('головний: «Сьогодні оглянути: N» відкриває карту з червоними вуликами', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() async {
@@ -540,15 +575,13 @@ void main() {
     }
     expect(find.text('Сьогодні оглянути: 1'), findsOneWidget);
     await tester.tap(find.text('Сьогодні оглянути: 1'));
-    await settle(tester);
-    expect(find.text('Почати обхід'), findsOneWidget); // список прострочених
-    await tester.tap(find.text('Почати обхід'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
+    // одна пасіка - одразу карта, без списку й без форми
     expect(find.byType(MapScreen), findsOneWidget);
-    expect(find.text('Заповнити параметри'), findsOneWidget);
-    expect(find.byTooltip('Пропустити'), findsOneWidget); // обхід: ✓ / Змін немає / →
+    expect(find.text('Заповнити параметри'), findsNothing);
+    expect(find.text('Оглянути: 1 вулик (червоні)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -934,7 +967,7 @@ void main() {
     // у меню - «Продовжити» і під нею менша «Завершити»
     expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
         findsOneWidget);
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 7; i++) {
       await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
@@ -942,7 +975,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    // після меню - крок про шестерню (меню закрите), далі «Продовжити»
+    // після меню - порада про шаблони й параметри (меню закрите), далі «Продовжити»
     expect(find.textContaining('у «Конструкторі»'), findsOneWidget);
     await tester.tap(find.text('Продовжити'));
     for (var i = 0; i < 3; i++) {
@@ -983,7 +1016,7 @@ void main() {
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
     for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
         'час на вітер',
-        'спеціалізоване навчання', 'поділитись ідеєю']) {
+        'спеціалізоване навчання', 'розмір шрифту, шаблони', 'поділитись ідеєю']) {
       await tester.tap(find.text('Продовжити'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);
@@ -1095,7 +1128,10 @@ void main() {
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування')); // шестерня: головна й шаблони
+    // налаштування - у меню ☰ карти
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Шаблони'), findsOneWidget);
@@ -1980,6 +2016,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('головний: утримання «Фінанси» - одразу нова витрата', (tester) async {
+    await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
+    await settle(tester);
+    await tester.longPress(find.text('Фінанси'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Нова витрата'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('вулик-скринька: запрошення помічником - значок, список, «Прийняти»', (tester) async {
     final server = FakeSharingServer()
       ..register('u-olena', 'olena@gmail.com')
@@ -2073,7 +2119,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
+  testWidgets('P13/P17: козирьок на карті - шестерні немає, «Налаштування» з вкладками - у меню ☰', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
@@ -2084,7 +2130,10 @@ void main() {
     expect(find.text('Налаштування пасіки'), findsOneWidget);
     await tester.tap(find.text('Скасувати'));
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування'));
+    expect(find.byTooltip('Налаштування'), findsNothing); // на місці шестерні - помічник
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);

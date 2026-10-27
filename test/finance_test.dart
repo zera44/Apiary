@@ -487,5 +487,43 @@ void main() {
       expect(entries.single.lineCount, 0);
       expect((await tester.runAsync(() => repo.listStockItems()))!, isEmpty);
     });
+
+    testWidgets('вручну: клавіатура одразу в сумі, категорія - як минулого разу', (tester) async {
+      bool sumFocused() {
+        final f = tester.widget<EditableText>(
+            find.descendant(of: find.byKey(const ValueKey('fin-sum')), matching: find.byType(EditableText)));
+        return f.focusNode.hasFocus;
+      }
+
+      await open(tester, FinAddScreen(repo: repo));
+      expect(sumFocused(), isTrue);
+      await tester.tap(find.text('Дорога'));
+      await tester.pump();
+      await tester.enterText(find.byKey(const ValueKey('fin-sum')), '250');
+      await tester.tap(find.text('Додати'));
+      await settle(tester);
+      await settle(tester);
+
+      // наступна витрата: лише сума і «Додати»
+      await tester.tap(find.text('open'));
+      await settle(tester);
+      expect(sumFocused(), isTrue);
+      await tester.enterText(find.byKey(const ValueKey('fin-sum')), '90');
+      await tester.tap(find.text('Додати'));
+      await settle(tester);
+      await settle(tester);
+      final entries =
+          (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
+      expect(entries.map((e) => e.amount).toSet(), {250, 90});
+      expect(entries.map((e) => e.categoryId).toSet().length, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('з чека клавіатура не відкривається', (tester) async {
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      final f = tester.widget<EditableText>(
+          find.descendant(of: find.byKey(const ValueKey('fin-sum')), matching: find.byType(EditableText)));
+      expect(f.focusNode.hasFocus, isFalse);
+    });
   });
 }

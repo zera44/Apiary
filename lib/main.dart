@@ -15,7 +15,6 @@ import 'icons/app_icons.dart';
 import 'l10n/l10n.dart';
 import 'screens/feedback_chat_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/map_screen.dart' show NextHive;
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/background.dart';
@@ -170,8 +169,8 @@ class _ApiaryAppState extends State<ApiaryApp> {
     super.dispose();
   }
 
-  /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити цей
-  /// вулик на карті одразу з формою «Оглянути» (лише якщо вже увійшли).
+  /// Натиснули на нагадування «Ти давно не заглядав у вулик N»: відкрити
+  /// карту його пасіки (лише якщо вже увійшли).
   Future<void> _openFromReminder() async {
     final id = _reminders.value;
     if (id == null) return;
@@ -184,7 +183,9 @@ class _ApiaryAppState extends State<ApiaryApp> {
     if (el == null || el.deleted || apiaryId == null) return;
     final apiary = await widget.repo.getApiary(apiaryId);
     if (apiary == null || apiary.deleted || !nav.mounted) return;
-    AppDrawer.openHive(nav, widget.repo, apiary, id, fill: true, next: NextHive.overdue);
+    // нагадування про обхід: карта з червоними вуликами, огляд - сканом
+    // наліпки на вулику
+    AppDrawer.openRound(nav, widget.repo, apiary);
   }
 
   @override

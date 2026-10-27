@@ -5,7 +5,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../assistant/assistant_host.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -233,7 +232,7 @@ class _StockScreenState extends State<StockScreen> {
       });
 
   Widget _inventoryList(List<StockItem> list) => ListView.separated(
-        padding: EdgeInsets.fromLTRB(12, 12, 12, AssistantHost.clearance(below: 72)),
+        padding: const EdgeInsets.all(12),
         itemCount: list.length,
         separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
@@ -333,8 +332,7 @@ class _StockScreenState extends State<StockScreen> {
                       : (_op == StockOp.inventory && _invList)
                           ? _inventoryList(list)
                           : GridView.builder(
-                          // знизу - місце, щоб «Списати» останнього ряду підняти над помічником
-                          padding: EdgeInsets.fromLTRB(12, 12, 12, AssistantHost.clearance(below: 72)),
+                          padding: const EdgeInsets.all(12),
                           // телефон боком: плитки нижчі за ширину, щоб «Прихід» і
                           // «Списати» було видно без прокрутки
                           gridDelegate: MediaQuery.sizeOf(context).height < 500

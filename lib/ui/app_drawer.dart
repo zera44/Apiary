@@ -9,6 +9,7 @@ import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/qr_generate_screen.dart';
 import '../screens/qr_scan_screen.dart';
+import '../screens/settings_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'common.dart';
@@ -18,7 +19,7 @@ import 'theme.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
-/// Навчання / Зворотний зв'язок. «Що нового» —
+/// Навчання / Налаштування / Зворотний зв'язок. «Що нового» —
 /// лише на головному екрані, туди — кнопкою «назад». Є лише на карті.
 class AppDrawer extends StatefulWidget {
   final Repository repo;
@@ -93,6 +94,13 @@ class AppDrawer extends StatefulWidget {
     openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
   }
 
+  /// Обхід: карта пасіки поверх головного екрана, без форми - вулики, які
+  /// пора оглянути, обведені червоним, а «Сканувати» відкриває огляд.
+  static void openRound(NavigatorState nav, Repository repo, Apiary apiary) {
+    nav.popUntil((r) => r.isFirst);
+    nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: repo, apiary: apiary)));
+  }
+
   /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
   /// [fill] — одразу форма «Оглянути».
   static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
@@ -132,6 +140,10 @@ final List<List<InlineSpan>> kDrawerTour = [
   [
     GuideBubble.highlight('Навчання'),
     const TextSpan(text: ' - щось не зрозумів? Пройди спеціалізоване навчання.'),
+  ],
+  [
+    GuideBubble.highlight('Налаштування'),
+    const TextSpan(text: ' - розмір шрифту, шаблони, акаунт і резервні копії.'),
   ],
   [
     GuideBubble.highlight('Зворотний зв\'язок'),
@@ -275,7 +287,10 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(5, _item(context, '', 'Навчання',
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined)),
-          _t(6, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
+          _t(6, _item(context, '', 'Налаштування',
+              widget.tour ? () {} : () => _open(nav, SettingsScreen(repo: repo)),
+              iconData: Icons.settings)),
+          _t(7, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav);
           })),
