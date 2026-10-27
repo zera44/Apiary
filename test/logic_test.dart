@@ -184,11 +184,74 @@ void main() {
         lastVisit: last,
         periodSetAt: setAt);
 
-    test('текст сповіщення', () {
-      final p = planReminders([target()], now: DateTime(2026, 10, 1, 10));
-      expect(p.first.body, 'Ти давно не заглядав у вулик 5. Перевір його');
-      expect(p.first.title, 'Пасіка');
-      expect(reminderBody('Лежак 1'), 'Ти давно не заглядав у вулик Лежак 1. Перевір його');
+    VisitTarget hive(String key, String name,
+            {int period = 2, String? last = '01.10.2026'}) =>
+        VisitTarget(
+            key: 'e:$key',
+            elementId: key,
+            apiaryName: 'Пасіка',
+            name: name,
+            periodDays: period,
+            lastVisit: last);
+
+    test('одне нагадування на день о 9:00 і друге о 14:00, а не по одному на вулик', () {
+      final p = planReminders([
+        hive('5', 'Вулик 5'),
+        hive('6', 'Вулик 6'),
+        hive('7', 'Вулик 7'),
+      ], now: DateTime(2026, 10, 1, 10));
+      // 3.10: усі троє настали одночасно - два сповіщення на всіх
+      expect(p.take(2).map((r) => r.when), [DateTime(2026, 10, 3, 9), DateTime(2026, 10, 3, 14)]);
+      expect(p[0].title, 'Час обходу');
+      expect(p[0].body, 'Оглянути 3 вулики: Вулик 5, Вулик 6, Вулик 7');
+      expect(p[1].title, 'Обхід ще не завершено');
+      expect(p[1].body, 'Лишилось оглянути 3 вулики: Вулик 5, Вулик 6, Вулик 7');
+      expect(p[0].elementId, '5'); // натискання відкриває карту його пасіки
+    });
+
+    test('довгий список вуликів скорочується', () {
+      final many = [for (var i = 1; i <= 7; i++) hive('$i', 'Вулик $i')];
+      final p = planReminders(many, now: DateTime(2026, 10, 1, 10));
+      expect(p.first.body, 'Оглянути 7 вуликів: Вулик 1, Вулик 2, Вулик 3, Вулик 4 і ще 3');
+    });
+
+    test('пізніше настав термін в одного - у його день сповіщення лише про тих, кому пора', () {
+      final p = planReminders([
+        hive('5', 'Вулик 5', period: 2),
+        hive('8', 'Вулик 8', period: 3, last: '02.10.2026'),
+      ], now: DateTime(2026, 10, 1, 10));
+      // 3.10 настав термін Вулика 5; Вулик 8 - 5.10 (разом із черговим термінам Вулика 5)
+      expect(p[0].body, 'Оглянути 1 вулик: Вулик 5');
+      final fifth = p.where((r) => r.when == DateTime(2026, 10, 5, 9)).single;
+      expect(fifth.body, 'Оглянути 2 вулики: Вулик 5, Вулик 8');
+    });
+
+    test('сьогодні після 9:00 і вулик не оглянуто - лишається друге о 14:00', () {
+      final p = planReminders([hive('5', 'Вулик 5')], now: DateTime(2026, 10, 3, 10));
+      expect(p.first.when, DateTime(2026, 10, 3, 14));
+      expect(p.first.title, 'Обхід ще не завершено');
+    });
+
+    test('сьогодні вулик оглянули вранці - ні другого, ні ранкового нагадування', () {
+      // після обходу дата останнього обходу - сьогодні: нагадування лише через період
+      final p = planReminders([hive('5', 'Вулик 5', last: '03.10.2026')],
+          now: DateTime(2026, 10, 3, 10));
+      expect(p.first.when, DateTime(2026, 10, 5, 9));
+      expect(p.where((r) => r.when.day == 3), isEmpty);
+    });
+
+    test('оглянули частину вуликів - друге нагадування лише про решту', () {
+      final p = planReminders([
+        hive('5', 'Вулик 5', last: '03.10.2026'),
+        hive('6', 'Вулик 6'),
+      ], now: DateTime(2026, 10, 3, 10));
+      expect(p.first.when, DateTime(2026, 10, 3, 14));
+      expect(p.first.body, 'Лишилось оглянути 1 вулик: Вулик 6');
+    });
+
+    test('після 14:00 сьогодні нічого нагадувати, наступне - у наступний термін', () {
+      final p = planReminders([hive('5', 'Вулик 5')], now: DateTime(2026, 10, 3, 15));
+      expect(p.first.when, DateTime(2026, 10, 5, 9));
     });
 
     test('без періоду або без дати відліку - нічого; дата відліку з моменту задання періоду', () {
@@ -199,16 +262,15 @@ void main() {
       expect(p.first.when, DateTime(2026, 10, 3, 9));
     });
 
-    test('горизонт планування: ~45 днів наперед, але не менше 3 нагадувань', () {
+    test('горизонт планування: ~45 днів наперед, але не менше 3 термінів (по 2 сповіщення)', () {
       final now = DateTime(2026, 10, 1, 10);
-      expect(planReminders([target(period: 1)], now: now).length, 45);
-      expect(planReminders([target(period: 2)], now: now).length, 22);
-      expect(planReminders([target(period: 30)], now: now).length, 3);
+      expect(planReminders([target(period: 1)], now: now).length, 90);
+      expect(planReminders([target(period: 2)], now: now).length, 44);
+      expect(planReminders([target(period: 30)], now: now).length, 6);
     });
 
     test('ліміт кількості й порядок за часом', () {
-      final many = [for (var i = 0; i < 50; i++) target()];
-      final p = planReminders(many, now: DateTime(2026, 10, 1, 10), limit: 20);
+      final p = planReminders([target(period: 1)], now: DateTime(2026, 10, 1, 10), limit: 20);
       expect(p.length, 20);
       for (var i = 1; i < p.length; i++) {
         expect(p[i].when.isBefore(p[i - 1].when), isFalse);
