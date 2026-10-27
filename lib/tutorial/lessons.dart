@@ -238,9 +238,11 @@ LessonCue? templatesLessonScript(LessonController c) {
             'створювати шаблони - заготовки вуликів і перешкод, які потім ставиш на карту.'),
       ]);
     case 2:
-      return LessonCue(screen: 'map', highlight: const ['gear'], text: [
-        _t('Натисни на шестерню - це '),
-        _h('«Налаштування»'),
+      // налаштування - у меню ☰; в уроці меню немає, тож відкриваємо самі
+      return LessonCue(screen: 'map', onContinue: () => c.go(3), text: [
+        _t('Шаблони живуть у '),
+        _h('«Налаштуваннях»'),
+        _t(' - вони в меню ☰ (три смужки). Зараз відкрию їх для тебе.'),
       ]);
     case 3:
       return LessonCue(screen: 'settings', onContinue: () => c.go(4), text: [

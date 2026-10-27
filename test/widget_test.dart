@@ -930,7 +930,7 @@ void main() {
     // у меню - «Продовжити» і під нею менша «Завершити»
     expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
         findsOneWidget);
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 7; i++) {
       await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
@@ -938,7 +938,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await settle(tester);
     }
-    // після меню - крок про шестерню (меню закрите), далі «Продовжити»
+    // після меню - порада про шаблони й параметри (меню закрите), далі «Продовжити»
     expect(find.textContaining('у «Конструкторі»'), findsOneWidget);
     await tester.tap(find.text('Продовжити'));
     for (var i = 0; i < 3; i++) {
@@ -979,7 +979,7 @@ void main() {
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
     for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
         'час на вітер',
-        'спеціалізоване навчання', 'поділитись ідеєю']) {
+        'спеціалізоване навчання', 'розмір шрифту, шаблони', 'поділитись ідеєю']) {
       await tester.tap(find.text('Продовжити'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);
@@ -1091,7 +1091,10 @@ void main() {
     await toApiaries(tester);
     await tester.tap(find.byTooltip('Відкрити')); // меню є лише на карті пасіки
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування')); // шестерня: головна й шаблони
+    // налаштування - у меню ☰ карти
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Шаблони'), findsOneWidget);
@@ -2079,7 +2082,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('P13/P17: козирьок на карті - шестерня веде в «Налаштування» з вкладками', (tester) async {
+  testWidgets('P13/P17: козирьок на карті - шестерні немає, «Налаштування» з вкладками - у меню ☰', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
@@ -2090,7 +2093,10 @@ void main() {
     expect(find.text('Налаштування пасіки'), findsOneWidget);
     await tester.tap(find.text('Скасувати'));
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування'));
+    expect(find.byTooltip('Налаштування'), findsNothing); // на місці шестерні - помічник
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Налаштування'), findsOneWidget);

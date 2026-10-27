@@ -302,9 +302,10 @@ void main() {
     expect(find.textContaining('це знову ти'), findsOneWidget, reason: said(tester));
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    expect(find.textContaining('Натисни на шестерню'), findsOneWidget, reason: said(tester));
-    expectLit(tester, find.byTooltip('Налаштування'));
-    await tester.tap(find.byTooltip('Налаштування'));
+    // налаштування - у меню ☰ (в уроці меню немає): пасічник відкриває їх сам
+    expect(find.textContaining('в меню ☰'), findsOneWidget, reason: said(tester));
+    expect(find.byTooltip('Налаштування'), findsNothing);
+    await tester.tap(find.text('Продовжити'));
     await settle(tester, 8);
 
     expect(find.byType(SettingsScreen), findsOneWidget, reason: said(tester));
@@ -465,7 +466,7 @@ void main() {
     await startLesson(tester, 'Шаблони');
     await tester.tap(find.text('Продовжити'));
     await settle(tester);
-    await tester.tap(find.byTooltip('Налаштування'));
+    await tester.tap(find.text('Продовжити')); // пасічник відкриває «Налаштування»
     await settle(tester, 8);
     await tester.tap(find.text('Продовжити'));
     await settle(tester);

@@ -199,7 +199,43 @@ class _FramePainter extends CustomPainter {
   bool shouldRepaint(_FramePainter old) => false;
 }
 
-/// Верхня панель екранів-списків: кнопка "назад", заголовок, дія праворуч.
+/// Місце помічника у верхньому правому куті: кругла кнопка поверх усіх
+/// екранів (її ставить `AssistantHost`), там, де колись була шестерня.
+/// Шапки екранів лишають під неї місце.
+class AssistantSlot {
+  static const size = 52.0;
+  static const top = 6.0;
+  static const right = 8.0;
+
+  /// Висота шапки, у якій кнопка вміщується (як «козирьок» карти).
+  static const headerHeight = 64.0;
+
+  /// Кнопка зараз на екрані (крім часу, коли зверху вікно чи аркуш).
+  static final shown = ValueNotifier<bool>(false);
+}
+
+/// Шапка з місцем під помічника: [builder] отримує, скільки місця (dp від
+/// правого краю шапки) лишити під кнопку; 0 - не треба (кнопки немає або
+/// шапка по центру широкого екрана й до кута не дістає).
+class AssistantSlotSpace extends StatelessWidget {
+  final Widget Function(BuildContext context, double reserve) builder;
+  const AssistantSlotSpace({super.key, required this.builder});
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+        valueListenable: AssistantSlot.shown,
+        builder: (context, on, _) => LayoutBuilder(builder: (context, box) {
+          if (!on) return builder(context, 0);
+          // шапка - по центру екрана ([ScreenColumn])
+          final margin = (MediaQuery.sizeOf(context).width - box.maxWidth) / 2;
+          final need = AssistantSlot.right + AssistantSlot.size + 6 - margin;
+          return builder(context, need > 0 ? need : 0);
+        }),
+      );
+}
+
+/// Верхня панель екранів-списків: кнопка "назад", заголовок, дія праворуч
+/// (а в самому куті - помічник, [AssistantSlot]).
 class TopBar extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
@@ -214,14 +250,20 @@ class TopBar extends StatelessWidget {
       {super.key, required this.title, this.onBack, this.trailing, this.onMenu, this.decorateBack});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      AssistantSlotSpace(builder: (context, reserve) => _bar(reserve));
+
+  Widget _bar(double reserve) {
+    // під помічника: шапка вища, праворуч - відступ до кнопки
+    final height = reserve > 0 ? AssistantSlot.headerHeight : 52.0;
+    final right = reserve > 14 ? reserve : 14.0;
     // меню навігації — як на карті: назва скраю, велика кнопка під нею ліворуч
     if (onBack == null && onMenu != null) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
         SizedBox(
-          height: 52,
+          height: height,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 0, 14, 0),
+            padding: EdgeInsets.fromLTRB(22, 0, right, 0),
             child: Row(children: [
               Expanded(
                 child: Text(title,
@@ -251,9 +293,9 @@ class TopBar extends StatelessWidget {
       ]);
     }
     return SizedBox(
-      height: 52,
+      height: height,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: EdgeInsets.fromLTRB(14, 0, right, 0),
         child: Row(children: [
           if (onBack != null)
             (decorateBack ?? (w) => w)(CircleIconButton(
@@ -283,7 +325,8 @@ class TopBar extends StatelessWidget {
               style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
-          trailing ?? const SizedBox(width: 34),
+          // без дії праворуч - назва по центру між «назад» і помічником
+          trailing ?? SizedBox(width: (48 - right).clamp(0, 34).toDouble()),
         ]),
       ),
     );
