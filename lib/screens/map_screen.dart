@@ -2057,7 +2057,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   int get _dueHere =>
       {for (final e in elements) if (e.isHive && _overdue.contains(ownerKeyOf(e))) ownerKeyOf(e)}.length;
 
-  /// «Сканувати вулик»: пасічник підійшов, сканує наліпку - огляд цього
+  /// «Сканувати»: пасічник підійшов, сканує наліпку - огляд цього
   /// вулика; після «Зберегти» камера знову, для наступного.
   Future<void> _scanHive() async {
     if (_qrBusy) return;
@@ -2382,7 +2382,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         Icon(Icons.qr_code_scanner,
                             size: 24, color: _dueHere > 0 ? Colors.white : AppColors.text),
                         const SizedBox(width: 8),
-                        Text('Сканувати вулик',
+                        Text('Сканувати',
                             style: TextStyle(
                                 color: _dueHere > 0 ? Colors.white : AppColors.text,
                                 fontSize: 15,
