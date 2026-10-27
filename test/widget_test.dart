@@ -102,9 +102,11 @@ void main() {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    await tester.ensureVisible(find.text(action));
+    // лише в меню: «Сканувати» є ще й кнопкою на карті
+    final item = find.descendant(of: find.byType(Drawer), matching: find.text(action));
+    await tester.ensureVisible(item);
     await settle(tester);
-    await tester.tap(find.text(action));
+    await tester.tap(item);
     await settle(tester);
   }
 
