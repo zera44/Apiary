@@ -351,11 +351,17 @@ void main() {
     expect(find.textContaining('Не вдалося увійти'), findsOneWidget);
   });
 
-  testWidgets('натискання на нагадування відкриває вулик одразу з формою', (tester) async {
+  testWidgets('натискання на нагадування відкриває карту пасіки з вуликами для обходу', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final hive = (await tester.runAsync(() => repo.listElements(apiaryId)))!
         .firstWhere((e) => e.isHive);
+    await tester.runAsync(() async {
+      final period = (await repo.baseParameterId('hive', 'visit_period'))!;
+      final start = (await repo.baseParameterId('hive', 'visit_start'))!;
+      await repo.addParameterRecord(period, '7', EntityRef.group(groupId));
+      await repo.addParameterRecord(start, '01.01.2020', EntityRef.group(groupId));
+    });
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth(signedIn: true)));
     await settle(tester);
     ReminderService.instance.openHiveRequest.value = hive.id;
@@ -364,10 +370,37 @@ void main() {
     }
     expect(ReminderService.instance.openHiveRequest.value, isNull);
     expect(find.byType(MapScreen), findsOneWidget);
-    expect(find.text('Заповнити параметри'), findsOneWidget);
-    await tester.tap(find.byTooltip('Закрити'));
+    expect(find.text('Заповнити параметри'), findsNothing); // форма - лише після скану
+    expect(find.text('Оглянути: 1 вулик (червоні)'), findsOneWidget);
+    expect(find.text('Сканувати вулик'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('карта: «Сканувати вулик» - огляд цього вулика, після «Зберегти» знову сканер', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() => repo.linkQr('https://vulyk.app/h/1', EntityRef.group(groupId)));
+    final apiary = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(MaterialApp(
+        theme: buildAppTheme(), home: MapScreen(repo: repo, apiary: apiary)));
+    for (var i = 0; i < 3; i++) {
+      await settle(tester);
+    }
+    await tester.tap(find.text('Сканувати вулик'));
     await settle(tester);
-    expect(find.text('Лежак 1'), findsWidgets); // панель цього вулика
+    // на комп'ютері камери немає - код вводиться вручну
+    await tester.enterText(find.byType(TextField).last, 'https://vulyk.app/h/1');
+    await tester.tap(find.text('Зберегти').last);
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    expect(find.text('Заповнити параметри'), findsOneWidget);
+    await tester.tap(find.text('Змін немає').last);
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    // обхід сканом: далі знову сканер (тут - введення коду вручну)
+    expect(find.text('Введіть код (посилання) вручну'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -490,7 +523,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('головний: «Сьогодні оглянути: N» веде до простроченого вулика з формою', (tester) async {
+  testWidgets('головний: «Сьогодні оглянути: N» відкриває карту з червоними вуликами', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() async {
@@ -505,15 +538,13 @@ void main() {
     }
     expect(find.text('Сьогодні оглянути: 1'), findsOneWidget);
     await tester.tap(find.text('Сьогодні оглянути: 1'));
-    await settle(tester);
-    expect(find.text('Почати обхід'), findsOneWidget); // список прострочених
-    await tester.tap(find.text('Почати обхід'));
     for (var i = 0; i < 5; i++) {
       await settle(tester);
     }
+    // одна пасіка - одразу карта, без списку й без форми
     expect(find.byType(MapScreen), findsOneWidget);
-    expect(find.text('Заповнити параметри'), findsOneWidget);
-    expect(find.byTooltip('Пропустити'), findsOneWidget); // обхід: ✓ / Змін немає / →
+    expect(find.text('Заповнити параметри'), findsNothing);
+    expect(find.text('Оглянути: 1 вулик (червоні)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

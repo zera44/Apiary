@@ -504,6 +504,7 @@ class _Advisor extends StatefulWidget {
 class _AdvisorState extends State<_Advisor> {
   static const _tips = [
     'Утримайте вулик на карті - і одразу перетягуйте його на нове місце.',
+    'Обхід: на карті червоні - ті, кого пора оглянути. Підійдіть до вулика й натисніть «Сканувати вулик».',
     'В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик.',
     'Обрали новий параметр зі списку і не знаходите кнопку «Зберегти»? Це тому, що всі зміни зберігаються автоматично.',
     'Утримайте «Фінанси» - і одразу відкриється нова витрата.',
@@ -581,8 +582,11 @@ class _AdvisorState extends State<_Advisor> {
         _i = 0;
       });
 
-  /// Список прострочених вуликів: «Почати обхід» з першого або тап по вулику.
+  /// «Сьогодні оглянути»: карта пасіки з червоними вуликами (огляд - сканом
+  /// наліпки на вулику). Прострочені на кількох пасіках - спершу список.
   Future<void> _showDueList() async {
+    final apiaries = {for (final d in _due) d.t.apiaryName};
+    if (apiaries.length == 1) return _openRound(_due.first.t);
     final pick = await showDialog<VisitTarget?>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -605,7 +609,7 @@ class _AdvisorState extends State<_Advisor> {
         actions: [
           Column(mainAxisSize: MainAxisSize.min, children: [
             PillButton(
-                text: 'Почати обхід',
+                text: 'Показати на карті',
                 bg: AppColors.accent,
                 width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, _due.first.t)),
@@ -620,17 +624,18 @@ class _AdvisorState extends State<_Advisor> {
         ],
       ),
     );
-    if (pick != null) await _openDue(pick);
+    if (pick != null) await _openRound(pick);
   }
 
-  Future<void> _openDue(VisitTarget t) async {
+  /// Карта пасіки вулика [t] (обхід).
+  Future<void> _openRound(VisitTarget t) async {
     final nav = Navigator.of(context);
     final el = await widget.repo.getElement(t.elementId);
     final aid = el?.apiaryId;
     if (el == null || aid == null) return;
     final a = await widget.repo.getApiary(aid);
     if (a == null || !nav.mounted) return;
-    AppDrawer.openHive(nav, widget.repo, a, el.id, fill: true, next: NextHive.overdue);
+    AppDrawer.openRound(nav, widget.repo, a);
   }
 
   /// Повідомлення по черзі: спершу важливе (з дією) — це «пошта» у

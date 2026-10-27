@@ -93,6 +93,13 @@ class AppDrawer extends StatefulWidget {
     openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
   }
 
+  /// Обхід: карта пасіки поверх головного екрана, без форми - вулики, які
+  /// пора оглянути, обведені червоним, а «Сканувати вулик» відкриває огляд.
+  static void openRound(NavigatorState nav, Repository repo, Apiary apiary) {
+    nav.popUntil((r) => r.isFirst);
+    nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: repo, apiary: apiary)));
+  }
+
   /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
   /// [fill] — одразу форма «Оглянути».
   static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
