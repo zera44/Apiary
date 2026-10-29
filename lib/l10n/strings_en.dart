@@ -1015,4 +1015,174 @@ class AppStringsEn extends AppStrings {
   String get fromGallery => 'From the gallery';
   @override
   String get qrEnterManually => 'Enter the code manually';
+
+  // ---- Карта пасіки ----
+  @override
+  String get mapNoHivesA =>
+      'Looks like you have no hives at all, friend. Add some by turning on ';
+  @override
+  String get editingQuoted => '"Editing"';
+  @override
+  String get mapNoHivesB => ' at the bottom left';
+  @override
+  String get mapTapAnywhere => 'Tap anywhere on the map';
+  @override
+  String get mapWrongPlace =>
+      'You put it in quite the wrong place. Drag it to a neighbouring cell';
+  @override
+  String get mapConfirmA => 'Confirm your choice - switch to ';
+  @override
+  String get workModeQuoted => '"Work mode"';
+  @override
+  String get mapGoodStart => 'Here is to an easy start, friend!';
+  @override
+  String get mapNoRest => 'No time to rest, tap ';
+  @override
+  String quoted(String s) => '"$s"';
+  @override
+  String get mapTellShort => 'Let me briefly tell you what we have. ';
+  @override
+  String get mapOpenNavMenu => 'Open the navigation menu';
+  @override
+  String get mapTemplatesInA => 'Templates are in ';
+  @override
+  String get settingsQuoted => '"Settings"';
+  @override
+  String get mapTemplatesInB =>
+      ' in the menu. And put together a hive\'s set of parameters in "Parameters" on its panel: arrange them into groups in the "Builder".';
+  @override
+  String get mapLessonDone => 'Hive added, round done. ';
+  @override
+  String get mapShortNotes => 'These are short notes about your hive.';
+  @override
+  String get mapScrollDown => 'Scroll down and ';
+  @override
+  String get mapDoInspect => 'inspect the hive';
+  @override
+  String get mapTapHiveToBind => 'Tap the hive to link the code to';
+  @override
+  String get mapCellHasOther => 'There is already another object here';
+  @override
+  String get mapTemplateEmpty => 'The template is empty';
+  @override
+  String get mapCellBusy => 'The cell is occupied';
+  @override
+  String mapDueHives(int n) => 'Inspect: ${_n(n, 'hive', 'hives')} (red)';
+  @override
+  String mapPlaceTemplate(String name) => 'Tap to place "$name", drag to move';
+  @override
+  String mapGroupN(int n) => 'Group ($n)';
+  @override
+  String get mapChooseHive => 'Choose a hive';
+  @override
+  String get mapTemplatesCreatedA => 'I took a little care of you. I created ';
+  @override
+  String get and => ' and ';
+  @override
+  String get mapTemplatesCreatedB => '. Choose ';
+  @override
+  String get mapChooseTemplate => 'Choose a template';
+  @override
+  String get mapNoTemplate => 'No templates yet.';
+  @override
+  String get mapNoRoomRotate => 'No room to rotate';
+  @override
+  String get mapGroupDeleted => 'Group of objects deleted';
+  @override
+  String get mapObjectDeleted => 'Object deleted';
+  @override
+  String get mapTemplateDeleted => 'Template deleted';
+  @override
+  String get mapRenameObject => 'Rename the object';
+  @override
+  String get mapLinkParamFirst => 'First link at least one parameter';
+  @override
+  String get notWrittenOff => 'Not written off';
+  @override
+  String get mapVisitMarked => 'Inspection marked: today';
+  @override
+  String get mapAllInspected => 'All hives are inspected for today';
+  @override
+  String get mapRoundDone => 'Round finished';
+  @override
+  String get mapNextHive => 'Next hive';
+  @override
+  String qrNotBoundCode(String why, String code) => '$why\n\nCode: $code';
+  @override
+  String get mapNoMoreOverdue => 'There are no more overdue inspections.';
+  @override
+  String get done => 'Done';
+  @override
+  String get daysToRound => 'Days until the round';
+  @override
+  String get mapAllHaveQr => 'All hives in this apiary already have QR codes.';
+  @override
+  String mapLeftWithoutCode(int n) => 'Left without a code (skipped): $n.';
+  @override
+  String mapLinkedLabels(int linked, int skipped) =>
+      'Labels linked: $linked.${skipped == 0 ? ' Now all hives have QR codes.' : ' Skipped: $skipped.'}';
+  @override
+  String get qrCodes => 'QR codes';
+  @override
+  String get hiveLower => 'hive';
+  @override
+  String mapLabelFor(String name) => 'Label for: $name';
+  @override
+  String get mapSkipThisHive => 'Skip this hive';
+  @override
+  String get qrInUse => 'The code is already in use';
+  @override
+  String qrMoveTo(String other, String apiary, String name) =>
+      'This QR code is linked to "$other" (apiary "$apiary"). Move it to "$name"?';
+  @override
+  String qrMoveHere(String other, String apiary) =>
+      'This QR code is linked to "$other" (apiary "$apiary"). Move it to this hive?';
+  @override
+  String get move => 'Move';
+  @override
+  String mapLinkedName(String name) => 'Linked: $name';
+  @override
+  String qrNumber(String n) => 'QR code No. $n';
+  @override
+  String get qrOfHive => 'Hive QR code';
+  @override
+  String get qrOther => 'Another code';
+  @override
+  String get qrUnlink => 'Unlink';
+  @override
+  String get qrForHive => 'QR code for the hive';
+  @override
+  String get qrLinked => 'QR code linked';
+  @override
+  String get scanHive => 'Scan a hive';
+  @override
+  String qrNotBoundHowTo(String why, String code) =>
+      '$why\n\nCode: $code\n\nTo link it: menu ☰ → "QR code".';
+  @override
+  String get qrHiveHasCode => 'The hive already has a code';
+  @override
+  String get qrReplaceAsk => 'Replace this hive\'s current QR code with the scanned one?';
+  @override
+  String get replace => 'Replace';
+  @override
+  String get mapMenuHintA =>
+      'Here you can manage your apiary. To learn about all the features, ';
+  @override
+  String get mapTakeTutorial => 'take the tutorial';
+  @override
+  String get apiarySettings => 'Apiary settings';
+  @override
+  String get back => 'Back';
+  @override
+  String get mapFinishAdding => 'Finish adding';
+  @override
+  String get mapAddObject => 'Add an object';
+  @override
+  String get mapLastMenuA => 'Finally, let me show you the navigation menu. ';
+  @override
+  String get mapOpenIt => 'Open it';
+  @override
+  String get properties => 'Properties';
+  @override
+  String get rotate => 'Rotate';
 }

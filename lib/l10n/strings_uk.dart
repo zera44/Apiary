@@ -1017,4 +1017,175 @@ class AppStringsUk extends AppStrings {
   String get fromGallery => 'З галереї';
   @override
   String get qrEnterManually => 'Ввести код вручну';
+
+  // ---- Карта пасіки ----
+  @override
+  String get mapNoHivesA =>
+      'Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим ';
+  @override
+  String get editingQuoted => '«Редагування»';
+  @override
+  String get mapNoHivesB => ' унизу ліворуч';
+  @override
+  String get mapTapAnywhere => 'Натисни на карту в будь-якому місці';
+  @override
+  String get mapWrongPlace =>
+      'Щось ти геть не туди поставив. Перемісти перетягуванням на сусідню клітинку';
+  @override
+  String get mapConfirmA => 'Підтверди вибір - перемкни в ';
+  @override
+  String get workModeQuoted => '«Робочий режим»';
+  @override
+  String get mapGoodStart => 'З легким стартом, друже!';
+  @override
+  String get mapNoRest => 'Не час відпочивати, натисни на ';
+  @override
+  String quoted(String s) => '«$s»';
+  @override
+  String get mapTellShort => 'Розкажу коротко, що ми маємо. ';
+  @override
+  String get mapOpenNavMenu => 'Відкрий меню навігації';
+  @override
+  String get mapTemplatesInA => 'Шаблони - у ';
+  @override
+  String get settingsQuoted => '«Налаштуваннях»';
+  @override
+  String get mapTemplatesInB =>
+      ' меню. А набір параметрів вулика збирай у «Параметрах» його панелі: у «Конструкторі» розклади їх по групах.';
+  @override
+  String get mapLessonDone => 'Вулик додав, обхід зробив. ';
+  @override
+  String get mapShortNotes => 'Це короткі замітки про твій вулик.';
+  @override
+  String get mapScrollDown => 'Прокрути донизу й ';
+  @override
+  String get mapDoInspect => 'проведи огляд вулика';
+  @override
+  String get mapTapHiveToBind => 'Торкніться вулика, до якого прив\'язати код';
+  @override
+  String get mapCellHasOther => 'Тут уже є інший об\'єкт';
+  @override
+  String get mapTemplateEmpty => 'Шаблон порожній';
+  @override
+  String get mapCellBusy => 'Клітинка зайнята';
+  @override
+  String mapDueHives(int n) =>
+      'Оглянути: $n ${plural(n, one: 'вулик', few: 'вулики', many: 'вуликів')} (червоні)';
+  @override
+  String mapPlaceTemplate(String name) => 'Тапай - ставити «$name», тягни - перемістити';
+  @override
+  String mapGroupN(int n) => 'Група ($n)';
+  @override
+  String get mapChooseHive => 'Оберіть вулик';
+  @override
+  String get mapTemplatesCreatedA => 'Я трохи про тебе потурбувався. Створив ';
+  @override
+  String get and => ' і ';
+  @override
+  String get mapTemplatesCreatedB => '. Обери ';
+  @override
+  String get mapChooseTemplate => 'Оберіть шаблон';
+  @override
+  String get mapNoTemplate => 'Ще немає жодного шаблону.';
+  @override
+  String get mapNoRoomRotate => 'Немає місця для повороту';
+  @override
+  String get mapGroupDeleted => 'Групу об\'єктів видалено';
+  @override
+  String get mapObjectDeleted => 'Об\'єкт видалено';
+  @override
+  String get mapTemplateDeleted => 'Шаблон видалено';
+  @override
+  String get mapRenameObject => 'Перейменувати об\'єкт';
+  @override
+  String get mapLinkParamFirst => 'Спершу прив\'яжіть хоча б один параметр';
+  @override
+  String get notWrittenOff => 'Не списано';
+  @override
+  String get mapVisitMarked => 'Огляд відмічено: сьогодні';
+  @override
+  String get mapAllInspected => 'Усі вулики на сьогодні оглянуто';
+  @override
+  String get mapRoundDone => 'Обхід завершено';
+  @override
+  String get mapNextHive => 'Наступний вулик';
+  @override
+  String qrNotBoundCode(String why, String code) => '$why\n\nКод: $code';
+  @override
+  String get mapNoMoreOverdue => 'Прострочених оглядів більше немає.';
+  @override
+  String get done => 'Готово';
+  @override
+  String get daysToRound => 'Кількість днів до обходу';
+  @override
+  String get mapAllHaveQr => 'У всіх вуликів цієї пасіки вже є QR-коди.';
+  @override
+  String mapLeftWithoutCode(int n) => 'Лишилось без коду (пропущено): $n.';
+  @override
+  String mapLinkedLabels(int linked, int skipped) =>
+      'Прив\'язано наліпок: $linked.${skipped == 0 ? ' Тепер у всіх вуликів є QR-коди.' : ' Пропущено: $skipped.'}';
+  @override
+  String get qrCodes => 'QR-коди';
+  @override
+  String get hiveLower => 'вулик';
+  @override
+  String mapLabelFor(String name) => 'Наліпка для: $name';
+  @override
+  String get mapSkipThisHive => 'Пропустити цей вулик';
+  @override
+  String get qrInUse => 'Код уже використовується';
+  @override
+  String qrMoveTo(String other, String apiary, String name) =>
+      'Цей QR-код прив\'язаний до «$other» (пасіка «$apiary»). Перенести його на «$name»?';
+  @override
+  String qrMoveHere(String other, String apiary) =>
+      'Цей QR-код прив\'язаний до «$other» (пасіка «$apiary»). Перенести його на цей вулик?';
+  @override
+  String get move => 'Перенести';
+  @override
+  String mapLinkedName(String name) => 'Прив\'язано: $name';
+  @override
+  String qrNumber(String n) => 'QR-код № $n';
+  @override
+  String get qrOfHive => 'QR-код вулика';
+  @override
+  String get qrOther => 'Інший код';
+  @override
+  String get qrUnlink => 'Відв\'язати';
+  @override
+  String get qrForHive => 'QR-код для вулика';
+  @override
+  String get qrLinked => 'QR-код прив\'язано';
+  @override
+  String get scanHive => 'Сканувати вулик';
+  @override
+  String qrNotBoundHowTo(String why, String code) =>
+      '$why\n\nКод: $code\n\nПрив\'язати: меню ☰ → «QR-код».';
+  @override
+  String get qrHiveHasCode => 'У вулика вже є код';
+  @override
+  String get qrReplaceAsk => 'Замінити поточний QR-код цього вулика на відсканований?';
+  @override
+  String get replace => 'Замінити';
+  @override
+  String get mapMenuHintA =>
+      'Тут ти зможеш керувати своєю пасікою. Щоб дізнатися про всі функції - ';
+  @override
+  String get mapTakeTutorial => 'пройди навчання';
+  @override
+  String get apiarySettings => 'Налаштування пасіки';
+  @override
+  String get back => 'Назад';
+  @override
+  String get mapFinishAdding => 'Завершити додавання';
+  @override
+  String get mapAddObject => 'Додати об\'єкт';
+  @override
+  String get mapLastMenuA => 'Наостанок покажу меню навігації. ';
+  @override
+  String get mapOpenIt => 'Відкрий його';
+  @override
+  String get properties => 'Властивості';
+  @override
+  String get rotate => 'Повернути';
 }
