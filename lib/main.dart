@@ -88,7 +88,7 @@ Future<void> _startJobs(Repository repo) async {
     final jobs = ForegroundJobs(backups);
     await jobs.tick(); // копія - раніше за перетискання фото
     jobs.start();
-    unawaited(BackgroundTasks.register().catchError((Object e) {
+    unawaited(BackgroundTasks.register().then((_) => _migrateSyncPeriod(repo)).catchError((Object e) {
       debugPrint('Фонові завдання: $e');
     }));
     await StockPhotos.upgradeOld(repo);
@@ -96,6 +96,16 @@ Future<void> _startJobs(Repository repo) async {
   } catch (e) {
     debugPrint('Службові завдання: $e');
   }
+}
+
+/// Раз після оновлення: фонова синхронізація була раз на 15 хв, а тепер раз
+/// на годину; уже записане завдання система сама не змінює.
+Future<void> _migrateSyncPeriod(Repository repo) async {
+  const key = 'sync_period_hourly';
+  if (await repo.getMeta(key) != null) return;
+  final mobile = await repo.getMeta(SyncService.mobileKey) != '0';
+  await BackgroundTasks.registerSync(mobile: mobile);
+  await repo.setMeta(key, '1');
 }
 
 /// Чи можна одразу на головний екран: увійшли, обрали «без входу», або вхід
