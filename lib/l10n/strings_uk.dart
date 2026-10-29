@@ -533,4 +533,16 @@ class AppStringsUk extends AppStrings {
   String dbTooNew(int found, int supported) =>
       'Дані збережено новішою версією застосунку (версія бази $found, ця версія '
       'знає до $supported). Оновіть застосунок.';
+
+  // ---- Мова ----
+  @override
+  String get languageSection => 'Мова';
+  @override
+  String get languageName => 'Українська';
+  @override
+  String get languageFlag => '🇺🇦';
+  @override
+  String get languageChange => 'Змінити мову';
+  @override
+  String get textSizeLetter => 'А';
 }

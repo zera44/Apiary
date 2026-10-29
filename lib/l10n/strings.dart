@@ -264,6 +264,13 @@ abstract class AppStrings {
   String get startupErrorHint;
   String get startupOpening;
   String get retry;
+
+  // ---- Мова ----
+  String get languageSection;
+  String get languageName;
+  String get languageFlag;
+  String get languageChange;
+  String get textSizeLetter;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].
