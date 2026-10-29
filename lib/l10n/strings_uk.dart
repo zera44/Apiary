@@ -1985,4 +1985,113 @@ class AppStringsUk extends AppStrings {
   @override
   String cannotWriteOffMore(String left) =>
       'Не можна списати більше, ніж є на складі (залишок: $left)';
+
+  // ---- Звіт, налаштування пасіки, календар, уроки ----
+  @override
+  String apiaryReportOf(String name) => 'Звіт по пасіці «$name»';
+  @override
+  String get apiaryReportHint => 'Excel: останні значення всіх вуликів і вся історія записів';
+  @override
+  String get apiaryReportEmpty => 'На цій пасіці ще немає вуликів - звіт порожній.';
+  @override
+  String get roundEvery => 'Обходити кожні … днів';
+  @override
+  String get roundEveryHint => 'порожньо - без нагадувань';
+  @override
+  String get roundEveryNote =>
+      'Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Оглянути».';
+  @override
+  List<String> get weekdaysShort => const ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+  @override
+  String get chooseDateTitle => 'Оберіть дату';
+  @override
+  String get finishTutorialLower => 'завершити навчання';
+  @override
+  String get finish => 'Завершити';
+  @override
+  String get postbox => 'Вулик-поштомат';
+  @override
+  String postboxN(int n) => 'Вулик-поштомат: повідомлень $n';
+  @override
+  String get textTypeIcon => 'Аа';
+  @override
+  String get optionAddHint => 'Додати варіант (наприклад, «Сильна»)';
+  @override
+  String get optionAdd => 'Додати варіант';
+
+  // ---- Сповіщення ----
+  @override
+  String get remindersChannel => 'Нагадування про обхід';
+  @override
+  String get remindersChannelText =>
+      'Нагадує оглянути вулики за заданою періодичністю: вранці і, якщо обхід не зроблено, о 14:00';
+  @override
+  String get feedbackChannel => 'Відповіді розробника';
+  @override
+  String get feedbackChannelText => 'Відповідь на ваш відгук у застосунку';
+  @override
+  String get reminder => 'Нагадування';
+  @override
+  String hiveListMore(String names, int n) => '$names і ще $n';
+  @override
+  String get roundTime => 'Час обходу';
+  @override
+  String roundInspect(int n, String list) =>
+      'Оглянути $n ${plural(n, one: 'вулик', few: 'вулики', many: 'вуликів')}: $list';
+  @override
+  String get roundNotDone => 'Обхід ще не завершено';
+  @override
+  String roundLeft(int n, String list) =>
+      'Лишилось оглянути $n ${plural(n, one: 'вулик', few: 'вулики', many: 'вуликів')}: $list';
+
+  // ---- Склад: назви операцій ----
+  @override
+  String get moveOut => 'Списано';
+  @override
+  String moveOutReason(String reason) => 'Списано: $reason';
+  @override
+  String get moveInvShort => 'Переоблік: нестача';
+  @override
+  String get moveInvOver => 'Переоблік: надлишок';
+  @override
+  String get moveInvSame => 'Переоблік: без розбіжностей';
+  @override
+  String get moveCancel => 'Скасування запису';
+  @override
+  String get moveSet => 'Перезаписано (старий запис)';
+
+  // ---- Файли й Excel ----
+  @override
+  String fileBuildFailed(String details) => 'Не вдалось сформувати файл:\n$details';
+  @override
+  String get saveHistory => 'Зберегти історію';
+  @override
+  String get saveCancelled => 'Збереження скасовано.';
+  @override
+  String savedAt(String path) => 'Збережено:\n$path';
+  @override
+  String get saved => 'Збережено.';
+  @override
+  String savedFallback(String path) =>
+      'Не вдалось відкрити діалог збереження - файл збережено тут:\n$path';
+  @override
+  String fileSaveFailed(String details) => 'Не вдалось зберегти файл:\n$details';
+  @override
+  String get saveReport => 'Зберегти звіт';
+  @override
+  String shareFailed(String details) => 'Не вдалось поділитися файлом:\n$details';
+  @override
+  String get sheetLatest => 'Останні значення';
+  @override
+  String get dateTime => 'Дата й час';
+  @override
+  String get parameter => 'Параметр';
+  @override
+  String get value => 'Значення';
+  @override
+  String get objectOrGroup => 'Об\'єкт / група';
+  @override
+  String get saveLabels => 'Зберегти наліпки';
+  @override
+  String get hiveQrCodes => 'QR-коди вуликів';
 }

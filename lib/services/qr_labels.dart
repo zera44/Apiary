@@ -10,6 +10,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:qr/qr.dart' show QrErrorCorrectLevel;
 import 'package:qr_flutter/qr_flutter.dart';
+import '../l10n/l10n.dart';
 
 /// Одна наліпка: QR-код, під ним назва вулика й номер.
 class QrLabel {
@@ -91,7 +92,7 @@ double get pdfLabelHmm => kPdfLabelWmm * kLabelH / kLabelW;
 
 /// PDF на A4: наліпки сіткою [labelsGridA4] (3 × 4 = 12 на аркуш).
 Future<Uint8List> buildLabelsPdf(List<Uint8List> pngs) async {
-  final doc = pw.Document(title: 'QR-коди вуликів');
+  final doc = pw.Document(title: tr.hiveQrCodes);
   final (cols, rows) = labelsGridA4();
   final perPage = cols * rows;
   const mm = PdfPageFormat.mm;
@@ -132,28 +133,28 @@ Future<String> saveLabelsPdf(Uint8List bytes, String fileName) async {
       fileName: fileName,
       bytes: bytes,
       mimeType: 'application/pdf',
-      dialogTitle: 'Зберегти наліпки',
+      dialogTitle: tr.saveLabels,
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
     );
-    if (uri == null) return 'Збереження скасовано.';
+    if (uri == null) return tr.saveCancelled;
     if (uri.scheme == 'file') {
       final f = File(uri.toFilePath());
       if (!await f.exists() || await f.length() == 0) {
         await f.writeAsBytes(bytes, flush: true);
       }
-      return 'Збережено:\n${f.path}';
+      return tr.savedAt(f.path);
     }
     // Android: адреса — внутрішній код документа (наприклад, 1361), не показуємо
-    return 'Збережено.';
+    return tr.saved;
   } catch (_) {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
+      return tr.savedFallback(f.path);
     } catch (e) {
-      return 'Не вдалось зберегти файл:\n$e';
+      return tr.fileSaveFailed('$e');
     }
   }
 }

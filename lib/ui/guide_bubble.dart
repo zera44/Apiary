@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'common.dart';
 import 'mode_toggle.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Урок: де стоїть пасічник (над «Редагувати») і його малюнок — однакові
 /// на всіх кроках.
@@ -301,7 +302,7 @@ class LessonFinishLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         button: true,
-        label: 'завершити навчання',
+        label: tr.finishTutorialLower,
         excludeSemantics: true,
         child: Material(
           color: AppColors.create,
@@ -317,7 +318,7 @@ class LessonFinishLink extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Center(
                   widthFactor: 1,
-                  child: Text('Завершити',
+                  child: Text(tr.finish,
                       style: TextStyle(
                           color: AppColors.bg, fontSize: 14, fontWeight: FontWeight.w800)),
                 ),
@@ -424,20 +425,20 @@ class LessonPillButton extends StatelessWidget {
 class LessonContinue extends StatelessWidget {
   final VoidCallback onContinue;
   final VoidCallback? onFinish;
-  final String label;
+  final String? label;
   final EdgeInsets padding;
   const LessonContinue(
       {super.key,
       required this.onContinue,
       this.onFinish,
-      this.label = 'Продовжити',
+      this.label,
       this.padding = const EdgeInsets.only(left: 10, top: 10)});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          LessonPillButton(label: label, icon: Icons.chevron_right_rounded, onPressed: onContinue),
+          LessonPillButton(label: label ?? tr.continueAction, icon: Icons.chevron_right_rounded, onPressed: onContinue),
           if (onFinish != null) ...[
             const SizedBox(height: 8),
             Center(child: LessonFinishLink(onPressed: onFinish!)),
@@ -449,14 +450,14 @@ class LessonContinue extends StatelessWidget {
 /// Фінал уроку: жовта кнопка «Завершити» з галочкою.
 class LessonDoneButton extends StatelessWidget {
   final VoidCallback onPressed;
-  final String label;
-  const LessonDoneButton({super.key, required this.onPressed, this.label = 'Завершити'});
+  final String? label;
+  const LessonDoneButton({super.key, required this.onPressed, this.label});
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(left: 10, top: 10, bottom: 8),
         child: LessonPillButton(
-            label: label,
+            label: label ?? tr.finish,
             icon: Icons.check_rounded,
             onPressed: onPressed,
             bg: AppColors.create,

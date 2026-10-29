@@ -1985,4 +1985,112 @@ class AppStringsEn extends AppStrings {
   @override
   String cannotWriteOffMore(String left) =>
       'You cannot write off more than there is in stock (balance: $left)';
+
+  // ---- Звіт, налаштування пасіки, календар, уроки ----
+  @override
+  String apiaryReportOf(String name) => 'Apiary report "$name"';
+  @override
+  String get apiaryReportHint =>
+      'Excel: the latest values of all hives and the whole record history';
+  @override
+  String get apiaryReportEmpty => 'There are no hives in this apiary yet - the report is empty.';
+  @override
+  String get roundEvery => 'Do a round every … days';
+  @override
+  String get roundEveryHint => 'empty - no reminders';
+  @override
+  String get roundEveryNote =>
+      'Applies to all hives in the apiary. A hive can have its own in the "Inspect" form.';
+  @override
+  List<String> get weekdaysShort => const ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  @override
+  String get chooseDateTitle => 'Choose a date';
+  @override
+  String get finishTutorialLower => 'finish the tutorial';
+  @override
+  String get finish => 'Finish';
+  @override
+  String get postbox => 'Mailbox hive';
+  @override
+  String postboxN(int n) => 'Mailbox hive: $n messages';
+  @override
+  String get textTypeIcon => 'Aa';
+  @override
+  String get optionAddHint => 'Add an option (for example, "Strong")';
+  @override
+  String get optionAdd => 'Add option';
+
+  // ---- Сповіщення ----
+  @override
+  String get remindersChannel => 'Round reminders';
+  @override
+  String get remindersChannelText =>
+      'Reminds you to inspect hives at the set interval: in the morning and, if the round is not done, at 14:00';
+  @override
+  String get feedbackChannel => 'Developer replies';
+  @override
+  String get feedbackChannelText => 'A reply to your feedback in the app';
+  @override
+  String get reminder => 'Reminder';
+  @override
+  String hiveListMore(String names, int n) => '$names and $n more';
+  @override
+  String get roundTime => 'Time for a round';
+  @override
+  String roundInspect(int n, String list) => 'Inspect ${_n(n, 'hive', 'hives')}: $list';
+  @override
+  String get roundNotDone => 'The round is not finished yet';
+  @override
+  String roundLeft(int n, String list) => '${_n(n, 'hive', 'hives')} left to inspect: $list';
+
+  // ---- Склад: назви операцій ----
+  @override
+  String get moveOut => 'Written off';
+  @override
+  String moveOutReason(String reason) => 'Written off: $reason';
+  @override
+  String get moveInvShort => 'Stocktaking: shortage';
+  @override
+  String get moveInvOver => 'Stocktaking: surplus';
+  @override
+  String get moveInvSame => 'Stocktaking: no differences';
+  @override
+  String get moveCancel => 'Record cancellation';
+  @override
+  String get moveSet => 'Overwritten (old record)';
+
+  // ---- Файли й Excel ----
+  @override
+  String fileBuildFailed(String details) => 'Could not build the file:\n$details';
+  @override
+  String get saveHistory => 'Save history';
+  @override
+  String get saveCancelled => 'Saving cancelled.';
+  @override
+  String savedAt(String path) => 'Saved:\n$path';
+  @override
+  String get saved => 'Saved.';
+  @override
+  String savedFallback(String path) =>
+      'Could not open the save dialog - the file was saved here:\n$path';
+  @override
+  String fileSaveFailed(String details) => 'Could not save the file:\n$details';
+  @override
+  String get saveReport => 'Save report';
+  @override
+  String shareFailed(String details) => 'Could not share the file:\n$details';
+  @override
+  String get sheetLatest => 'Latest values';
+  @override
+  String get dateTime => 'Date and time';
+  @override
+  String get parameter => 'Parameter';
+  @override
+  String get value => 'Value';
+  @override
+  String get objectOrGroup => 'Object / group';
+  @override
+  String get saveLabels => 'Save labels';
+  @override
+  String get hiveQrCodes => 'Hive QR codes';
 }

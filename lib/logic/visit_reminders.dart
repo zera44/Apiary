@@ -1,4 +1,4 @@
-import '../l10n/strings.dart' show pluralUk;
+import '../l10n/l10n.dart';
 
 /// Планування нагадувань про обхід вуликів. Чиста логіка без плагінів —
 /// щоб її можна було перевіряти тестами; самі повідомлення показує
@@ -98,10 +98,8 @@ const kReminderAfternoon = 14;
 String _hiveList(List<String> names) {
   const shown = 4;
   if (names.length <= shown) return names.join(', ');
-  return '${names.take(shown).join(', ')} і ще ${names.length - shown}';
+  return tr.hiveListMore(names.take(shown).join(', '), names.length - shown);
 }
-
-String _hivesWord(int n) => pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів');
 
 /// Нагадування про обхід для набору об'єктів, за зростанням часу, не більше
 /// [limit] (ліміти системи на кількість запланованих сповіщень).
@@ -150,15 +148,15 @@ List<PlannedReminder> planReminders(
     final first = dueAt(morning);
     if (first.isNotEmpty && morning.isAfter(now)) {
       final n = first.length;
-      out.add(PlannedReminder(first.first.$1.elementId, 'Час обходу',
-          'Оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in first) d.$1.name])}',
+      out.add(PlannedReminder(first.first.$1.elementId, tr.roundTime,
+          tr.roundInspect(n, _hiveList([for (final d in first) d.$1.name])),
           morning));
     }
     final rest = dueAt(afternoon);
     if (rest.isNotEmpty && afternoon.isAfter(now)) {
       final n = rest.length;
-      out.add(PlannedReminder(rest.first.$1.elementId, 'Обхід ще не завершено',
-          'Лишилось оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in rest) d.$1.name])}',
+      out.add(PlannedReminder(rest.first.$1.elementId, tr.roundNotDone,
+          tr.roundLeft(n, _hiveList([for (final d in rest) d.$1.name])),
           afternoon));
     }
   }
@@ -183,7 +181,7 @@ PlannedReminder? dueReminder(VisitTarget t, {required DateTime now, int hour = 9
     k--;
   }
   if (k < 1) return null;
-  final title = t.apiaryName.isEmpty ? 'Моя пасіка' : t.apiaryName;
+  final title = t.apiaryName.isEmpty ? tr.myApiary : t.apiaryName;
   return PlannedReminder(t.elementId, title, t.name, at(k));
 }
 

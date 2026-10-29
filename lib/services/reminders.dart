@@ -8,6 +8,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../data/repository.dart';
 import '../data/user_reminders.dart';
 import '../logic/visit_reminders.dart';
+import '../l10n/l10n.dart';
 
 /// Пуш-сповіщення про обхід: одне вранці (о 9:00, які вулики пора оглянути) і
 /// друге о 14:00, якщо їх ще не оглянули.
@@ -25,17 +26,17 @@ class ReminderService {
   static bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   static const _channelId = 'visit_reminders';
-  static const _details = NotificationDetails(
+  static NotificationDetails get _details => NotificationDetails(
     android: AndroidNotificationDetails(
       _channelId,
-      'Нагадування про обхід',
-      channelDescription: 'Нагадує оглянути вулики за заданою періодичністю: вранці і, якщо обхід не зроблено, о 14:00',
+      tr.remindersChannel,
+      channelDescription: tr.remindersChannelText,
       importance: Importance.high,
       priority: Priority.high,
       // на заблокованому екрані — за налаштуваннями приватності телефона
       visibility: NotificationVisibility.private,
     ),
-    iOS: DarwinNotificationDetails(),
+    iOS: const DarwinNotificationDetails(),
   );
 
   Repository? _repo;
@@ -79,13 +80,13 @@ class ReminderService {
     final one = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     await plugin.show(
       id: 90001,
-      title: 'Розробник відповів на ваш відгук',
+      title: tr.feedbackReplied,
       body: one.length > 120 ? '${one.substring(0, 117)}…' : one,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           'feedback_replies',
-          'Відповіді розробника',
-          channelDescription: 'Відповідь на ваш відгук у застосунку',
+          tr.feedbackChannel,
+          channelDescription: tr.feedbackChannelText,
           importance: Importance.high,
           priority: Priority.high,
           visibility: NotificationVisibility.private,
@@ -195,7 +196,7 @@ class ReminderService {
                     (r.hive?.groupId == null
                         ? ''
                         : (await repo.getGroupElements(r.hive!.groupId!)).firstOrNull?.id ?? ''),
-                'Нагадування',
+                tr.reminder,
                 r.text,
                 r.due),
         ];

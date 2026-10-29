@@ -976,6 +976,62 @@ abstract class AppStrings {
   String get overwrittenCannotBeCancelled;
   String cannotCancelPartlyWrittenOff(String left);
   String cannotWriteOffMore(String left);
+
+  // ---- Звіт, налаштування пасіки, календар, уроки ----
+  String apiaryReportOf(String name);
+  String get apiaryReportHint;
+  String get apiaryReportEmpty;
+  String get roundEvery;
+  String get roundEveryHint;
+  String get roundEveryNote;
+  List<String> get weekdaysShort;
+  String get chooseDateTitle;
+  String get finishTutorialLower;
+  String get finish;
+  String get postbox;
+  String postboxN(int n);
+  String get textTypeIcon;
+  String get optionAddHint;
+  String get optionAdd;
+
+  // ---- Сповіщення ----
+  String get remindersChannel;
+  String get remindersChannelText;
+  String get feedbackChannel;
+  String get feedbackChannelText;
+  String get reminder;
+  String hiveListMore(String names, int n);
+  String get roundTime;
+  String roundInspect(int n, String list);
+  String get roundNotDone;
+  String roundLeft(int n, String list);
+
+  // ---- Склад: назви операцій ----
+  String get moveOut;
+  String moveOutReason(String reason);
+  String get moveInvShort;
+  String get moveInvOver;
+  String get moveInvSame;
+  String get moveCancel;
+  String get moveSet;
+
+  // ---- Файли й Excel ----
+  String fileBuildFailed(String details);
+  String get saveHistory;
+  String get saveCancelled;
+  String savedAt(String path);
+  String get saved;
+  String savedFallback(String path);
+  String fileSaveFailed(String details);
+  String get saveReport;
+  String shareFailed(String details);
+  String get sheetLatest;
+  String get dateTime;
+  String get parameter;
+  String get value;
+  String get objectOrGroup;
+  String get saveLabels;
+  String get hiveQrCodes;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

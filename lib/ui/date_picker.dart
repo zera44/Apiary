@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'common.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Календар для типу даних "Дата" (порт date_picker.py): місяць/рік зі
 /// стрілками, сітка днів з понеділка, «Скасувати» / «Сьогодні» / «Готово».
 /// Значення — текст "ДД.ММ.РРРР".
 
-const _monthNames = [
-  '', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
-  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень',
-];
-const _weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+List<String> get _monthNames => tr.monthNames;
+List<String> get _weekdays => tr.weekdaysShort;
 
 DateTime? parseDdMmYyyy(String? text) {
   if (text == null || text.trim().isEmpty) return null;
@@ -98,7 +96,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
     final days = [for (var i = 0; i < 42; i++) DateTime(gridStart.year, gridStart.month, gridStart.day + i)];
 
     return AlertDialog(
-      title: const Text('Оберіть дату'),
+      title: Text(tr.chooseDateTitle),
       // прокручується, щоб на низькому екрані/малому вікні не було
       // переповнення (календар із 6 рядків доволі високий)
       content: SizedBox(
@@ -152,7 +150,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
         Row(children: [
           Expanded(
             child: PillButton(
-                text: 'Скасувати',
+                text: tr.cancel,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 fontSize: 12,
@@ -161,7 +159,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-              text: 'Сьогодні',
+              text: tr.today,
               bg: AppColors.roundBtn,
               fg: AppColors.text,
               fontSize: 12,
@@ -171,7 +169,7 @@ class _DatePickerDialogState extends State<_DatePickerDialog> {
           const SizedBox(width: 6),
           Expanded(
             child: PillButton(
-              text: 'Готово',
+              text: tr.done,
               bg: AppColors.accent,
               fontSize: 12,
               onPressed: selected == null
