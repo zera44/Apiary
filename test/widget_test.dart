@@ -585,7 +585,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: «Прив\'язати наліпки підряд» - вулики без коду по черзі', (tester) async {
+  testWidgets('меню: «Прив\'язати підряд» - вибір вуликів без коду й сканер', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
@@ -594,15 +594,80 @@ void main() {
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
     await qrMenu(tester, 'Прив\'язати підряд');
-    // у тестах камери немає — код вводиться вручну
+    await tester.pump(const Duration(seconds: 1)); // меню закрилось
+    // одразу карта з вибором: вулики без коду, нічого ще не обрано
+    expect(find.byKey(const ValueKey('bind-bar')), findsOneWidget);
+    expect(find.text('Без коду: 1 · обрано: 0'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('bind-all')));
+    await settle(tester);
+    expect(find.text('Без коду: 1 · обрано: 1'), findsOneWidget);
+    await tester.tap(find.text('Сканувати (1)'));
+    await settle(tester);
+    // сканер: назва вулика вгорі, прогрес
+    expect(find.textContaining('Наліпка для:'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bind-progress')), findsOneWidget);
+    // у тестах камери немає - код вводиться вручну
+    await tester.tap(find.text('Ввести код вручну'));
+    await settle(tester);
     await tester.enterText(find.byType(TextField), 'https://pasika.example/h/1');
     await tester.tap(find.text('Зберегти'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
+    // єдиний вулик готовий - підсумок
     expect(find.textContaining('Прив\'язано наліпок: 1'), findsOneWidget);
+    await tester.tap(find.text('Готово'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('bind-bar')), findsNothing);
     final found = await tester.runAsync(() => repo.findByQr('https://pasika.example/h/1'));
     expect(found?.element.groupId, groupId);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('«Прив\'язати підряд»: пропустити, список і «Продовжити»', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.runAsync(() => repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, -4, groupLabel: 'Вулик 2'));
+    final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
+    await tester.pumpWidget(wrap(MapScreen(repo: repo, apiary: a)));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Меню'));
+    await settle(tester);
+    await qrMenu(tester, 'Прив\'язати підряд');
+    await tester.pump(const Duration(seconds: 1)); // меню закрилось
+    expect(find.text('Без коду: 2 · обрано: 0'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('bind-all')));
+    await settle(tester);
+    await tester.tap(find.text('Сканувати (2)'));
+    await settle(tester);
+    expect(find.text('0 з 2 · прив\'язано 0 · пропущено 0'), findsOneWidget);
+    // «Пропустити» - наступний вулик
+    await tester.tap(find.text('Пропустити'));
+    await settle(tester);
+    expect(find.text('1 з 2 · прив\'язано 0 · пропущено 1'), findsOneWidget);
+    // «Список» лишає обидва (жоден не прив'язано), пропущений позначений
+    await tester.tap(find.text('☰ Список'));
+    await settle(tester);
+    expect(find.text('пропущено'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('bind-search')), 'Вулик 2');
+    await settle(tester);
+    await tester.tap(find.textContaining('Вулик 2').last);
+    await settle(tester);
+    await tester.tap(find.text('Ввести код вручну'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'https://pasika.example/h/2');
+    await tester.tap(find.text('Зберегти'));
+    for (var i = 0; i < 4; i++) {
+      await settle(tester);
+    }
+    // прив'язано один, один пропущений лишився: підсумок і «Продовжити»
+    expect(find.textContaining('Лишилось: 1'), findsOneWidget);
+    expect(find.text('Продовжити'), findsOneWidget);
+    await tester.tap(find.text('Готово'));
+    await settle(tester);
+    expect(find.byKey(const ValueKey('bind-bar')), findsNothing);
+    final found = await tester.runAsync(() => repo.findByQr('https://pasika.example/h/2'));
+    expect(found, isNotNull);
     expect(tester.takeException(), isNull);
   });
 
@@ -1167,6 +1232,15 @@ void main() {
     expect(find.text('Пасіка 1'), findsOneWidget); // плитка у списку
     expect(find.text('Тестова пасіка'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('редактор шаблону: кнопки внизу - назад, додати, перемістити, зберегти', (tester) async {
+    await tester.pumpWidget(wrap(TemplateEditorScreen(repo: repo)));
+    await settle(tester);
+    double x(String tip) => tester.getCenter(find.byTooltip(tip)).dx;
+    expect(x('Скасувати'), lessThan(x('Додати')));
+    expect(x('Додати'), lessThan(x('Переміщення')));
+    expect(x('Переміщення'), lessThan(x('Зберегти')));
   });
 
   testWidgets('редактор шаблону: порожній шаблон не зберігається', (tester) async {
