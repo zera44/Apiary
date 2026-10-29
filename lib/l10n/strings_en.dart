@@ -1673,4 +1673,149 @@ class AppStringsEn extends AppStrings {
   String get choose => 'Choose';
   @override
   String get noteOptional => 'Optional: what you noticed';
+
+  // ---- Конструктор шаблону ----
+  @override
+  String get templateNew => 'New template';
+  @override
+  String get drawType => 'Type to draw';
+  @override
+  String get templateAddCell => 'Add at least one cell';
+  @override
+  String get templateName => 'Template name';
+  @override
+  String get templateApplyTitle => 'Apply to the hives?';
+  @override
+  String templateApplyText(String name, int n) =>
+      'Hives already placed from the template "$name": $n. Apply the new set of characteristics to them? The value history is kept.';
+  @override
+  String get apply => 'Apply';
+  @override
+  String get dontChange => 'Do not change';
+  @override
+  String get templateLeaveText => 'Changes to the template will be lost.';
+  @override
+  String templateAdding(String what) => 'Adding: $what   ·   tap a cell to remove it';
+  @override
+  String get templateDragHint => 'Drag to move · above it - rotate and delete';
+  @override
+  String get templateMoveHint =>
+      'Moving: take an item with your finger and drag (the arrows are only a hint)';
+  @override
+  String get templateInfoRight => 'Item information is on the right';
+  @override
+  String get templateTapItem => 'Tap an item to see its information';
+  @override
+  String get finishMoving => 'Finish moving';
+  @override
+  String get moving => 'Moving';
+
+  // ---- Чек на склад ----
+  @override
+  String get receiptNoRowsAdd =>
+      'Could not recognize the items. Try a straighter photo in good light, or add rows by hand.';
+  @override
+  String get receiptCheckTable => 'Check the table: recognition can make mistakes.';
+  @override
+  String get receiptFailedAdd => 'Could not recognize the receipt. Add rows by hand.';
+  @override
+  String get listCopied => 'List copied';
+  @override
+  String get receiptNothingChecked => 'Nothing to record: tick at least one item.';
+  @override
+  String receiptBadRows(int n) =>
+      '${n == 1 ? 'One row is' : '$n rows are'} missing a name, a quantity (more than 0) or a price. Fix them or untick them.';
+  @override
+  String receiptAdded(int n, int created, int topped) =>
+      'Added to stock: $n (new - $created, topped up - $topped)';
+  @override
+  String get receiptTitle => 'Receipt';
+  @override
+  String get addRowButton => '+ Add a row';
+  @override
+  String get totalColon => 'Total: ';
+  @override
+  String get copyList => 'Copy list';
+  @override
+  String get addToStock => 'Add to stock';
+
+  // ---- Відгук ----
+  @override
+  String get feedbackIntro =>
+      'Want to share something valuable, suggest an idea or report a problem with the app? Write to us, it means a lot.';
+  @override
+  String get feedbackTooShort => 'Write at least a few words';
+  @override
+  String get feedbackThanks => 'Thank you! Your message has been sent.';
+  @override
+  String get feedbackNotConfigured =>
+      'Sending feedback is not set up in this version of the app yet.';
+  @override
+  String get feedbackSendFailed => 'Could not send. Check the internet and try again.';
+  @override
+  String get notSent => 'Not sent';
+  @override
+  String feedbackCopyHint(String reason, bool notConfigured, String email) =>
+      '$reason\n\n${notConfigured ? 'Copy' : 'Or copy'} the text and send it to $email';
+  @override
+  String get copyAction => 'Copy';
+  @override
+  String feedbackTo(String email, String text) => 'To: $email\n\n$text';
+  @override
+  String get feedbackCopied => 'Text and address copied';
+  @override
+  String get yourMessage => 'Your message…';
+  @override
+  String get sending => 'Sending…';
+  @override
+  String get send => 'Send';
+  @override
+  String get feedbackChatHint =>
+      'The developer will reply here - you will see a badge on the mailbox hive and get a notification.';
+  @override
+  String get developer => 'Developer';
+  @override
+  String get waitingInternet => 'waiting for internet';
+
+  // ---- Навчання (екран) ----
+  @override
+  String get lessonResumeAsk =>
+      'You have already started this lesson. Continue where you stopped, or start over?';
+  @override
+  String get fromStart => 'Start over';
+  @override
+  String get lessonSoon => 'This lesson is still being prepared - it will appear soon.';
+  @override
+  String get lessonBasics => 'The basics';
+  @override
+  String get soon => 'soon';
+
+  // ---- Вхід ----
+  @override
+  String get signingIn => 'Signing in…';
+  @override
+  String get signInGoogle => 'Sign in with Google';
+  @override
+  String get continueNoSignIn => 'Continue without signing in';
+  @override
+  String get noSignInHint =>
+      'Without signing in, data is stored only on this device. You can sign in and sync it later on the home screen - nothing will be lost.';
+
+  // ---- Що нового ----
+  @override
+  String whatsNewVersion(String v) => 'What\'s new · $v';
+  @override
+  String whatsNewMore(int n) => 'Also: $n changes and bug fixes';
+  @override
+  String get fixed => 'Fixed';
+  @override
+  String get toWork => 'Get to work';
+
+  // ---- Нова пасіка ----
+  @override
+  String get enterApiaryName => 'Enter the apiary name';
+  @override
+  String get newApiary => 'New apiary';
+  @override
+  String get apiaryName => 'Apiary name';
 }

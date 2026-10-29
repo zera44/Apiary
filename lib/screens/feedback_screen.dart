@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/feedback.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Зворотний зв'язок (пункт бічного меню): поле для тексту, який
 /// надсилається листом розробникам (див. [FeedbackService]).
@@ -12,8 +13,7 @@ class FeedbackScreen extends StatefulWidget {
   final Future<FeedbackResult> Function(String message) send;
   const FeedbackScreen({super.key, this.send = FeedbackService.send});
 
-  static const intro = 'Бажаєте поділитись чимось цінним, запропонувати ідею чи '
-      'поскаржитися на проблеми з додатком? Напишіть, для нас це цінно.';
+  static String get intro => tr.feedbackIntro;
 
   @override
   State<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -33,7 +33,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Future<void> _send() async {
     final text = _ctrl.text.trim();
     if (text.isEmpty) {
-      setState(() => _error = 'Напишіть хоча б кілька слів');
+      setState(() => _error = tr.feedbackTooShort);
       return;
     }
     if (_sending) return;
@@ -49,7 +49,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       _ctrl.clear();
       // без окремого вікна з «Гаразд»: коротке повідомлення внизу й назад
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Дякуємо! Ваше повідомлення надіслано.')),
+        SnackBar(content: Text(tr.feedbackThanks)),
       );
       Navigator.of(context).pop();
       return;
@@ -61,14 +61,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   /// надіслати з пошти вручну.
   Future<void> _showFailure(String text, {required bool notConfigured}) {
     final reason = notConfigured
-        ? 'Надсилання відгуків ще не налаштовано в цій версії застосунку.'
-        : 'Не вдалося надіслати. Перевірте інтернет і спробуйте ще раз.';
+        ? tr.feedbackNotConfigured
+        : tr.feedbackSendFailed;
     return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Не надіслано'),
+        title: Text(tr.notSent),
         content: Text(
-          '$reason\n\n${notConfigured ? 'Скопіюйте' : 'Або скопіюйте'} текст і надішліть його на ${FeedbackService.email}',
+          tr.feedbackCopyHint(reason, notConfigured, FeedbackService.email),
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.text),
         ),
@@ -76,16 +76,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           Row(children: [
             Expanded(
               child: PillButton(
-                text: 'Скопіювати',
+                text: tr.copyAction,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(
-                      text: 'Кому: ${FeedbackService.email}\n\n$text'));
+                      text: tr.feedbackTo(FeedbackService.email, text)));
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Текст і адресу скопійовано')),
+                      SnackBar(content: Text(tr.feedbackCopied)),
                     );
                   }
                 },
@@ -94,7 +94,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: PillButton(
-                  text: 'Гаразд', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
+                  text: tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
             ),
           ]),
         ],
@@ -108,7 +108,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: "Зворотний зв'язок", onBack: () => Navigator.pop(context)),
+            TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Text(
@@ -131,7 +131,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   keyboardType: TextInputType.multiline,
                   textCapitalization: TextCapitalization.sentences,
                   style: TextStyle(color: AppColors.text),
-                  decoration: const InputDecoration(hintText: 'Ваше повідомлення…'),
+                  decoration: InputDecoration(hintText: tr.yourMessage),
                   onChanged: (_) {
                     if (_error != null) setState(() => _error = null);
                   },
@@ -146,7 +146,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: PillButton(
-                text: _sending ? 'Надсилаємо…' : 'Надіслати',
+                text: _sending ? tr.sending : tr.send,
                 bg: AppColors.accent,
                 height: 50,
                 radius: 16,

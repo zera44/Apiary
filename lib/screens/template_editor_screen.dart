@@ -17,6 +17,7 @@ import '../ui/icons.dart';
 import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
 import 'parameters_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Редактор заготовки (порт TemplateEditorScreen / TemplateGridArea).
 ///
@@ -61,7 +62,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
 
   final grid = GridController(cellSize: 32, minCell: 14, maxCell: 56);
 
-  String title = 'Новий шаблон';
+  String title = tr.templateNew;
   Map<Cell, CellValue> cells = {};
   Set<Cell> selected = {};
   List<Set<Cell>> _components = [];
@@ -422,7 +423,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     final newPos = rotatedPositions({for (final p in targets) p: p});
     final others = cells.keys.toSet().difference(targets.toSet());
     if (newPos.values.any(others.contains)) {
-      _showWarning('Немає місця для повороту');
+      _showWarning(tr.mapNoRoomRotate);
       _flashBlocked();
       return;
     }
@@ -536,7 +537,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
             choice(key, AppColors.obstacle, label, () => Navigator.pop(ctx, ('obstacle', key))),
         ];
         return lessonDialog(l, 'editor-picker', AlertDialog(
-          title: const Text('Тип для малювання'),
+          title: Text(tr.drawType),
           content: SizedBox(
             width: 300,
             child: SingleChildScrollView(
@@ -549,7 +550,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     name: 'picker-tabs',
                     radius: 24,
                     child: FinSegment(
-                      labels: const ['Вулики', 'Перешкоди'],
+                      labels: [tr.hives, tr.obstacles],
                       selected: tab,
                       onChanged: (i) => pages.animateToPage(i,
                           duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic),
@@ -629,7 +630,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
   }
 
   Future<void> _renameTemplate() async {
-    final name = await showTextPrompt(context, title: 'Перейменувати шаблон', initial: title);
+    final name = await showTextPrompt(context, title: tr.templateRename, initial: title);
     if (name == null) return;
     setState(() {
       title = name;
@@ -705,7 +706,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     if (_saving) return;
     // порожній шаблон нічого не розмістить на карті — не зберігаємо
     if (cells.isEmpty) {
-      _showWarning('Додайте хоча б одну клітинку');
+      _showWarning(tr.templateAddCell);
       return;
     }
     // новий шаблон: перед збереженням одразу питаємо назву (скасували —
@@ -715,8 +716,8 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
       final l = _lesson;
       l?.advance(13, 14);
       final asked = await showTextPrompt(context,
-          title: 'Назва шаблону',
-          initial: title.trim().isEmpty ? 'Новий шаблон' : title.trim(),
+          title: tr.templateName,
+          initial: title.trim().isEmpty ? tr.templateNew : title.trim(),
           dismissible: l == null,
           wrap: l == null ? null : (d) => lessonDialog(l, 'template-name', d, drawToggle: false),
           decorate: l == null
@@ -729,7 +730,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     }
     _saving = true;
     try {
-      final name = title.trim().isEmpty ? 'Новий шаблон' : title.trim();
+      final name = title.trim().isEmpty ? tr.templateNew : title.trim();
       final (w, h, out) = _export();
       if (widget.templateId != null) {
         final old = await repo.getTemplate(widget.templateId!);
@@ -764,12 +765,10 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     final hives = await repo.hivesPlacedFrom(old.name);
     if (hives.isEmpty || !mounted) return;
     final ok = await showConfirm(context,
-        title: 'Застосувати до вуликів?',
-        text: 'З шаблону «${old.name}» уже поставлено вуликів: ${hives.length}. '
-            'Застосувати до них новий набір характеристик? '
-            'Історія значень збережеться.',
-        confirmText: 'Застосувати',
-        cancelText: 'Не змінювати',
+        title: tr.templateApplyTitle,
+        text: tr.templateApplyText(old.name, hives.length),
+        confirmText: tr.apply,
+        cancelText: tr.dontChange,
         danger: false);
     if (!ok) return;
     for (final h in hives) {
@@ -784,9 +783,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     }
     if (_dirty) {
       final leave = await showConfirm(context,
-          title: 'Вийти без збереження?',
-          text: 'Зміни в шаблоні буде втрачено.',
-          confirmText: 'Вийти');
+          title: tr.leaveUnsavedTitle,
+          text: tr.templateLeaveText,
+          confirmText: tr.leave);
       if (!leave) return;
     }
     if (mounted) Navigator.pop(context);
@@ -831,20 +830,20 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     if (addingMode) {
       final what = mode == 'hive'
           ? [
-              'Вулик',
+              tr.hive,
               for (final (k, label) in AppIcons.pickableIn('objects'))
-                if (k == hiveIcon && label != 'Вулик') label,
+                if (k == hiveIcon && label != tr.hive) label,
             ].join(' - ')
-          : 'Перешкода - ${obstacleVariantLabel(obstacleVariant)}';
-      return 'Додаємо: $what   ·   торкніться клітинки, щоб прибрати';
+          : tr.obstacleOf(obstacleVariantLabel(obstacleVariant));
+      return tr.templateAdding(what);
     }
     if (moveMode) {
       return _selectedCells.isNotEmpty
-          ? 'Перетягніть, щоб перемістити · над ним - поворот і видалення'
-          : 'Переміщення: візьміть екземпляр пальцем і тягніть (стрілки - лише підказка)';
+          ? tr.templateDragHint
+          : tr.templateMoveHint;
     }
-    if (_selectedCells.isNotEmpty) return 'Інформація про екземпляр - справа';
-    return 'Торкніться екземпляра, щоб побачити інформацію';
+    if (_selectedCells.isNotEmpty) return tr.templateInfoRight;
+    return tr.templateTapItem;
   }
 
   @override
@@ -947,7 +946,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     child: CircleIconButton(
                       icon: addingMode ? 'close' : 'plus_circle',
                       bg: addingMode ? AppColors.danger : AppColors.accent,
-                      tooltip: addingMode ? 'Завершити додавання' : 'Додати',
+                      tooltip: addingMode ? tr.mapFinishAdding : tr.add,
                       onPressed: _onAddType,
                     ),
                   ),
@@ -958,7 +957,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     child: CircleIconButton(
                       icon: 'move',
                       bg: moveMode ? AppColors.modeActive : AppColors.darkBtn,
-                      tooltip: moveMode ? 'Завершити переміщення' : 'Переміщення',
+                      tooltip: moveMode ? tr.finishMoving : tr.moving,
                       onPressed: _toggleMove,
                     ),
                   ),
@@ -966,7 +965,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   CircleIconButton(
                     icon: 'back_arrow',
                     bg: AppColors.darkBtn,
-                    tooltip: 'Скасувати',
+                    tooltip: tr.cancel,
                     onPressed: _undo.isEmpty ? null : _onUndo,
                   ),
                   const SizedBox(width: 16),
@@ -975,7 +974,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                     lesson: _lesson,
                     name: 'editor-save',
                     child: Tooltip(
-                    message: 'Зберегти',
+                    message: tr.save,
                     child: Material(
                       color: AppColors.accent,
                       shape: const CircleBorder(),
@@ -1058,14 +1057,14 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   icon: 'rotate',
                   bg: AppColors.darkBtn,
                   size: bs,
-                  tooltip: 'Повернути',
+                  tooltip: tr.rotate,
                   onPressed: _rotate),
               const SizedBox(width: 6),
               CircleIconButton(
                   icon: 'trash',
                   bg: AppColors.danger,
                   size: bs,
-                  tooltip: 'Видалити',
+                  tooltip: tr.delete,
                   onPressed: _deleteSelected),
             ]),
           );

@@ -820,6 +820,80 @@ abstract class AppStrings {
   String get chooseDate;
   String get choose;
   String get noteOptional;
+
+  // ---- Конструктор шаблону ----
+  String get templateNew;
+  String get drawType;
+  String get templateAddCell;
+  String get templateName;
+  String get templateApplyTitle;
+  String templateApplyText(String name, int n);
+  String get apply;
+  String get dontChange;
+  String get templateLeaveText;
+  String templateAdding(String what);
+  String get templateDragHint;
+  String get templateMoveHint;
+  String get templateInfoRight;
+  String get templateTapItem;
+  String get finishMoving;
+  String get moving;
+
+  // ---- Чек на склад ----
+  String get receiptNoRowsAdd;
+  String get receiptCheckTable;
+  String get receiptFailedAdd;
+  String get listCopied;
+  String get receiptNothingChecked;
+  String receiptBadRows(int n);
+  String receiptAdded(int n, int created, int topped);
+  String get receiptTitle;
+  String get addRowButton;
+  String get totalColon;
+  String get copyList;
+  String get addToStock;
+
+  // ---- Відгук ----
+  String get feedbackIntro;
+  String get feedbackTooShort;
+  String get feedbackThanks;
+  String get feedbackNotConfigured;
+  String get feedbackSendFailed;
+  String get notSent;
+  String feedbackCopyHint(String reason, bool notConfigured, String email);
+  String get copyAction;
+  String feedbackTo(String email, String text);
+  String get feedbackCopied;
+  String get yourMessage;
+  String get sending;
+  String get send;
+  String get feedbackChatHint;
+  String get developer;
+  String get waitingInternet;
+
+  // ---- Навчання (екран) ----
+  String get lessonResumeAsk;
+  String get fromStart;
+  String get lessonSoon;
+  String get lessonBasics;
+  String get soon;
+
+  // ---- Вхід ----
+  String get signingIn;
+  String get signInGoogle;
+  String get continueNoSignIn;
+  String get noSignInHint;
+
+  // ---- Що нового ----
+  String whatsNewVersion(String v);
+  String whatsNewMore(int n);
+  String get fixed;
+  String get toWork;
+
+  // ---- Нова пасіка ----
+  String get enterApiaryName;
+  String get newApiary;
+  String get apiaryName;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

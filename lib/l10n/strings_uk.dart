@@ -1671,4 +1671,150 @@ class AppStringsUk extends AppStrings {
   String get choose => 'Обрати';
   @override
   String get noteOptional => 'Необов\'язково: що помітили';
+
+  // ---- Конструктор шаблону ----
+  @override
+  String get templateNew => 'Новий шаблон';
+  @override
+  String get drawType => 'Тип для малювання';
+  @override
+  String get templateAddCell => 'Додайте хоча б одну клітинку';
+  @override
+  String get templateName => 'Назва шаблону';
+  @override
+  String get templateApplyTitle => 'Застосувати до вуликів?';
+  @override
+  String templateApplyText(String name, int n) =>
+      'З шаблону «$name» уже поставлено вуликів: $n. Застосувати до них новий набір характеристик? Історія значень збережеться.';
+  @override
+  String get apply => 'Застосувати';
+  @override
+  String get dontChange => 'Не змінювати';
+  @override
+  String get templateLeaveText => 'Зміни в шаблоні буде втрачено.';
+  @override
+  String templateAdding(String what) => 'Додаємо: $what   ·   торкніться клітинки, щоб прибрати';
+  @override
+  String get templateDragHint => 'Перетягніть, щоб перемістити · над ним - поворот і видалення';
+  @override
+  String get templateMoveHint =>
+      'Переміщення: візьміть екземпляр пальцем і тягніть (стрілки - лише підказка)';
+  @override
+  String get templateInfoRight => 'Інформація про екземпляр - справа';
+  @override
+  String get templateTapItem => 'Торкніться екземпляра, щоб побачити інформацію';
+  @override
+  String get finishMoving => 'Завершити переміщення';
+  @override
+  String get moving => 'Переміщення';
+
+  // ---- Чек на склад ----
+  @override
+  String get receiptNoRowsAdd =>
+      'Не вдалося розпізнати позиції. Спробуйте сфотографувати рівніше й при гарному світлі або додайте рядки вручну.';
+  @override
+  String get receiptCheckTable => 'Перевірте таблицю: розпізнавання може помилятися.';
+  @override
+  String get receiptFailedAdd => 'Не вдалося розпізнати чек. Додайте рядки вручну.';
+  @override
+  String get listCopied => 'Список скопійовано';
+  @override
+  String get receiptNothingChecked => 'Немає позицій для запису: позначте хоча б одну.';
+  @override
+  String receiptBadRows(int n) =>
+      'У ${n == 1 ? 'одному рядку' : '$n рядках'} не вистачає назви, кількості (більше 0) або ціни. Виправте їх чи зніміть галочку.';
+  @override
+  String receiptAdded(int n, int created, int topped) =>
+      'Додано на склад: $n (нових - $created, поповнено - $topped)';
+  @override
+  String get receiptTitle => 'Чек';
+  @override
+  String get addRowButton => '+ Додати рядок';
+  @override
+  String get totalColon => 'Разом: ';
+  @override
+  String get copyList => 'Копіювати список';
+  @override
+  String get addToStock => 'Додати на склад';
+
+  // ---- Відгук ----
+  @override
+  String get feedbackIntro =>
+      'Бажаєте поділитись чимось цінним, запропонувати ідею чи поскаржитися на проблеми з додатком? Напишіть, для нас це цінно.';
+  @override
+  String get feedbackTooShort => 'Напишіть хоча б кілька слів';
+  @override
+  String get feedbackThanks => 'Дякуємо! Ваше повідомлення надіслано.';
+  @override
+  String get feedbackNotConfigured =>
+      'Надсилання відгуків ще не налаштовано в цій версії застосунку.';
+  @override
+  String get feedbackSendFailed =>
+      'Не вдалося надіслати. Перевірте інтернет і спробуйте ще раз.';
+  @override
+  String get notSent => 'Не надіслано';
+  @override
+  String feedbackCopyHint(String reason, bool notConfigured, String email) =>
+      '$reason\n\n${notConfigured ? 'Скопіюйте' : 'Або скопіюйте'} текст і надішліть його на $email';
+  @override
+  String get copyAction => 'Скопіювати';
+  @override
+  String feedbackTo(String email, String text) => 'Кому: $email\n\n$text';
+  @override
+  String get feedbackCopied => 'Текст і адресу скопійовано';
+  @override
+  String get yourMessage => 'Ваше повідомлення…';
+  @override
+  String get sending => 'Надсилаємо…';
+  @override
+  String get send => 'Надіслати';
+  @override
+  String get feedbackChatHint =>
+      'Розробник відповість тут - ви побачите значок на вулику-поштоматі й отримаєте сповіщення.';
+  @override
+  String get developer => 'Розробник';
+  @override
+  String get waitingInternet => 'чекає на інтернет';
+
+  // ---- Навчання (екран) ----
+  @override
+  String get lessonResumeAsk =>
+      'Ти вже починав цей урок. Продовжити з місця, де зупинився, чи почати спочатку?';
+  @override
+  String get fromStart => 'Спочатку';
+  @override
+  String get lessonSoon => 'Цей урок ще готується - скоро з\'явиться.';
+  @override
+  String get lessonBasics => 'Базові поняття';
+  @override
+  String get soon => 'скоро';
+
+  // ---- Вхід ----
+  @override
+  String get signingIn => 'Входимо…';
+  @override
+  String get signInGoogle => 'Увійти через Google';
+  @override
+  String get continueNoSignIn => 'Продовжити без входу';
+  @override
+  String get noSignInHint =>
+      'Без входу дані зберігаються лише на цьому пристрої. Увійти й синхронізувати їх можна пізніше на головному екрані - нічого не загубиться.';
+
+  // ---- Що нового ----
+  @override
+  String whatsNewVersion(String v) => 'Що нового · $v';
+  @override
+  String whatsNewMore(int n) => 'Ще: $n змін і виправлення помилок';
+  @override
+  String get fixed => 'Виправлено';
+  @override
+  String get toWork => 'До роботи';
+
+  // ---- Нова пасіка ----
+  @override
+  String get enterApiaryName => 'Введіть назву пасіки';
+  @override
+  String get newApiary => 'Нова пасіка';
+  @override
+  String get apiaryName => 'Назва пасіки';
 }
