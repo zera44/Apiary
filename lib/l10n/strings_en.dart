@@ -1509,4 +1509,168 @@ class AppStringsEn extends AppStrings {
       'The amount cannot be changed: it is made up of the table rows. Cancel the record and enter a new one.';
   @override
   String get finAlreadyCancelled => 'This record is already cancelled';
+
+  // ---- Параметри ----
+  @override
+  String records(int n) => _n(n, 'record', 'records');
+  @override
+  String get paramEdit => 'Edit parameter';
+  @override
+  String get paramNew => 'New parameter';
+  @override
+  String get paramBaseNameLocked => 'The name of a Base characteristic cannot be changed';
+  @override
+  String get dataType => 'Data type';
+  @override
+  String get listOptions => 'List options';
+  @override
+  String get paramBaseTypeLocked => 'The data type of a Base characteristic cannot be changed';
+  @override
+  String get paramTypeLocked =>
+      'There are records already, so the data type cannot be changed. To change the type, create a new parameter and move the history into it.';
+  @override
+  String get paramTypeFree => 'The data type can be changed while there are no records.';
+  @override
+  String get paramMoveHistoryDots => 'Move history…';
+  @override
+  String get paramDelete => 'Delete parameter';
+  @override
+  String get paramNeedName => 'That will not work - enter the parameter name';
+  @override
+  String get paramNeedTwoOptions => 'That will not work - add at least two options';
+  @override
+  String get paramMoveWhere => 'Where to move the history?';
+  @override
+  String paramFrom(String name, String type) => 'From "$name" ($type)';
+  @override
+  String get paramNewDots => '+ New parameter…';
+  @override
+  String paramMoveText(String from, String to, String type, String records) =>
+      '$records of history will be moved from "$from" to "$to" ($type) with the same dates and objects.';
+  @override
+  String paramMoveSkipped(String records, String type, String from) =>
+      '\n\n$records do not fit the type "$type" - they stay in "$from".';
+  @override
+  String paramMoveReplace(String from, String to) =>
+      '\n\nWherever "$from" was, "$to" will appear.';
+  @override
+  String get paramMoveHistory => 'Move history';
+  @override
+  String paramMoveAndDelete(String name) => 'Move and delete "$name"';
+  @override
+  String paramMoved(int moved, int skipped) =>
+      'Records moved: $moved.${skipped > 0 ? '\nDid not fit the type and stayed: $skipped.' : ''}';
+  @override
+  String paramBaseNoDelete(String name) =>
+      '"$name" is a Base characteristic, required for the whole class of objects. It cannot be deleted.';
+  @override
+  String get cannotDelete => 'Cannot delete';
+  @override
+  String paramDeleted(String name) => 'Parameter "$name" deleted';
+  @override
+  String get paramTable => 'Parameter table';
+  @override
+  String get paramCreate => 'Create a parameter';
+  @override
+  List<String> get paramTabs => const ['List', 'Builder'];
+  @override
+  String get paramNoneYet => 'No parameters yet.\nCreate one with the "+" button at the top.';
+  @override
+  String get characteristicCreate => 'Create a characteristic';
+  @override
+  String get groupNew => 'New group';
+  @override
+  String groupNameIt(String name) => 'Name the group "$name"';
+  @override
+  String get groupName => 'Group name';
+  @override
+  String get groupDelete => 'Delete group';
+  @override
+  String get dropHere => 'Drop here';
+  @override
+  String get dragParamsHere => 'Drag parameters here';
+  @override
+  String get builderEmpty => 'The parameters you choose on the "List" tab will appear here.';
+  @override
+  String get builderHint => 'Hold a parameter and drag it into a group.';
+  @override
+  String get groupNewButton => '+ New group';
+  @override
+  String get chosenNoGroup => 'Chosen, but not in a group yet';
+  @override
+  String get allGrouped => 'All parameters are in groups.';
+  @override
+  String get dragToGroup => 'Hold and drag into a group.';
+  @override
+  String paramHasRecordsNoRename(String name) =>
+      '"$name" already has records, so its name cannot be changed. You can create a new parameter and move the history into it.';
+  @override
+  String get cannotRename => 'Cannot rename';
+  @override
+  String get requiredSuffix => ' · required';
+  @override
+  String get editAction => 'Edit';
+  @override
+  String get scopeHive => 'This hive';
+  @override
+  String get scopeSame => 'The same ones';
+  @override
+  String scopeKind(String kind) => 'All "$kind"';
+  @override
+  String get scopeApiary => 'Whole apiary';
+  @override
+  String get applyTo => 'Apply to:';
+
+  // ---- Огляд вулика ----
+  @override
+  String get fillParams => 'Fill in parameters';
+  @override
+  String get fillLesson0a =>
+      'These are the hive parameters. Only the required ones are here now, but you can ';
+  @override
+  String get fillLesson0b => 'add new ones later';
+  @override
+  String get fillLesson1 =>
+      'My helper checked the hive for you, so write the data into the cells.';
+  @override
+  String get fillLesson2a => 'Ahem... I will help with ';
+  @override
+  String get fillLesson2b => 'entering the information';
+  @override
+  String get fillLesson2c => ' for your hive.';
+  @override
+  String get fillLesson3a => 'Your queen is marked ';
+  @override
+  String lessonQueenColor(String v) =>
+      const {'Білий': 'white', 'Жовтий': 'yellow', 'Червоний': 'red', 'Зелений': 'green', 'Синій': 'blue'}[v] ?? v.toLowerCase();
+  @override
+  String get fillLesson4a => 'Inspected today? Tap ';
+  @override
+  String get fillLesson4b => 'the inspection date';
+  @override
+  String get fillLesson4c => ' and choose "Today".';
+  @override
+  String get fillLesson5 => 'Save it, because I am not going back in there.';
+  @override
+  String get feedNeedQty => 'Feeding: enter the quantity';
+  @override
+  String feedOnlyInStock(String amount) => 'Feeding: only $amount in stock';
+  @override
+  String fillWholeFrom0(String name) => '"$name": enter a whole number from 0';
+  @override
+  String fillNumber(String name) => '"$name": enter a number';
+  @override
+  String get feedFromStock => 'Feeding from stock';
+  @override
+  String get dontWriteOff => 'Do not write off';
+  @override
+  String stockItemHas(String name, String amount) => '$name (have $amount)';
+  @override
+  String howMuch(String unit) => 'How much, $unit';
+  @override
+  String get chooseDate => 'Choose a date';
+  @override
+  String get choose => 'Choose';
+  @override
+  String get noteOptional => 'Optional: what you noticed';
 }

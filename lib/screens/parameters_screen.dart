@@ -10,6 +10,7 @@ import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
 import '../tutorial/lessons.dart' show kVisitKeys, kVisitsGroup;
 import 'history_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Кому застосувати набір і порядок параметрів (перемикач унизу).
 enum ApplyScope {
@@ -180,11 +181,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
   final Set<String> _hiding = {};
 
   /// «1 запис», «2 записи», «5 записів».
-  static String _recordsWord(int n) {
-    final t = n % 100, o = n % 10;
-    if (t >= 11 && t <= 14) return '$n записів';
-    return o == 1 ? '$n запис' : (o >= 2 && o <= 4 ? '$n записи' : '$n записів');
-  }
+  static String _recordsWord(int n) => tr.records(n);
 
   bool _lockedBase(Parameter p) => p.isBase && targetType != null && p.baseType == targetType;
 
@@ -288,7 +285,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
         final note = TextStyle(color: AppColors.textMuted, fontSize: 10.5);
         return lessonDialog(l, 'param-form', AlertDialog(
-          title: Text(isEdit ? 'Редагувати параметр' : 'Новий параметр'),
+          title: Text(isEdit ? tr.paramEdit : tr.paramNew),
           content: SizedBox(
             width: 340,
             child: SingleChildScrollView(
@@ -296,7 +293,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Назва', style: muted),
+                  Text(tr.name, style: muted),
                   const SizedBox(height: 4),
                   TextField(
                     controller: nameCtrl,
@@ -328,14 +325,14 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   if (isBase)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('Назву Базової характеристики змінити не можна', style: muted),
+                      child: Text(tr.paramBaseNameLocked, style: muted),
                     ),
                   const SizedBox(height: 10),
-                  Text('Одиниця виміру', style: muted),
+                  Text(tr.unit, style: muted),
                   const SizedBox(height: 4),
                   TextField(controller: unitCtrl, style: TextStyle(color: AppColors.text)),
                   const SizedBox(height: 10),
-                  Text('Тип даних', style: muted),
+                  Text(tr.dataType, style: muted),
                   const SizedBox(height: 6),
                   DataTypePicker(
                     value: type,
@@ -345,7 +342,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   // «Список»: які варіанти обиратимуть під час огляду
                   if (type == DataTypes.choice) ...[
                     const SizedBox(height: 12),
-                    Text('Варіанти списку', style: muted),
+                    Text(tr.listOptions, style: muted),
                     const SizedBox(height: 6),
                     OptionsEditor(
                       options: options,
@@ -368,18 +365,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   const SizedBox(height: 6),
                   Text(
                     isBase
-                        ? 'Тип даних Базової характеристики змінити не можна'
+                        ? tr.paramBaseTypeLocked
                         : typeLocked
-                            ? 'Записи вже є, тож тип даних змінити не можна. Щоб змінити тип - '
-                                'створіть новий параметр і перенесіть у нього історію.'
-                            : 'Тип даних можна змінити, поки немає жодного запису.',
+                            ? tr.paramTypeLocked
+                            : tr.paramTypeFree,
                     textAlign: TextAlign.center,
                     style: note,
                   ),
                   if (isEdit && !isBase) ...[
                     const SizedBox(height: 8),
                     PillButton(
-                      text: 'Перенести історію…',
+                      text: tr.paramMoveHistoryDots,
                       bg: AppColors.darkBtn,
                       fg: AppColors.text,
                       height: 38,
@@ -390,7 +386,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     if (!widget.catalog) ...[
                       const SizedBox(height: 8),
                       PillButton(
-                        text: 'Видалити параметр',
+                        text: tr.paramDelete,
                         bg: AppColors.danger,
                         height: 38,
                         fontSize: 13,
@@ -410,7 +406,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   name: 'form-cancel',
                   radius: 14,
                   child: PillButton(
-                      text: 'Скасувати',
+                      text: tr.cancel,
                       bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       onPressed: () => Navigator.pop(ctx)),
@@ -423,13 +419,13 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   name: 'form-save',
                   radius: 14,
                   child: PillButton(
-                  text: 'Зберегти',
+                  text: tr.save,
                   bg: AppColors.accent,
                   onPressed: () {
                     if (nameCtrl.text.trim().isEmpty) {
                       setD(() {
                         nameError = true;
-                        formError = 'Так не можна - вкажіть назву параметра';
+                        formError = tr.paramNeedName;
                       });
                       return;
                     }
@@ -444,7 +440,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                       if (options.length < 2) {
                         setD(() {
                           optionsError = true;
-                          formError = 'Так не можна - додайте щонайменше два варіанти';
+                          formError = tr.paramNeedTwoOptions;
                         });
                         return;
                       }
@@ -512,17 +508,17 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final picked = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Куди перенести історію?'),
+        title: Text(tr.paramMoveWhere),
         content: SizedBox(
           width: 340,
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text('З «${from.nameWithUnit}» (${DataTypes.label(from.dataType)})',
+              Text(tr.paramFrom(from.nameWithUnit, DataTypes.label(from.dataType)),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               const SizedBox(height: 12),
               PillButton(
-                text: '+ Новий параметр…',
+                text: tr.paramNewDots,
                 bg: AppColors.accent,
                 height: 42,
                 width: double.infinity,
@@ -557,36 +553,34 @@ class _ParametersScreenState extends State<ParametersScreen> {
     if (to == null || !mounted) return;
     final typeName = DataTypes.label(to.dataType);
     final text = StringBuffer(
-        'З «${from.nameWithUnit}» у «${to.nameWithUnit}» ($typeName) буде перенесено '
-        '${_recordsWord(preview.movable)} історії з тими самими датами й об\'єктами.');
+        tr.paramMoveText(from.nameWithUnit, to.nameWithUnit, typeName, _recordsWord(preview.movable)));
     if (preview.skipped > 0) {
-      text.write('\n\n${_recordsWord(preview.skipped)} не підходять до типу «$typeName» - вони '
-          'лишаться в «${from.name}».');
+      text.write(tr.paramMoveSkipped(_recordsWord(preview.skipped), typeName, from.name));
     }
-    text.write('\n\nДе був «${from.name}», там з\'явиться «${to.name}».');
+    text.write(tr.paramMoveReplace(from.name, to.name));
     final choice = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Перенести історію'),
+        title: Text(tr.paramMoveHistory),
         content: Text(text.toString(), style: TextStyle(color: AppColors.text)),
         actions: [
           Column(mainAxisSize: MainAxisSize.min, children: [
             PillButton(
-                text: 'Перенести',
+                text: tr.move,
                 bg: AppColors.accent,
                 width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, 'keep')),
             if (!from.isBase) ...[
               const SizedBox(height: 8),
               PillButton(
-                  text: 'Перенести й видалити «${from.name}»',
+                  text: tr.paramMoveAndDelete(from.name),
                   bg: AppColors.danger,
                   width: double.infinity,
                   onPressed: () => Navigator.pop(ctx, 'delete')),
             ],
             const SizedBox(height: 8),
             PillButton(
-                text: 'Скасувати',
+                text: tr.cancel,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 width: double.infinity,
@@ -605,9 +599,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     if (!mounted) return;
     await showInfo(
       context,
-      'Перенесено записів: ${res.moved}.'
-      '${res.skipped > 0 ? '\nНе підійшли до типу й лишились: ${res.skipped}.' : ''}',
-      title: 'Готово',
+      tr.paramMoved(res.moved, res.skipped),
+      title: tr.done,
     );
   }
 
@@ -615,16 +608,15 @@ class _ParametersScreenState extends State<ParametersScreen> {
     if (p.isBase) {
       await showInfo(
         context,
-        '«${p.name}» - Базова характеристика, обов\'язкова для усього класу об\'єктів. '
-        'Її не можна видалити.',
-        title: 'Не можна видалити',
+        tr.paramBaseNoDelete(p.name),
+        title: tr.cannotDelete,
       );
       return;
     }
     // без підтвердження: параметр зникає одразу, внизу «Відмінити»
     await deleteWithUndo(
       context,
-      message: 'Параметр «${p.name}» видалено',
+      message: tr.paramDeleted(p.name),
       hide: () {
         _hiding.add(p.id);
         setState(() => params = [...?params]..removeWhere((x) => x.id == p.id));
@@ -662,7 +654,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
           ScreenColumn(children: [
             if (!widget.embedded)
             TopBar(
-              title: widget.catalog ? 'Характеристики' : 'Таблиця параметрів',
+              title: widget.catalog ? tr.characteristics : tr.paramTable,
               onBack: _back,
               decorateBack: _lesson == null
                   ? null
@@ -674,7 +666,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   icon: 'plus_circle',
                   bg: AppColors.accent,
                   size: 34,
-                  tooltip: 'Створити параметр',
+                  tooltip: tr.paramCreate,
                   onPressed: () => _openForm(),
                 ),
               ),
@@ -683,7 +675,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                 child: Row(children: [
-                  for (final (i, t) in const ['Список', 'Конструктор'].indexed) ...[
+                  for (final (i, t) in tr.paramTabs.indexed) ...[
                     if (i > 0) const SizedBox(width: 6),
                     Expanded(
                       child: LessonTarget(
@@ -714,7 +706,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                       ? _constructor(list)
                   : list.isEmpty
                       ? Center(
-                          child: Text('Ще немає жодного параметра.\nСтвори його кнопкою «+» вгорі.',
+                          child: Text(tr.paramNoneYet,
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted)),
                         )
@@ -733,7 +725,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: PillButton(
-                  text: 'Створити характеристику',
+                  text: tr.characteristicCreate,
                   bg: AppColors.accent,
                   height: 46,
                   width: double.infinity,
@@ -823,7 +815,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     l?.advance(8, 9);
     final name = await showTextPrompt(
       context,
-      title: 'Нова група',
+      title: tr.groupNew,
       initial: '',
       dismissible: l == null,
       // урок: група має зватися «Обходи»
@@ -831,7 +823,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
           ? null
           : (v) => v.toLowerCase() == kVisitsGroup.toLowerCase()
               ? null
-              : 'Назви групу «$kVisitsGroup»',
+              : tr.groupNameIt(kVisitsGroup),
       wrap: l == null ? null : (d) => lessonDialog(l, 'group-form', d),
       decorate: l == null
           ? null
@@ -847,7 +839,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
   }
 
   Future<void> _renameGroup(ParamGroup g) async {
-    final name = await showTextPrompt(context, title: 'Назва групи', initial: g.name);
+    final name = await showTextPrompt(context, title: tr.groupName, initial: g.name);
     if (name == null || !mounted) return;
     setState(() => g.name = name);
     _lessonGroupsChanged();
@@ -966,12 +958,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
                             color: honeyDark, fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   IconButton(
-                    tooltip: 'Назва групи',
+                    tooltip: tr.groupName,
                     icon: const Icon(Icons.edit, color: honeyDark, size: 20),
                     onPressed: () => _renameGroup(g),
                   ),
                   IconButton(
-                    tooltip: 'Видалити групу',
+                    tooltip: tr.groupDelete,
                     icon: const Icon(Icons.delete_outline, color: honeyDark, size: 22),
                     onPressed: () => _deleteGroup(g),
                   ),
@@ -1030,7 +1022,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   height: 44,
                   alignment: Alignment.center,
                   color: over ? AppColors.hive.withValues(alpha: 0.14) : null,
-                  child: Text(over ? 'Відпусти тут' : 'Перетягни сюди параметри',
+                  child: Text(over ? tr.dropHere : tr.dragParamsHere,
                       style: TextStyle(
                           color: over ? AppColors.hive : AppColors.textMuted, fontSize: 13)),
                 ),
@@ -1052,8 +1044,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
         padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
         child: Text(
             chosen.isEmpty
-                ? 'Тут з\'являться параметри, які ви оберете у вкладці «Список».'
-                : 'Затисни параметр і веди в потрібну групу.',
+                ? tr.builderEmpty
+                : tr.builderHint,
             style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       ),
       for (final g in groups) groupCard(g),
@@ -1062,7 +1054,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
         name: 'new-group',
         radius: 14,
         child: PillButton(
-          text: '+ Нова група',
+          text: tr.groupNewButton,
           bg: AppColors.darkBtn,
           fg: AppColors.text,
           height: 42,
@@ -1088,11 +1080,11 @@ class _ParametersScreenState extends State<ParametersScreen> {
             border: _dragOver == '' ? Border.all(color: AppColors.hive, width: 2) : null,
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Обрані, але ще без групи',
+            Text(tr.chosenNoGroup,
                 style: TextStyle(
                     color: AppColors.text, fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(loose.isEmpty ? 'Усі параметри розкладено по групах.' : 'Затисни й перетягни в групу.',
+            Text(loose.isEmpty ? tr.allGrouped : tr.dragToGroup,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             if (loose.isNotEmpty) const SizedBox(height: 10),
             Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1168,9 +1160,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
     if (await repo.parameterHasRecords(p.id)) {
       if (!mounted) return;
       await showInfo(context,
-          'У «${p.name}» уже є записи, тож назву змінити не можна. Можна створити новий '
-          'параметр і перенести в нього історію.',
-          title: 'Не можна перейменувати');
+          tr.paramHasRecordsNoRename(p.name),
+          title: tr.cannotRename);
       return;
     }
     if (!mounted) return;
@@ -1181,7 +1172,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
     final locked = _lockedBase(p);
     var subtitle = DataTypes.label(p.dataType);
     if (p.unit != null && p.unit!.isNotEmpty) subtitle += ' · ${p.unit}';
-    if (locked) subtitle += " · обов'язкова";
+    if (locked) subtitle += tr.requiredSuffix;
     return ListCard(
       height: 66,
       child: Row(children: [
@@ -1251,7 +1242,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               icon: 'history',
               bg: AppColors.addObject,
               size: 36,
-              tooltip: 'Історія',
+              tooltip: tr.history,
               onPressed: () => _history(p)),
           const SizedBox(width: 6),
         ],
@@ -1263,7 +1254,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
               icon: 'pencil',
               bg: AppColors.rename,
               size: 36,
-              tooltip: 'Редагувати',
+              tooltip: tr.editAction,
               onPressed: () => _openForm(p)),
           const SizedBox(width: 6),
         ],
@@ -1272,7 +1263,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
             icon: 'trash',
             bg: AppColors.danger,
             size: 36,
-            tooltip: 'Видалити',
+            tooltip: tr.delete,
             onPressed: () => _delete(p)),
       ]),
     );
@@ -1294,15 +1285,15 @@ class ApplyScopeSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = {
-      ApplyScope.hive: 'Цей вулик',
-      ApplyScope.kind: kind.isEmpty ? 'Такі самі' : 'Усі «$kind»',
-      ApplyScope.apiary: 'Уся пасіка',
+      ApplyScope.hive: tr.scopeHive,
+      ApplyScope.kind: kind.isEmpty ? tr.scopeSame : tr.scopeKind(kind),
+      ApplyScope.apiary: tr.scopeApiary,
     };
     final i = ApplyScope.values.indexOf(value);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Padding(
         padding: const EdgeInsets.only(left: 4, bottom: 4),
-        child: Text('Застосувати до:', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        child: Text(tr.applyTo, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
       ),
       Container(
         height: _h + 8,

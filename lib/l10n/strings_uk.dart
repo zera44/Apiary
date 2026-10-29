@@ -1509,4 +1509,166 @@ class AppStringsUk extends AppStrings {
       'Суму не можна змінити: вона складається з рядків таблиці. Скасуйте запис і внесіть новий.';
   @override
   String get finAlreadyCancelled => 'Цей запис уже скасовано';
+
+  // ---- Параметри ----
+  @override
+  String records(int n) => '$n ${plural(n, one: 'запис', few: 'записи', many: 'записів')}';
+  @override
+  String get paramEdit => 'Редагувати параметр';
+  @override
+  String get paramNew => 'Новий параметр';
+  @override
+  String get paramBaseNameLocked => 'Назву Базової характеристики змінити не можна';
+  @override
+  String get dataType => 'Тип даних';
+  @override
+  String get listOptions => 'Варіанти списку';
+  @override
+  String get paramBaseTypeLocked => 'Тип даних Базової характеристики змінити не можна';
+  @override
+  String get paramTypeLocked =>
+      'Записи вже є, тож тип даних змінити не можна. Щоб змінити тип - створіть новий параметр і перенесіть у нього історію.';
+  @override
+  String get paramTypeFree => 'Тип даних можна змінити, поки немає жодного запису.';
+  @override
+  String get paramMoveHistoryDots => 'Перенести історію…';
+  @override
+  String get paramDelete => 'Видалити параметр';
+  @override
+  String get paramNeedName => 'Так не можна - вкажіть назву параметра';
+  @override
+  String get paramNeedTwoOptions => 'Так не можна - додайте щонайменше два варіанти';
+  @override
+  String get paramMoveWhere => 'Куди перенести історію?';
+  @override
+  String paramFrom(String name, String type) => 'З «$name» ($type)';
+  @override
+  String get paramNewDots => '+ Новий параметр…';
+  @override
+  String paramMoveText(String from, String to, String type, String records) =>
+      'З «$from» у «$to» ($type) буде перенесено $records історії з тими самими датами й об\'єктами.';
+  @override
+  String paramMoveSkipped(String records, String type, String from) =>
+      '\n\n$records не підходять до типу «$type» - вони лишаться в «$from».';
+  @override
+  String paramMoveReplace(String from, String to) => '\n\nДе був «$from», там з\'явиться «$to».';
+  @override
+  String get paramMoveHistory => 'Перенести історію';
+  @override
+  String paramMoveAndDelete(String name) => 'Перенести й видалити «$name»';
+  @override
+  String paramMoved(int moved, int skipped) =>
+      'Перенесено записів: $moved.${skipped > 0 ? '\nНе підійшли до типу й лишились: $skipped.' : ''}';
+  @override
+  String paramBaseNoDelete(String name) =>
+      '«$name» - Базова характеристика, обов\'язкова для усього класу об\'єктів. Її не можна видалити.';
+  @override
+  String get cannotDelete => 'Не можна видалити';
+  @override
+  String paramDeleted(String name) => 'Параметр «$name» видалено';
+  @override
+  String get paramTable => 'Таблиця параметрів';
+  @override
+  String get paramCreate => 'Створити параметр';
+  @override
+  List<String> get paramTabs => const ['Список', 'Конструктор'];
+  @override
+  String get paramNoneYet => 'Ще немає жодного параметра.\nСтвори його кнопкою «+» вгорі.';
+  @override
+  String get characteristicCreate => 'Створити характеристику';
+  @override
+  String get groupNew => 'Нова група';
+  @override
+  String groupNameIt(String name) => 'Назви групу «$name»';
+  @override
+  String get groupName => 'Назва групи';
+  @override
+  String get groupDelete => 'Видалити групу';
+  @override
+  String get dropHere => 'Відпусти тут';
+  @override
+  String get dragParamsHere => 'Перетягни сюди параметри';
+  @override
+  String get builderEmpty => 'Тут з\'являться параметри, які ви оберете у вкладці «Список».';
+  @override
+  String get builderHint => 'Затисни параметр і веди в потрібну групу.';
+  @override
+  String get groupNewButton => '+ Нова група';
+  @override
+  String get chosenNoGroup => 'Обрані, але ще без групи';
+  @override
+  String get allGrouped => 'Усі параметри розкладено по групах.';
+  @override
+  String get dragToGroup => 'Затисни й перетягни в групу.';
+  @override
+  String paramHasRecordsNoRename(String name) =>
+      'У «$name» уже є записи, тож назву змінити не можна. Можна створити новий параметр і перенести в нього історію.';
+  @override
+  String get cannotRename => 'Не можна перейменувати';
+  @override
+  String get requiredSuffix => ' · обов\'язкова';
+  @override
+  String get editAction => 'Редагувати';
+  @override
+  String get scopeHive => 'Цей вулик';
+  @override
+  String get scopeSame => 'Такі самі';
+  @override
+  String scopeKind(String kind) => 'Усі «$kind»';
+  @override
+  String get scopeApiary => 'Уся пасіка';
+  @override
+  String get applyTo => 'Застосувати до:';
+
+  // ---- Огляд вулика ----
+  @override
+  String get fillParams => 'Заповнити параметри';
+  @override
+  String get fillLesson0a =>
+      'Це параметри вулика. Зараз тут тільки обов\'язкові, але ти зможеш ';
+  @override
+  String get fillLesson0b => 'додати нові згодом';
+  @override
+  String get fillLesson1 => 'Мій помічник перевірив вулик за тебе, тож запиши дані в комірки.';
+  @override
+  String get fillLesson2a => 'Кхе, кхе... Я допоможу зі ';
+  @override
+  String get fillLesson2b => 'внесенням інформації';
+  @override
+  String get fillLesson2c => ' до твого вулика.';
+  @override
+  String get fillLesson3a => 'В тебе матка ';
+  @override
+  String lessonQueenColor(String v) =>
+      const {'Білий': 'біла', 'Жовтий': 'жовта', 'Червоний': 'червона', 'Зелений': 'зелена', 'Синій': 'синя'}[v] ?? v.toLowerCase();
+  @override
+  String get fillLesson4a => 'Оглянув сьогодні? Торкнись ';
+  @override
+  String get fillLesson4b => 'дати огляду';
+  @override
+  String get fillLesson4c => ' й обери «Сьогодні».';
+  @override
+  String get fillLesson5 => 'Збережи, бо я більше туди не полізу.';
+  @override
+  String get feedNeedQty => 'Підгодівля: вкажіть кількість';
+  @override
+  String feedOnlyInStock(String amount) => 'Підгодівля: на складі лише $amount';
+  @override
+  String fillWholeFrom0(String name) => '«$name»: введіть ціле число від 0';
+  @override
+  String fillNumber(String name) => '«$name»: введіть число';
+  @override
+  String get feedFromStock => 'Підгодівля зі складу';
+  @override
+  String get dontWriteOff => 'Не списувати';
+  @override
+  String stockItemHas(String name, String amount) => '$name (є $amount)';
+  @override
+  String howMuch(String unit) => 'Скільки, $unit';
+  @override
+  String get chooseDate => 'Обрати дату';
+  @override
+  String get choose => 'Обрати';
+  @override
+  String get noteOptional => 'Необов\'язково: що помітили';
 }

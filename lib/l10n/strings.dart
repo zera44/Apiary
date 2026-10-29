@@ -741,6 +741,85 @@ abstract class AppStrings {
   String get finCancelledNotEdited;
   String get finSumLocked;
   String get finAlreadyCancelled;
+
+  // ---- Параметри ----
+  String records(int n);
+  String get paramEdit;
+  String get paramNew;
+  String get paramBaseNameLocked;
+  String get dataType;
+  String get listOptions;
+  String get paramBaseTypeLocked;
+  String get paramTypeLocked;
+  String get paramTypeFree;
+  String get paramMoveHistoryDots;
+  String get paramDelete;
+  String get paramNeedName;
+  String get paramNeedTwoOptions;
+  String get paramMoveWhere;
+  String paramFrom(String name, String type);
+  String get paramNewDots;
+  String paramMoveText(String from, String to, String type, String records);
+  String paramMoveSkipped(String records, String type, String from);
+  String paramMoveReplace(String from, String to);
+  String get paramMoveHistory;
+  String paramMoveAndDelete(String name);
+  String paramMoved(int moved, int skipped);
+  String paramBaseNoDelete(String name);
+  String get cannotDelete;
+  String paramDeleted(String name);
+  String get paramTable;
+  String get paramCreate;
+  List<String> get paramTabs;
+  String get paramNoneYet;
+  String get characteristicCreate;
+  String get groupNew;
+  String groupNameIt(String name);
+  String get groupName;
+  String get groupDelete;
+  String get dropHere;
+  String get dragParamsHere;
+  String get builderEmpty;
+  String get builderHint;
+  String get groupNewButton;
+  String get chosenNoGroup;
+  String get allGrouped;
+  String get dragToGroup;
+  String paramHasRecordsNoRename(String name);
+  String get cannotRename;
+  String get requiredSuffix;
+  String get editAction;
+  String get scopeHive;
+  String get scopeSame;
+  String scopeKind(String kind);
+  String get scopeApiary;
+  String get applyTo;
+
+  // ---- Огляд вулика ----
+  String get fillParams;
+  String get fillLesson0a;
+  String get fillLesson0b;
+  String get fillLesson1;
+  String get fillLesson2a;
+  String get fillLesson2b;
+  String get fillLesson2c;
+  String get fillLesson3a;
+  String lessonQueenColor(String v);
+  String get fillLesson4a;
+  String get fillLesson4b;
+  String get fillLesson4c;
+  String get fillLesson5;
+  String get feedNeedQty;
+  String feedOnlyInStock(String amount);
+  String fillWholeFrom0(String name);
+  String fillNumber(String name);
+  String get feedFromStock;
+  String get dontWriteOff;
+  String stockItemHas(String name, String amount);
+  String howMuch(String unit);
+  String get chooseDate;
+  String get choose;
+  String get noteOptional;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].
