@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart' show AssetBundle, rootBundle;
 
 import 'svg_icon.dart';
+import '../l10n/l10n.dart';
 
 /// Реєстр іконок застосунку. Самі іконки — SVG-файли в `assets/icons/`
 /// (за категоріями), а перелік, назви й категорії — у `assets/icons/icons.json`.
@@ -27,6 +28,10 @@ class AppIconEntry {
   /// варіантів (порядок — як у реєстрі).
   final String? variantLabel;
 
+  /// Назви іншими мовами: `label_en`, `variantLabel_en` у реєстрі (мова -> назва).
+  final Map<String, String> labels;
+  final Map<String, String> variantLabels;
+
   const AppIconEntry({
     required this.id,
     required this.file,
@@ -34,8 +39,22 @@ class AppIconEntry {
     required this.category,
     this.pickable = false,
     this.variantLabel,
+    this.labels = const {},
+    this.variantLabels = const {},
   });
+
+  /// Назва поточною мовою (немає перекладу - українська).
+  String get shownLabel => labels[tr.languageCode] ?? label;
+  String? get shownVariantLabel =>
+      variantLabel == null ? null : (variantLabels[tr.languageCode] ?? variantLabel);
 }
+
+/// `label_en` -> {'en': ...} для ключів [prefix]_<мова>.
+Map<String, String> _translations(Map<dynamic, dynamic> raw, String prefix) => {
+      for (final e in raw.entries)
+        if (e.key is String && (e.key as String).startsWith('${prefix}_') && e.value is String)
+          (e.key as String).substring(prefix.length + 1): e.value as String,
+    };
 
 /// Розібраний реєстр разом із розібраними іконками.
 class IconSet {
@@ -98,6 +117,8 @@ IconSet buildIconSet(String manifestJson, String? Function(String file) readFile
       category: category,
       pickable: raw['pickable'] == true,
       variantLabel: variant is String ? variant : null,
+      labels: _translations(raw, 'label'),
+      variantLabels: _translations(raw, 'variantLabel'),
     );
     final text = readFile(file);
     if (text == null) {
@@ -183,16 +204,16 @@ class AppIcons {
 
   /// Іконки, які можна обрати для об'єкта: (id, назва) — у порядку реєстру.
   static List<(String, String)> get pickable =>
-      [for (final e in _set.entries) if (e.pickable) (e.id, e.label)];
+      [for (final e in _set.entries) if (e.pickable) (e.id, e.shownLabel)];
 
   /// Іконки для вибору лише однієї категорії ('objects' — вулики,
   /// 'obstacles' — перешкоди).
   static List<(String, String)> pickableIn(String category) => [
         for (final e in _set.entries)
-          if (e.pickable && e.category == category) (e.id, e.label)
+          if (e.pickable && e.category == category) (e.id, e.shownLabel)
       ];
 
   /// Варіанти перешкоди: (id, назва) — у порядку реєстру.
   static List<(String, String)> get obstacleVariants =>
-      [for (final e in _set.entries) if (e.variantLabel != null) (e.id, e.variantLabel!)];
+      [for (final e in _set.entries) if (e.variantLabel != null) (e.id, e.shownVariantLabel!)];
 }
