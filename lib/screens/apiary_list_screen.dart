@@ -26,11 +26,9 @@ class ApiaryListScreen extends StatefulWidget {
       {super.key, required this.repo, this.tutorial = false, this.onLessonDone});
 
   /// Перша підказка уроку «Базові поняття».
-  static final tutorialHello = <InlineSpan>[
-    const TextSpan(
-        text: 'Здоров був, новачок, укуси мене бджола! А де твоя пасіка? '
-            'Непорядок... Натисни '),
-    GuideBubble.highlight('«Створити карту»'),
+  static List<InlineSpan> get tutorialHello => [
+    TextSpan(text: tr.apiaryListHello),
+    GuideBubble.highlight(tr.createMapQuoted),
   ];
   @override
   State<ApiaryListScreen> createState() => _ApiaryListScreenState();
@@ -112,9 +110,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
   /// записами), після «Видалити» — одразу й остаточно.
   Future<void> _delete(Apiary a) async {
     final ok = await showConfirm(context,
-        title: 'Видалити пасіку?',
-        text: 'Пасіку «${a.name}» буде видалено разом з усіма вуликами, '
-            'перешкодами й записами. Цю дію не можна скасувати.');
+        title: tr.deleteApiaryTitle, text: tr.deleteApiaryText(a.name));
     if (!ok || !mounted) return;
     _hiding.add(a.id);
     setState(() => apiaries = [...?apiaries]..removeWhere((x) => x.id == a.id));
@@ -131,7 +127,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('Пасіку «${a.name}» видалено')));
+        ..showSnackBar(SnackBar(content: Text(tr.apiaryDeleted(a.name))));
     }
   }
 
@@ -147,7 +143,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(
-              title: 'Мої пасіки',
+              title: tr.myApiaries,
               onBack: () => Navigator.of(context).pop(),
               // помічники: запросити, хто вже має доступ (в уроці - ні)
               trailing: widget.tutorial
@@ -184,7 +180,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                             Image.asset('assets/guide/bear_surprised_mess.webp',
                                 width: 200, filterQuality: FilterQuality.medium),
                             const SizedBox(height: 12),
-                            Text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.',
+                            Text(tr.noApiariesYet,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: AppColors.textMuted)),
                           ]),
@@ -204,7 +200,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: PillButton(
-                text: '+  Створити карту',
+                text: tr.createMapButton,
                 bg: AppColors.accent,
                 height: 48,
                 radius: 16,
@@ -230,7 +226,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
       const SizedBox(height: 5),
       Expanded(
         child: Tooltip(
-          message: 'Відкрити',
+          message: tr.open,
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -254,7 +250,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                           icon: 'trash',
                           bg: AppColors.danger,
                           size: 28,
-                          tooltip: 'Видалити',
+                          tooltip: tr.delete,
                           onPressed: () => _delete(a)),
                     ),
                     // QR-наліпки цієї пасіки — без відкриття карти
@@ -266,7 +262,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                             icon: 'qr',
                             bg: AppColors.darkBtn,
                             size: 28,
-                            tooltip: 'QR-наліпки',
+                            tooltip: tr.qrLabels,
                             onPressed: () async {
                               await Navigator.of(context).push(MaterialPageRoute(
                                 builder: (_) => QrGenerateScreen(repo: widget.repo, apiary: a),

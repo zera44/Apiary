@@ -7,6 +7,7 @@ import 'package:vosk_flutter/vosk_flutter.dart';
 import '../logic/spoken_numbers.dart';
 import '../services/voice_input.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Висота смужки з мікрофоном над клавіатурою.
 const double kVoiceBarHeight = 46;
@@ -145,13 +146,13 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     try {
       if (!await VoiceInput.instance.modelOnPhone()) {
         _offer = true;
-        _say('Для голосу один раз завантажте модель ~$kVoskModelMb МБ (краще через Wi-Fi)');
+        _say(tr.voiceModelOnce(kVoskModelMb));
         return;
       }
-      _say('Готую розпізнавання…');
+      _say(tr.voicePreparing);
       await VoiceInput.instance.ensureReady();
       if (!await Vosk.permission()) {
-        _say('Немає дозволу на мікрофон (Налаштування телефону → Дозволи)');
+        _say(tr.voiceNoMic);
         return;
       }
       if (!mounted || !t.mounted) return;
@@ -184,12 +185,12 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
       if (e.code == 'NOMODEL' || e.code == 'MODEL') {
         // моделі немає або вона пошкоджена (плагін її прибрав) - скачати знову
         _offer = true;
-        _say('Модель голосу пошкоджена - завантажте її ще раз');
+        _say(tr.voiceModelBroken);
       } else {
-        _say('Голосовий ввід недоступний: ${e.message ?? e.code}');
+        _say(tr.voiceUnavailable(e.message ?? e.code));
       }
     } catch (e) {
-      _say('Голосовий ввід недоступний: $e');
+      _say(tr.voiceUnavailable('$e'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -210,13 +211,13 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
         },
         cancelled: () => _cancelDownload || !mounted,
       );
-      _say('Модель готова - натисніть мікрофон і говоріть');
+      _say(tr.voiceModelReady);
     } catch (e) {
       if (isVoiceDownloadCancelled(e)) {
-        _say('Скачування зупинено - наступного разу докачається');
+        _say(tr.voiceDownloadPaused);
       } else {
         _offer = true;
-        _say('Не вдалося скачати модель: $e');
+        _say(tr.voiceDownloadFailed('$e'));
       }
     } finally {
       if (mounted) setState(() => _downloading = null);
@@ -253,7 +254,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
       setState(() {
         _target = null;
         _partial = '';
-        _message = 'Помилка розпізнавання: ${e.text}';
+        _message = tr.voiceRecognitionError(e.text);
       });
       return;
     }
@@ -271,7 +272,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
     if (_isNumeric(w)) {
       final n = spokenToNumber(spoken, decimal: w.keyboardType.decimal ?? false);
       if (n == null) {
-        _say('Не число: «$spoken»');
+        _say(tr.voiceNotNumber(spoken));
         return;
       }
       add = n;
@@ -330,11 +331,11 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
   Widget _bar(bool listening) {
     final dl = _downloading;
     final text = listening
-        ? (_partial.isEmpty ? 'Говоріть…' : _partial)
+        ? (_partial.isEmpty ? tr.voiceSpeak : _partial)
         : dl != null
-            ? (dl >= 1 ? 'Розпаковую модель…' : 'Завантажую модель голосу: ${(dl * 100).round()} %')
+            ? (dl >= 1 ? tr.voiceUnpacking : tr.voiceDownloading((dl * 100).round()))
             : (_message ??
-            (_focused != null && _isNumeric(_focused!.widget) ? 'Скажіть число' : 'Голосовий ввід'));
+            (_focused != null && _isNumeric(_focused!.widget) ? tr.voiceSayNumber : tr.voiceInput));
     return Material(
       color: AppColors.popupBg,
       child: Row(children: [
@@ -351,7 +352,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
           TextButton(
             key: const ValueKey('voice-download'),
             onPressed: _download,
-            child: Text('Завантажити',
+            child: Text(tr.download,
                 style: TextStyle(color: AppColors.create, fontWeight: FontWeight.bold)),
           ),
         GestureDetector(

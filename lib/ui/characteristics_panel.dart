@@ -7,6 +7,7 @@ import 'common.dart';
 import 'icons.dart';
 import '../tutorial/lesson.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Що показує панель "Характеристики".
 class PanelData {
@@ -46,14 +47,14 @@ class PanelData {
   });
 }
 
-const _typeColorNames = {'hive': 'Медовий оранжевий', 'obstacle': "Кам'яно-бежевий"};
+Map<String, String> get _typeColorNames => {'hive': tr.colorHiveDefault, 'obstacle': tr.colorObstacleDefault};
 
 String _colorName(String type, String? own) {
   if (own != null && own.isNotEmpty) {
     for (final (hex, name) in objectColorChoices) {
       if (hex.toUpperCase() == own.toUpperCase()) return name;
     }
-    return 'Власний колір';
+    return tr.colorOwn;
   }
   return _typeColorNames[type] ?? '';
 }
@@ -136,10 +137,10 @@ class CharacteristicsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = fillColor(data.type, data.color);
     final typeText = data.type == 'hive'
-        ? 'Вулик'
+? tr.hive
         : () {
             final v = obstacleVariantLabel(data.variant);
-            return v.isEmpty ? 'Перешкода' : 'Перешкода - $v';
+            return v.isEmpty ? tr.obstacle : tr.obstacleOf(v);
           }();
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold);
 
@@ -195,7 +196,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(typeText, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 const SizedBox(height: 14),
-                Text('Колір', style: muted),
+                Text(tr.color, style: muted),
                 const SizedBox(height: 6),
                 InkWell(
                   onTap: editable ? onColor : null,
@@ -222,7 +223,7 @@ class CharacteristicsPanel extends StatelessWidget {
                 // у перешкод немає параметрів, історії й QR-кодів — лише назва й вигляд
                 if (data.type == 'hive') ...[
                 const SizedBox(height: 14),
-                Text('Значення', style: muted),
+                Text(tr.values, style: muted),
                 const SizedBox(height: 6),
                 if (data.params.isEmpty && !(data.placed && onQr != null))
                   Text('-', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
@@ -237,7 +238,7 @@ class CharacteristicsPanel extends StatelessWidget {
                         on: highlightFill,
                         radius: 16,
                         child: PillButton(
-                          text: 'Оглянути',
+                          text: tr.inspect,
                           bg: AppColors.roundBtn,
                           fg: AppColors.text,
                           height: 38,
@@ -251,7 +252,7 @@ class CharacteristicsPanel extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: PillButton(
-                          text: 'Змін немає',
+                          text: tr.noChanges,
                           bg: AppColors.darkBtn,
                           fg: AppColors.text,
                           height: 38,
@@ -270,7 +271,7 @@ class CharacteristicsPanel extends StatelessWidget {
                   name: 'panel-params',
                   radius: 14,
                   child: PillButton(
-                    text: 'Параметри',
+                    text: tr.parameters,
                     bg: AppColors.accent,
                     height: 38,
                     fontSize: 13,
@@ -333,8 +334,8 @@ class CharacteristicsPanel extends StatelessWidget {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(20)),
       child: Row(children: [
-        half(0, 'Характеристики'),
-        half(1, 'Нотатки'),
+        half(0, tr.characteristics),
+        half(1, tr.notes),
       ]),
     );
   }
@@ -378,7 +379,7 @@ class CharacteristicsPanel extends StatelessWidget {
         TableRow(children: [
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-              child: Text('QR-код',
+              child: Text(tr.qrCode,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.25))),
           _qrCell(context),
         ]),

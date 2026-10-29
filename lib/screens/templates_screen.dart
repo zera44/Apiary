@@ -9,6 +9,7 @@ import '../ui/grid_view.dart';
 import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
 import 'template_editor_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Екран "Шаблони": плитки-мініатюри збережених конфігурацій + "Створити шаблон".
 class TemplatesScreen extends StatefulWidget {
@@ -62,7 +63,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
   Future<void> openNew() => _open(null);
 
   Future<void> _rename(ApiaryTemplate t) async {
-    final name = await showTextPrompt(context, title: 'Перейменувати шаблон', initial: t.name);
+    final name = await showTextPrompt(context, title: tr.templateRename, initial: t.name);
     if (name == null) return;
     await widget.repo.updateTemplate(t.id, name: name);
     await _reload();
@@ -71,7 +72,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
   /// Видалення без підтвердження: шаблон зникає одразу, внизу «Відмінити».
   Future<void> _delete(ApiaryTemplate t) => deleteWithUndo(
         context,
-        message: 'Шаблон «${t.name}» видалено',
+        message: tr.templateDeleted(t.name),
         hide: () {
           _hiding.add(t.id);
           setState(() => templates = [...?templates]..removeWhere((x) => x.id == t.id));
@@ -94,13 +95,13 @@ class TemplatesScreenState extends State<TemplatesScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            if (!widget.embedded) TopBar(title: 'Шаблони', onBack: () => Navigator.pop(context)),
+            if (!widget.embedded) TopBar(title: tr.templates, onBack: () => Navigator.pop(context)),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
                   : list.isEmpty
                       ? Center(
-                          child: Text('Ще немає жодного шаблону',
+                          child: Text(tr.noTemplatesYet,
                               style: TextStyle(color: AppColors.textMuted)))
                       : GridView.builder(
                           padding: const EdgeInsets.all(12),
@@ -121,7 +122,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
                 name: 'template-create',
                 radius: 16,
                 child: PillButton(
-                  text: 'Створити шаблон',
+                  text: tr.templateCreate,
                   bg: AppColors.accent,
                   height: 48,
                   radius: 16,
@@ -141,7 +142,7 @@ class TemplatesScreenState extends State<TemplatesScreen> {
   Widget _tile(ApiaryTemplate t) => TemplateTile(
         template: t,
         cells: _thumbs[t.id] ??= templateSceneCells(t),
-        tooltip: 'Відкрити',
+        tooltip: tr.open,
         onTap: () => _open(t.id),
         onLongPress: () => _rename(t),
         onRename: () => _rename(t),
@@ -218,7 +219,7 @@ class TemplateTile extends StatelessWidget {
                             icon: 'trash',
                             bg: AppColors.danger,
                             size: 28,
-                            tooltip: 'Видалити',
+                            tooltip: tr.delete,
                             onPressed: onDelete),
                       ),
                     if (onRename != null)
@@ -229,7 +230,7 @@ class TemplateTile extends StatelessWidget {
                             icon: 'pencil',
                             bg: AppColors.rename,
                             size: 28,
-                            tooltip: 'Перейменувати',
+                            tooltip: tr.rename,
                             onPressed: onRename),
                       ),
                   ]),

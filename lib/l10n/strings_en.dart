@@ -543,4 +543,275 @@ class AppStringsEn extends AppStrings {
   String get languageChange => 'Change language';
   @override
   String get textSizeLetter => 'A';
+
+  // ---- Спільні діалоги й кнопки ----
+  @override
+  String get menu => 'Menu';
+  @override
+  String get requiredCharacteristic => 'Required characteristic';
+  @override
+  String get confirmTitle => 'Confirmation';
+  @override
+  String get delete => 'Delete';
+  @override
+  String get ok => 'OK';
+  @override
+  String get save => 'Save';
+  @override
+  String get iconHive => 'Hive icon';
+  @override
+  String get iconObstacle => 'Obstacle icon';
+  @override
+  String get iconChoose => 'Choose an icon';
+  @override
+  String get iconDefault => 'Default';
+  @override
+  String get hives => 'Hives';
+  @override
+  String get obstacles => 'Obstacles';
+  @override
+  String get colorChoose => 'Choose a color';
+  @override
+  String get colorDefault => 'Default';
+  @override
+  String get undoDelete => 'Undo';
+  @override
+  List<String> get objectColorNames =>
+      const ['Honey orange', 'Amber yellow', 'Terracotta', 'Raspberry red', 'Pink', 'Purple', 'Mustard', 'Coral', 'Burgundy', 'Peach'];
+  @override
+  String get colorHiveDefault => 'Honey orange';
+  @override
+  String get colorObstacleDefault => 'Stone beige';
+  @override
+  String get colorOwn => 'Custom color';
+
+  // ---- Вибір «синя / червона пігулка» ----
+  @override
+  String get pillBlueLabel => 'The blue pill';
+  @override
+  String get pillBlueText => ' - you are the master of your life (';
+  @override
+  String get pillRedLabel => 'the red one';
+  @override
+  String get pillRedText => ' - I will show you how deep the rabbit hole goes (';
+  @override
+  String get pillBlueDefault => 'finish the tutorial';
+  @override
+  String get pillRedDefault => 'continue';
+  @override
+  String get myApiaries => 'My apiaries';
+  @override
+  String get pillLead => 'Colleague, I offer you a choice. ';
+  @override
+  String get pillNoTutorial => 'no tutorial';
+  @override
+  String get pillTakeTutorial => 'take the tutorial';
+  @override
+  String get pillBlue => 'Blue';
+  @override
+  String get pillRed => 'Red';
+
+  // ---- Панель характеристик ----
+  @override
+  String get hive => 'Hive';
+  @override
+  String get obstacle => 'Obstacle';
+  @override
+  String obstacleOf(String v) => 'Obstacle - $v';
+  @override
+  String get color => 'Color';
+  @override
+  String get values => 'Values';
+  @override
+  String get inspect => 'Inspect';
+  @override
+  String get noChanges => 'No changes';
+  @override
+  String get parameters => 'Parameters';
+  @override
+  String get characteristics => 'Characteristics';
+  @override
+  String get notes => 'Notes';
+  @override
+  String get qrCode => 'QR code';
+
+  // ---- Голосовий ввід у полях ----
+  @override
+  String voiceModelOnce(int mb) =>
+      'For voice input, download the model once (~$mb MB, preferably over Wi-Fi)';
+  @override
+  String get voicePreparing => 'Preparing recognition…';
+  @override
+  String get voiceNoMic => 'No microphone permission (Phone settings → Permissions)';
+  @override
+  String get voiceModelBroken => 'The voice model is damaged - download it again';
+  @override
+  String voiceUnavailable(String details) => 'Voice input unavailable: $details';
+  @override
+  String get voiceModelReady => 'The model is ready - tap the microphone and speak';
+  @override
+  String get voiceDownloadPaused => 'Download stopped - it will resume next time';
+  @override
+  String voiceDownloadFailed(String details) => 'Could not download the model: $details';
+  @override
+  String voiceRecognitionError(String details) => 'Recognition error: $details';
+  @override
+  String voiceNotNumber(String spoken) => 'Not a number: "$spoken"';
+  @override
+  String get voiceSpeak => 'Speak…';
+  @override
+  String get voiceUnpacking => 'Unpacking the model…';
+  @override
+  String voiceDownloading(int percent) => 'Downloading the voice model: $percent%';
+  @override
+  String get voiceSayNumber => 'Say a number';
+  @override
+  String get voiceInput => 'Voice input';
+  @override
+  String get download => 'Download';
+
+  // ---- Меню навігації ----
+  @override
+  String get qrHiveNotFound => 'Hive not found';
+  @override
+  String get qrNotBound => 'This QR code is not linked to any hive yet.';
+  @override
+  String qrBindAsk(String why, String code) => '$why\n\nCode: $code\n\nLink it to a hive now?';
+  @override
+  String get qrBindToHive => 'Link to a hive';
+  @override
+  String get qrCreateApiaryFirst => 'First create an apiary and hives on the map.';
+  @override
+  String get stock => 'Stock';
+  @override
+  String get finances => 'Finances';
+  @override
+  String get history => 'History';
+  @override
+  String get tutorial => 'Tutorial';
+  @override
+  String get feedbackTitle => 'Feedback';
+  @override
+  String get tourApiaries => ' - all your apiaries in one place.';
+  @override
+  String get tourStock => ' - frames, feed, medicine: arrivals, write-offs and stocktaking.';
+  @override
+  String get tourFinances =>
+      ' - apiary expenses and income: enter them by hand or photograph a receipt.';
+  @override
+  String get tourHistory =>
+      ' - curious how the readings or the stock changed? This is the place.';
+  @override
+  String get tourQr =>
+      ' - a round without records is time wasted. Scan the code on a hive, and link a new one to a hive.';
+  @override
+  String get tourTutorial => ' - something unclear? Take a dedicated lesson.';
+  @override
+  String get tourSettings => ' - language, text size, templates, account and backups.';
+  @override
+  String get tourFeedback => ' - want to share an idea or give feedback? This is the place.';
+  @override
+  String get gotIt => 'Got it';
+  @override
+  String get continueAction => 'Continue';
+  @override
+  String get navMenu => 'Navigation menu';
+  @override
+  String get scan => 'Scan';
+  @override
+  String get generate => 'Generate';
+  @override
+  String get qrBindRow => 'Link in a row';
+
+  // ---- Головний екран ----
+  @override
+  String get signInFailed => 'Could not sign in. Check the internet and try again.';
+  @override
+  String get whatsNew => 'What\'s new';
+  @override
+  String get start => 'Start';
+  @override
+  String get feedbackShort => 'Feedback';
+  @override
+  String get dataOnlyHere => 'Data is only on this device';
+  @override
+  String get signInForSync => 'Sign in with Google to sync';
+  @override
+  String get scanQr => 'Scan QR code';
+  @override
+  String get greetNight => 'Good night, beekeeper!';
+  @override
+  String get greetMorning => 'Good morning, beekeeper!';
+  @override
+  String get greetDay => 'Good afternoon, beekeeper!';
+  @override
+  String get greetEvening => 'Good evening, beekeeper!';
+  @override
+  List<String> get homeTips =>
+      const [
+      'Hold a hive on the map - and drag it to a new place right away.',
+      'Round: the red hives on the map are the ones due for inspection. Walk up to a hive and tap "Scan".',
+      'In an inspection, "Save", "No changes" and "Skip" open the next hive right away.',
+      'Picked a new parameter from the list and cannot find the "Save" button? That is because all changes are saved automatically.',
+      'Hold "Finances" - and a new expense opens right away.',
+      'Stick QR labels on - and a hive opens from the camera in a second.',
+      'Set a minimum stock level - I will remind you when it is time to buy more.',
+      'The apiary report in Excel is in the ☰ menu → "History".',
+      'The round interval is set once for the whole apiary - tap the apiary name on the map.',
+      'If a hive needs a different round interval, tap "Days until the round" on its panel.',
+      ];
+  @override
+  String get dueToday => 'Inspect today';
+  @override
+  String get myApiary => 'My apiary';
+  @override
+  String get showOnMap => 'Show on the map';
+  @override
+  String get feedbackReplied => 'The developer replied to your feedback';
+  @override
+  String dueTodayCount(int n) => 'Inspect today: $n';
+  @override
+  String timeToBuy(String items) => 'Time to buy more: $items';
+  @override
+  String get tapToGo => 'Tap to go';
+  @override
+  String get tapNext => 'Tap for next';
+  @override
+  String get mail => 'Mail';
+
+  // ---- Мої пасіки ----
+  @override
+  String get apiaryListHello =>
+      'Well hello, newbie, sting me a bee! Where is your apiary? That will not do... Tap ';
+  @override
+  String get createMapQuoted => '"Create a map"';
+  @override
+  String get deleteApiaryTitle => 'Delete the apiary?';
+  @override
+  String deleteApiaryText(String name) =>
+      'The apiary "$name" will be deleted together with all hives, obstacles and records. This cannot be undone.';
+  @override
+  String apiaryDeleted(String name) => 'Apiary "$name" deleted';
+  @override
+  String get noApiariesYet => 'No apiaries yet.\nCreate one with the button below.';
+  @override
+  String get createMapButton => '+  Create a map';
+  @override
+  String get open => 'Open';
+  @override
+  String get qrLabels => 'QR labels';
+
+  // ---- Шаблони ----
+  @override
+  String get templateRename => 'Rename template';
+  @override
+  String templateDeleted(String name) => 'Template "$name" deleted';
+  @override
+  String get templates => 'Templates';
+  @override
+  String get noTemplatesYet => 'No templates yet';
+  @override
+  String get templateCreate => 'Create a template';
+  @override
+  String get rename => 'Rename';
 }

@@ -545,4 +545,274 @@ class AppStringsUk extends AppStrings {
   String get languageChange => 'Змінити мову';
   @override
   String get textSizeLetter => 'А';
+
+  // ---- Спільні діалоги й кнопки ----
+  @override
+  String get menu => 'Меню';
+  @override
+  String get requiredCharacteristic => 'Обов\'язкова характеристика';
+  @override
+  String get confirmTitle => 'Підтвердження';
+  @override
+  String get delete => 'Видалити';
+  @override
+  String get ok => 'Гаразд';
+  @override
+  String get save => 'Зберегти';
+  @override
+  String get iconHive => 'Іконка вулика';
+  @override
+  String get iconObstacle => 'Іконка перешкоди';
+  @override
+  String get iconChoose => 'Обрати іконку';
+  @override
+  String get iconDefault => 'Типова';
+  @override
+  String get hives => 'Вулики';
+  @override
+  String get obstacles => 'Перешкоди';
+  @override
+  String get colorChoose => 'Обрати колір';
+  @override
+  String get colorDefault => 'Типовий';
+  @override
+  String get undoDelete => 'Відмінити';
+  @override
+  List<String> get objectColorNames =>
+      const ['Медовий оранжевий', 'Бурштиновий жовтий', 'Теракотовий', 'Малиновий червоний', 'Рожевий', 'Пурпуровий', 'Гірчичний', 'Кораловий', 'Бордовий', 'Персиковий'];
+  @override
+  String get colorHiveDefault => 'Медовий оранжевий';
+  @override
+  String get colorObstacleDefault => 'Кам\'яно-бежевий';
+  @override
+  String get colorOwn => 'Власний колір';
+
+  // ---- Вибір «синя / червона пігулка» ----
+  @override
+  String get pillBlueLabel => 'Синя пігулка';
+  @override
+  String get pillBlueText => ' - ти власник свого життя (';
+  @override
+  String get pillRedLabel => 'червона';
+  @override
+  String get pillRedText => ' - я покажу, як глибока ця нора (';
+  @override
+  String get pillBlueDefault => 'завершити навчання';
+  @override
+  String get pillRedDefault => 'продовжити';
+  @override
+  String get myApiaries => 'Мої пасіки';
+  @override
+  String get pillLead => 'Колего, пропоную тобі вибір. ';
+  @override
+  String get pillNoTutorial => 'без навчання';
+  @override
+  String get pillTakeTutorial => 'пройти навчання';
+  @override
+  String get pillBlue => 'Синя';
+  @override
+  String get pillRed => 'Червона';
+
+  // ---- Панель характеристик ----
+  @override
+  String get hive => 'Вулик';
+  @override
+  String get obstacle => 'Перешкода';
+  @override
+  String obstacleOf(String v) => 'Перешкода - $v';
+  @override
+  String get color => 'Колір';
+  @override
+  String get values => 'Значення';
+  @override
+  String get inspect => 'Оглянути';
+  @override
+  String get noChanges => 'Змін немає';
+  @override
+  String get parameters => 'Параметри';
+  @override
+  String get characteristics => 'Характеристики';
+  @override
+  String get notes => 'Нотатки';
+  @override
+  String get qrCode => 'QR-код';
+
+  // ---- Голосовий ввід у полях ----
+  @override
+  String voiceModelOnce(int mb) =>
+      'Для голосу один раз завантажте модель ~$mb МБ (краще через Wi-Fi)';
+  @override
+  String get voicePreparing => 'Готую розпізнавання…';
+  @override
+  String get voiceNoMic => 'Немає дозволу на мікрофон (Налаштування телефону → Дозволи)';
+  @override
+  String get voiceModelBroken => 'Модель голосу пошкоджена - завантажте її ще раз';
+  @override
+  String voiceUnavailable(String details) => 'Голосовий ввід недоступний: $details';
+  @override
+  String get voiceModelReady => 'Модель готова - натисніть мікрофон і говоріть';
+  @override
+  String get voiceDownloadPaused => 'Скачування зупинено - наступного разу докачається';
+  @override
+  String voiceDownloadFailed(String details) => 'Не вдалося скачати модель: $details';
+  @override
+  String voiceRecognitionError(String details) => 'Помилка розпізнавання: $details';
+  @override
+  String voiceNotNumber(String spoken) => 'Не число: «$spoken»';
+  @override
+  String get voiceSpeak => 'Говоріть…';
+  @override
+  String get voiceUnpacking => 'Розпаковую модель…';
+  @override
+  String voiceDownloading(int percent) => 'Завантажую модель голосу: $percent %';
+  @override
+  String get voiceSayNumber => 'Скажіть число';
+  @override
+  String get voiceInput => 'Голосовий ввід';
+  @override
+  String get download => 'Завантажити';
+
+  // ---- Меню навігації ----
+  @override
+  String get qrHiveNotFound => 'Вулик не знайдено';
+  @override
+  String get qrNotBound => 'Цей QR-код ще не прив\'язаний до жодного вулика.';
+  @override
+  String qrBindAsk(String why, String code) =>
+      '$why\n\nКод: $code\n\nПрив\'язати його до вулика зараз?';
+  @override
+  String get qrBindToHive => 'Прив\'язати до вулика';
+  @override
+  String get qrCreateApiaryFirst => 'Спершу створіть пасіку й вулики на карті.';
+  @override
+  String get stock => 'Склад';
+  @override
+  String get finances => 'Фінанси';
+  @override
+  String get history => 'Історія';
+  @override
+  String get tutorial => 'Навчання';
+  @override
+  String get feedbackTitle => 'Зворотний зв\'язок';
+  @override
+  String get tourApiaries => ' - усі твої пасіки в одному місці.';
+  @override
+  String get tourStock => ' - рамки, корми, ліки: прихід, списання й переоблік.';
+  @override
+  String get tourFinances => ' - витрати й доходи пасіки: записуй вручну або фотографуй чек.';
+  @override
+  String get tourHistory => ' - цікаво глянути зміни показників чи в складі? Тобі сюди.';
+  @override
+  String get tourQr =>
+      ' - обхід без записів - час на вітер. Скануй код з вулика, а новий - прив\'язуй до вулика.';
+  @override
+  String get tourTutorial => ' - щось не зрозумів? Пройди спеціалізоване навчання.';
+  @override
+  String get tourSettings => ' - мова, розмір шрифту, шаблони, акаунт і резервні копії.';
+  @override
+  String get tourFeedback => ' - хочеш поділитись ідеєю чи дати зворотний зв\'язок? Тобі сюди.';
+  @override
+  String get gotIt => 'Зрозуміло';
+  @override
+  String get continueAction => 'Продовжити';
+  @override
+  String get navMenu => 'Меню навігації';
+  @override
+  String get scan => 'Сканувати';
+  @override
+  String get generate => 'Генерувати';
+  @override
+  String get qrBindRow => 'Прив\'язати підряд';
+
+  // ---- Головний екран ----
+  @override
+  String get signInFailed => 'Не вдалося увійти. Перевірте інтернет і спробуйте ще раз.';
+  @override
+  String get whatsNew => 'Що нового';
+  @override
+  String get start => 'Почати';
+  @override
+  String get feedbackShort => 'Відгук';
+  @override
+  String get dataOnlyHere => 'Дані лише на цьому пристрої';
+  @override
+  String get signInForSync => 'Увійти через Google для синхронізації';
+  @override
+  String get scanQr => 'Сканувати QR-код';
+  @override
+  String get greetNight => 'Доброї ночі, пасічнику!';
+  @override
+  String get greetMorning => 'Доброго ранку, пасічнику!';
+  @override
+  String get greetDay => 'Доброго дня, пасічнику!';
+  @override
+  String get greetEvening => 'Доброго вечора, пасічнику!';
+  @override
+  List<String> get homeTips =>
+      const [
+      'Утримайте вулик на карті - і одразу перетягуйте його на нове місце.',
+      'Обхід: на карті червоні - ті, кого пора оглянути. Підійдіть до вулика й натисніть «Сканувати».',
+      'В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик.',
+      'Обрали новий параметр зі списку і не знаходите кнопку «Зберегти»? Це тому, що всі зміни зберігаються автоматично.',
+      'Утримайте «Фінанси» - і одразу відкриється нова витрата.',
+      'Наклейте QR-наліпки - і вулик відкриється з камери за секунду.',
+      'Задайте мінімальний залишок на складі - я нагадаю, коли час докупити.',
+      'Звіт по пасіці в Excel - у меню ☰ → «Історія».',
+      'Періодичність обходу задається одна на всю пасіку - торкніться назви пасіки на карті.',
+      'Якщо для вулика треба інший час обходу - торкніться «Кількість днів до обходу» на його панелі.',
+      ];
+  @override
+  String get dueToday => 'Сьогодні оглянути';
+  @override
+  String get myApiary => 'Моя пасіка';
+  @override
+  String get showOnMap => 'Показати на карті';
+  @override
+  String get feedbackReplied => 'Розробник відповів на ваш відгук';
+  @override
+  String dueTodayCount(int n) => 'Сьогодні оглянути: $n';
+  @override
+  String timeToBuy(String items) => 'Час докупити: $items';
+  @override
+  String get tapToGo => 'Натисніть - перейти';
+  @override
+  String get tapNext => 'Натисніть - далі';
+  @override
+  String get mail => 'Пошта';
+
+  // ---- Мої пасіки ----
+  @override
+  String get apiaryListHello =>
+      'Здоров був, новачок, укуси мене бджола! А де твоя пасіка? Непорядок... Натисни ';
+  @override
+  String get createMapQuoted => '«Створити карту»';
+  @override
+  String get deleteApiaryTitle => 'Видалити пасіку?';
+  @override
+  String deleteApiaryText(String name) =>
+      'Пасіку «$name» буде видалено разом з усіма вуликами, перешкодами й записами. Цю дію не можна скасувати.';
+  @override
+  String apiaryDeleted(String name) => 'Пасіку «$name» видалено';
+  @override
+  String get noApiariesYet => 'Ще немає жодної пасіки.\nСтвори її кнопкою нижче.';
+  @override
+  String get createMapButton => '+  Створити карту';
+  @override
+  String get open => 'Відкрити';
+  @override
+  String get qrLabels => 'QR-наліпки';
+
+  // ---- Шаблони ----
+  @override
+  String get templateRename => 'Перейменувати шаблон';
+  @override
+  String templateDeleted(String name) => 'Шаблон «$name» видалено';
+  @override
+  String get templates => 'Шаблони';
+  @override
+  String get noTemplatesYet => 'Ще немає жодного шаблону';
+  @override
+  String get templateCreate => 'Створити шаблон';
+  @override
+  String get rename => 'Перейменувати';
 }

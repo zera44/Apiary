@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import '../icons/app_icons.dart';
 import 'icons.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Кругла кнопка з іконкою, намальованою лініями.
 class CircleIconButton extends StatelessWidget {
@@ -285,7 +286,7 @@ class TopBar extends StatelessWidget {
           bg: AppColors.roundBtn,
           iconColor: AppColors.text,
           size: 48,
-          tooltip: 'Меню',
+          tooltip: tr.menu,
           onPressed: onMenu,
         ),
           ),
@@ -311,7 +312,7 @@ class TopBar extends StatelessWidget {
               bg: AppColors.roundBtn,
               iconColor: AppColors.text,
               size: 34,
-              tooltip: 'Меню',
+              tooltip: tr.menu,
               onPressed: onMenu,
             )
           else
@@ -415,7 +416,7 @@ class LockMark extends StatelessWidget {
         width: 26,
         height: 26,
         child: Tooltip(
-          message: "Обов'язкова характеристика",
+          message: tr.requiredCharacteristic,
           child: AppIcon('lock', color: AppColors.textMuted, size: 26),
         ),
       ),
@@ -499,25 +500,24 @@ Widget _dialogButtons(List<Widget> buttons) => Row(
 Future<bool> showConfirm(
   BuildContext context, {
   required String text,
-  String title = 'Підтвердження',
-  String confirmText = 'Видалити',
+String? title, String? confirmText,
   bool danger = true,
-  String cancelText = 'Скасувати',
+String? cancelText,
 }) async {
   final res = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(title),
+      title: Text(title ?? tr.confirmTitle),
       content: Text(text, style: TextStyle(color: AppColors.text)),
       actions: [
         _dialogButtons([
           PillButton(
-              text: cancelText,
+              text: cancelText ?? tr.cancel,
               bg: AppColors.neutralBtn,
               fg: AppColors.text,
               onPressed: () => Navigator.pop(ctx, false)),
           PillButton(
-              text: confirmText,
+              text: confirmText ?? tr.delete,
               bg: danger ? AppColors.danger : AppColors.accent,
               onPressed: () => Navigator.pop(ctx, true)),
         ]),
@@ -536,7 +536,7 @@ Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
       content: Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
       actions: [
         _dialogButtons([
-          PillButton(text: 'Гаразд', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
+          PillButton(text: tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
         ]),
       ],
     ),
@@ -600,11 +600,11 @@ Future<String?> showTextPrompt(BuildContext context,
             deco(
                 'cancel',
                 PillButton(
-                    text: 'Скасувати',
+                    text: tr.cancel,
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     onPressed: () => Navigator.pop(ctx))),
-            deco('save', PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
+            deco('save', PillButton(text: tr.save, bg: AppColors.accent, onPressed: save)),
           ]),
         ],
       );
@@ -654,9 +654,9 @@ Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false, Stri
     context: context,
     builder: (ctx) => AlertDialog(
       title: Text(switch (elType) {
-        'hive' => 'Іконка вулика',
-        'obstacle' => 'Іконка перешкоди',
-        _ => 'Обрати іконку',
+        'hive' => tr.iconHive,
+        'obstacle' => tr.iconObstacle,
+        _ => tr.iconChoose,
       }),
       content: SizedBox(
         width: 300,
@@ -664,7 +664,7 @@ Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false, Stri
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             if (withReset) ...[
               PillButton(
-                text: 'Типова',
+                text: tr.iconDefault,
                 bg: AppColors.roundBtn,
                 fg: AppColors.text,
                 height: 36,
@@ -679,9 +679,9 @@ Future<(String?,)?> pickIcon(BuildContext context, {bool withReset = false, Stri
             else if (elType == 'obstacle')
               grid(ctx, obstacles)
             else ...[
-              tile(ctx, 'Вулики', hives),
+              tile(ctx, tr.hives, hives),
               const SizedBox(height: 10),
-              tile(ctx, 'Перешкоди', obstacles),
+              tile(ctx, tr.obstacles, obstacles),
             ],
           ]),
         ),
@@ -695,13 +695,13 @@ Future<(String?,)?> pickObjectColor(BuildContext context, {bool withReset = fals
   return showDialog<(String?,)>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Обрати колір'),
+      title: Text(tr.colorChoose),
       content: SizedBox(
         width: 300,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           if (withReset) ...[
             PillButton(
-              text: 'Типовий',
+              text: tr.colorDefault,
               bg: AppColors.roundBtn,
               fg: AppColors.text,
               height: 36,
@@ -754,7 +754,7 @@ Future<void> deleteWithUndo(
     // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
     // завершитись само через 5 с
     persist: false,
-    action: SnackBarAction(label: 'Відмінити', onPressed: () {}),
+    action: SnackBarAction(label: tr.undoDelete, onPressed: () {}),
   ));
   final reason = await ctrl.closed;
   if (reason == SnackBarClosedReason.action) {

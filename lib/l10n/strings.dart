@@ -271,6 +271,140 @@ abstract class AppStrings {
   String get languageFlag;
   String get languageChange;
   String get textSizeLetter;
+
+  // ---- Спільні діалоги й кнопки ----
+  String get menu;
+  String get requiredCharacteristic;
+  String get confirmTitle;
+  String get delete;
+  String get ok;
+  String get save;
+  String get iconHive;
+  String get iconObstacle;
+  String get iconChoose;
+  String get iconDefault;
+  String get hives;
+  String get obstacles;
+  String get colorChoose;
+  String get colorDefault;
+  String get undoDelete;
+  List<String> get objectColorNames;
+  String get colorHiveDefault;
+  String get colorObstacleDefault;
+  String get colorOwn;
+
+  // ---- Вибір «синя / червона пігулка» ----
+  String get pillBlueLabel;
+  String get pillBlueText;
+  String get pillRedLabel;
+  String get pillRedText;
+  String get pillBlueDefault;
+  String get pillRedDefault;
+  String get myApiaries;
+  String get pillLead;
+  String get pillNoTutorial;
+  String get pillTakeTutorial;
+  String get pillBlue;
+  String get pillRed;
+
+  // ---- Панель характеристик ----
+  String get hive;
+  String get obstacle;
+  String obstacleOf(String v);
+  String get color;
+  String get values;
+  String get inspect;
+  String get noChanges;
+  String get parameters;
+  String get characteristics;
+  String get notes;
+  String get qrCode;
+
+  // ---- Голосовий ввід у полях ----
+  String voiceModelOnce(int mb);
+  String get voicePreparing;
+  String get voiceNoMic;
+  String get voiceModelBroken;
+  String voiceUnavailable(String details);
+  String get voiceModelReady;
+  String get voiceDownloadPaused;
+  String voiceDownloadFailed(String details);
+  String voiceRecognitionError(String details);
+  String voiceNotNumber(String spoken);
+  String get voiceSpeak;
+  String get voiceUnpacking;
+  String voiceDownloading(int percent);
+  String get voiceSayNumber;
+  String get voiceInput;
+  String get download;
+
+  // ---- Меню навігації ----
+  String get qrHiveNotFound;
+  String get qrNotBound;
+  String qrBindAsk(String why, String code);
+  String get qrBindToHive;
+  String get qrCreateApiaryFirst;
+  String get stock;
+  String get finances;
+  String get history;
+  String get tutorial;
+  String get feedbackTitle;
+  String get tourApiaries;
+  String get tourStock;
+  String get tourFinances;
+  String get tourHistory;
+  String get tourQr;
+  String get tourTutorial;
+  String get tourSettings;
+  String get tourFeedback;
+  String get gotIt;
+  String get continueAction;
+  String get navMenu;
+  String get scan;
+  String get generate;
+  String get qrBindRow;
+
+  // ---- Головний екран ----
+  String get signInFailed;
+  String get whatsNew;
+  String get start;
+  String get feedbackShort;
+  String get dataOnlyHere;
+  String get signInForSync;
+  String get scanQr;
+  String get greetNight;
+  String get greetMorning;
+  String get greetDay;
+  String get greetEvening;
+  List<String> get homeTips;
+  String get dueToday;
+  String get myApiary;
+  String get showOnMap;
+  String get feedbackReplied;
+  String dueTodayCount(int n);
+  String timeToBuy(String items);
+  String get tapToGo;
+  String get tapNext;
+  String get mail;
+
+  // ---- Мої пасіки ----
+  String get apiaryListHello;
+  String get createMapQuoted;
+  String get deleteApiaryTitle;
+  String deleteApiaryText(String name);
+  String apiaryDeleted(String name);
+  String get noApiariesYet;
+  String get createMapButton;
+  String get open;
+  String get qrLabels;
+
+  // ---- Шаблони ----
+  String get templateRename;
+  String templateDeleted(String name);
+  String get templates;
+  String get noTemplatesYet;
+  String get templateCreate;
+  String get rename;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].
