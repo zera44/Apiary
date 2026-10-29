@@ -11,6 +11,7 @@ import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
 import '../ui/thousands_input.dart';
+import '../l10n/l10n.dart';
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
 class FinEntryTile extends StatelessWidget {
@@ -22,7 +23,7 @@ class FinEntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = entry.categoryId == null ? null : cats[entry.categoryId];
-    final name = entry.fromStock ? kFinStockCategoryName : (c?.name ?? 'Без категорії');
+    final name = entry.fromStock ? kFinStockCategoryName : (c?.name ?? tr.noCategory);
     final muted = entry.cancelled;
     final sign = entry.isExpense ? '−' : '+';
     return InkWell(
@@ -50,7 +51,7 @@ class FinEntryTile extends StatelessWidget {
                   [
                     finDay(entry.date),
                     if (entry.title.isNotEmpty) entry.title,
-                    if (muted) 'скасовано',
+                    if (muted) tr.cancelledMark,
                   ].join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -78,21 +79,20 @@ enum _EntryAction { close, edit, cancel }
 Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
     Map<String, FinCategory> cats) async {
   final c = e.categoryId == null ? null : cats[e.categoryId];
-  final name = e.fromStock ? kFinStockCategoryName : (c?.name ?? 'Без категорії');
+  final name = e.fromStock ? kFinStockCategoryName : (c?.name ?? tr.noCategory);
   final what = e.title.isEmpty ? '' : '\n${e.title}';
   final note = (e.comment ?? '').isEmpty || e.fromStock ? '' : '\n«${e.comment}»';
-  final text = '$name · ${e.isExpense ? 'витрата' : 'дохід'} ${uah(e.amount)}\n'
-      '${finDay(e.date)}$what$note'
-      '${e.fromStock ? '\n\nПрихід внесено на складі. Скасування тут скасує його й на складі.' : ''}'
-      '${!e.fromStock && e.lineCount > 0 ? '\n\nСкасування скасує й приходи цієї операції на складі.' : ''}';
+  final text = tr.finEntryText(name, e.isExpense, uah(e.amount), '${finDay(e.date)}$what$note')
+      + (e.fromStock ? tr.finFromStockNote : '')
+      + (!e.fromStock && e.lineCount > 0 ? tr.finLinesNote : '');
   if (e.cancelled) {
-    await showInfo(context, '$text\n\nЦей запис скасовано.', title: 'Запис');
+    await showInfo(context, '$text${tr.finCancelledNote}', title: tr.record);
     return false;
   }
   final action = await showDialog<_EntryAction>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Запис'),
+      title: Text(tr.record),
       content: Text(text, style: TextStyle(color: AppColors.text)),
       actions: [
         Column(mainAxisSize: MainAxisSize.min, children: [
@@ -100,7 +100,7 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
             SizedBox(
               width: double.infinity,
               child: PillButton(
-                  text: 'Змінити',
+                  text: tr.edit,
                   bg: AppColors.accent,
                   onPressed: () => Navigator.pop(ctx, _EntryAction.edit)),
             ),
@@ -109,7 +109,7 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
           Row(children: [
             Expanded(
               child: PillButton(
-                  text: 'Закрити',
+                  text: tr.close,
                   bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   onPressed: () => Navigator.pop(ctx, _EntryAction.close)),
@@ -117,7 +117,7 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
             const SizedBox(width: 8),
             Expanded(
               child: PillButton(
-                  text: 'Скасувати запис',
+                  text: tr.recordCancel,
                   bg: AppColors.danger,
                   onPressed: () => Navigator.pop(ctx, _EntryAction.cancel)),
             ),
@@ -132,10 +132,10 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
     await repo.cancelFinEntry(e);
     return true;
   } on StateError catch (err) {
-    if (context.mounted) await showInfo(context, err.message, title: 'Не скасовано');
+    if (context.mounted) await showInfo(context, err.message, title: tr.notCancelled);
     return false;
   } catch (err) {
-    if (context.mounted) await showInfo(context, '$err', title: 'Не скасовано');
+    if (context.mounted) await showInfo(context, '$err', title: tr.notCancelled);
     return false;
   }
 }
@@ -156,7 +156,7 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
       Future<void> save() async {
         final v = double.tryParse(amountCtrl.text.trim().replaceAll(',', '.').replaceAll(' ', ''));
         if (v == null || v < 0 || (amountCtrl.text.trim().startsWith('-'))) {
-          setD(() => error = 'Сума — число, не менше 0');
+          setD(() => error = tr.finSumBad);
           return;
         }
         try {
@@ -171,7 +171,7 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
       }
 
       return AlertDialog(
-        title: const Text('Змінити запис'),
+        title: Text(tr.finEditRecord),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -181,11 +181,11 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: thousandsInput,
               decoration: InputDecoration(
-                  labelText: 'Сума, ₴',
-                  helperText: amountLocked ? 'Сума складається з рядків таблиці' : null),
+                  labelText: tr.finSumUah,
+                  helperText: amountLocked ? tr.finSumFromLines : null),
             ),
             const SizedBox(height: 12),
-            Text('Категорія', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            Text(tr.category, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final c in cats)
@@ -197,7 +197,7 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              Text('Дата: ', style: TextStyle(color: AppColors.textMuted)),
+              Text(tr.dateColon, style: TextStyle(color: AppColors.textMuted)),
               TextButton(
                 onPressed: () async {
                   final r = await showAppDatePicker(ctx, formatDdMmYyyy(date));
@@ -210,7 +210,7 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
             TextField(
               controller: noteCtrl,
               maxLength: 200,
-              decoration: const InputDecoration(labelText: "Коментар (необов'язково)"),
+              decoration: InputDecoration(labelText: tr.commentOptional),
             ),
             if (error != null)
               Padding(
@@ -223,13 +223,13 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
           Row(children: [
             Expanded(
               child: PillButton(
-                  text: 'Скасувати',
+                  text: tr.cancel,
                   bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   onPressed: () => Navigator.pop(ctx, false)),
             ),
             const SizedBox(width: 8),
-            Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
+            Expanded(child: PillButton(text: tr.save, bg: AppColors.accent, onPressed: save)),
           ]),
         ],
       );
@@ -244,12 +244,12 @@ String _plain(double v) =>
 /// Період огляду.
 enum FinPeriod { day, week, month, year, custom }
 
-const _periodNames = {
-  FinPeriod.day: 'День',
-  FinPeriod.week: 'Тиждень',
-  FinPeriod.month: 'Місяць',
-  FinPeriod.year: 'Рік',
-  FinPeriod.custom: 'Період',
+Map<FinPeriod, String> get _periodNames => {
+  FinPeriod.day: tr.periodDay,
+  FinPeriod.week: tr.periodWeek,
+  FinPeriod.month: tr.periodMonth,
+  FinPeriod.year: tr.periodYear,
+  FinPeriod.custom: tr.periodCustom,
 };
 
 /// Кільцева діаграма: кожна категорія - сегмент її кольору.
@@ -425,7 +425,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               repo: repo,
               from: f,
               to: t,
-              title: title ?? 'Операції · $_title',
+              title: title ?? tr.finOperationsOf(_title),
               filter: _expense ? 1 : 2,
               categoryId: categoryId,
               onlyStock: onlyStock,
@@ -478,10 +478,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(
-              title: 'Фінанси',
+              title: tr.finances,
               onBack: () => Navigator.pop(context),
               trailing: IconButton(
-                tooltip: 'Усі операції',
+                tooltip: tr.finAllOperations,
                 visualDensity: VisualDensity.compact,
                 icon: Icon(Icons.receipt_long_outlined, color: AppColors.text),
                 onPressed: () => _history(),
@@ -490,7 +490,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: FinSegment(
-                labels: const ['Витрати', 'Дохід'],
+                labels: [tr.expenses, tr.income],
                 selected: _expense ? 0 : 1,
                 onChanged: (i) => setState(() => _kind = i == 0 ? kFinExpense : kFinIncome),
               ),
@@ -510,7 +510,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                             if (_period != FinPeriod.custom)
                               IconButton(
                                   onPressed: () => _shift(-1),
-                                  tooltip: 'Раніше',
+                                  tooltip: tr.earlier,
                                   icon: Icon(Icons.chevron_left, color: AppColors.text)),
                             Flexible(
                               child: GestureDetector(
@@ -531,7 +531,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                             if (_period != FinPeriod.custom)
                               IconButton(
                                   onPressed: () => _shift(1),
-                                  tooltip: 'Пізніше',
+                                  tooltip: tr.later,
                                   icon: Icon(Icons.chevron_right, color: AppColors.text)),
                           ]),
                           SizedBox(
@@ -556,7 +556,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                                             fontWeight: FontWeight.w600)),
                                   ),
                                   const SizedBox(height: 2),
-                                  Text('баланс ${uah(s.balance)}',
+                                  Text(tr.finBalance(uah(s.balance)),
                                       style: TextStyle(
                                           color: s.balance < 0
                                               ? AppColors.danger
@@ -573,7 +573,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           child: Center(
-                              child: Text('За цей період нічого немає',
+                              child: Text(tr.finNothingInPeriod,
                                   style: TextStyle(color: AppColors.textMuted))),
                         ),
                       for (final e in items)
@@ -582,7 +582,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           final pct = total > 0 ? (e.value / total * 100).round() : 0;
                           final name = e.key == null
                               ? kFinStockCategoryName
-                              : (c?.name ?? 'Без категорії');
+                              : (c?.name ?? tr.noCategory);
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
@@ -646,11 +646,11 @@ class _FinanceScreenState extends State<FinanceScreen> {
               child: InkWell(
                 customBorder: const CircleBorder(),
                 onTap: _add,
-                child: const SizedBox(
+                child: SizedBox(
                   width: 64,
                   height: 64,
                   child: Tooltip(
-                      message: 'Нова операція', child: Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                      message: tr.finNewOperation, child: const Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
                 ),
               ),
             ),
@@ -742,7 +742,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: FinSegment(
-                  labels: const ['Усі', 'Витрати', 'Доходи'],
+                  labels: [tr.all, tr.expenses, tr.incomes],
                   selected: _filter,
                   onChanged: (i) => setState(() => _filter = i),
                 ),
@@ -752,7 +752,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : shown.isEmpty
                       ? Center(
-                          child: Text('Операцій немає', style: TextStyle(color: AppColors.textMuted)))
+                          child: Text(tr.finNoOperations, style: TextStyle(color: AppColors.textMuted)))
                       : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), children: [
                           for (final e in shown)
                             FinEntryTile(

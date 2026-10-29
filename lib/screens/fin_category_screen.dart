@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Нова (або змінена) категорія довідника: назва, Витрати/Дохід, чи йдуть
 /// позиції на склад, значок і колір. Повертає id категорії.
@@ -41,7 +42,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
     if (_saving) return;
     final name = _name.text.trim();
     if (name.isEmpty) {
-      await showInfo(context, 'Введіть назву категорії.');
+      await showInfo(context, tr.enterCategoryName);
       return;
     }
     setState(() => _saving = true);
@@ -60,15 +61,14 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        await showInfo(context, 'Не вдалося зберегти: $e', title: 'Помилка');
+        await showInfo(context, tr.saveFailed('$e'), title: tr.error);
       }
     }
   }
 
   Future<void> _delete() async {
     final ok = await showConfirm(context,
-        title: 'Видалити категорію?',
-        text: 'Старі операції збережуть свою категорію, але нову з неї створити не можна.');
+        title: tr.categoryDeleteTitle, text: tr.categoryDeleteText);
     if (!ok) return;
     await widget.repo.deleteFinCategory(widget.category!.id);
     if (mounted) Navigator.pop(context, '');
@@ -87,7 +87,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(
-                title: _editing ? 'Категорія' : 'Нова категорія',
+                title: _editing ? tr.category : tr.categoryNew,
                 onBack: () => Navigator.pop(context)),
             Expanded(
               child: ListView(padding: const EdgeInsets.only(bottom: 12), children: [
@@ -101,7 +101,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                         controller: _name,
                         style: TextStyle(color: AppColors.text, fontSize: 16),
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(labelText: 'Назва'),
+                        decoration: InputDecoration(labelText: tr.name),
                       ),
                     ),
                   ]),
@@ -110,7 +110,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: FinSegment(
-                      labels: const ['Витрати', 'Дохід'],
+                      labels: [tr.expenses, tr.income],
                       selected: expense ? 0 : 1,
                       onChanged: (i) => setState(() {
                         _kind = i == 0 ? kFinExpense : kFinIncome;
@@ -131,17 +131,17 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(expense ? 'Позиції йдуть на склад' : 'Позиції списуються зі складу',
+                          Text(expense ? tr.catGoesToStock : tr.catFromStock,
                               style: TextStyle(color: AppColors.text, fontSize: 15)),
                           const SizedBox(height: 2),
-                          Text(expense ? 'Рядки таблиці витрати стануть приходом' : 'Рядки таблиці доходу спишуть залишок (продаж)',
+                          Text(expense ? tr.catGoesToStockHint : tr.catFromStockHint,
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                         ]),
                       ),
                       Switch(value: _toStock, onChanged: (v) => setState(() => _toStock = v)),
                     ]),
                   ),
-                _label('Значок'),
+                _label(tr.icon),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Wrap(spacing: 10, runSpacing: 10, children: [
@@ -162,7 +162,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                       ),
                   ]),
                 ),
-                _label('Колір'),
+                _label(tr.color),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Wrap(spacing: 10, runSpacing: 10, children: [
@@ -187,7 +187,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
                     child: PillButton(
-                      text: 'Видалити категорію',
+                      text: tr.categoryDelete,
                       bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       height: 44,
@@ -200,7 +200,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: PillButton(
-                text: _editing ? 'Зберегти' : 'Створити',
+                text: _editing ? tr.save : tr.create,
                 bg: AppColors.accent,
                 height: 52,
                 radius: 26,

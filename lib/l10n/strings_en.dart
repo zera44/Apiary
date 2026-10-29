@@ -1280,4 +1280,233 @@ class AppStringsEn extends AppStrings {
   String unitPrice(String price) => 'Unit price: $price';
   @override
   String get commentOptional => 'Comment (optional)';
+
+  // ---- Фінанси ----
+  @override
+  String get finFromStock => 'Entered in stock';
+  @override
+  List<String> get monthNames =>
+      const ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  @override
+  String get noCategory => 'No category';
+  @override
+  String finEntryText(String name, bool expense, String amount, String rest) =>
+      '$name · ${expense ? 'expense' : 'income'} $amount\n$rest';
+  @override
+  String get finFromStockNote =>
+      '\n\nThe arrival was entered in stock. Cancelling it here cancels it in stock too.';
+  @override
+  String get finLinesNote => '\n\nCancelling also cancels this operation\'s arrivals in stock.';
+  @override
+  String get finCancelledNote => '\n\nThis record is cancelled.';
+  @override
+  String get record => 'Record';
+  @override
+  String get notCancelled => 'Not cancelled';
+  @override
+  String get finSumBad => 'The amount must be a number, 0 or more';
+  @override
+  String get finEditRecord => 'Edit the record';
+  @override
+  String get finSumUah => 'Amount, ₴';
+  @override
+  String get finSumFromLines => 'The amount is made up of the table rows';
+  @override
+  String get category => 'Category';
+  @override
+  String get periodDay => 'Day';
+  @override
+  String get periodWeek => 'Week';
+  @override
+  String get periodMonth => 'Month';
+  @override
+  String get periodYear => 'Year';
+  @override
+  String get periodCustom => 'Period';
+  @override
+  String finOperationsOf(String title) => 'Operations · $title';
+  @override
+  String get finAllOperations => 'All operations';
+  @override
+  String get expenses => 'Expenses';
+  @override
+  String get income => 'Income';
+  @override
+  String get incomes => 'Income';
+  @override
+  String get earlier => 'Earlier';
+  @override
+  String get later => 'Later';
+  @override
+  String finBalance(String v) => 'balance $v';
+  @override
+  String get finNothingInPeriod => 'Nothing in this period';
+  @override
+  String get finNewOperation => 'New operation';
+  @override
+  String get finNoOperations => 'No operations';
+  @override
+  String get receiptOnPhoneOnly =>
+      'Text recognition works on the phone. Fill in the table by hand here.';
+  @override
+  String get receiptNoRows =>
+      'Could not recognize the items. Take a straighter photo in good light, or fill in the table by hand.';
+  @override
+  String receiptRows(int n) => _n(n, 'row', 'rows');
+  @override
+  String receiptOk(String rows) =>
+      'Receipt recognized · $rows · the total matches the receipt ✓';
+  @override
+  String receiptMismatch(String rows, String declared, String table) =>
+      'Receipt recognized · $rows. The receipt total is $declared, the table has $table - check the rows.';
+  @override
+  String receiptCheck(String rows) =>
+      'Receipt recognized · $rows. Check the table: recognition can make mistakes.';
+  @override
+  String get receiptFailed => 'Could not recognize the receipt. Fill in the table by hand.';
+  @override
+  String get finChooseCategory =>
+      'Choose a category from the list or create a new one ("+ New").';
+  @override
+  String finBadRows(int n) =>
+      '${n == 1 ? 'One row is' : '$n rows are'} missing a name, a quantity (more than 0; whole for "pcs") or a price. Fix them or delete the row.';
+  @override
+  String get notRecorded => 'Not recorded';
+  @override
+  String get finNegative => 'The amount cannot be negative. Enter a positive number.';
+  @override
+  String get finEnterSum => 'Enter an amount or fill in the table.';
+  @override
+  String get finSumMismatch => 'The total does not match';
+  @override
+  String finSumMismatchText(String table, String receipt) =>
+      'The table has $table, and the receipt $receipt. Most likely a row was recognized incorrectly. Record anyway?';
+  @override
+  String get recordAction => 'Record';
+  @override
+  String get check => 'Check';
+  @override
+  String recordedToStock(bool expense, int n) =>
+      'Recorded · ${expense ? 'to stock' : 'from stock'}: $n';
+  @override
+  String get recorded => 'Recorded';
+  @override
+  String recordFailed(String details) => 'Could not record: $details';
+  @override
+  String finFixedByHand(String table) => 'corrected by hand · table $table';
+  @override
+  String finDiscount(String v) => ' · discount −$v';
+  @override
+  String get sum => 'Amount';
+  @override
+  String get fromTable => '↺ from the table';
+  @override
+  String get newCategoryShort => '+ New';
+  @override
+  String get receiptReading => 'Recognizing the receipt…';
+  @override
+  String get receiptPhotoHint =>
+      'Photograph the receipt straight, in good light. All items will go into the table below.';
+  @override
+  String get receiptPhoto => 'Photograph a receipt';
+  @override
+  String get photoFromGallery => 'Choose a photo from the gallery';
+  @override
+  String get reshoot => 'Retake';
+  @override
+  String get toStock => 'To stock';
+  @override
+  String get fromStock => 'From stock';
+  @override
+  String get goods => 'Item';
+  @override
+  String get qtyShort => 'Qty';
+  @override
+  String get price => 'Price';
+  @override
+  String inStockAmount(String amount) => 'in stock · $amount';
+  @override
+  String willWriteOff(String amount) => 'will write off $amount';
+  @override
+  String moreThanStock(String amount) => 'more than in stock · adjustment +$amount';
+  @override
+  String get newGoods => 'new item';
+  @override
+  String get notInStock => 'not in stock';
+  @override
+  String checkPrice(String v) => 'check the price · usually $v ₴';
+  @override
+  String sumOf(String v) => 'total $v';
+  @override
+  String get putToStock => 'Put in stock';
+  @override
+  String get writeOffFromStock => 'Write off from stock';
+  @override
+  String get deleteRow => 'Delete row';
+  @override
+  String get byHand => 'By hand';
+  @override
+  String get fromReceipt => 'From a receipt';
+  @override
+  String get addRow => '+ row';
+  @override
+  String tableOf(String v) => 'table $v';
+  @override
+  String get leaveUnsavedTitle => 'Leave without saving?';
+  @override
+  String get leaveUnsavedText => 'The data you entered will not be recorded.';
+  @override
+  String get leave => 'Leave';
+  @override
+  String get stay => 'Stay';
+  @override
+  String get newExpense => 'New expense';
+  @override
+  String get newIncome => 'New income';
+  @override
+  String get add => 'Add';
+  @override
+  String get unitShort => 'Unit';
+  @override
+  String get enterCategoryName => 'Enter the category name.';
+  @override
+  String saveFailed(String details) => 'Could not save: $details';
+  @override
+  String get error => 'Error';
+  @override
+  String get categoryDeleteTitle => 'Delete the category?';
+  @override
+  String get categoryDeleteText =>
+      'Old operations keep their category, but no new ones can be created in it.';
+  @override
+  String get categoryNew => 'New category';
+  @override
+  String get catGoesToStock => 'Items go to stock';
+  @override
+  String get catFromStock => 'Items are written off from stock';
+  @override
+  String get catGoesToStockHint => 'The expense table rows become an arrival';
+  @override
+  String get catFromStockHint => 'The income table rows write off the balance (a sale)';
+  @override
+  String get icon => 'Icon';
+  @override
+  String get categoryDelete => 'Delete category';
+  @override
+  String get create => 'Create';
+  @override
+  String finNotInStock(String name) =>
+      '"$name" is not in stock - first add an arrival (for example, honey extracted) or untick "from stock".';
+  @override
+  String finUnitMismatch(String name, String stockUnit, String unit, String density) =>
+      '"$name" is kept in stock in "$stockUnit", but sold in "$unit". You can only sell in the same units (kg and l are converted: 1 l = $density kg).';
+  @override
+  String get finRecordNotFound => 'Record not found';
+  @override
+  String get finCancelledNotEdited => 'A cancelled record cannot be edited';
+  @override
+  String get finSumLocked =>
+      'The amount cannot be changed: it is made up of the table rows. Cancel the record and enter a new one.';
+  @override
+  String get finAlreadyCancelled => 'This record is already cancelled';
 }

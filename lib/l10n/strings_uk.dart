@@ -1282,4 +1282,231 @@ class AppStringsUk extends AppStrings {
   String unitPrice(String price) => 'Ціна за одиницю: $price';
   @override
   String get commentOptional => 'Коментар (необов\'язково)';
+
+  // ---- Фінанси ----
+  @override
+  String get finFromStock => 'Внесено на складі';
+  @override
+  List<String> get monthNames =>
+      const ['', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+  @override
+  String get noCategory => 'Без категорії';
+  @override
+  String finEntryText(String name, bool expense, String amount, String rest) =>
+      '$name · ${expense ? 'витрата' : 'дохід'} $amount\n$rest';
+  @override
+  String get finFromStockNote =>
+      '\n\nПрихід внесено на складі. Скасування тут скасує його й на складі.';
+  @override
+  String get finLinesNote => '\n\nСкасування скасує й приходи цієї операції на складі.';
+  @override
+  String get finCancelledNote => '\n\nЦей запис скасовано.';
+  @override
+  String get record => 'Запис';
+  @override
+  String get notCancelled => 'Не скасовано';
+  @override
+  String get finSumBad => 'Сума — число, не менше 0';
+  @override
+  String get finEditRecord => 'Змінити запис';
+  @override
+  String get finSumUah => 'Сума, ₴';
+  @override
+  String get finSumFromLines => 'Сума складається з рядків таблиці';
+  @override
+  String get category => 'Категорія';
+  @override
+  String get periodDay => 'День';
+  @override
+  String get periodWeek => 'Тиждень';
+  @override
+  String get periodMonth => 'Місяць';
+  @override
+  String get periodYear => 'Рік';
+  @override
+  String get periodCustom => 'Період';
+  @override
+  String finOperationsOf(String title) => 'Операції · $title';
+  @override
+  String get finAllOperations => 'Усі операції';
+  @override
+  String get expenses => 'Витрати';
+  @override
+  String get income => 'Дохід';
+  @override
+  String get incomes => 'Доходи';
+  @override
+  String get earlier => 'Раніше';
+  @override
+  String get later => 'Пізніше';
+  @override
+  String finBalance(String v) => 'баланс $v';
+  @override
+  String get finNothingInPeriod => 'За цей період нічого немає';
+  @override
+  String get finNewOperation => 'Нова операція';
+  @override
+  String get finNoOperations => 'Операцій немає';
+  @override
+  String get receiptOnPhoneOnly =>
+      'Розпізнавання тексту працює на телефоні. Тут заповніть таблицю вручну.';
+  @override
+  String get receiptNoRows =>
+      'Не вдалося розпізнати позиції. Сфотографуйте рівніше й при гарному світлі або заповніть таблицю вручну.';
+  @override
+  String receiptRows(int n) => '$n ${plural(n, one: 'рядок', few: 'рядки', many: 'рядків')}';
+  @override
+  String receiptOk(String rows) => 'Чек розпізнано · $rows · сума збігається з чеком ✓';
+  @override
+  String receiptMismatch(String rows, String declared, String table) =>
+      'Чек розпізнано · $rows. Сума на чеку $declared, у таблиці $table - перевірте рядки.';
+  @override
+  String receiptCheck(String rows) =>
+      'Чек розпізнано · $rows. Перевірте таблицю: розпізнавання може помилятися.';
+  @override
+  String get receiptFailed => 'Не вдалося розпізнати чек. Заповніть таблицю вручну.';
+  @override
+  String get finChooseCategory => 'Оберіть категорію зі списку або створіть нову («+ Нова»).';
+  @override
+  String finBadRows(int n) =>
+      'У ${n == 1 ? 'одному рядку' : '$n рядках'} не вистачає назви, кількості (більше 0; для «шт» — ціле) або ціни. Виправте їх чи видаліть рядок.';
+  @override
+  String get notRecorded => 'Не записано';
+  @override
+  String get finNegative => 'Сума не може бути від\'ємною. Введіть додатне число.';
+  @override
+  String get finEnterSum => 'Введіть суму або заповніть таблицю.';
+  @override
+  String get finSumMismatch => 'Сума не збігається';
+  @override
+  String finSumMismatchText(String table, String receipt) =>
+      'У таблиці $table, а на чеку $receipt. Скоріш за все, якийсь рядок розпізнано неправильно. Записати все одно?';
+  @override
+  String get recordAction => 'Записати';
+  @override
+  String get check => 'Перевірити';
+  @override
+  String recordedToStock(bool expense, int n) =>
+      'Записано · ${expense ? 'на склад' : 'зі складу'}: $n';
+  @override
+  String get recorded => 'Записано';
+  @override
+  String recordFailed(String details) => 'Не вдалося записати: $details';
+  @override
+  String finFixedByHand(String table) => 'виправлено вручну · таблиця $table';
+  @override
+  String finDiscount(String v) => ' · знижка −$v';
+  @override
+  String get sum => 'Сума';
+  @override
+  String get fromTable => '↺ з таблиці';
+  @override
+  String get newCategoryShort => '+ Нова';
+  @override
+  String get receiptReading => 'Розпізнаю чек…';
+  @override
+  String get receiptPhotoHint =>
+      'Сфотографуйте чек рівно, при гарному світлі. Усі позиції потраплять у таблицю нижче.';
+  @override
+  String get receiptPhoto => 'Сфотографувати чек';
+  @override
+  String get photoFromGallery => 'Обрати фото з галереї';
+  @override
+  String get reshoot => 'Перезняти';
+  @override
+  String get toStock => 'На склад';
+  @override
+  String get fromStock => 'Зі складу';
+  @override
+  String get goods => 'Товар';
+  @override
+  String get qtyShort => 'К-сть';
+  @override
+  String get price => 'Ціна';
+  @override
+  String inStockAmount(String amount) => 'є на складі · $amount';
+  @override
+  String willWriteOff(String amount) => 'спише $amount';
+  @override
+  String moreThanStock(String amount) => 'більше за залишок · коригування +$amount';
+  @override
+  String get newGoods => 'новий товар';
+  @override
+  String get notInStock => 'немає на складі';
+  @override
+  String checkPrice(String v) => 'перевір ціну · зазвичай $v ₴';
+  @override
+  String sumOf(String v) => 'сума $v';
+  @override
+  String get putToStock => 'Покласти на склад';
+  @override
+  String get writeOffFromStock => 'Списати зі складу';
+  @override
+  String get deleteRow => 'Видалити рядок';
+  @override
+  String get byHand => 'Вручну';
+  @override
+  String get fromReceipt => 'З чека';
+  @override
+  String get addRow => '+ рядок';
+  @override
+  String tableOf(String v) => 'таблиця $v';
+  @override
+  String get leaveUnsavedTitle => 'Вийти без збереження?';
+  @override
+  String get leaveUnsavedText => 'Введені дані не буде записано.';
+  @override
+  String get leave => 'Вийти';
+  @override
+  String get stay => 'Залишитись';
+  @override
+  String get newExpense => 'Нова витрата';
+  @override
+  String get newIncome => 'Новий дохід';
+  @override
+  String get add => 'Додати';
+  @override
+  String get unitShort => 'Одиниця';
+  @override
+  String get enterCategoryName => 'Введіть назву категорії.';
+  @override
+  String saveFailed(String details) => 'Не вдалося зберегти: $details';
+  @override
+  String get error => 'Помилка';
+  @override
+  String get categoryDeleteTitle => 'Видалити категорію?';
+  @override
+  String get categoryDeleteText =>
+      'Старі операції збережуть свою категорію, але нову з неї створити не можна.';
+  @override
+  String get categoryNew => 'Нова категорія';
+  @override
+  String get catGoesToStock => 'Позиції йдуть на склад';
+  @override
+  String get catFromStock => 'Позиції списуються зі складу';
+  @override
+  String get catGoesToStockHint => 'Рядки таблиці витрати стануть приходом';
+  @override
+  String get catFromStockHint => 'Рядки таблиці доходу спишуть залишок (продаж)';
+  @override
+  String get icon => 'Значок';
+  @override
+  String get categoryDelete => 'Видалити категорію';
+  @override
+  String get create => 'Створити';
+  @override
+  String finNotInStock(String name) =>
+      '«$name» немає на складі - спершу додайте прихід (наприклад, відкачали мед) або зніміть позначку «зі складу».';
+  @override
+  String finUnitMismatch(String name, String stockUnit, String unit, String density) =>
+      '«$name» на складі в одиницях «$stockUnit», а в продажі «$unit». Продавати можна в тих самих одиницях (кг і л перераховуються: 1 л = $density кг).';
+  @override
+  String get finRecordNotFound => 'Запис не знайдено';
+  @override
+  String get finCancelledNotEdited => 'Скасований запис не змінюють';
+  @override
+  String get finSumLocked =>
+      'Суму не можна змінити: вона складається з рядків таблиці. Скасуйте запис і внесіть новий.';
+  @override
+  String get finAlreadyCancelled => 'Цей запис уже скасовано';
 }
