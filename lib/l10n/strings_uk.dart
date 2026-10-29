@@ -815,4 +815,206 @@ class AppStringsUk extends AppStrings {
   String get templateCreate => 'Створити шаблон';
   @override
   String get rename => 'Перейменувати';
+
+  // ---- Перші підказки ----
+  @override
+  String get hintHomeA => 'Вітаю на пасіці! ';
+  @override
+  String get hintHomeB =>
+      ' відкриває карту вашої пасіки. Коли настане час огляду, тут з\'явиться ';
+  @override
+  String get hintHomeC => ' - одне натискання, і ви вже біля потрібного вулика.';
+  @override
+  String get hintMapA =>
+      'Це карта пасіки. Натисніть на вулик - праворуч відкриються його значення. ';
+  @override
+  String get editing => 'Редагування';
+  @override
+  String get hintMapB =>
+      ' (перемикач унизу ліворуч) - щоб додати вулики, переставити їх чи змінити вигляд. Утримання вулика одразу вмикає редагування.';
+  @override
+  String get hintPanelA =>
+      'Тут останні значення вулика. Натисніть на рядок - побачите історію. ';
+  @override
+  String get hintPanelB => ' - записати огляд; ';
+  @override
+  String get hintPanelC => ' - якщо змін немає.';
+  @override
+  String get hintFillA => 'Заповніть лише те, що змінилось - решта лишиться як була. ';
+  @override
+  String get saveAndNext => 'Зберегти й далі';
+  @override
+  String get hintFillB => ' одразу відкриє наступний вулик.';
+  @override
+  String get hintEditA =>
+      'Режим редагування: оберіть шаблон і натисніть на вільну клітинку. Вулик можна перетягнути, повернути кнопкою над ним. Видалили помилково - ';
+  @override
+  String get hintEditB => ' внизу. Перемикач у ';
+  @override
+  String get workMode => 'Робочий режим';
+  @override
+  String get hintEditC => ' - зберегти й вийти.';
+  @override
+  String get hintStockA => 'Склад: ';
+  @override
+  String get stockIn => 'Прихід';
+  @override
+  String get hintStockB => ' - що купили, ';
+  @override
+  String get stocktake => 'Переоблік';
+  @override
+  String get hintStockC =>
+      ' - звірити залишки. Задайте мінімальний залишок, і застосунок підкаже, коли час докупити.';
+  @override
+  String get skip => 'Пропустити';
+
+  // ---- Нотатки вулика ----
+  @override
+  String get today => 'Сьогодні';
+  @override
+  String get yesterday => 'Вчора';
+  @override
+  String get noteDeleted => 'Нотатку видалено';
+  @override
+  String get noteAdd => '+ Нотатка';
+  @override
+  String get all => 'Усі';
+  @override
+  String get notesNone => 'Нотаток ще немає.\nЗапишіть, що помітили біля вулика.';
+  @override
+  String get notesNoneWithLabel => 'Немає нотаток із цією міткою.';
+  @override
+  String get actions => 'Дії';
+  @override
+  String get edit => 'Змінити';
+  @override
+  String get labelNew => 'Нова мітка';
+  @override
+  String get labelDelete => 'Видалити мітку';
+  @override
+  String get label => 'Мітка';
+  @override
+  String labelExists(String name) => 'Мітка «$name» вже є.';
+  @override
+  String get labelDeleteTitle => 'Видалити мітку?';
+  @override
+  String get labelDeleteText => 'Нотатки з цією міткою залишаться, але без мітки.';
+  @override
+  String get noteEmpty => 'Напишіть текст нотатки.';
+  @override
+  String get noteNew => 'Нова нотатка';
+  @override
+  String get note => 'Нотатка';
+  @override
+  String get noteHint => 'Що помітили біля вулика';
+  @override
+  String get date => 'Дата';
+  @override
+  String get otherDate => 'Інша дата';
+  @override
+  String get noLabel => 'Без мітки';
+  @override
+  String get labelAdd => '+ Мітка';
+  @override
+  String get labelHoldHint => 'Утримуйте мітку, щоб перейменувати чи видалити.';
+
+  // ---- Історія ----
+  @override
+  String get apiaryReportExcel => 'Звіт по пасіці (Excel)';
+  @override
+  String get noCharacteristicsYet => 'Ще немає жодної характеристики.';
+  @override
+  String get noStockItemsYet => 'Ще немає жодної номенклатури.\nДодайте її в меню → «Склад».';
+  @override
+  String get noArrivalYet => 'Ще не було приходу';
+  @override
+  String balance(String amount) => 'Залишок: $amount';
+  @override
+  String get recordCancelTitle => 'Скасувати запис?';
+  @override
+  String recordCancelText(String title, String date) =>
+      '«$title» від $date буде позначено як скасований, а залишок повернеться назад. Запис лишиться в історії.';
+  @override
+  String get recordCancel => 'Скасувати запис';
+  @override
+  String get currency => 'грн';
+  @override
+  String get cancelledMark => 'скасовано';
+  @override
+  String becameAmount(String amount) => 'стало: $amount';
+  @override
+  String historyOf(String name) => 'Історія: $name';
+  @override
+  String get stockHistoryEmpty =>
+      'Ще немає жодного запису.\nЗаписи з\'являються після приходу, списання чи переобліку на складі.';
+  @override
+  String get filterObject => 'Фільтр: об\'єкт';
+  @override
+  String get allObjects => 'Усі об\'єкти';
+  @override
+  String objectOf(String name) => 'Об\'єкт: $name';
+  @override
+  String get clearFilter => 'Очистити фільтр';
+  @override
+  String get nothingToExport => 'Немає жодного запису для експорту.';
+  @override
+  String paramHistoryEmpty(bool scoped) =>
+      'Ще немає жодного запису для цього параметра${scoped ? " у цього об'єкта" : ''}.\nЗаписи з\'являються після кнопки «Оглянути» на карті.';
+  @override
+  String get exportExcel => 'Експортувати в Excel';
+
+  // ---- QR-коди ----
+  @override
+  String get qrRegenTitle => 'Перегенерувати коди?';
+  @override
+  String qrRegenText(int replacing, int selected) =>
+      'У $replacing з $selected обраних вуликів уже є код. Вони отримають нові коди, а старі наліпки перестануть працювати.';
+  @override
+  String get qrRegen => 'Перегенерувати';
+  @override
+  String qrCodesOf(String name) => 'QR-коди: $name';
+  @override
+  String get qrNoHives => 'На цій пасіці ще немає вуликів';
+  @override
+  String qrLegend(int withCode, int hives) =>
+      'Червоний ободок - обрано, коду немає · зелений - код уже є ($withCode з $hives)';
+  @override
+  String get qrAllWithoutCode => 'Усі без коду';
+  @override
+  String get qrCreating => 'Створюємо…';
+  @override
+  String qrGenerateN(int n) => 'Згенерувати ($n)';
+  @override
+  String printFailed(String details) =>
+      'Не вдалося відкрити друк: $details\n\nЗбережіть PDF і надрукуйте його.';
+  @override
+  String qrLabelsN(int n) => 'Наліпки ($n)';
+  @override
+  String get print => 'Друк';
+  @override
+  String get pleaseWait => 'Зачекайте…';
+  @override
+  String get savePdf => 'Зберегти PDF';
+  @override
+  String get qrManual => 'Введіть код (посилання) вручну';
+  @override
+  String get qrTabHive => 'Код вулика';
+  @override
+  String get qrTabReceipt => 'Чек';
+  @override
+  String get qrFound => 'QR-код знайдено - тримайте камеру нерухомо';
+  @override
+  String get qrReceiptHint => 'Покладіть чек рівно на контрастний фон і натисніть «Зняти»';
+  @override
+  String get qrHint => 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
+  @override
+  String get scanReceipt => 'Сканувати чек';
+  @override
+  String get shoot => 'Зняти';
+  @override
+  String get phoneCamera => 'Камерою телефона';
+  @override
+  String get fromGallery => 'З галереї';
+  @override
+  String get qrEnterManually => 'Ввести код вручну';
 }

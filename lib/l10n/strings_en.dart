@@ -814,4 +814,205 @@ class AppStringsEn extends AppStrings {
   String get templateCreate => 'Create a template';
   @override
   String get rename => 'Rename';
+
+  // ---- Перші підказки ----
+  @override
+  String get hintHomeA => 'Welcome to the apiary! ';
+  @override
+  String get hintHomeB =>
+      ' opens the map of your apiary. When it is time for an inspection, this is where you will see ';
+  @override
+  String get hintHomeC => ' - one tap, and you are at the right hive.';
+  @override
+  String get hintMapA => 'This is the apiary map. Tap a hive - its values open on the right. ';
+  @override
+  String get editing => 'Editing';
+  @override
+  String get hintMapB =>
+      ' (the switch at the bottom left) - to add hives, move them or change how they look. Holding a hive turns editing on right away.';
+  @override
+  String get hintPanelA =>
+      'Here are the latest values of the hive. Tap a row to see its history. ';
+  @override
+  String get hintPanelB => ' - record an inspection; ';
+  @override
+  String get hintPanelC => ' - if nothing has changed.';
+  @override
+  String get hintFillA => 'Fill in only what has changed - the rest stays as it was. ';
+  @override
+  String get saveAndNext => 'Save and next';
+  @override
+  String get hintFillB => ' opens the next hive right away.';
+  @override
+  String get hintEditA =>
+      'Editing mode: choose a template and tap a free cell. A hive can be dragged, or rotated with the button above it. Deleted by mistake? Tap ';
+  @override
+  String get hintEditB => ' at the bottom. Switch to ';
+  @override
+  String get workMode => 'Work mode';
+  @override
+  String get hintEditC => ' to save and exit.';
+  @override
+  String get hintStockA => 'Stock: ';
+  @override
+  String get stockIn => 'Arrival';
+  @override
+  String get hintStockB => ' - what you bought, ';
+  @override
+  String get stocktake => 'Stocktaking';
+  @override
+  String get hintStockC =>
+      ' - check the balances. Set a minimum level, and the app will tell you when it is time to buy more.';
+  @override
+  String get skip => 'Skip';
+
+  // ---- Нотатки вулика ----
+  @override
+  String get today => 'Today';
+  @override
+  String get yesterday => 'Yesterday';
+  @override
+  String get noteDeleted => 'Note deleted';
+  @override
+  String get noteAdd => '+ Note';
+  @override
+  String get all => 'All';
+  @override
+  String get notesNone => 'No notes yet.\nWrite down what you noticed at the hive.';
+  @override
+  String get notesNoneWithLabel => 'No notes with this label.';
+  @override
+  String get actions => 'Actions';
+  @override
+  String get edit => 'Edit';
+  @override
+  String get labelNew => 'New label';
+  @override
+  String get labelDelete => 'Delete label';
+  @override
+  String get label => 'Label';
+  @override
+  String labelExists(String name) => 'The label "$name" already exists.';
+  @override
+  String get labelDeleteTitle => 'Delete the label?';
+  @override
+  String get labelDeleteText => 'Notes with this label stay, but without the label.';
+  @override
+  String get noteEmpty => 'Write the note text.';
+  @override
+  String get noteNew => 'New note';
+  @override
+  String get note => 'Note';
+  @override
+  String get noteHint => 'What you noticed at the hive';
+  @override
+  String get date => 'Date';
+  @override
+  String get otherDate => 'Other date';
+  @override
+  String get noLabel => 'No label';
+  @override
+  String get labelAdd => '+ Label';
+  @override
+  String get labelHoldHint => 'Hold a label to rename or delete it.';
+
+  // ---- Історія ----
+  @override
+  String get apiaryReportExcel => 'Apiary report (Excel)';
+  @override
+  String get noCharacteristicsYet => 'No characteristics yet.';
+  @override
+  String get noStockItemsYet => 'No stock items yet.\nAdd them in the menu → "Stock".';
+  @override
+  String get noArrivalYet => 'No arrivals yet';
+  @override
+  String balance(String amount) => 'Balance: $amount';
+  @override
+  String get recordCancelTitle => 'Cancel the record?';
+  @override
+  String recordCancelText(String title, String date) =>
+      '"$title" from $date will be marked as cancelled, and the balance goes back. The record stays in the history.';
+  @override
+  String get recordCancel => 'Cancel record';
+  @override
+  String get currency => 'UAH';
+  @override
+  String get cancelledMark => 'cancelled';
+  @override
+  String becameAmount(String amount) => 'now: $amount';
+  @override
+  String historyOf(String name) => 'History: $name';
+  @override
+  String get stockHistoryEmpty =>
+      'No records yet.\nRecords appear after an arrival, write-off or stocktaking.';
+  @override
+  String get filterObject => 'Filter: object';
+  @override
+  String get allObjects => 'All objects';
+  @override
+  String objectOf(String name) => 'Object: $name';
+  @override
+  String get clearFilter => 'Clear filter';
+  @override
+  String get nothingToExport => 'There are no records to export.';
+  @override
+  String paramHistoryEmpty(bool scoped) =>
+      'No records for this parameter${scoped ? ' for this object' : ''} yet.\nRecords appear after the "Inspect" button on the map.';
+  @override
+  String get exportExcel => 'Export to Excel';
+
+  // ---- QR-коди ----
+  @override
+  String get qrRegenTitle => 'Regenerate the codes?';
+  @override
+  String qrRegenText(int replacing, int selected) =>
+      '$replacing of the $selected selected hives already have a code. They will get new codes, and the old labels will stop working.';
+  @override
+  String get qrRegen => 'Regenerate';
+  @override
+  String qrCodesOf(String name) => 'QR codes: $name';
+  @override
+  String get qrNoHives => 'There are no hives in this apiary yet';
+  @override
+  String qrLegend(int withCode, int hives) =>
+      'Red ring - selected, no code · green - already has a code ($withCode of $hives)';
+  @override
+  String get qrAllWithoutCode => 'All without a code';
+  @override
+  String get qrCreating => 'Creating…';
+  @override
+  String qrGenerateN(int n) => 'Generate ($n)';
+  @override
+  String printFailed(String details) =>
+      'Could not open printing: $details\n\nSave the PDF and print it.';
+  @override
+  String qrLabelsN(int n) => 'Labels ($n)';
+  @override
+  String get print => 'Print';
+  @override
+  String get pleaseWait => 'Please wait…';
+  @override
+  String get savePdf => 'Save PDF';
+  @override
+  String get qrManual => 'Enter the code (link) manually';
+  @override
+  String get qrTabHive => 'Hive code';
+  @override
+  String get qrTabReceipt => 'Receipt';
+  @override
+  String get qrFound => 'QR code found - hold the camera still';
+  @override
+  String get qrReceiptHint => 'Lay the receipt flat on a contrasting background and tap "Shoot"';
+  @override
+  String get qrHint => 'Point the camera at the hive QR code and hold it for a few seconds';
+  @override
+  String get scanReceipt => 'Scan receipt';
+  @override
+  String get shoot => 'Shoot';
+  @override
+  String get phoneCamera => 'With the phone camera';
+  @override
+  String get fromGallery => 'From the gallery';
+  @override
+  String get qrEnterManually => 'Enter the code manually';
 }

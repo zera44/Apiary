@@ -6,14 +6,15 @@ import '../data/repository.dart';
 import 'common.dart';
 import 'date_picker.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
 /// «Сьогодні», «Вчора» або дд.мм.рррр.
 String noteDayText(DateTime d) {
   final today = DateTime.now();
-  if (_sameDay(d, today)) return 'Сьогодні';
-  if (_sameDay(d, today.subtract(const Duration(days: 1)))) return 'Вчора';
+  if (_sameDay(d, today)) return tr.today;
+  if (_sameDay(d, today.subtract(const Duration(days: 1)))) return tr.yesterday;
   return formatDdMmYyyy(d);
 }
 
@@ -82,7 +83,7 @@ class _HiveNotesViewState extends State<HiveNotesView> {
   Future<void> _delete(HiveNote n) async {
     await deleteWithUndo(
       context,
-      message: 'Нотатку видалено',
+      message: tr.noteDeleted,
       hide: () => setState(() => _hidden.add(n.id)),
       restore: () {
         if (mounted) setState(() => _hidden.remove(n.id));
@@ -110,7 +111,7 @@ class _HiveNotesViewState extends State<HiveNotesView> {
       children: [
         PillButton(
           key: const ValueKey('note-add'),
-          text: '+ Нотатка',
+          text: tr.noteAdd,
           bg: AppColors.accent,
           height: 38,
           fontSize: 13,
@@ -120,7 +121,7 @@ class _HiveNotesViewState extends State<HiveNotesView> {
         if (chips.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            _FilterChip(text: 'Усі', on: filter == null, onTap: () => setState(() => _filter = null)),
+            _FilterChip(text: tr.all, on: filter == null, onTap: () => setState(() => _filter = null)),
             for (final l in chips)
               _FilterChip(
                   text: l.name,
@@ -134,8 +135,8 @@ class _HiveNotesViewState extends State<HiveNotesView> {
             padding: const EdgeInsets.only(top: 18),
             child: Text(
               visible.isEmpty
-                  ? 'Нотаток ще немає.\nЗапишіть, що помітили біля вулика.'
-                  : 'Немає нотаток із цією міткою.',
+                  ? tr.notesNone
+                  : tr.notesNoneWithLabel,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.3),
             ),
@@ -173,13 +174,13 @@ class _HiveNotesViewState extends State<HiveNotesView> {
                 height: 34,
                 child: PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
-                  tooltip: 'Дії',
+                  tooltip: tr.actions,
                   icon: Icon(Icons.more_horiz, size: 20, color: AppColors.textMuted),
                   color: AppColors.popupBg,
                   onSelected: (v) => v == 'edit' ? _edit(n) : _delete(n),
                   itemBuilder: (_) => [
-                    PopupMenuItem(value: 'edit', child: Text('Змінити', style: TextStyle(color: AppColors.text))),
-                    PopupMenuItem(value: 'delete', child: Text('Видалити', style: TextStyle(color: AppColors.danger))),
+                    PopupMenuItem(value: 'edit', child: Text(tr.edit, style: TextStyle(color: AppColors.text))),
+                    PopupMenuItem(value: 'delete', child: Text(tr.delete, style: TextStyle(color: AppColors.danger))),
                   ],
                 ),
               ),
@@ -293,7 +294,7 @@ class _NoteEditorState extends State<_NoteEditor> {
   }
 
   Future<void> _newLabel() async {
-    final name = await showTextPrompt(context, title: 'Нова мітка', initial: '');
+    final name = await showTextPrompt(context, title: tr.labelNew, initial: '');
     if (name == null || name.trim().isEmpty) return;
     final id = await widget.repo.addNoteLabel(name);
     await _loadLabels();
@@ -309,26 +310,26 @@ class _NoteEditorState extends State<_NoteEditor> {
         children: [
           SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, 'rename'),
-              child: Text('Перейменувати', style: TextStyle(color: AppColors.text))),
+              child: Text(tr.rename, style: TextStyle(color: AppColors.text))),
           SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, 'delete'),
-              child: Text('Видалити мітку', style: TextStyle(color: AppColors.danger))),
+              child: Text(tr.labelDelete, style: TextStyle(color: AppColors.danger))),
         ],
       ),
     );
     if (!mounted || action == null) return;
     if (action == 'rename') {
-      final name = await showTextPrompt(context, title: 'Мітка', initial: l.name);
+      final name = await showTextPrompt(context, title: tr.label, initial: l.name);
       if (name == null || name.trim().isEmpty || name.trim() == l.name) return;
       final other = await widget.repo.findNoteLabel(name);
       if (other != null && other.id != l.id) {
-        if (mounted) await showInfo(context, 'Мітка «${other.name}» вже є.');
+        if (mounted) await showInfo(context, tr.labelExists(other.name));
         return;
       }
       await widget.repo.renameNoteLabel(l.id, name);
     } else {
       final ok = await showConfirm(context,
-          title: 'Видалити мітку?', text: 'Нотатки з цією міткою залишаться, але без мітки.');
+          title: tr.labelDeleteTitle, text: tr.labelDeleteText);
       if (!ok) return;
       await widget.repo.deleteNoteLabel(l.id);
       if (_label == l.id) _label = null;
@@ -340,7 +341,7 @@ class _NoteEditorState extends State<_NoteEditor> {
     if (_saving) return;
     final text = _text.text.trim();
     if (text.isEmpty) {
-      await showInfo(context, 'Напишіть текст нотатки.');
+      await showInfo(context, tr.noteEmpty);
       return;
     }
     setState(() => _saving = true);
@@ -378,7 +379,7 @@ class _NoteEditorState extends State<_NoteEditor> {
     final today = _sameDay(_date, DateTime.now());
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      title: Text(widget.note == null ? 'Нова нотатка' : 'Нотатка'),
+      title: Text(widget.note == null ? tr.noteNew : tr.note),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -391,33 +392,33 @@ class _NoteEditorState extends State<_NoteEditor> {
               maxLines: 10,
               textCapitalization: TextCapitalization.sentences,
               style: TextStyle(color: AppColors.text, fontSize: 15),
-              decoration: const InputDecoration(hintText: 'Що помітили біля вулика'),
+              decoration: InputDecoration(hintText: tr.noteHint),
             ),
             const SizedBox(height: 14),
-            Text('Дата', style: muted),
+            Text(tr.date, style: muted),
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _chip('Сьогодні', today, () {
+              _chip(tr.today, today, () {
                 final n = DateTime.now();
                 setState(() => _date = n);
               }),
-              _chip(today ? 'Інша дата' : formatDdMmYyyy(_date), !today, _pickDate,
+              _chip(today ? tr.otherDate : formatDdMmYyyy(_date), !today, _pickDate,
                   key: const ValueKey('note-date')),
             ]),
             const SizedBox(height: 14),
-            Text('Мітка', style: muted),
+            Text(tr.label, style: muted),
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _chip('Без мітки', _label == null, () => setState(() => _label = null)),
+              _chip(tr.noLabel, _label == null, () => setState(() => _label = null)),
               for (final l in _labels)
                 _chip(l.name, _label == l.id, () => setState(() => _label = l.id),
                     onLong: () => _labelMenu(l)),
-              _chip('+ Мітка', false, _newLabel, key: const ValueKey('note-new-label')),
+              _chip(tr.labelAdd, false, _newLabel, key: const ValueKey('note-new-label')),
             ]),
             if (_labels.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text('Утримуйте мітку, щоб перейменувати чи видалити.',
+                child: Text(tr.labelHoldHint,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11.5)),
               ),
           ]),
@@ -427,7 +428,7 @@ class _NoteEditorState extends State<_NoteEditor> {
         Row(children: [
           Expanded(
             child: PillButton(
-                text: 'Скасувати',
+                text: tr.cancel,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 onPressed: () => Navigator.pop(context, false)),
@@ -436,7 +437,7 @@ class _NoteEditorState extends State<_NoteEditor> {
           Expanded(
             child: PillButton(
                 key: const ValueKey('note-save'),
-                text: 'Зберегти',
+                text: tr.save,
                 bg: AppColors.accent,
                 onPressed: _saving ? null : _save),
           ),

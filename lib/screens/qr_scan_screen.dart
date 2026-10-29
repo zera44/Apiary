@@ -15,6 +15,7 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import '../data/finance.dart';
 import 'fin_add_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Чи є на цьому пристрої камера-сканер (телефон/планшет).
 bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
@@ -25,7 +26,7 @@ bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 /// З [receiptRepo] у сканері є ще й режим «Чек»: фото чека розпізнається й
 /// потрапляє у таблицю нової витрати у фінансах (рядки «на склад» стають приходом).
 Future<String?> scanQrCode(BuildContext context,
-    {String title = 'Сканувати QR-код', String? skipLabel, Repository? receiptRepo}) async {
+    {String? title, String? skipLabel, Repository? receiptRepo}) async {
   if (!qrCameraAvailable) return _manualEntry(context);
   return Navigator.of(context).push<String>(MaterialPageRoute(
     builder: (_) => QrScanScreen(title: title, skipLabel: skipLabel, receiptRepo: receiptRepo),
@@ -36,7 +37,7 @@ Future<String?> scanQrCode(BuildContext context,
 const kQrSkip = '\u0000skip';
 
 Future<String?> _manualEntry(BuildContext context) async {
-  final v = await showTextPrompt(context, title: 'Введіть код (посилання) вручну', initial: '');
+  final v = await showTextPrompt(context, title: tr.qrManual, initial: '');
   final t = v?.trim() ?? '';
   return t.isEmpty ? null : t;
 }
@@ -46,7 +47,7 @@ Future<String?> _manualEntry(BuildContext context) async {
 /// його контур, знімає кнопка «Зняти» (без відліку); «Камерою телефона» й «З
 /// галереї» дають найякісніше фото.
 class QrScanScreen extends StatefulWidget {
-  final String title;
+final String? title;
 
   /// Додаткова кнопка «пропустити» (наприклад, при прив'язці наліпок підряд).
   final String? skipLabel;
@@ -55,7 +56,7 @@ class QrScanScreen extends StatefulWidget {
   /// передає його у таблицю нової витрати у фінансах.
   final Repository? receiptRepo;
   const QrScanScreen(
-      {super.key, this.title = 'Сканувати QR-код', this.skipLabel, this.receiptRepo});
+      {super.key, this.title, this.skipLabel, this.receiptRepo});
 
   /// Скільки тримати камеру над QR-кодом.
   static const qrHold = Duration(seconds: 3);
@@ -133,7 +134,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
         );
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Row(children: [tab('Код вулика', false), const SizedBox(width: 8), tab('Чек', true)]),
+      child: Row(children: [tab(tr.qrTabHive, false), const SizedBox(width: 8), tab(tr.qrTabReceipt, true)]),
     );
   }
 
@@ -286,10 +287,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   String get _hint {
-    if (_qr != null) return 'QR-код знайдено - тримайте камеру нерухомо';
+    if (_qr != null) return tr.qrFound;
     return _receipt
-        ? 'Покладіть чек рівно на контрастний фон і натисніть «Зняти»'
-        : 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
+        ? tr.qrReceiptHint
+        : tr.qrHint;
   }
 
   @override
@@ -342,7 +343,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 color: Colors.black54,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   TopBar(
-                      title: _receipt ? 'Сканувати чек' : widget.title,
+                      title: _receipt ? tr.scanReceipt : (widget.title ?? tr.scanQr),
                       onBack: () {
                         if (_done) return;
                         _done = true; // камера ще працює під час закриття - не закривати вдруге
@@ -366,7 +367,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 const SizedBox(height: 12),
                 if (_receipt) ...[
                   PillButton(
-                    text: 'Зняти',
+                    text: tr.shoot,
                     bg: AppColors.accent,
                     height: 48,
                     width: double.infinity,
@@ -376,7 +377,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   Row(children: [
                     Expanded(
                       child: PillButton(
-                        text: 'Камерою телефона',
+                        text: tr.phoneCamera,
                         bg: AppColors.roundBtn,
                         fg: AppColors.text,
                         height: 44,
@@ -386,7 +387,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: PillButton(
-                        text: 'З галереї',
+                        text: tr.fromGallery,
                         bg: AppColors.roundBtn,
                         fg: AppColors.text,
                         height: 44,
@@ -398,7 +399,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ],
                 if (!_receipt)
                 PillButton(
-                  text: 'Ввести код вручну',
+                  text: tr.qrEnterManually,
                   bg: AppColors.roundBtn,
                   fg: AppColors.text,
                   height: 44,

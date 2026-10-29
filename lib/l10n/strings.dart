@@ -405,6 +405,105 @@ abstract class AppStrings {
   String get noTemplatesYet;
   String get templateCreate;
   String get rename;
+
+  // ---- Перші підказки ----
+  String get hintHomeA;
+  String get hintHomeB;
+  String get hintHomeC;
+  String get hintMapA;
+  String get editing;
+  String get hintMapB;
+  String get hintPanelA;
+  String get hintPanelB;
+  String get hintPanelC;
+  String get hintFillA;
+  String get saveAndNext;
+  String get hintFillB;
+  String get hintEditA;
+  String get hintEditB;
+  String get workMode;
+  String get hintEditC;
+  String get hintStockA;
+  String get stockIn;
+  String get hintStockB;
+  String get stocktake;
+  String get hintStockC;
+  String get skip;
+
+  // ---- Нотатки вулика ----
+  String get today;
+  String get yesterday;
+  String get noteDeleted;
+  String get noteAdd;
+  String get all;
+  String get notesNone;
+  String get notesNoneWithLabel;
+  String get actions;
+  String get edit;
+  String get labelNew;
+  String get labelDelete;
+  String get label;
+  String labelExists(String name);
+  String get labelDeleteTitle;
+  String get labelDeleteText;
+  String get noteEmpty;
+  String get noteNew;
+  String get note;
+  String get noteHint;
+  String get date;
+  String get otherDate;
+  String get noLabel;
+  String get labelAdd;
+  String get labelHoldHint;
+
+  // ---- Історія ----
+  String get apiaryReportExcel;
+  String get noCharacteristicsYet;
+  String get noStockItemsYet;
+  String get noArrivalYet;
+  String balance(String amount);
+  String get recordCancelTitle;
+  String recordCancelText(String title, String date);
+  String get recordCancel;
+  String get currency;
+  String get cancelledMark;
+  String becameAmount(String amount);
+  String historyOf(String name);
+  String get stockHistoryEmpty;
+  String get filterObject;
+  String get allObjects;
+  String objectOf(String name);
+  String get clearFilter;
+  String get nothingToExport;
+  String paramHistoryEmpty(bool scoped);
+  String get exportExcel;
+
+  // ---- QR-коди ----
+  String get qrRegenTitle;
+  String qrRegenText(int replacing, int selected);
+  String get qrRegen;
+  String qrCodesOf(String name);
+  String get qrNoHives;
+  String qrLegend(int withCode, int hives);
+  String get qrAllWithoutCode;
+  String get qrCreating;
+  String qrGenerateN(int n);
+  String printFailed(String details);
+  String qrLabelsN(int n);
+  String get print;
+  String get pleaseWait;
+  String get savePdf;
+  String get qrManual;
+  String get qrTabHive;
+  String get qrTabReceipt;
+  String get qrFound;
+  String get qrReceiptHint;
+  String get qrHint;
+  String get scanReceipt;
+  String get shoot;
+  String get phoneCamera;
+  String get fromGallery;
+  String get qrEnterManually;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].
