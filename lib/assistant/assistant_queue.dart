@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/repository.dart';
+import '../services/app_foreground.dart';
 import 'assistant_context.dart';
 import 'assistant_model.dart';
 import 'assistant_persona.dart';
@@ -101,7 +102,9 @@ class AssistantQueue {
     await store.load();
     await store.releaseStuck();
     await refreshUnread();
-    _timer ??= Timer.periodic(const Duration(minutes: 1), (_) => unawaited(process()));
+    _timer ??= Timer.periodic(const Duration(minutes: 1), (_) {
+      if (appInForeground()) unawaited(process());
+    });
     try {
       _net ??= onlineChanges.listen((on) {
         if (on) unawaited(process());

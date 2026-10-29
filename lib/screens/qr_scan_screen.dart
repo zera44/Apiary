@@ -58,7 +58,7 @@ class QrScanScreen extends StatefulWidget {
       {super.key, this.title = 'Сканувати QR-код', this.skipLabel, this.receiptRepo});
 
   /// Скільки тримати камеру над QR-кодом.
-  static const qrHold = Duration(seconds: 3);
+  static const qrHold = Duration(milliseconds: 1500);
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
