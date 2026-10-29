@@ -957,6 +957,25 @@ abstract class AppStrings {
   String get lt15a;
   String get lt15b;
   String get lessonParamsTitle;
+
+  // ---- Типи даних і дані ----
+  List<String> get dataTypeLabels;
+  String get qrThisCode;
+  String qrNumberShort(String n);
+  String qrWasUnlinked(String label);
+  String qrHiveDeleted(String label);
+  String qrHiveArchived(String label);
+  String qrNoApiary(String label);
+  String qrApiaryDeleted(String label);
+  String qrCannotOpen(String label);
+  String get deletedGroup;
+  String get deletedObject;
+  String hiveN(int n);
+  String get stockItemNotFound;
+  String get cancelCannotBeCancelled;
+  String get overwrittenCannotBeCancelled;
+  String cannotCancelPartlyWrittenOff(String left);
+  String cannotWriteOffMore(String left);
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

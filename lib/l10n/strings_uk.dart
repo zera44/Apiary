@@ -1945,4 +1945,44 @@ class AppStringsUk extends AppStrings {
   String get lt15b => ' вже у твоїх шаблонах - розміщуй його на карті сам.';
   @override
   String get lessonParamsTitle => 'Групи і параметри обходу';
+
+  // ---- Типи даних і дані ----
+  @override
+  List<String> get dataTypeLabels =>
+      const ['Текст', 'Ціле число', 'Дробове число', 'Дата', 'Так / Ні', 'Список', 'Колір'];
+  @override
+  String get qrThisCode => 'цей код';
+  @override
+  String qrNumberShort(String n) => '№ $n';
+  @override
+  String qrWasUnlinked(String label) =>
+      '$label був прив\'язаний раніше, але зараз знятий (наліпку перевидано чи прив\'язку скасовано).';
+  @override
+  String qrHiveDeleted(String label) => '$label прив\'язаний до вулика, якого вже видалено.';
+  @override
+  String qrHiveArchived(String label) => '$label прив\'язаний до вулика в архіві.';
+  @override
+  String qrNoApiary(String label) => '$label прив\'язаний до об\'єкта без пасіки.';
+  @override
+  String qrApiaryDeleted(String label) => '$label прив\'язаний до вулика видаленої пасіки.';
+  @override
+  String qrCannotOpen(String label) => '$label прив\'язаний, але вулик не вдалося відкрити.';
+  @override
+  String get deletedGroup => 'Видалена група';
+  @override
+  String get deletedObject => 'Видалений об\'єкт';
+  @override
+  String hiveN(int n) => 'Вулик $n';
+  @override
+  String get stockItemNotFound => 'Номенклатуру не знайдено';
+  @override
+  String get cancelCannotBeCancelled => 'Скасування не можна скасувати';
+  @override
+  String get overwrittenCannotBeCancelled => 'Старий запис «перезаписано» не можна скасувати';
+  @override
+  String cannotCancelPartlyWrittenOff(String left) =>
+      'Не можна скасувати: частину вже списано (залишок: $left)';
+  @override
+  String cannotWriteOffMore(String left) =>
+      'Не можна списати більше, ніж є на складі (залишок: $left)';
 }

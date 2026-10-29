@@ -1945,4 +1945,44 @@ class AppStringsEn extends AppStrings {
   String get lt15b => ' is already in your templates - place it on the map yourself.';
   @override
   String get lessonParamsTitle => 'Groups and round parameters';
+
+  // ---- Типи даних і дані ----
+  @override
+  List<String> get dataTypeLabels =>
+      const ['Text', 'Whole number', 'Decimal number', 'Date', 'Yes / No', 'List', 'Color'];
+  @override
+  String get qrThisCode => 'this code';
+  @override
+  String qrNumberShort(String n) => 'No. $n';
+  @override
+  String qrWasUnlinked(String label) =>
+      '$label was linked before, but has been removed (the label was reissued or the link cancelled).';
+  @override
+  String qrHiveDeleted(String label) => '$label is linked to a hive that has been deleted.';
+  @override
+  String qrHiveArchived(String label) => '$label is linked to an archived hive.';
+  @override
+  String qrNoApiary(String label) => '$label is linked to an object without an apiary.';
+  @override
+  String qrApiaryDeleted(String label) => '$label is linked to a hive of a deleted apiary.';
+  @override
+  String qrCannotOpen(String label) => '$label is linked, but the hive could not be opened.';
+  @override
+  String get deletedGroup => 'Deleted group';
+  @override
+  String get deletedObject => 'Deleted object';
+  @override
+  String hiveN(int n) => 'Hive $n';
+  @override
+  String get stockItemNotFound => 'Item not found';
+  @override
+  String get cancelCannotBeCancelled => 'A cancellation cannot be cancelled';
+  @override
+  String get overwrittenCannotBeCancelled => 'An old "overwritten" record cannot be cancelled';
+  @override
+  String cannotCancelPartlyWrittenOff(String left) =>
+      'Cannot cancel: part has already been written off (balance: $left)';
+  @override
+  String cannotWriteOffMore(String left) =>
+      'You cannot write off more than there is in stock (balance: $left)';
 }

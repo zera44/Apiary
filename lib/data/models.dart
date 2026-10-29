@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../l10n/l10n.dart';
 
 // Моделі даних застосунку "Моя пасіка".
 //
@@ -182,21 +183,17 @@ class DataTypes {
   static const yes = 'Так';
   static const no = 'Ні';
 
-  static const all = <(String, String)>[
-    (text, 'Текст'),
-    (int_, 'Ціле число'),
-    (float_, 'Дробове число'),
-    (date, 'Дата'),
-    (bool_, 'Так / Ні'),
-    (choice, 'Список'),
-    (color, 'Колір'),
-  ];
+  static const keys = [text, int_, float_, date, bool_, choice, color];
+
+  /// Типи з назвами поточною мовою.
+  static List<(String, String)> get all =>
+      [for (var i = 0; i < keys.length; i++) (keys[i], tr.dataTypeLabels[i])];
 
   static String label(String? key) {
     for (final (k, l) in all) {
       if (k == key) return l;
     }
-    return 'Текст';
+    return tr.dataTypeLabels.first;
   }
 }
 
