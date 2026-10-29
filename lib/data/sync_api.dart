@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import '../l10n/l10n.dart';
 
 /// Що синхронізація потребує від сервера. Справжня реалізація - запити до
 /// Supabase (services/supabase_api.dart); у тестах - фейковий сервер з тими
@@ -96,8 +97,9 @@ class ServerBackup {
 /// Немає зв'язку із сервером (або він тимчасово не відповідає) - спробувати
 /// пізніше; дані лишаються в черзі.
 class SyncOffline implements Exception {
-  final String message;
-  const SyncOffline([this.message = 'немає зв\'язку із сервером']);
+  final String? _message;
+  const SyncOffline([this._message]);
+  String get message => _message ?? tr.errNoServer;
   @override
   String toString() => message;
 }
@@ -108,14 +110,14 @@ class SyncRejected implements Exception {
   final String message;
   const SyncRejected(this.status, this.message);
   @override
-  String toString() => 'сервер відхилив ($status): $message';
+  String toString() => tr.errServerRejected(status, message);
 }
 
 /// Вхід на сервер закінчився (треба увійти знову).
 class SyncSignedOut implements Exception {
   const SyncSignedOut();
   @override
-  String toString() => 'потрібно знову увійти';
+  String toString() => tr.errSignInAgain;
 }
 
 /// На телефоні - дані іншого акаунта (увійшли іншим Google): синхронізувати
@@ -123,7 +125,7 @@ class SyncSignedOut implements Exception {
 class SyncOtherAccount implements Exception {
   const SyncOtherAccount();
   @override
-  String toString() => 'на телефоні дані іншого акаунта Google';
+  String toString() => tr.errOtherAccount;
 }
 
 /// Перший вхід на цьому телефоні: дані є і тут, і на сервері - чекаємо
@@ -131,5 +133,5 @@ class SyncOtherAccount implements Exception {
 class SyncNeedsChoice implements Exception {
   const SyncNeedsChoice();
   @override
-  String toString() => 'чекає вашого вибору: що робити з даними телефона й сервера';
+  String toString() => tr.errNeedsChoice;
 }

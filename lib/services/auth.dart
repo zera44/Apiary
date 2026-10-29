@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../l10n/l10n.dart';
 
 /// Користувач, що увійшов через Google.
 class AppUser {
@@ -156,7 +157,7 @@ class GoogleAuthService implements AuthService {
 
   Future<AppUser> _mobileSignIn() async {
     if (serverClientId.isEmpty) {
-      throw StateError('Вхід через Google не налаштовано в цій збірці');
+      throw StateError(tr.errGoogleNotConfigured);
     }
     final g = GoogleSignIn.instance;
     if (!_googleReady) {

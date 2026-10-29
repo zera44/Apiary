@@ -2093,4 +2093,49 @@ class AppStringsEn extends AppStrings {
   String get saveLabels => 'Save labels';
   @override
   String get hiveQrCodes => 'Hive QR codes';
+
+  // ---- Помилки зв'язку й копій ----
+  @override
+  String get errNoServer => 'no connection to the server';
+  @override
+  String errNoServerDetails(String d) => 'no connection to the server ($d)';
+  @override
+  String get errServerNoAnswer => 'the server is not responding';
+  @override
+  String get errTls => 'could not establish a secure connection';
+  @override
+  String errServerBusy(int s) => 'the server is temporarily unavailable ($s)';
+  @override
+  String errServerRejected(int s, String m) => 'the server rejected it ($s): $m';
+  @override
+  String get errSignInAgain => 'you need to sign in again';
+  @override
+  String get errOtherAccount => 'the phone has data from another Google account';
+  @override
+  String get errNeedsChoice =>
+      'waiting for your choice: what to do with the phone and server data';
+  @override
+  String get errNoServerLater => 'no connection to the server - try later';
+  @override
+  String get errSyncRunning => 'sync is in progress - try again in a minute';
+  @override
+  String errBackupTooBig(int mb) => 'the copy is too big for the server ($mb MB)';
+  @override
+  String get errBackupArrivedBroken => 'the copy arrived damaged - try again';
+  @override
+  String get errBackupBrokenNotSaved => 'the copy is damaged - not saved';
+  @override
+  String get errSnapshotBroken => 'the database snapshot is damaged';
+  @override
+  String get errInMemory => 'the database is in memory - nothing to copy';
+  @override
+  String get errBackupBroken => 'the copy is damaged';
+  @override
+  String get errBackupGone => 'the copy no longer exists';
+  @override
+  String get errLoginServerOdd => 'the sign-in server returned an unexpected response';
+  @override
+  String get errGoogleNotConfigured => 'Google sign-in is not set up in this build';
+  @override
+  String get errServerNotConfigured => 'The server is not set up in this build';
 }

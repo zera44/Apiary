@@ -1032,6 +1032,29 @@ abstract class AppStrings {
   String get objectOrGroup;
   String get saveLabels;
   String get hiveQrCodes;
+
+  // ---- Помилки зв'язку й копій ----
+  String get errNoServer;
+  String errNoServerDetails(String d);
+  String get errServerNoAnswer;
+  String get errTls;
+  String errServerBusy(int s);
+  String errServerRejected(int s, String m);
+  String get errSignInAgain;
+  String get errOtherAccount;
+  String get errNeedsChoice;
+  String get errNoServerLater;
+  String get errSyncRunning;
+  String errBackupTooBig(int mb);
+  String get errBackupArrivedBroken;
+  String get errBackupBrokenNotSaved;
+  String get errSnapshotBroken;
+  String get errInMemory;
+  String get errBackupBroken;
+  String get errBackupGone;
+  String get errLoginServerOdd;
+  String get errGoogleNotConfigured;
+  String get errServerNotConfigured;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

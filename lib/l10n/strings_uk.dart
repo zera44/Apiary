@@ -2094,4 +2094,48 @@ class AppStringsUk extends AppStrings {
   String get saveLabels => 'Зберегти наліпки';
   @override
   String get hiveQrCodes => 'QR-коди вуликів';
+
+  // ---- Помилки зв'язку й копій ----
+  @override
+  String get errNoServer => 'немає зв\'язку із сервером';
+  @override
+  String errNoServerDetails(String d) => 'немає зв\'язку із сервером ($d)';
+  @override
+  String get errServerNoAnswer => 'сервер не відповідає';
+  @override
+  String get errTls => 'не вдалося встановити захищене з\'єднання';
+  @override
+  String errServerBusy(int s) => 'сервер тимчасово недоступний ($s)';
+  @override
+  String errServerRejected(int s, String m) => 'сервер відхилив ($s): $m';
+  @override
+  String get errSignInAgain => 'потрібно знову увійти';
+  @override
+  String get errOtherAccount => 'на телефоні дані іншого акаунта Google';
+  @override
+  String get errNeedsChoice => 'чекає вашого вибору: що робити з даними телефона й сервера';
+  @override
+  String get errNoServerLater => 'немає зв\'язку із сервером - спробуйте пізніше';
+  @override
+  String get errSyncRunning => 'саме йде синхронізація - спробуйте за хвилину';
+  @override
+  String errBackupTooBig(int mb) => 'копія завелика для сервера ($mb МБ)';
+  @override
+  String get errBackupArrivedBroken => 'копія дійшла пошкодженою - спробуйте ще раз';
+  @override
+  String get errBackupBrokenNotSaved => 'копія пошкоджена - не збережено';
+  @override
+  String get errSnapshotBroken => 'знімок бази пошкоджений';
+  @override
+  String get errInMemory => 'база в пам\'яті - копіювати нічого';
+  @override
+  String get errBackupBroken => 'копія пошкоджена';
+  @override
+  String get errBackupGone => 'копії вже немає';
+  @override
+  String get errLoginServerOdd => 'сервер входу повернув незрозумілу відповідь';
+  @override
+  String get errGoogleNotConfigured => 'Вхід через Google не налаштовано в цій збірці';
+  @override
+  String get errServerNotConfigured => 'Сервер не налаштовано в цій збірці';
 }

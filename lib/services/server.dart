@@ -12,6 +12,7 @@ import 'app_config.dart';
 import 'auth.dart';
 import 'sharing.dart';
 import 'supabase_api.dart';
+import '../l10n/l10n.dart';
 
 /// Вхід на сервер синхронізації (Supabase) і підключення до нього
 /// синхронізації та спільного доступу.
@@ -144,7 +145,7 @@ abstract final class Server {
   /// «Видалити акаунт і всі дані»: сервер, потім телефон, потім вихід.
   static Future<void> deleteAccount(Repository repo) async {
     final api = _api;
-    if (api == null) throw const SyncOffline('немає зв\'язку із сервером - спробуйте пізніше');
+    if (api == null) throw SyncOffline(tr.errNoServerLater);
     // синхронізацію - зупинити й дочекатись (інакше вона повернула б дані
     // в щойно очищену базу), фоновому завданню - забрати вхід і замок
     final sync = SyncService.current;
@@ -154,7 +155,7 @@ abstract final class Server {
       ..onSignedOut = null;
     if (!await (sync ?? SyncService(repo)).holdLock()) {
       sync?.api = api;
-      throw const SyncOffline('саме йде синхронізація - спробуйте за хвилину');
+      throw SyncOffline(tr.errSyncRunning);
     }
     try {
       await deleteAccountAndData(repo: repo, deleteOnServer: api.deleteAccount);

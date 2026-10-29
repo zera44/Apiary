@@ -11,6 +11,7 @@ import '../services/background.dart';
 import '../services/auth.dart';
 import '../services/backups.dart';
 import '../services/server.dart';
+import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
@@ -70,7 +71,10 @@ class _LanguageSection extends StatelessWidget {
         ],
       ),
     );
-    if (code != null) await L10n.set(repo, code);
+    if (code == null || code == tr.languageCode) return;
+    await L10n.set(repo, code);
+    // заплановані сповіщення - новою мовою
+    unawaited(ReminderService.instance.reschedule().catchError((Object _) {}));
   }
 
   @override

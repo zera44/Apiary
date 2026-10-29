@@ -11,6 +11,7 @@ import 'package:sqflite/sqflite.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'stock_photos.dart';
+import '../l10n/l10n.dart';
 
 /// Звідки взялась копія.
 enum BackupKind {
@@ -181,7 +182,7 @@ class BackupService {
       await debugAfterSnapshot?.call(tmp);
       if (!await verify(tmp)) {
         await _delete(tmp);
-        throw const BackupException('копія пошкоджена - не збережено');
+        throw BackupException(tr.errBackupBrokenNotSaved);
       }
       await _delete(target);
       await File(tmp).rename(target);
@@ -201,7 +202,7 @@ class BackupService {
     await _snapshot(target);
     if (!await verify(target)) {
       await _delete(target);
-      throw const BackupException('знімок бази пошкоджений');
+      throw BackupException(tr.errSnapshotBroken);
     }
   }
 
@@ -218,7 +219,7 @@ class BackupService {
       }
     }
     if (db.path == inMemoryDatabasePath) {
-      throw const BackupException('база в пам\'яті - копіювати нічого');
+      throw BackupException(tr.errInMemory);
     }
     // усе йде через одне з'єднання: поки триває ця транзакція, ніхто не
     // пише в базу. Якщо база в режимі WAL (Android 9 вмикає його сам),
@@ -348,15 +349,15 @@ class BackupService {
   /// перевірка, копія поточного стану, потім дані з файлу. Повертає копію
   /// поточного стану (щоб можна було повернути).
   Future<LocalBackup> restoreFile(String path) async {
-    if (!await verify(path)) throw const BackupException('копія пошкоджена');
+    if (!await verify(path)) throw BackupException(tr.errBackupBroken);
     final before = await create(BackupKind.beforeRestore);
     await restoreFrom(path);
     return before;
   }
 
   Future<LocalBackup> restore(LocalBackup b) async {
-    if (!await File(b.path).exists()) throw const BackupException('копії вже немає');
-    if (!await verify(b.path)) throw const BackupException('копія пошкоджена');
+    if (!await File(b.path).exists()) throw BackupException(tr.errBackupGone);
+    if (!await verify(b.path)) throw BackupException(tr.errBackupBroken);
     // прибирання старих копій не має зачепити ту, з якої відновлюємо
     final before = await create(BackupKind.beforeRestore, {b.path});
     await restoreFrom(b.path);
