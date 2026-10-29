@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../services/app_config.dart';
+import '../l10n/l10n.dart';
 
 /// Помічник «Пасічник»: обмін із посередником (supabase/functions/assistant).
 ///
@@ -210,7 +211,7 @@ class DemoAssistantModel implements AssistantModel {
   /// Що надсилалося (для тестів).
   final List<List<Map<String, dynamic>>> sent = [];
 
-  static const demoReply = 'Поки що демо-режим: сервер помічника не підключено.';
+  static String get demoReply => tr.assistantDemoReply;
 
   @override
   bool get isRemote => false;
@@ -219,7 +220,7 @@ class DemoAssistantModel implements AssistantModel {
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
     sent.add([for (final m in messages) Map<String, dynamic>.from(m)]);
     if (_script.isNotEmpty) return _script.removeAt(0);
-    return const ModelTurn([
+    return ModelTurn([
       {'type': 'text', 'text': demoReply}
     ], 'end_turn');
   }

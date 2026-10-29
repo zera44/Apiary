@@ -2138,4 +2138,62 @@ class AppStringsUk extends AppStrings {
   String get errGoogleNotConfigured => 'Вхід через Google не налаштовано в цій збірці';
   @override
   String get errServerNotConfigured => 'Сервер не налаштовано в цій збірці';
+
+  // ---- Помічник: підказки, картки ----
+  @override
+  String get assistantReplyLanguageHint => '';
+  @override
+  String get assistantWhatCanYouDo => 'Що ти вмієш?';
+  @override
+  String get sugSpentMonth => 'Скільки я витратив цього місяця?';
+  @override
+  String get sugAddExpense => 'Додай витрату';
+  @override
+  String get sugLowStock => 'Чого мало на складі?';
+  @override
+  String get sugAddSugar => 'Додай прихід цукру';
+  @override
+  String get sugDueHives => 'Які вулики треба оглянути?';
+  @override
+  String get sugHowManyHives => 'Скільки в мене вуликів?';
+  @override
+  String get sugLastRecord => 'Що я записував останнім?';
+  @override
+  String get sugOpenStock => 'Відкрий склад';
+  @override
+  String get assistantDemoReply => 'Поки що демо-режим: сервер помічника не підключено.';
+  @override
+  String get assistantLimitText =>
+      'Не вийшло відповісти за кілька кроків. Спитайте, будь ласка, простіше.';
+  @override
+  Map<String, String> get screenLabels =>
+      const {'finance': 'Фінанси', 'finance_add': 'Новий запис', 'stock': 'Склад', 'apiaries': 'Мої пасіки', 'history': 'Історія', 'parameters': 'Параметри', 'templates': 'Шаблони', 'settings': 'Налаштування', 'helpers': 'Помічники', 'backups': 'Резервні копії', 'receipt': 'Чек', 'lessons': 'Навчання', 'lesson': 'Навчання', 'feedback': 'Відгук'};
+  @override
+  String mapOf(String name) => 'Карта: $name';
+  @override
+  String cardInspection(String hive, String apiary) => 'Огляд: $hive ($apiary)';
+  @override
+  String cardInspectionUndo(String hive) => 'Огляд: $hive';
+  @override
+  String get visitDate => 'Дата обходу';
+  @override
+  String cardStockMove(bool receive, String name) => '${receive ? 'Прихід' : 'Списання'}: $name';
+  @override
+  String quantityIn(String unit) => 'Кількість ($unit)';
+  @override
+  String get sumUah => 'Сума, грн';
+  @override
+  String get comment => 'Коментар';
+  @override
+  String cardNewStockItem(String name) => 'Прихід: $name (нова позиція складу)';
+  @override
+  String cardStockIn(String name) => 'Прихід: $name';
+  @override
+  String get expense => 'Витрата';
+  @override
+  String finUndo(bool income, String amount) => '${income ? 'Дохід' : 'Витрата'} $amount грн';
+  @override
+  String get text => 'Текст';
+  @override
+  String get when => 'Коли';
 }

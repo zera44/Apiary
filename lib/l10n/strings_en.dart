@@ -2138,4 +2138,63 @@ class AppStringsEn extends AppStrings {
   String get errGoogleNotConfigured => 'Google sign-in is not set up in this build';
   @override
   String get errServerNotConfigured => 'The server is not set up in this build';
+
+  // ---- Помічник: підказки, картки ----
+  @override
+  String get assistantReplyLanguageHint => '\n[Interface language: English - reply in English]';
+  @override
+  String get assistantWhatCanYouDo => 'What can you do?';
+  @override
+  String get sugSpentMonth => 'How much did I spend this month?';
+  @override
+  String get sugAddExpense => 'Add an expense';
+  @override
+  String get sugLowStock => 'What is running low in stock?';
+  @override
+  String get sugAddSugar => 'Add a sugar arrival';
+  @override
+  String get sugDueHives => 'Which hives need inspecting?';
+  @override
+  String get sugHowManyHives => 'How many hives do I have?';
+  @override
+  String get sugLastRecord => 'What did I record last?';
+  @override
+  String get sugOpenStock => 'Open stock';
+  @override
+  String get assistantDemoReply => 'Demo mode for now: the assistant server is not connected.';
+  @override
+  String get assistantLimitText =>
+      'Could not answer in a few steps. Please ask in a simpler way.';
+  @override
+  Map<String, String> get screenLabels =>
+      const {'finance': 'Finances', 'finance_add': 'New record', 'stock': 'Stock', 'apiaries': 'My apiaries', 'history': 'History', 'parameters': 'Parameters', 'templates': 'Templates', 'settings': 'Settings', 'helpers': 'Helpers', 'backups': 'Backups', 'receipt': 'Receipt', 'lessons': 'Tutorial', 'lesson': 'Tutorial', 'feedback': 'Feedback'};
+  @override
+  String mapOf(String name) => 'Map: $name';
+  @override
+  String cardInspection(String hive, String apiary) => 'Inspection: $hive ($apiary)';
+  @override
+  String cardInspectionUndo(String hive) => 'Inspection: $hive';
+  @override
+  String get visitDate => 'Round date';
+  @override
+  String cardStockMove(bool receive, String name) =>
+      '${receive ? 'Arrival' : 'Write-off'}: $name';
+  @override
+  String quantityIn(String unit) => 'Quantity ($unit)';
+  @override
+  String get sumUah => 'Amount, UAH';
+  @override
+  String get comment => 'Comment';
+  @override
+  String cardNewStockItem(String name) => 'Arrival: $name (new stock item)';
+  @override
+  String cardStockIn(String name) => 'Arrival: $name';
+  @override
+  String get expense => 'Expense';
+  @override
+  String finUndo(bool income, String amount) => '${income ? 'Income' : 'Expense'} $amount UAH';
+  @override
+  String get text => 'Text';
+  @override
+  String get when => 'When';
 }

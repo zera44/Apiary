@@ -1055,6 +1055,35 @@ abstract class AppStrings {
   String get errLoginServerOdd;
   String get errGoogleNotConfigured;
   String get errServerNotConfigured;
+
+  // ---- Помічник: підказки, картки ----
+  String get assistantReplyLanguageHint;
+  String get assistantWhatCanYouDo;
+  String get sugSpentMonth;
+  String get sugAddExpense;
+  String get sugLowStock;
+  String get sugAddSugar;
+  String get sugDueHives;
+  String get sugHowManyHives;
+  String get sugLastRecord;
+  String get sugOpenStock;
+  String get assistantDemoReply;
+  String get assistantLimitText;
+  Map<String, String> get screenLabels;
+  String mapOf(String name);
+  String cardInspection(String hive, String apiary);
+  String cardInspectionUndo(String hive);
+  String get visitDate;
+  String cardStockMove(bool receive, String name);
+  String quantityIn(String unit);
+  String get sumUah;
+  String get comment;
+  String cardNewStockItem(String name);
+  String cardStockIn(String name);
+  String get expense;
+  String finUndo(bool income, String amount);
+  String get text;
+  String get when;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

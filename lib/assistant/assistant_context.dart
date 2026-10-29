@@ -18,6 +18,7 @@ import '../screens/template_editor_screen.dart';
 import '../screens/templates_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'assistant_tools.dart';
+import '../l10n/l10n.dart';
 
 /// Про яку вкладку (екран) зараз говоримо з помічником: її показує плашка
 /// над полем чату, її ж модель вважає головною (рядок «[Екран: …]» у
@@ -73,22 +74,7 @@ class ScreenContext {
 }
 
 /// Як називаються вкладки людині (плашка в чаті).
-const kScreenLabels = {
-  'finance': 'Фінанси',
-  'finance_add': 'Новий запис',
-  'stock': 'Склад',
-  'apiaries': 'Мої пасіки',
-  'history': 'Історія',
-  'parameters': 'Параметри',
-  'templates': 'Шаблони',
-  'settings': 'Налаштування',
-  'helpers': 'Помічники',
-  'backups': 'Резервні копії',
-  'receipt': 'Чек',
-  'lessons': 'Навчання',
-  'lesson': 'Навчання',
-  'feedback': 'Відгук',
-};
+Map<String, String> get kScreenLabels => tr.screenLabels;
 
 /// Екрани, на яких знайомий екран розпізнано. Новий екран тут - і в чаті
 /// з'явиться плашка «Фінанси», а в моделі - рядок «[Екран: …]».
@@ -118,7 +104,7 @@ ScreenContext? screenContextOf(Widget w) {
     return const ScreenContext('feedback', 'Відгук');
   }
   if (w is MapScreen && !w.tutorial && !w.backdrop) {
-    return ScreenContext('map', 'Карта: ${w.apiary.name}',
+    return ScreenContext('map', tr.mapOf(w.apiary.name),
         apiaryId: w.apiary.id, elementId: w.focusElementId);
   }
   return null;
