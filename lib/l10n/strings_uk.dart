@@ -1817,4 +1817,132 @@ class AppStringsUk extends AppStrings {
   String get newApiary => 'Нова пасіка';
   @override
   String get apiaryName => 'Назва пасіки';
+
+  // ---- Уроки ----
+  @override
+  String get lessonParamFallback => 'параметр';
+  @override
+  String get lp1a => 'Друже, вітаю тебе. Хочеш більше дізнатись про обходи вуликів? Ти вчасно, ';
+  @override
+  String get lp1b => 'натисни на вулик';
+  @override
+  String get lp2a => 'Як бачиш - геть не густо. Додаймо нові ';
+  @override
+  String get lp2b => 'параметри';
+  @override
+  String get lp3a =>
+      'В цьому меню ти можеш створювати параметри й додавати їх до таблиці. Натисни на ';
+  @override
+  String get lp3b => '«Створити параметр»';
+  @override
+  String get lp4 =>
+      'Тут ти можеш назвати свій параметр, вказати його тип даних та за потреби одиниці виміру';
+  @override
+  String get lp5a => 'Створи свій параметр. Май на увазі, ';
+  @override
+  String get lp5b => 'назва та тип даних';
+  @override
+  String get lp5c => ' - обов\'язково вказуємо.';
+  @override
+  String get lp6a => 'Не забудь ';
+  @override
+  String get lp6b => 'зберегти';
+  @override
+  String get lp7a => 'Молодець. ';
+  @override
+  String get lp7b => ' вже додано до конструктора таблиці. Відкрий його';
+  @override
+  String get lp8a => 'Боже, який безлад! Швиденько створи ';
+  @override
+  String get lp8b => 'нову групу';
+  @override
+  String get lp9a => 'Назви її ';
+  @override
+  String get lp9b => ' та збережи свій прогрес!';
+  @override
+  String get lp10a => 'Перетягни ';
+  @override
+  String get lp10b => ' та ';
+  @override
+  String get lp10c => ' до нової групи';
+  @override
+  String get lp11 =>
+      'За потреби можна застосувати зміни як лише до 1 вулика, так і до всіх загалом';
+  @override
+  String get lp12a => 'Бачив, ми не все використали? ';
+  @override
+  String get lp12b => 'Вимкни все зайве';
+  @override
+  String get lp13a => 'Повернімось до ';
+  @override
+  String get lp13b => 'вулика';
+  @override
+  String get lp14 => 'Ого! Глянь на таблицю — вона ідеальна!';
+  @override
+  String get lessonTemplateFallback => 'шаблон';
+  @override
+  String get lt1 =>
+      'Друже, це знову ти! Мені подобається твоя жага до знань. Сьогодні навчимося створювати шаблони - заготовки вуликів і перешкод, які потім ставиш на карту.';
+  @override
+  String get lt2a => 'Шаблони живуть у ';
+  @override
+  String get lt2b => ' - вони в меню ☰ (три смужки). Зараз відкрию їх для тебе.';
+  @override
+  String get lt3a => 'Це вкладка ';
+  @override
+  String get lt3b => ' - тут загальні налаштування застосунку.';
+  @override
+  String get lt4a => 'Те, що треба! Натисни ';
+  @override
+  String get templateCreateQuoted => '«Створити шаблон»';
+  @override
+  String get lt5 => 'Час малювати! Натисни ';
+  @override
+  String get lt6a => 'Тут обираєш, що малювати. Вулики - одразу тут, а до перешкод ';
+  @override
+  String get lt6b => 'свайпни картку вліво';
+  @override
+  String get lt7a => 'Обери будь-яку ';
+  @override
+  String get lt7b => 'перешкоду';
+  @override
+  String get lt8a => 'Тепер ';
+  @override
+  String get lt8b => 'торкнись поля';
+  @override
+  String get lt8c => ' - постав одну плитку перешкоди';
+  @override
+  String get lt9a => 'Постав поруч ще ';
+  @override
+  String get lt9b => '3 плитки';
+  @override
+  String get lt9c => ' - заповни квадрат';
+  @override
+  String get lt10a => 'Чудово! Щоб закінчити малювання, натисни ';
+  @override
+  String get lt10b => 'червоний хрестик';
+  @override
+  String get lt11a => 'Перешкоду можна пересунути. Увімкни ';
+  @override
+  String get lt11b => 'переміщення';
+  @override
+  String get lt12a => 'Стрілки навколо - лише підказка, натискати їх не треба. ';
+  @override
+  String get lt12b => 'Візьми перешкоду пальцем і перетягни';
+  @override
+  String get lt13a => 'Готово! Тепер ';
+  @override
+  String get lt13b => 'збережи';
+  @override
+  String get lt13c => ' шаблон';
+  @override
+  String get lt14a => 'Дай шаблону назву і ';
+  @override
+  String get lt14b => ' його';
+  @override
+  String get lt15a => 'Вау, швидко вчишся! Шаблон ';
+  @override
+  String get lt15b => ' вже у твоїх шаблонах - розміщуй його на карті сам.';
+  @override
+  String get lessonParamsTitle => 'Групи і параметри обходу';
 }

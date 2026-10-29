@@ -1818,4 +1818,131 @@ class AppStringsEn extends AppStrings {
   String get newApiary => 'New apiary';
   @override
   String get apiaryName => 'Apiary name';
+
+  // ---- Уроки ----
+  @override
+  String get lessonParamFallback => 'parameter';
+  @override
+  String get lp1a =>
+      'Hello, friend. Want to learn more about hive rounds? You are just in time, ';
+  @override
+  String get lp1b => 'tap a hive';
+  @override
+  String get lp2a => 'As you can see, it is pretty sparse. Let us add new ';
+  @override
+  String get lp2b => 'parameters';
+  @override
+  String get lp3a => 'In this menu you can create parameters and add them to the table. Tap ';
+  @override
+  String get lp3b => '"Create a parameter"';
+  @override
+  String get lp4 =>
+      'Here you can name your parameter, set its data type and, if needed, its unit';
+  @override
+  String get lp5a => 'Create your parameter. Keep in mind, ';
+  @override
+  String get lp5b => 'the name and data type';
+  @override
+  String get lp5c => ' are required.';
+  @override
+  String get lp6a => 'Do not forget to ';
+  @override
+  String get lp6b => 'save';
+  @override
+  String get lp7a => 'Well done. ';
+  @override
+  String get lp7b => ' has already been added to the table builder. Open it';
+  @override
+  String get lp8a => 'Goodness, what a mess! Quickly create ';
+  @override
+  String get lp8b => 'a new group';
+  @override
+  String get lp9a => 'Name it ';
+  @override
+  String get lp9b => ' and save your progress!';
+  @override
+  String get lp10a => 'Drag ';
+  @override
+  String get lp10b => ' and ';
+  @override
+  String get lp10c => ' into the new group';
+  @override
+  String get lp11 => 'If needed, you can apply the changes to just 1 hive or to all of them';
+  @override
+  String get lp12a => 'See, we did not use everything? ';
+  @override
+  String get lp12b => 'Turn off everything extra';
+  @override
+  String get lp13a => 'Let us go back to ';
+  @override
+  String get lp13b => 'the hive';
+  @override
+  String get lp14 => 'Wow! Look at the table - it is perfect!';
+  @override
+  String get lessonTemplateFallback => 'template';
+  @override
+  String get lt1 =>
+      'Friend, it is you again! I like your thirst for knowledge. Today we will learn to create templates - ready-made hives and obstacles that you then place on the map.';
+  @override
+  String get lt2a => 'Templates live in ';
+  @override
+  String get lt2b => ' - in the ☰ menu (three lines). I will open them for you now.';
+  @override
+  String get lt3a => 'This is the ';
+  @override
+  String get lt3b => ' tab - the general app settings are here.';
+  @override
+  String get lt4a => 'Just what we need! Tap ';
+  @override
+  String get templateCreateQuoted => '"Create a template"';
+  @override
+  String get lt5 => 'Time to draw! Tap ';
+  @override
+  String get lt6a => 'Here you choose what to draw. Hives are right here, and for obstacles ';
+  @override
+  String get lt6b => 'swipe the card left';
+  @override
+  String get lt7a => 'Choose any ';
+  @override
+  String get lt7b => 'obstacle';
+  @override
+  String get lt8a => 'Now ';
+  @override
+  String get lt8b => 'tap the grid';
+  @override
+  String get lt8c => ' - place one obstacle tile';
+  @override
+  String get lt9a => 'Place ';
+  @override
+  String get lt9b => '3 more tiles';
+  @override
+  String get lt9c => ' next to it - fill a square';
+  @override
+  String get lt10a => 'Great! To finish drawing, tap ';
+  @override
+  String get lt10b => 'the red cross';
+  @override
+  String get lt11a => 'The obstacle can be moved. Turn on ';
+  @override
+  String get lt11b => 'moving';
+  @override
+  String get lt12a => 'The arrows around are only a hint, you do not need to tap them. ';
+  @override
+  String get lt12b => 'Take the obstacle with your finger and drag it';
+  @override
+  String get lt13a => 'Done! Now ';
+  @override
+  String get lt13b => 'save';
+  @override
+  String get lt13c => ' the template';
+  @override
+  String get lt14a => 'Give the template a name and ';
+  @override
+  String get lt14b => ' it';
+  @override
+  String get lt15a => 'Wow, you learn fast! The template ';
+  @override
+  String get lt15b => ' is already in your templates - place it on the map yourself.';
+  @override
+  String get lessonParamsTitle => 'Groups and round parameters';
 }
