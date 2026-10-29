@@ -6,7 +6,7 @@ import '../ui/common.dart';
 import '../ui/first_hints.dart';
 import '../ui/theme.dart';
 
-/// «Що нового»: 20% найзначніших нових функцій, решта й виправлені помилки — у «Ще».
+/// «Що нового»: останнє оновлення; 20% найзначніших нових функцій, решта й виправлені помилки — у «Ще».
 /// Закрити — одне натискання «До роботи» (кнопка завжди на екрані).
 class WhatsNewScreen extends StatelessWidget {
   final Release release;
@@ -15,8 +15,8 @@ class WhatsNewScreen extends StatelessWidget {
   /// Вимикач для тестів.
   static bool enabled = true;
 
-  /// Показати один раз після оновлення — усе нове з останнього перегляду
-  /// (навіть якщо кілька оновлень пропустили). Нове встановлення — нічого
+  /// Показати один раз після оновлення — лише останнє оновлення (пропущені
+  /// раніше не накопичуються). Нове встановлення — нічого
   /// не показує (новачку допоможуть підказки), лише запам'ятовує.
   static Future<void> maybeShow(BuildContext context, Repository repo) async {
     if (!enabled) return;
@@ -36,8 +36,8 @@ class WhatsNewScreen extends StatelessWidget {
     }
     await repo.setMeta('whats_new_seen_n', '$last');
     if (seen == null && (await repo.listApiaries()).isEmpty) return; // нове встановлення
-    final release = Release.fromEntries(news.where((e) => e.n > (seen ?? 0)));
-    if (release.isEmpty) return;
+    if (last <= (seen ?? 0)) return;
+    final release = Release.fromEntries(news.where((e) => e.n == last));
     // досвідчений пасічник знає головний екран — без підказки про нього
     await repo.setMeta('hint:${Hints.home}', '1');
     if (!context.mounted) return;
@@ -45,14 +45,11 @@ class WhatsNewScreen extends StatelessWidget {
         .push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: release)));
   }
 
-  /// З меню чи головного екрана: зміни поточної (найновішої) версії.
+  /// З меню чи головного екрана: лише останнє оновлення.
   static Future<void> open(NavigatorState nav) async {
     final news = await loadNews();
-    var v = '';
-    for (final e in news) {
-      if (compareVersions(e.version, v) > 0) v = e.version;
-    }
-    final release = Release.fromEntries(news.where((e) => e.version == v));
+    final last = news.isEmpty ? 0 : news.map((e) => e.n).reduce((a, b) => a > b ? a : b);
+    final release = Release.fromEntries(news.where((e) => e.n == last));
     if (!nav.mounted) return;
     await nav.push(MaterialPageRoute(builder: (_) => WhatsNewScreen(release: release)));
   }
