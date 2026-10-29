@@ -586,6 +586,54 @@ abstract class AppStrings {
   String get mapOpenIt;
   String get properties;
   String get rotate;
+
+  // ---- Склад ----
+  String stockItemDeleted(String name);
+  String stockActualBad(String name);
+  String get notSaved;
+  String stockWholeFor(String name, String unit);
+  String get stockNoDiffs;
+  String stockTakeSaved(int n);
+  String byRecords(String amount);
+  String get actually;
+  String get stockInOut;
+  String get oneByOne;
+  String get asList;
+  String get stockNoItems;
+  String get stockTakeSave;
+  String get stockItemAdd;
+  String get writeOff;
+  String get recount;
+  String get timeToBuyShort;
+  String get enterName;
+  String get enterUnit;
+  String get stockMinBad;
+  String get stockInQtyBad;
+  String get stockInCostBad;
+  String get stockItem;
+  String get stockItemNew;
+  String get name;
+  String get unit;
+  String get unitOther;
+  String get unitOwn;
+  String get stockMin;
+  String get stockMinHelper;
+  String get stockInNow;
+  String get quantity;
+  String get cost;
+  String get takePhoto;
+  String get choosePhoto;
+  String get removePhoto;
+  String get stockEnterActual;
+  String get stockEnterQty;
+  String wholeFor(String unit);
+  String stockMaxWriteOff(String amount);
+  String get writeOffNoun;
+  String get dateColon;
+  String get actualQuantity;
+  String get totalCostDefault0;
+  String unitPrice(String price);
+  String get commentOptional;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

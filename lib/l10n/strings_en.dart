@@ -1185,4 +1185,99 @@ class AppStringsEn extends AppStrings {
   String get properties => 'Properties';
   @override
   String get rotate => 'Rotate';
+
+  // ---- Склад ----
+  @override
+  String stockItemDeleted(String name) => 'Item "$name" deleted';
+  @override
+  String stockActualBad(String name) =>
+      '"$name": the actual quantity must be a number, 0 or more';
+  @override
+  String get notSaved => 'Not saved';
+  @override
+  String stockWholeFor(String name, String unit) => '"$name": enter a whole number for "$unit"';
+  @override
+  String get stockNoDiffs => 'No differences - everything matches the records';
+  @override
+  String stockTakeSaved(int n) => 'Stocktaking saved: items changed - $n';
+  @override
+  String byRecords(String amount) => 'On record: $amount';
+  @override
+  String get actually => 'Actual';
+  @override
+  String get stockInOut => 'Arrivals and write-offs';
+  @override
+  String get oneByOne => 'One by one';
+  @override
+  String get asList => 'As a list';
+  @override
+  String get stockNoItems => 'No stock items yet';
+  @override
+  String get stockTakeSave => 'Save stocktaking';
+  @override
+  String get stockItemAdd => 'Add an item';
+  @override
+  String get writeOff => 'Write off';
+  @override
+  String get recount => 'Recount';
+  @override
+  String get timeToBuyShort => 'Time to buy';
+  @override
+  String get enterName => 'Enter a name';
+  @override
+  String get enterUnit => 'Enter a unit';
+  @override
+  String get stockMinBad => 'The minimum level must be a number, 0 or more';
+  @override
+  String get stockInQtyBad => 'Arrival: the quantity must be a number greater than 0';
+  @override
+  String get stockInCostBad => 'Arrival: enter the total cost';
+  @override
+  String get stockItem => 'Item';
+  @override
+  String get stockItemNew => 'New item';
+  @override
+  String get name => 'Name';
+  @override
+  String get unit => 'Unit';
+  @override
+  String get unitOther => 'other…';
+  @override
+  String get unitOwn => 'Custom unit';
+  @override
+  String get stockMin => 'Minimum level';
+  @override
+  String get stockMinHelper => 'When it gets there - "time to buy"';
+  @override
+  String get stockInNow => 'Arrival right away (optional)';
+  @override
+  String get quantity => 'Quantity';
+  @override
+  String get cost => 'Cost';
+  @override
+  String get takePhoto => 'Take a photo';
+  @override
+  String get choosePhoto => 'Choose a photo';
+  @override
+  String get removePhoto => 'Remove photo';
+  @override
+  String get stockEnterActual => 'Enter the actual quantity (0 or more)';
+  @override
+  String get stockEnterQty => 'Enter a quantity greater than 0';
+  @override
+  String wholeFor(String unit) => 'Enter a whole number for "$unit"';
+  @override
+  String stockMaxWriteOff(String amount) => 'You can write off at most $amount';
+  @override
+  String get writeOffNoun => 'Write-off';
+  @override
+  String get dateColon => 'Date: ';
+  @override
+  String get actualQuantity => 'Actual quantity';
+  @override
+  String get totalCostDefault0 => 'Total cost (default 0)';
+  @override
+  String unitPrice(String price) => 'Unit price: $price';
+  @override
+  String get commentOptional => 'Comment (optional)';
 }

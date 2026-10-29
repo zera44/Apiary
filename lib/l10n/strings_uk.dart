@@ -1188,4 +1188,98 @@ class AppStringsUk extends AppStrings {
   String get properties => 'Властивості';
   @override
   String get rotate => 'Повернути';
+
+  // ---- Склад ----
+  @override
+  String stockItemDeleted(String name) => 'Номенклатуру «$name» видалено';
+  @override
+  String stockActualBad(String name) => '«$name»: фактична кількість - число, не менше 0';
+  @override
+  String get notSaved => 'Не збережено';
+  @override
+  String stockWholeFor(String name, String unit) => '«$name»: для «$unit» вкажіть ціле число';
+  @override
+  String get stockNoDiffs => 'Розбіжностей немає - усе збігається з обліком';
+  @override
+  String stockTakeSaved(int n) => 'Переоблік збережено: змінено позицій - $n';
+  @override
+  String byRecords(String amount) => 'За обліком: $amount';
+  @override
+  String get actually => 'Фактично';
+  @override
+  String get stockInOut => 'Прихід і списання';
+  @override
+  String get oneByOne => 'По одному';
+  @override
+  String get asList => 'Списком';
+  @override
+  String get stockNoItems => 'Ще немає жодної номенклатури';
+  @override
+  String get stockTakeSave => 'Зберегти переоблік';
+  @override
+  String get stockItemAdd => 'Додати номенклатуру';
+  @override
+  String get writeOff => 'Списати';
+  @override
+  String get recount => 'Перерахувати';
+  @override
+  String get timeToBuyShort => 'Час докупити';
+  @override
+  String get enterName => 'Вкажіть назву';
+  @override
+  String get enterUnit => 'Вкажіть одиницю виміру';
+  @override
+  String get stockMinBad => 'Мінімальний залишок - число, не менше 0';
+  @override
+  String get stockInQtyBad => 'Прихід: кількість - число більше 0';
+  @override
+  String get stockInCostBad => 'Прихід: вкажіть загальну вартість';
+  @override
+  String get stockItem => 'Номенклатура';
+  @override
+  String get stockItemNew => 'Нова номенклатура';
+  @override
+  String get name => 'Назва';
+  @override
+  String get unit => 'Одиниця виміру';
+  @override
+  String get unitOther => 'інша…';
+  @override
+  String get unitOwn => 'Своя одиниця';
+  @override
+  String get stockMin => 'Мінімальний залишок';
+  @override
+  String get stockMinHelper => 'Дійде до нього - «час докупити»';
+  @override
+  String get stockInNow => 'Одразу прихід (необов\'язково)';
+  @override
+  String get quantity => 'Кількість';
+  @override
+  String get cost => 'Вартість';
+  @override
+  String get takePhoto => 'Зробити фото';
+  @override
+  String get choosePhoto => 'Обрати фото';
+  @override
+  String get removePhoto => 'Прибрати фото';
+  @override
+  String get stockEnterActual => 'Введіть фактичну кількість (0 або більше)';
+  @override
+  String get stockEnterQty => 'Введіть кількість більше 0';
+  @override
+  String wholeFor(String unit) => 'Для «$unit» вкажіть ціле число';
+  @override
+  String stockMaxWriteOff(String amount) => 'Можна списати не більше $amount';
+  @override
+  String get writeOffNoun => 'Списання';
+  @override
+  String get dateColon => 'Дата: ';
+  @override
+  String get actualQuantity => 'Фактична кількість';
+  @override
+  String get totalCostDefault0 => 'Загальна вартість (за замовч. 0)';
+  @override
+  String unitPrice(String price) => 'Ціна за одиницю: $price';
+  @override
+  String get commentOptional => 'Коментар (необов\'язково)';
 }
