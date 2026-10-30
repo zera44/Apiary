@@ -9,6 +9,7 @@ import '../ui/date_picker.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
 import 'stock_screen.dart' show StockPhoto;
+import '../l10n/l10n.dart';
 
 /// Меню навігації → «Історія»: окремо історія характеристик і історія
 /// складу (прихід і вибуття номенклатури).
@@ -71,20 +72,20 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: 'Історія', onBack: () => Navigator.pop(context)),
+            TopBar(title: tr.history, onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [
-                _tab('Характеристики', false),
+                _tab(tr.characteristics, false),
                 const SizedBox(width: 8),
-                _tab('Склад', true),
+                _tab(tr.stock, true),
               ]),
             ),
             if (!_stock && widget.apiary != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
                 child: PillButton(
-                  text: 'Звіт по пасіці (Excel)',
+                  text: tr.apiaryReportExcel,
                   bg: AppColors.roundBtn,
                   fg: AppColors.text,
                   width: double.infinity,
@@ -117,7 +118,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   Widget _paramList() {
     final list = _params;
     if (list == null) return const Center(child: CircularProgressIndicator());
-    if (list.isEmpty) return _empty('Ще немає жодної характеристики.');
+    if (list.isEmpty) return _empty(tr.noCharacteristicsYet);
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: list.length,
@@ -137,7 +138,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   Widget _stockList() {
     final list = _items;
     if (list == null) return const Center(child: CircularProgressIndicator());
-    if (list.isEmpty) return _empty('Ще немає жодної номенклатури.\nДодайте її в меню → «Склад».');
+    if (list.isEmpty) return _empty(tr.noStockItemsYet);
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: list.length,
@@ -146,7 +147,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
         final it = list[i];
         return _card(
           title: it.name,
-          subtitle: it.quantity == null ? 'Ще не було приходу' : 'Залишок: ${formatAmount(it.quantity!)} ${it.unit}',
+          subtitle: it.quantity == null ? tr.noArrivalYet : tr.balance('${formatAmount(it.quantity!)} ${it.unit}'),
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: SizedBox(width: 44, height: 44, child: StockPhoto(photo: it.photo, thumb: true)),
@@ -227,11 +228,10 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
   Future<void> _cancel(Map<String, Object?> r, String title) async {
     if (_busy) return;
     final ok = await showConfirm(context,
-        title: 'Скасувати запис?',
-        text: '«$title» від ${_date(r)} буде позначено як скасований, а залишок '
-            'повернеться назад. Запис лишиться в історії.',
-        confirmText: 'Скасувати запис',
-        cancelText: 'Закрити');
+        title: tr.recordCancelTitle,
+        text: tr.recordCancelText(title, _date(r)),
+        confirmText: tr.recordCancel,
+        cancelText: tr.close);
     if (!ok) return;
     _busy = true;
     try {
@@ -269,9 +269,9 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
     final comment = r['comment'] as String?;
     final details = [
       _date(r),
-      if (total != null) '${formatMoney(total)} грн',
-      if (price != null) '${formatMoney(price)} грн/$unit',
-      if (cancelled) 'скасовано',
+      if (total != null) '${formatMoney(total)} ${tr.currency}',
+      if (price != null) '${formatMoney(price)} ${tr.currency}/$unit',
+      if (cancelled) tr.cancelledMark,
       if (comment != null && comment.isNotEmpty) comment,
     ].join(' · ');
     final canCancel = !cancelled && kind != 'cancel' && kind != 'set';
@@ -305,7 +305,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
             Text(value,
                 style: TextStyle(
                     color: color, fontSize: 15, fontWeight: FontWeight.bold, decoration: strike)),
-            Text('стало: ${formatAmount((r['quantity_after'] as num).toDouble())} $unit',
+            Text(tr.becameAmount('${formatAmount((r['quantity_after'] as num).toDouble())} $unit'),
                 style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
           ],
         ),
@@ -316,7 +316,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
             bg: AppColors.neutralBtn,
             iconColor: AppColors.text,
             size: 30,
-            tooltip: 'Скасувати запис',
+            tooltip: tr.recordCancel,
             onPressed: () => _cancel(r, title),
           ),
         ],
@@ -331,7 +331,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: 'Історія: ${widget.item.name}', onBack: () => Navigator.pop(context)),
+            TopBar(title: tr.historyOf(widget.item.name), onBack: () => Navigator.pop(context)),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())
@@ -340,8 +340,7 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              'Ще немає жодного запису.\nЗаписи з\'являються після приходу, '
-                              'списання чи переобліку на складі.',
+                              tr.stockHistoryEmpty,
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),

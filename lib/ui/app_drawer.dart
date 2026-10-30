@@ -16,6 +16,7 @@ import 'common.dart';
 import 'guide_bubble.dart';
 import 'icons.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Меню навігації (три смужки на карті пасіки): Мої пасіки / Склад / Історія
 /// (і звіт Excel) / QR-код ▾ (сканувати, генерувати, прив'язати підряд) /
@@ -71,18 +72,17 @@ class AppDrawer extends StatefulWidget {
       if (!nav.mounted) return;
       final bind = await showConfirm(
         nav.context,
-        title: 'Вулик не знайдено',
-        text: '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code\n\n'
-            'Прив\'язати його до вулика зараз?',
-        confirmText: 'Прив\'язати до вулика',
-        cancelText: 'Закрити',
+        title: tr.qrHiveNotFound,
+        text: tr.qrBindAsk(why ?? tr.qrNotBound, code),
+        confirmText: tr.qrBindToHive,
+        cancelText: tr.close,
         danger: false,
       );
       if (!bind || !nav.mounted) return;
       final a = await repo.startApiary();
       if (!nav.mounted) return;
       if (a == null) {
-        await showInfo(nav.context, 'Спершу створіть пасіку й вулики на карті.');
+        await showInfo(nav.context, tr.qrCreateApiaryFirst);
         return;
       }
       // карта: торкнутися вулика - код прив'язується й одразу відкривається огляд
@@ -115,39 +115,38 @@ class AppDrawer extends StatefulWidget {
 
 /// Кроки екскурсії по меню: що розповідає пасічник про кожен пункт.
 
-final List<List<InlineSpan>> kDrawerTour = [
+List<List<InlineSpan>> get kDrawerTour => [
   [
-    GuideBubble.highlight('Мої пасіки'),
-    const TextSpan(text: ' - усі твої пасіки в одному місці.'),
+    GuideBubble.highlight(tr.myApiaries),
+    TextSpan(text: tr.tourApiaries),
   ],
   [
-    GuideBubble.highlight('Склад'),
-    const TextSpan(text: ' - рамки, корми, ліки: прихід, списання й переоблік.'),
+    GuideBubble.highlight(tr.stock),
+    TextSpan(text: tr.tourStock),
   ],
   [
-    GuideBubble.highlight('Фінанси'),
-    const TextSpan(text: ' - витрати й доходи пасіки: записуй вручну або фотографуй чек.'),
+    GuideBubble.highlight(tr.finances),
+    TextSpan(text: tr.tourFinances),
   ],
   [
-    GuideBubble.highlight('Історія'),
-    const TextSpan(text: ' - цікаво глянути зміни показників чи в складі? Тобі сюди.'),
+    GuideBubble.highlight(tr.history),
+    TextSpan(text: tr.tourHistory),
   ],
   [
-    GuideBubble.highlight('QR-код'),
-    const TextSpan(
-        text: ' - обхід без записів - час на вітер. Скануй код з вулика, а новий - прив\'язуй до вулика.'),
+    GuideBubble.highlight(tr.qrCode),
+    TextSpan(text: tr.tourQr),
   ],
   [
-    GuideBubble.highlight('Навчання'),
-    const TextSpan(text: ' - щось не зрозумів? Пройди спеціалізоване навчання.'),
+    GuideBubble.highlight(tr.tutorial),
+    TextSpan(text: tr.tourTutorial),
   ],
   [
-    GuideBubble.highlight('Налаштування'),
-    const TextSpan(text: ' - розмір шрифту, шаблони, акаунт і резервні копії.'),
+    GuideBubble.highlight(tr.settingsTitle),
+    TextSpan(text: tr.tourSettings),
   ],
   [
-    GuideBubble.highlight('Зворотний зв\'язок'),
-    const TextSpan(text: ' - хочеш поділитись ідеєю чи дати зворотний зв\'язок? Тобі сюди.'),
+    GuideBubble.highlight(tr.feedbackTitle),
+    TextSpan(text: tr.tourFeedback),
   ],
 ];
 
@@ -221,7 +220,7 @@ class _AppDrawerState extends State<AppDrawer> {
         ]),
         // «Продовжити» - як в уроках; під нею - менша жовта «Завершити»
         LessonContinue(
-          label: last ? 'Зрозуміло' : 'Продовжити',
+          label: last ? tr.gotIt : tr.continueAction,
           padding: EdgeInsets.zero,
           onContinue: () {
             if (last) {
@@ -254,43 +253,43 @@ class _AppDrawerState extends State<AppDrawer> {
               child: ListView(padding: EdgeInsets.zero, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: Text('Меню навігації',
+            child: Text(tr.navMenu,
                 style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
           ),
-          _t(0, _item(context, 'beehive', 'Мої пасіки', widget.tour ? () {} : () {
+          _t(0, _item(context, 'beehive', tr.myApiaries, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             nav.popUntil((r) => r.isFirst);
             nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
           })),
-          _t(1, _item(context, 'box', 'Склад',
+          _t(1, _item(context, 'box', tr.stock,
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
-          _t(2, _item(context, '', 'Фінанси',
+          _t(2, _item(context, '', tr.finances,
               widget.tour ? () {} : () => _open(nav, FinanceScreen(repo: repo)),
               iconData: Icons.account_balance_wallet_outlined)),
           // «Звіт по пасіці (Excel)» — усередині «Історії»
-          _t(3, _item(context, 'history', 'Історія',
+          _t(3, _item(context, 'history', tr.history,
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
           // QR — одним пунктом; натиснули — розкрились дії
-          _t(4, _group(context, AppIcon('qr', color: AppColors.text, size: 30), 'QR-код', [
-            _item(context, 'qr', 'Сканувати', () {
+          _t(4, _group(context, AppIcon('qr', color: AppColors.text, size: 30), tr.qrCode, [
+            _item(context, 'qr', tr.scan, () {
               nav.pop();
               AppDrawer.openHiveByQr(nav, repo);
             }),
-            _item(context, 'qr', 'Генерувати',
+            _item(context, 'qr', tr.generate,
                 () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
             if (onBindQrRow != null)
-              _item(context, 'qr', 'Прив\'язати підряд', () {
+              _item(context, 'qr', tr.qrBindRow, () {
                 nav.pop(); // закрити меню
                 onBindQrRow!();
               }),
           ])),
-          _t(5, _item(context, '', 'Навчання',
+          _t(5, _item(context, '', tr.tutorial,
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined)),
-          _t(6, _item(context, '', 'Налаштування',
+          _t(6, _item(context, '', tr.settingsTitle,
               widget.tour ? () {} : () => _open(nav, SettingsScreen(repo: repo)),
               iconData: Icons.settings)),
-          _t(7, _item(context, 'pencil', "Зворотний зв'язок", widget.tour ? () {} : () {
+          _t(7, _item(context, 'pencil', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav);
           })),

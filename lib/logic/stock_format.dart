@@ -1,3 +1,5 @@
+import '../l10n/l10n.dart';
+
 /// Числа складу: введення з комою або крапкою, показ — з комою, без зайвих нулів.
 
 /// Розібрати введену кількість. null — не число або від'ємне.
@@ -37,11 +39,11 @@ String formatMoney(double v) {
 
 /// Назва операції складу для історії ([amount] — для переобліку різниця зі знаком).
 String stockMoveTitle(String kind, String? reason, {double amount = 0}) => switch (kind) {
-      'out' => reason == null || reason.isEmpty ? 'Списано' : 'Списано: $reason',
+      'out' => reason == null || reason.isEmpty ? tr.moveOut : tr.moveOutReason(reason),
       'inv' => amount < -1e-9
-          ? 'Переоблік: нестача'
-          : (amount > 1e-9 ? 'Переоблік: надлишок' : 'Переоблік: без розбіжностей'),
-      'cancel' => 'Скасування запису',
-      'set' => 'Перезаписано (старий запис)',
-      _ => 'Прихід',
+          ? tr.moveInvShort
+          : (amount > 1e-9 ? tr.moveInvOver : tr.moveInvSame),
+      'cancel' => tr.moveCancel,
+      'set' => tr.moveSet,
+      _ => tr.stockIn,
     };

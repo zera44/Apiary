@@ -11,12 +11,13 @@ import '../services/qr_labels.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Назва вулика для наліпки. Вулики однієї групи мають спільну назву, тож
 /// до неї додається порядковий номер вулика-об'єкта в групі (зверху вниз,
 /// зліва направо). Злиті клітинки одного вулика — один номер.
 String hiveLabelName(MapElement el, List<MapElement> all) {
-  final base = (el.label != null && el.label!.isNotEmpty) ? el.label! : 'Вулик';
+  final base = (el.label != null && el.label!.isNotEmpty) ? el.label! : tr.hive;
   if (el.groupId == null) return base;
   final objs = hiveObjects([for (final e in all) if (e.groupId == el.groupId) e]);
   if (objs.length < 2) return base;
@@ -159,10 +160,9 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     final replacing = selected.where(linked.contains).length;
     if (replacing > 0) {
       final ok = await showConfirm(context,
-          title: 'Перегенерувати коди?',
-          text: 'У $replacing з ${selected.length} обраних вуликів уже є код. Вони отримають '
-              'нові коди, а старі наліпки перестануть працювати.',
-          confirmText: 'Перегенерувати');
+          title: tr.qrRegenTitle,
+          text: tr.qrRegenText(replacing, selected.length),
+          confirmText: tr.qrRegen);
       if (!ok || !mounted || _busy) return;
     }
     setState(() => _busy = true);
@@ -204,7 +204,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
     return Scaffold(
       body: SafeArea(
         child: ScreenColumn(children: [
-          TopBar(title: 'QR-коди: ${widget.apiary.name}', onBack: () => Navigator.pop(context)),
+          TopBar(title: tr.qrCodesOf(widget.apiary.name), onBack: () => Navigator.pop(context)),
           Expanded(
             child: Stack(children: [
               Positioned.fill(
@@ -227,8 +227,8 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                   child: Center(
                     child: CapsuleLabel(
                       elements.isEmpty
-                          ? 'На цій пасіці ще немає вуликів'
-                          : 'Червоний ободок - обрано, коду немає · зелений - код уже є ($withCode з $hives)',
+                          ? tr.qrNoHives
+                          : tr.qrLegend(withCode, hives),
                     ),
                   ),
                 ),
@@ -248,7 +248,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
             child: Row(children: [
               Expanded(
                 child: PillButton(
-                  text: 'Усі без коду',
+                  text: tr.qrAllWithoutCode,
                   bg: AppColors.darkBtn,
                   fg: AppColors.text,
                   height: 46,
@@ -260,7 +260,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
               Expanded(
                 flex: 2,
                 child: PillButton(
-                  text: _busy ? 'Створюємо…' : 'Згенерувати (${selected.length})',
+                  text: _busy ? tr.qrCreating : tr.qrGenerateN(selected.length),
                   bg: AppColors.accent,
                   height: 46,
                   fontSize: 14,
@@ -311,7 +311,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
       final bytes = await buildLabelsPdf(pngs);
       await Printing.layoutPdf(onLayout: (_) async => bytes, name: _fileName());
     } catch (e) {
-      if (mounted) await showInfo(context, 'Не вдалося відкрити друк: $e\n\nЗбережіть PDF і надрукуйте його.');
+      if (mounted) await showInfo(context, tr.printFailed('$e'));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -355,7 +355,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(
-                title: 'Наліпки (${widget.labels.length})', onBack: () => Navigator.pop(context)),
+                title: tr.qrLabelsN(widget.labels.length), onBack: () => Navigator.pop(context)),
             Expanded(
               child: pngs == null
                   ? const Center(child: CircularProgressIndicator())
@@ -379,7 +379,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
               child: Row(children: [
                 Expanded(
                   child: PillButton(
-                    text: 'Друк',
+                    text: tr.print,
                     bg: AppColors.accent,
                     height: 48,
                     radius: 16,
@@ -389,7 +389,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: PillButton(
-                    text: _saving ? 'Зачекайте…' : 'Зберегти PDF',
+                    text: _saving ? tr.pleaseWait : tr.savePdf,
                     bg: AppColors.darkBtn,
                     fg: AppColors.text,
                     height: 48,

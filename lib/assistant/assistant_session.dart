@@ -1,4 +1,5 @@
 import 'assistant_model.dart';
+import '../l10n/l10n.dart';
 
 /// Виконання одного інструмента застосунком: результат (коротко, лише
 /// потрібне моделі) або помилка (модель про неї дізнається).
@@ -39,7 +40,7 @@ class AssistantSession {
   /// (сервер перевіряє те саме).
   static const maxSteps = 6;
 
-  static const limitText = 'Не вийшло відповісти за кілька кроків. Спитайте, будь ласка, простіше.';
+  static String get limitText => tr.assistantLimitText;
 
   final List<Map<String, dynamic>> messages;
 
@@ -47,7 +48,7 @@ class AssistantSession {
 
   static String todayLine(DateTime d) =>
       '[Сьогодні: ${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}, '
-      '${_days[d.weekday - 1]}]';
+      '${_days[d.weekday - 1]}]${tr.assistantReplyLanguageHint}';
 
   /// Надіслати повідомлення людини й довести відповідь до кінця.
   /// Помилка зв'язку ([AssistantException]) - повідомлення людини з
@@ -100,7 +101,7 @@ class AssistantSession {
         {'type': 'text', 'text': limitText}
       ],
     });
-    return const AssistantReply(limitText, stoppedAtLimit: true);
+    return AssistantReply(limitText, stoppedAtLimit: true);
   }
 
   Future<Map<String, dynamic>> _run(Map<String, dynamic> use, ToolRunner? tools) async {

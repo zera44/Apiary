@@ -165,20 +165,25 @@ void main() {
   });
 
   // дисплеї: вузький телефон з найбільшим шрифтом, найменший телефон,
-  // планшет вертикально й горизонтально
+  // планшет вертикально й горизонтально; ще й англійською
   final displays = {
-    'телефон 360 dp, найбільший шрифт': (const Size(360, 640), AppTextScale.levels.last),
-    'телефон 360 dp, дуже великий шрифт': (const Size(360, 640), 1.5),
-    'телефон 320 dp': (const Size(320, 568), 1.0),
-    'планшет вертикально, найбільший шрифт': (const Size(800, 1280), AppTextScale.levels.last),
-    'планшет горизонтально': (const Size(1280, 800), 1.0),
+    'телефон 360 dp, найбільший шрифт': (const Size(360, 640), AppTextScale.levels.last, 'uk'),
+    'телефон 360 dp, дуже великий шрифт': (const Size(360, 640), 1.5, 'uk'),
+    'телефон 320 dp': (const Size(320, 568), 1.0, 'uk'),
+    'планшет вертикально, найбільший шрифт': (const Size(800, 1280), AppTextScale.levels.last, 'uk'),
+    'планшет горизонтально': (const Size(1280, 800), 1.0, 'uk'),
     // телефон боком (як RMX3867: 914×411 dp)
-    'телефон горизонтально': (const Size(914, 411), 1.0),
-    'телефон горизонтально, найбільший шрифт': (const Size(914, 411), AppTextScale.levels.last),
+    'телефон горизонтально': (const Size(914, 411), 1.0, 'uk'),
+    'телефон горизонтально, найбільший шрифт': (const Size(914, 411), AppTextScale.levels.last, 'uk'),
+    'англійською: телефон 360 dp, найбільший шрифт': (const Size(360, 640), AppTextScale.levels.last, 'en'),
+    'англійською: телефон 320 dp': (const Size(320, 568), 1.0, 'en'),
+    'англійською: телефон горизонтально, найбільший шрифт': (const Size(914, 411), AppTextScale.levels.last, 'en'),
   };
   for (final d in displays.entries) {
     testWidgets('${d.key}: екрани без переповнень', (tester) async {
-      final (size, scale) = d.value;
+      final (size, scale, lang) = d.value;
+      L10n.use(lang);
+      addTearDown(() => L10n.use('uk'));
       tester.view.physicalSize = size * 3;
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/models.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Вибір типу даних параметра: картки по дві в рядку — значок або приклад
 /// значення й назва. Обрана — медова.
@@ -22,7 +23,7 @@ class DataTypePicker extends StatelessWidget {
       DataTypes.bool_ => i(Icons.toggle_on_outlined),
       DataTypes.choice => i(Icons.arrow_drop_down_circle_outlined),
       DataTypes.color => i(Icons.palette_outlined),
-      _ => t('Аа'),
+      _ => t(tr.textTypeIcon),
     };
   }
 
@@ -143,14 +144,14 @@ class _OptionsEditorState extends State<OptionsEditor> {
             textInputAction: TextInputAction.done,
             decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Додати варіант (наприклад, «Сильна»)',
+                hintText: tr.optionAddHint,
                 enabledBorder: widget.error ? redFieldBorder() : null,
                 focusedBorder: widget.error ? redFieldBorder() : null),
             onSubmitted: (_) => _add(),
           ),
         ),
         IconButton(
-          tooltip: 'Додати варіант',
+          tooltip: tr.optionAdd,
           icon: Icon(Icons.add_circle, color: AppColors.create),
           onPressed: _add,
         ),

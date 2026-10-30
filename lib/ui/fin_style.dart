@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/finance.dart';
 import '../logic/stock_format.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Значки категорій фінансів (ключ зберігається в базі).
 const Map<String, IconData> kFinIcons = {
@@ -35,7 +36,7 @@ IconData finIcon(String key) => kFinIcons[key] ?? Icons.more_horiz;
 Color finColor(String key) => kFinColors[key] ?? kFinColors['honey']!;
 
 /// Назва для запису без категорії - прихід, внесений прямо на складі.
-const kFinStockCategoryName = 'Внесено на складі';
+String get kFinStockCategoryName => tr.finFromStock;
 
 /// Гроші з пропусками між тисячами: 12500 -> «12 500 ₴».
 String uah(double v) {
@@ -51,12 +52,7 @@ String uah(double v) {
   return '$sign$buf${parts.length > 1 ? ',${parts[1]}' : ''} ₴';
 }
 
-const _months = [
-  '', 'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
-  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень',
-];
-
-String finMonthTitle(DateTime d) => '${_months[d.month]} ${d.year}';
+String finMonthTitle(DateTime d) => '${tr.monthNames[d.month]} ${d.year}';
 
 String finDay(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}';

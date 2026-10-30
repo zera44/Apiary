@@ -11,6 +11,7 @@ import '../ui/fin_style.dart' show kFinStockCategoryName;
 import '../ui/icons.dart' show queenTagChoices;
 import 'assistant_links.dart';
 import 'assistant_session.dart';
+import '../l10n/l10n.dart';
 
 /// Інструменти помічника «Пасічник» - виконує їх застосунок (дані на
 /// телефоні). Опис для моделі - supabase/functions/assistant/tools.ts
@@ -724,7 +725,7 @@ class AssistantTools {
       params[p] = _valueFor(p, e.value);
     }
 
-    final card = PendingWrite('record_inspection', 'Огляд: ${h.name} (${h.apiaryName})', [
+    final card = PendingWrite('record_inspection', tr.cardInspection(h.name, h.apiaryName), [
       for (final e in params.entries)
         WriteField(
           'p:${e.key.id}',
@@ -737,8 +738,8 @@ class AssistantTools {
             _ => const [],
           },
         ),
-      if (note.isNotEmpty) WriteField('note', 'Нотатка', note),
-      if (visited) WriteField('visit', 'Дата обходу', _date(now()), editable: false),
+      if (note.isNotEmpty) WriteField('note', tr.note, note),
+      if (visited) WriteField('visit', tr.visitDate, _date(now()), editable: false),
     ]);
 
     return _write(card, (v) async {
@@ -763,7 +764,7 @@ class AssistantTools {
 
       return (
         {'hive': _hiveJson(h), 'written': fixed.length, if (noteId != null) 'note': true},
-        UndoEntry('Огляд: ${h.name}', () async {
+        UndoEntry(tr.cardInspectionUndo(h.name), () async {
           // історія значень на сервері лише дописується: ще не надіслане -
           // прибираємо, надіслане - повертаємо попереднє значення новим записом
           for (final (rid, pid, prev) in written.reversed) {
@@ -815,11 +816,11 @@ class AssistantTools {
     }
     final card = PendingWrite(
       receive ? 'stock_receive' : 'stock_issue',
-      '${receive ? 'Прихід' : 'Списання'}: ${item.name}',
+      tr.cardStockMove(receive, item.name),
       [
-        WriteField('amount', 'Кількість (${item.unit})', _num(amount)),
-        if (receive) WriteField('total', 'Сума, грн', _num(total!)),
-        if (comment.isNotEmpty) WriteField('comment', 'Коментар', comment),
+        WriteField('amount', tr.quantityIn(item.unit), _num(amount)),
+        if (receive) WriteField('total', tr.sumUah, _num(total!)),
+        if (comment.isNotEmpty) WriteField('comment', tr.comment, comment),
       ],
     );
     return _write(card, (v) async {
@@ -846,7 +847,7 @@ class AssistantTools {
       return (
         {'item': item.name, 'quantity_now': _num(left), 'unit': item.unit},
         UndoEntry(
-          '${receive ? 'Прихід' : 'Списання'}: ${item.name}',
+          tr.cardStockMove(receive, item.name),
           () async => repo.cancelStockMove(moveId),
         ),
       );
@@ -863,12 +864,12 @@ class AssistantTools {
     final unit = _s(input, 'unit').isEmpty ? 'шт' : _s(input, 'unit');
     final total = _parseNum(_s(input, 'total')) ?? 0;
     final comment = _s(input, 'comment');
-    final card = PendingWrite('stock_receive', 'Прихід: $name (нова позиція складу)', [
-      WriteField('name', 'Назва', name),
-      WriteField('unit', 'Одиниця', unit),
-      WriteField('amount', 'Кількість', _num(amount)),
-      WriteField('total', 'Сума, грн', _num(total)),
-      if (comment.isNotEmpty) WriteField('comment', 'Коментар', comment),
+    final card = PendingWrite('stock_receive', tr.cardNewStockItem(name), [
+      WriteField('name', tr.name, name),
+      WriteField('unit', tr.unitShort, unit),
+      WriteField('amount', tr.quantity, _num(amount)),
+      WriteField('total', tr.sumUah, _num(total)),
+      if (comment.isNotEmpty) WriteField('comment', tr.comment, comment),
     ]);
     return _write(card, (v) async {
       final n = (v['name'] ?? name).trim();
@@ -885,7 +886,7 @@ class AssistantTools {
       );
       return (
         {'item': n, 'created': true, 'quantity_now': _num(left), 'unit': u},
-        UndoEntry('Прихід: $n', () async => repo.deleteStockItem(id)),
+        UndoEntry(tr.cardStockIn(n), () async => repo.deleteStockItem(id)),
       );
     });
   }
@@ -904,13 +905,13 @@ class AssistantTools {
         ? now()
         : (_parseDate(_s(input, 'date')) ?? (throw const _Bad('date: YYYY-MM-DD')));
     final comment = _s(input, 'comment');
-    final card = PendingWrite('add_finance_entry', kind == kFinIncome ? 'Дохід' : 'Витрата', [
-      WriteField('amount', 'Сума, грн', _num(amount)),
+    final card = PendingWrite('add_finance_entry', kind == kFinIncome ? tr.income : tr.expense, [
+      WriteField('amount', tr.sumUah, _num(amount)),
       newCat != null
-          ? WriteField('category', 'Нова категорія', newCat)
-          : WriteField('category', 'Категорія', cat?.name ?? '-', editable: false),
-      WriteField('date', 'Дата', _date(date)),
-      if (comment.isNotEmpty) WriteField('comment', 'Коментар', comment),
+          ? WriteField('category', tr.categoryNew, newCat)
+          : WriteField('category', tr.category, cat?.name ?? '-', editable: false),
+      WriteField('date', tr.date, _date(date)),
+      if (comment.isNotEmpty) WriteField('comment', tr.comment, comment),
     ]);
     return _write(card, (v) async {
       final a = _parseNum(v['amount'] ?? '') ?? (throw const _Bad('Сума: число більше 0'));
@@ -937,7 +938,7 @@ class AssistantTools {
           'date': _date(d),
           if (created != null) 'new_category': true,
         },
-        UndoEntry(kind == kFinIncome ? 'Дохід ${_num(a)} грн' : 'Витрата ${_num(a)} грн', () async {
+        UndoEntry(tr.finUndo(kind == kFinIncome, _num(a)), () async {
           await repo.cancelFinEntry(
             FinEntry(
               id: id,
@@ -974,10 +975,10 @@ class AssistantTools {
     final h = hiveId.isEmpty ? null : await _hive(hiveId);
     String when(DateTime d) =>
         '${_date(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    final card = PendingWrite('create_reminder', 'Нагадування', [
-      WriteField('text', 'Текст', text),
-      WriteField('when', 'Коли', when(due)),
-      if (h != null) WriteField('hive', 'Вулик', '${h.name} (${h.apiaryName})', editable: false),
+    final card = PendingWrite('create_reminder', tr.reminder, [
+      WriteField('text', tr.text, text),
+      WriteField('when', tr.when, when(due)),
+      if (h != null) WriteField('hive', tr.hive, '${h.name} (${h.apiaryName})', editable: false),
     ]);
     return _write(card, (v) async {
       final t = (v['text'] ?? text).trim();
@@ -998,7 +999,7 @@ class AssistantTools {
       final id = await repo.addUserReminder(t, at, hive: h?.ref);
       return (
         {'when': when(at)},
-        UndoEntry('Нагадування', () async => repo.deleteUserReminder(id)),
+        UndoEntry(tr.reminder, () async => repo.deleteUserReminder(id)),
       );
     });
   }

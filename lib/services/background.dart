@@ -12,6 +12,7 @@ import '../data/database.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
 import '../data/sync_service.dart';
+import '../l10n/l10n.dart';
 import 'app_config.dart';
 import 'app_foreground.dart';
 import 'backups.dart';
@@ -128,6 +129,7 @@ Future<bool> runBackgroundTask(String task,
     AssistantModel Function()? assistantModel}) async {
   try {
     final repo = await (openRepo ?? () async => Repository(await AppDatabase.openDefault()))();
+    await L10n.load(repo); // сповіщення - мовою, обраною в застосунку
     switch (task) {
       case BackgroundTasks.backup:
         final service = await (backups ?? BackupService.forApp)(repo);

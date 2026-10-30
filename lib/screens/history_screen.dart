@@ -6,6 +6,7 @@ import '../services/excel_export.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Екран "Історія" — усі значення ОДНОГО параметра, найновіші першими.
 /// Без [entity] — по всіх об'єктах (з каталогу параметрів), з [entity] —
@@ -68,11 +69,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final res = await showDialog<({EntityRef? ref})>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Фільтр: об\'єкт'),
+        title: Text(tr.filterObject),
         children: [
           SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, (ref: null)),
-              child: const Text('Усі об\'єкти')),
+              child: Text(tr.allObjects)),
           for (final c in _choices)
             SimpleDialogOption(
                 onPressed: () => Navigator.pop(ctx, (ref: c.ref)), child: Text(c.label)),
@@ -89,7 +90,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Row(children: [
           Expanded(
             child: PillButton(
-              text: scoped ? 'Об\'єкт: ${scopeName ?? ''}' : 'Усі об\'єкти',
+              text: scoped ? tr.objectOf(scopeName ?? '') : tr.allObjects,
               bg: scoped ? AppColors.accent : AppColors.darkBtn,
               fg: scoped ? Colors.white : AppColors.text,
               height: 38,
@@ -99,7 +100,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           if (scoped) ...[
             const SizedBox(width: 8),
             IconButton(
-              tooltip: 'Очистити фільтр',
+              tooltip: tr.clearFilter,
               icon: Icon(Icons.close, color: AppColors.text),
               onPressed: () async {
                 _entity = null;
@@ -113,7 +114,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _export() async {
     final list = rows ?? const <ParameterRecord>[];
     if (list.isEmpty) {
-      await showInfo(context, 'Немає жодного запису для експорту.');
+      await showInfo(context, tr.nothingToExport);
       return;
     }
     final result = await exportHistoryToExcel(
@@ -127,7 +128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = 'Історія: ${widget.parameter.nameWithUnit}';
+    final title = tr.historyOf(widget.parameter.nameWithUnit);
     final list = rows;
     return Scaffold(
       body: SafeArea(
@@ -143,9 +144,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Text(
-                              'Ще немає жодного запису для цього параметра'
-                              '${scoped ? " у цього об'єкта" : ''}.\n'
-                              'Записи з\'являються після кнопки «Оглянути» на карті.',
+                              tr.paramHistoryEmpty(scoped),
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted),
                             ),
@@ -161,7 +160,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             Padding(
               padding: const EdgeInsets.all(12),
               child: PillButton(
-                text: 'Експортувати в Excel',
+                text: tr.exportExcel,
                 bg: AppColors.accent,
                 height: 48,
                 radius: 16,

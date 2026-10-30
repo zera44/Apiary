@@ -10,6 +10,7 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'map_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Відкриває порожню «пісочницю» для уроку (див. [AppDatabase.openSandbox]).
 typedef SandboxOpener = Future<Repository> Function();
@@ -124,14 +125,13 @@ class _TutorialScreenState extends State<TutorialScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(def.title),
-          content: Text('Ти вже починав цей урок. Продовжити з місця, де зупинився, '
-              'чи почати спочатку?',
+          content: Text(tr.lessonResumeAsk,
               style: TextStyle(color: AppColors.text)),
           actions: [
             Row(children: [
               Expanded(
                 child: PillButton(
-                    text: 'Спочатку',
+                    text: tr.fromStart,
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     onPressed: () => Navigator.pop(ctx, false)),
@@ -139,7 +139,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: PillButton(
-                    text: 'Продовжити',
+                    text: tr.continueAction,
                     bg: AppColors.accent,
                     onPressed: () => Navigator.pop(ctx, true)),
               ),
@@ -153,7 +153,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
   /// разу пропонуємо продовжити або почати спочатку.
   Future<void> _startLesson(LessonDef def) async {
     if (def.soon) {
-      await showInfo(context, 'Цей урок ще готується - скоро з\'явиться.', title: def.title);
+      await showInfo(context, tr.lessonSoon, title: def.title);
       return;
     }
     if (_opening || def.script == null || def.setup == null) return;
@@ -242,7 +242,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
         body: SafeArea(
           child: Stack(children: [
             ScreenColumn(children: [
-              TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(context).pop()),
+              TopBar(title: tr.myApiaries, onBack: () => Navigator.of(context).pop()),
             ]),
             const Positioned.fill(child: ScreenFrame()),
           ]),
@@ -253,7 +253,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: 'Навчання', onBack: () => Navigator.of(context).pop()),
+            TopBar(title: tr.tutorial, onBack: () => Navigator.of(context).pop()),
             Expanded(
               child: GridView.count(
                 padding: const EdgeInsets.all(16),
@@ -263,7 +263,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                 childAspectRatio: 0.9,
                 children: [
                   _LessonTile(
-                    title: 'Базові поняття',
+                    title: tr.lessonBasics,
                     image: 'assets/guide/beekeeper.webp',
                     onTap: _opening ? null : _basics,
                   ),
@@ -322,7 +322,7 @@ class _LessonTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                         color: AppColors.accent, borderRadius: BorderRadius.circular(10)),
-                    child: const Text('скоро',
+                    child: Text(tr.soon,
                         style: TextStyle(
                             color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),

@@ -11,6 +11,7 @@ import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'stock_screen.dart';
 import '../ui/thousands_input.dart';
+import '../l10n/l10n.dart';
 
 /// Чек після сканування: розпізнані позиції в таблиці «Товар / Кількість /
 /// Ціна». Усе можна виправити, зайве - зняти галочкою чи видалити; «Додати на
@@ -88,7 +89,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (!_ocr.supported) {
       setState(() {
         _reading = false;
-        _note = 'Розпізнавання тексту працює на телефоні. Тут заповніть таблицю вручну.';
+        _note = tr.receiptOnPhoneOnly;
       });
       return;
     }
@@ -100,15 +101,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         _lines.addAll(rows.map(_Line.new));
         _reading = false;
         _note = rows.isEmpty
-            ? 'Не вдалося розпізнати позиції. Спробуйте сфотографувати рівніше й при гарному '
-                'світлі або додайте рядки вручну.'
-            : 'Перевірте таблицю: розпізнавання може помилятися.';
+            ? tr.receiptNoRowsAdd
+            : tr.receiptCheckTable;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _reading = false;
-        _note = 'Не вдалося розпізнати чек. Додайте рядки вручну.';
+        _note = tr.receiptFailedAdd;
       });
     }
   }
@@ -123,7 +123,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (rows.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: receiptAsText(rows)));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Список скопійовано')));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.listCopied)));
   }
 
   void _addLine() => setState(() => _lines.add(_Line(ReceiptRow(name: '', price: 0))));
@@ -142,16 +142,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (_saving) return;
     final todo = [for (final l in _lines) if (l.use) l];
     if (todo.isEmpty) {
-      await showInfo(context, 'Немає позицій для запису: позначте хоча б одну.');
+      await showInfo(context, tr.receiptNothingChecked);
       return;
     }
     final bad = todo.where((l) => !l.valid).toList();
     if (bad.isNotEmpty) {
       await showInfo(
           context,
-          'У ${bad.length == 1 ? 'одному рядку' : '${bad.length} рядках'} не вистачає назви, '
-          'кількості (більше 0) або ціни. Виправте їх чи зніміть галочку.',
-          title: 'Не записано');
+          tr.receiptBadRows(bad.length),
+          title: tr.notRecorded);
       return;
     }
     setState(() => _saving = true);
@@ -178,12 +177,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       final messenger = ScaffoldMessenger.of(context);
       nav.pushReplacement(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo)));
       messenger.showSnackBar(SnackBar(
-          content: Text('Додано на склад: ${todo.length} '
-              '(нових - $created, поповнено - $topped)')));
+          content: Text(tr.receiptAdded(todo.length, created, topped))));
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        await showInfo(context, 'Не вдалося записати: $e', title: 'Помилка');
+        await showInfo(context, tr.recordFailed('$e'), title: tr.error);
       }
     }
   }
@@ -194,11 +192,11 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
       child: Row(children: [
         const SizedBox(width: 40),
-        Expanded(flex: 5, child: Text('Товар', style: s)),
+        Expanded(flex: 5, child: Text(tr.goods, style: s)),
         const SizedBox(width: 6),
-        Expanded(flex: 3, child: Text('Кількість', style: s)),
+        Expanded(flex: 3, child: Text(tr.quantity, style: s)),
         const SizedBox(width: 6),
-        Expanded(flex: 3, child: Text('Ціна', style: s)),
+        Expanded(flex: 3, child: Text(tr.price, style: s)),
         const SizedBox(width: 36),
       ]),
     );
@@ -232,7 +230,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             style: style,
             minLines: 1,
             maxLines: 3,
-            decoration: dense.copyWith(hintText: 'Назва'),
+            decoration: dense.copyWith(hintText: tr.name),
             onChanged: (_) => setState(() {}),
           ),
         ),
@@ -246,7 +244,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             inputFormatters: thousandsInput,
             decoration: dense.copyWith(
               suffixIcon: PopupMenuButton<String>(
-                tooltip: 'Одиниця',
+                tooltip: tr.unitShort,
                 padding: EdgeInsets.zero,
                 onSelected: (u) => setState(() => l.unit = u),
                 itemBuilder: (_) => [
@@ -278,7 +276,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         SizedBox(
           width: 34,
           child: IconButton(
-            tooltip: 'Видалити рядок',
+            tooltip: tr.deleteRow,
             padding: EdgeInsets.zero,
             icon: Icon(Icons.close, size: 20, color: AppColors.textMuted),
             onPressed: () => _remove(l),
@@ -288,7 +286,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         if (l.valid)
           Padding(
             padding: const EdgeInsets.fromLTRB(46, 4, 40, 0),
-            child: Text('сума ${formatMoney(l.qtyValue! * l.priceValue!)} грн',
+            child: Text(tr.sumOf('${formatMoney(l.qtyValue! * l.priceValue!)} ${tr.currency}'),
                 textAlign: TextAlign.right,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
           ),
@@ -303,14 +301,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: 'Чек', onBack: () => Navigator.pop(context)),
+            TopBar(title: tr.receiptTitle, onBack: () => Navigator.pop(context)),
             if (_reading)
               Expanded(
                 child: Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 14),
-                    Text('Розпізнаю чек…', style: TextStyle(color: AppColors.textMuted)),
+                    Text(tr.receiptReading, style: TextStyle(color: AppColors.textMuted)),
                   ]),
                 ),
               )
@@ -340,7 +338,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   children: [
                     for (final l in _lines) _row(l),
                     PillButton(
-                      text: '+ Додати рядок',
+                      text: tr.addRowButton,
                       bg: AppColors.darkBtn,
                       fg: AppColors.text,
                       height: 42,
@@ -353,13 +351,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: Row(children: [
-                  Text('Разом: ', style: TextStyle(color: AppColors.textMuted)),
-                  Text('${formatMoney(_sum)} грн',
+                  Text(tr.totalColon, style: TextStyle(color: AppColors.textMuted)),
+                  Text('${formatMoney(_sum)} ${tr.currency}',
                       style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold)),
                   const Spacer(),
                   if (_lines.any((l) => l.use && l.valid))
                     IconButton(
-                      tooltip: 'Копіювати список',
+                      tooltip: tr.copyList,
                       visualDensity: VisualDensity.compact,
                       onPressed: _copy,
                       icon: Icon(Icons.copy, size: 20, color: AppColors.textMuted),
@@ -369,7 +367,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: PillButton(
-                  text: 'Додати на склад',
+                  text: tr.addToStock,
                   bg: AppColors.accent,
                   height: 48,
                   radius: 16,

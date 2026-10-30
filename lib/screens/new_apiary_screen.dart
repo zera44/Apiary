@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// Створення нової пасіки: поки що лише назва (вибір місця на карті
 /// тимчасово прибрано).
@@ -27,7 +28,7 @@ class _NewApiaryScreenState extends State<NewApiaryScreen> {
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = 'Введіть назву пасіки');
+      setState(() => _error = tr.enterApiaryName);
       return;
     }
     if (_saving) return;
@@ -53,14 +54,14 @@ class _NewApiaryScreenState extends State<NewApiaryScreen> {
       body: SafeArea(
         child: Stack(children: [
           Column(children: [
-            TopBar(title: 'Нова пасіка', onBack: () => Navigator.pop(context)),
+            TopBar(title: tr.newApiary, onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.all(16),
               child: TextField(
                 controller: _nameCtrl,
                 autofocus: true,
                 style: TextStyle(color: AppColors.text),
-                decoration: const InputDecoration(hintText: 'Назва пасіки'),
+                decoration: InputDecoration(hintText: tr.apiaryName),
                 onChanged: (_) {
                   if (_error != null) setState(() => _error = null);
                 },
@@ -73,7 +74,7 @@ class _NewApiaryScreenState extends State<NewApiaryScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: PillButton(
-                text: _saving ? 'Створюємо…' : 'OK',
+                text: _saving ? tr.qrCreating : 'OK',
                 bg: AppColors.accent,
                 height: 50,
                 radius: 16,

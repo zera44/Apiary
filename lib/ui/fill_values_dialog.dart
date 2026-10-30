@@ -9,6 +9,7 @@ import 'guide_bubble.dart';
 import 'icons.dart';
 import 'theme.dart';
 import 'thousands_input.dart';
+import '../l10n/l10n.dart';
 
 /// Форма "Заповнити": поле на кожен прив'язаний параметр. Тип даних
 /// обмежує ввід (ціле / дробове), для "Дата" — календар, для "Колір" —
@@ -28,7 +29,7 @@ Future<FillResult?> showFillValuesDialog(
   String? title,
   Future<FillPage?> Function(FillResult result)? onNext,
   FillLesson? lesson,
-  String subtitle = 'Заповнити параметри',
+  String? subtitle,
   VoidCallback? onHistory,
   List<(String, String)> infoRows = const [],
   bool withNote = false,
@@ -40,7 +41,7 @@ Future<FillResult?> showFillValuesDialog(
         offerNext: lesson == null && offerNext,
         onNext: onNext,
         lesson: lesson,
-        subtitle: subtitle,
+        subtitle: subtitle ?? tr.fillParams,
         onHistory: onHistory,
         infoRows: infoRows,
         withNote: withNote && lesson == null,
@@ -107,7 +108,7 @@ class _FillHost extends StatefulWidget {
   final bool offerNext;
   final Future<FillPage?> Function(FillResult result)? onNext;
   final FillLesson? lesson;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback? onHistory;
   final List<(String, String)> infoRows;
   final bool withNote;
@@ -120,7 +121,7 @@ class _FillHost extends StatefulWidget {
       required this.offerNext,
       this.onNext,
       this.lesson,
-      this.subtitle = 'Заповнити параметри',
+      this.subtitle,
       this.onHistory});
   @override
   State<_FillHost> createState() => _FillHostState();
@@ -203,7 +204,7 @@ class _FillDialog extends StatefulWidget {
   final List<StockItem> stock;
   final Future<void> Function(FillResult result)? onNext;
   final FillLesson? lesson;
-  final String subtitle;
+  final String? subtitle;
   final VoidCallback? onHistory;
 
   /// Рядки лише для перегляду (назва, значення) - над полями.
@@ -222,7 +223,7 @@ class _FillDialog extends StatefulWidget {
       this.infoRows = const [],
       this.withNote = false,
       this.lesson,
-      this.subtitle = 'Заповнити параметри',
+      this.subtitle,
       this.onHistory,
       this.title,
       required this.params,
@@ -307,42 +308,32 @@ class _FillDialogState extends State<_FillDialog> {
     return switch (_step) {
       0 => (
           text: [
-            const TextSpan(
-                text: 'Це параметри вулика. Зараз тут тільки обов\'язкові, але ти зможеш '),
-            GuideBubble.highlight('додати нові згодом'),
+            TextSpan(text: tr.fillLesson0a),
+            GuideBubble.highlight(tr.fillLesson0b),
             const TextSpan(text: '.'),
           ],
           bear: false,
           tapNext: true
         ),
       1 => (
-          text: const [
-            TextSpan(text: 'Мій помічник перевірив вулик за тебе, тож запиши дані в комірки.')
-          ],
+          text: [TextSpan(text: tr.fillLesson1)],
           bear: false,
           tapNext: true
         ),
       2 => (
           text: [
-            const TextSpan(text: 'Кхе, кхе... Я допоможу зі '),
-            GuideBubble.highlight('внесенням інформації'),
-            const TextSpan(text: ' до твого вулика.'),
+            TextSpan(text: tr.fillLesson2a),
+            GuideBubble.highlight(tr.fillLesson2b),
+            TextSpan(text: tr.fillLesson2c),
           ],
           bear: true,
           tapNext: true
         ),
       3 => (
           text: [
-            const TextSpan(text: 'В тебе матка '),
+            TextSpan(text: tr.fillLesson3a),
             // матка — вона: «біла», «жовта»…
-            GuideBubble.task(const {
-                  'Білий': 'біла',
-                  'Жовтий': 'жовта',
-                  'Червоний': 'червона',
-                  'Зелений': 'зелена',
-                  'Синій': 'синя',
-                }[l.colorValue] ??
-                l.colorValue.toLowerCase()),
+            GuideBubble.task(tr.lessonQueenColor(l.colorValue)),
             const TextSpan(text: '.'),
           ],
           bear: true,
@@ -350,15 +341,15 @@ class _FillDialogState extends State<_FillDialog> {
         ),
       4 => (
           text: [
-            const TextSpan(text: 'Оглянув сьогодні? Торкнись '),
-            GuideBubble.task('дати огляду'),
-            const TextSpan(text: ' й обери «Сьогодні».'),
+            TextSpan(text: tr.fillLesson4a),
+            GuideBubble.task(tr.fillLesson4b),
+            TextSpan(text: tr.fillLesson4c),
           ],
           bear: true,
           tapNext: false
         ),
       _ => (
-          text: const [TextSpan(text: 'Збережи, бо я більше туди не полізу.')],
+          text: [TextSpan(text: tr.fillLesson5)],
           bear: true,
           tapNext: false
         ),
@@ -392,12 +383,11 @@ class _FillDialogState extends State<_FillDialog> {
       final it = widget.stock.firstWhere((s) => s.id == fid);
       final a = parseAmount(_feedAmount.text);
       if (a == null || a <= 0) {
-        setState(() => _error = 'Підгодівля: вкажіть кількість');
+        setState(() => _error = tr.feedNeedQty);
         return;
       }
       if (a > (it.quantity ?? 0) + 1e-9) {
-        setState(() => _error =
-            'Підгодівля: на складі лише ${formatAmount(it.quantity ?? 0)} ${it.unit}');
+        setState(() => _error = tr.feedOnlyInStock('${formatAmount(it.quantity ?? 0)} ${it.unit}'));
         return;
       }
       feed = (itemId: fid, amount: a);
@@ -419,14 +409,14 @@ class _FillDialogState extends State<_FillDialog> {
       if (p.dataType == DataTypes.int_) {
         final n = int.tryParse(v);
         if (n == null || n < 0) {
-          setState(() => _error = '«${p.nameWithUnit}»: введіть ціле число від 0');
+          setState(() => _error = tr.fillWholeFrom0(p.nameWithUnit));
           return;
         }
         v = n.toString();
       } else if (p.dataType == DataTypes.float_) {
         final n = double.tryParse(v.replaceAll(',', '.'));
         if (n == null) {
-          setState(() => _error = '«${p.nameWithUnit}»: введіть число');
+          setState(() => _error = tr.fillNumber(p.nameWithUnit));
           return;
         }
         v = n.toString();
@@ -493,7 +483,7 @@ class _FillDialogState extends State<_FillDialog> {
     final feedRows = <TableRow>[
         if (widget.stock.isNotEmpty)
           row(
-            'Підгодівля зі складу',
+            tr.feedFromStock,
             DropdownButton<String?>(
               value: _feedItem,
               isExpanded: true,
@@ -501,17 +491,17 @@ class _FillDialogState extends State<_FillDialog> {
               underline: const SizedBox.shrink(),
               dropdownColor: AppColors.popupBg,
               hint: _fitLeft(
-                  Text('Не списувати', style: TextStyle(color: AppColors.textMuted, fontSize: 14))),
+                  Text(tr.dontWriteOff, style: TextStyle(color: AppColors.textMuted, fontSize: 14))),
               items: [
                 DropdownMenuItem<String?>(
                     value: null,
                     child: _fitLeft(
-                        Text('Не списувати', style: TextStyle(color: AppColors.text, fontSize: 14)))),
+                        Text(tr.dontWriteOff, style: TextStyle(color: AppColors.text, fontSize: 14)))),
                 for (final s in widget.stock)
                   DropdownMenuItem<String?>(
                     value: s.id,
                     child: _fitLeft(Text(
-                        '${s.name} (є ${formatAmount(s.quantity ?? 0)} ${s.unit})',
+                        tr.stockItemHas(s.name, '${formatAmount(s.quantity ?? 0)} ${s.unit}'),
                         maxLines: 1,
                         softWrap: false,
                         style: TextStyle(color: AppColors.text, fontSize: 14))),
@@ -525,7 +515,7 @@ class _FillDialogState extends State<_FillDialog> {
           ),
         if (feed != null)
           row(
-            'Скільки, ${feed.unit}',
+            tr.howMuch(feed.unit),
             TextField(
               key: const ValueKey('feed-amount'),
               controller: _feedAmount,
@@ -620,7 +610,7 @@ class _FillDialogState extends State<_FillDialog> {
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
             child: Row(children: [
               Expanded(
-                child: Text(dateText.isEmpty ? 'Обрати дату' : dateText,
+                child: Text(dateText.isEmpty ? tr.chooseDate : dateText,
                     style: TextStyle(
                         color: dateText.isEmpty ? AppColors.textMuted : AppColors.text,
                         fontSize: 15)),
@@ -657,7 +647,7 @@ class _FillDialogState extends State<_FillDialog> {
           isDense: true,
           underline: const SizedBox.shrink(),
           dropdownColor: AppColors.popupBg,
-          hint: Text('Обрати', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          hint: Text(tr.choose, style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
           items: [
             DropdownMenuItem<String>(
                 value: '', child: Text('-', style: TextStyle(color: AppColors.textMuted))),
@@ -768,7 +758,7 @@ class _FillDialogState extends State<_FillDialog> {
                         if (mounted) setState(() => _saving = false);
                       }
                     },
-              child: Text('Відмінити', style: TextStyle(color: AppColors.create)),
+              child: Text(tr.undoDelete, style: TextStyle(color: AppColors.create)),
             ),
         ]),
       );
@@ -783,7 +773,7 @@ class _FillDialogState extends State<_FillDialog> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (widget.title != null) Text(widget.title!),
-            Text(widget.subtitle,
+            Text(widget.subtitle ?? tr.fillParams,
                 style: widget.title == null
                     ? null
                     : TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w400)),
@@ -792,14 +782,14 @@ class _FillDialogState extends State<_FillDialog> {
         // швидка правка: історія цього параметра — іконкою вгорі праворуч
         if (widget.onHistory != null)
           IconButton(
-            tooltip: 'Історія',
+            tooltip: tr.history,
             icon: Icon(Icons.history, color: AppColors.text),
             onPressed: widget.onHistory,
           ),
         // обхід: вийти з огляду (кнопки внизу ведуть до наступного вулика)
         if (widget.offerNext)
           IconButton(
-            tooltip: 'Закрити',
+            tooltip: tr.close,
             icon: Icon(Icons.close, color: AppColors.text),
             onPressed: _saving ? null : () => Navigator.pop(context),
           ),
@@ -822,9 +812,9 @@ class _FillDialogState extends State<_FillDialog> {
                 maxLines: 5,
                 textCapitalization: TextCapitalization.sentences,
                 style: TextStyle(color: AppColors.text, fontSize: 14.5),
-                decoration: const InputDecoration(
-                  labelText: 'Нотатка',
-                  hintText: 'Необов\'язково: що помітили',
+                decoration: InputDecoration(
+                  labelText: tr.note,
+                  hintText: tr.noteOptional,
                 ),
               ),
             ],
@@ -851,7 +841,7 @@ class _FillDialogState extends State<_FillDialog> {
               HoneyRing(
                 on: _ring(5),
                 child: Tooltip(
-                  message: 'Зберегти',
+                  message: tr.save,
                   child: Material(
                     color: _saving ? AppColors.accent.withValues(alpha: 0.45) : AppColors.accent,
                     shape: const CircleBorder(),
@@ -871,7 +861,7 @@ class _FillDialogState extends State<_FillDialog> {
               const SizedBox(width: 10),
               Expanded(
                   child: PillButton(
-                      text: 'Змін немає',
+                      text: tr.noChanges,
                       bg: AppColors.darkBtn,
                       fg: AppColors.text,
                       height: 50,
@@ -882,14 +872,14 @@ class _FillDialogState extends State<_FillDialog> {
                   bg: AppColors.neutralBtn,
                   iconColor: AppColors.text,
                   size: 50,
-                  tooltip: 'Пропустити',
+                  tooltip: tr.skip,
                   onPressed: _saving || _lesson != null ? null : () => _quick(FillAction.skip)),
             ])
           else
             Row(children: [
               Expanded(
                 child: PillButton(
-                    text: 'Скасувати',
+                    text: tr.cancel,
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     // урок: поки огляд не завершено — не вийти
@@ -901,7 +891,7 @@ class _FillDialogState extends State<_FillDialog> {
                       on: _ring(5),
                       radius: 14,
                       child: PillButton(
-                          text: 'Зберегти',
+                          text: tr.save,
                           bg: AppColors.accent,
                           // урок: зберегти — лише коли комірки заповнено
                           onPressed: _saving || (_lesson != null && _step < 5) ? null : _save))),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Розміри й місце перемикача режимів (унизу ліворуч).
 const double kToggleSegW = 64, kToggleSegH = 46, kTogglePad = 4;
@@ -68,8 +69,8 @@ class ModeToggle extends StatelessWidget {
           ),
         ),
         Row(mainAxisSize: MainAxisSize.min, children: [
-          seg('Робочий режим', Icons.visibility_outlined, !editing),
-          seg('Редагування', Icons.edit_outlined, editing),
+          seg(tr.workMode, Icons.visibility_outlined, !editing),
+          seg(tr.editing, Icons.edit_outlined, editing),
         ]),
       ]),
       ),

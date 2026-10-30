@@ -9,6 +9,7 @@ import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'home_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Заставка = екран входу: іконка, назва, «Увійти через Google» і
 /// «Продовжити без входу» (дані лише на цьому пристрої; увійти й
@@ -47,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Не вдалося увійти. Перевірте інтернет і спробуйте ще раз.');
+        setState(() => _error = tr.signInFailed);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -86,10 +87,10 @@ class _SplashScreenState extends State<SplashScreen> {
                       style: TextStyle(
                           color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 6),
-                  Text('Моя пасіка', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+                  Text(tr.myApiary, style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
                   const SizedBox(height: 48),
                   PillButton(
-                    text: _busy ? 'Входимо…' : 'Увійти через Google',
+                    text: _busy ? tr.signingIn : tr.signInGoogle,
                     bg: AppColors.accent,
                     width: 260,
                     height: 52,
@@ -105,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   ],
                   const SizedBox(height: 12),
                   PillButton(
-                    text: 'Продовжити без входу',
+                    text: tr.continueNoSignIn,
                     bg: AppColors.darkBtn,
                     fg: AppColors.text,
                     width: 260,
@@ -115,8 +116,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     onPressed: _busy ? null : _guest,
                   ),
                   const SizedBox(height: 14),
-                  Text('Без входу дані зберігаються лише на цьому пристрої. Увійти й '
-                      'синхронізувати їх можна пізніше на головному екрані - нічого не загубиться.',
+                  Text(tr.noSignInHint,
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],

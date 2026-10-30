@@ -119,10 +119,10 @@ class MapScreen extends StatefulWidget {
       this.refresh = 0});
 
   /// Урок: на карті ще немає вуликів.
-  static final tutorialNoHives = <InlineSpan>[
-    const TextSpan(text: 'Щось у тебе, друже, і вуликів то нема. Додай нові, увімкнувши режим '),
-    GuideBubble.highlight('«Редагування»'),
-    const TextSpan(text: ' унизу ліворуч'),
+  static List<InlineSpan> get tutorialNoHives => [
+    TextSpan(text: tr.mapNoHivesA),
+    GuideBubble.highlight(tr.editingQuoted),
+    TextSpan(text: tr.mapNoHivesB),
   ];
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -304,7 +304,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     ];
   }
 
-  String _lessonHive = 'Вулик';
+  String _lessonHive = tr.hive;
 
   /// Підтвердити розміщення: перемикач у медовому ободку.
   bool get _lessonConfirm => widget.tutorial && selectMode && _lessonPlaced && _lessonMoved;
@@ -346,7 +346,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         below: Row(children: [
           Expanded(
             child: PillChoice(
-              text: 'Синя',
+              text: tr.pillBlue,
               color: kPillBlue,
               onPressed: done == null ? null : () => done(false, widget.apiary.id),
             ),
@@ -354,7 +354,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           const SizedBox(width: 8),
           Expanded(
             child: PillChoice(
-              text: 'Червона',
+              text: tr.pillRed,
               color: kPillRed,
               onPressed: () => setState(() => _lesson = _Lesson.menu),
             ),
@@ -379,21 +379,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final hasHive = elements.any((e) => e.isHive);
     if (selectMode) {
       if (!_lessonPlaced) {
-        return (const [TextSpan(text: 'Натисни на карту в будь-якому місці')], null);
+        return ([TextSpan(text: tr.mapTapAnywhere)], null);
       }
       if (!_lessonMoved) {
         return (
-          const [
-            TextSpan(
-                text: 'Щось ти геть не туди поставив. Перемісти перетягуванням на сусідню клітинку')
-          ],
+[TextSpan(text: tr.mapWrongPlace)],
           null
         );
       }
       return (
         [
-          const TextSpan(text: 'Підтверди вибір - перемкни в '),
-          GuideBubble.highlight('«Робочий режим»'),
+          TextSpan(text: tr.mapConfirmA),
+          GuideBubble.highlight(tr.workModeQuoted),
         ],
         null
       );
@@ -403,7 +400,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         return hasHive ? null : (MapScreen.tutorialNoHives, null);
       case _Lesson.congrats:
         return (
-          const [TextSpan(text: 'З легким стартом, друже!')],
+          [TextSpan(text: tr.mapGoodStart)],
           // кінець уроку (після огляду меню): справжня карта зі своїм вуликом
           () => widget.onLessonDone?.call(true, widget.apiary.id)
         );
@@ -411,16 +408,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (panelOpen) return null;
         return (
           [
-            const TextSpan(text: 'Не час відпочивати, натисни на '),
-            GuideBubble.highlight('«$_lessonHive»'),
+            TextSpan(text: tr.mapNoRest),
+            GuideBubble.highlight(tr.quoted(_lessonHive)),
           ],
           null
         );
       case _Lesson.menu:
         return (
           [
-            const TextSpan(text: 'Розкажу коротко, що ми маємо. '),
-            GuideBubble.highlight('Відкрий меню навігації'),
+            TextSpan(text: tr.mapTellShort),
+            GuideBubble.highlight(tr.mapOpenNavMenu),
           ],
           null
         );
@@ -429,18 +426,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       case _Lesson.gear:
         return (
           [
-            const TextSpan(text: 'Шаблони - у '),
-            GuideBubble.highlight('«Налаштуваннях»'),
-            const TextSpan(
-                text: ' меню. А набір параметрів вулика збирай у '
-                    '«Параметрах» його панелі: у «Конструкторі» розклади їх по групах.'),
+            TextSpan(text: tr.mapTemplatesInA),
+            GuideBubble.highlight(tr.settingsQuoted),
+            TextSpan(text: tr.mapTemplatesInB),
           ],
           () => setState(() => _lesson = _Lesson.congrats)
         );
       case _Lesson.magic:
         return (
           [
-            ...pillChoiceSpans('Вулик додав, обхід зробив. '),
+            ...pillChoiceSpans(tr.mapLessonDone),
           ],
           null
         );
@@ -448,14 +443,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (!panelOpen) return null;
         if (!_inspectRead) {
           return (
-            const [TextSpan(text: 'Це короткі замітки про твій вулик.')],
+            [TextSpan(text: tr.mapShortNotes)],
             () => setState(() => _inspectRead = true)
           );
         }
         return (
           [
-            const TextSpan(text: 'Прокрути донизу й '),
-            GuideBubble.task('проведи огляд вулика'),
+            TextSpan(text: tr.mapScrollDown),
+            GuideBubble.task(tr.mapDoInspect),
           ],
           null
         );
@@ -531,7 +526,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   Future<void> _init() async {
     _bindCode = widget.bindCode;
-    if (_bindCode != null) _warning = 'Торкніться вулика, до якого прив\'язати код';
+    if (_bindCode != null) _warning = tr.mapTapHiveToBind;
     // «Почати» на головному екрані відкриватиме цю пасіку
     if (!widget.backdrop) unawaited(repo.setMeta('last_apiary', widget.apiary.id));
     await _reload();
@@ -721,7 +716,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       setState(() => _blocked = blocked);
       if (blocked) {
         _shake.forward(from: 0);
-        _showWarning("Тут уже є інший об'єкт");
+        _showWarning(tr.mapCellHasOther);
       } else {
         _clearWarning();
       }
@@ -757,7 +752,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             sameShape &&
             !sel.any((e) => occupied.contains((e.x + dx, e.y + dy)));
         if (!free) {
-          _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
+          _showWarning(tr.mapCellHasOther, duration: const Duration(seconds: 1));
         } else if (selectedGroupId != null) {
           _pushUndo(_Undo.restore(sel));
           for (final gid in _selGids) {
@@ -784,7 +779,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         }
       });
       if (releasedBlocked) {
-        _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 1));
+        _showWarning(tr.mapCellHasOther, duration: const Duration(seconds: 1));
       }
     } finally {
       if (mounted) {
@@ -821,7 +816,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     // порожній шаблон (без жодної клітинки) не має що розміщувати
     if (!tpl.cells.keys.any((k) => parseCellKey(k) != null)) {
-      _showWarning('Шаблон порожній', duration: const Duration(seconds: 1));
+      _showWarning(tr.mapTemplateEmpty, duration: const Duration(seconds: 1));
       return;
     }
     setState(() => _busy = true);
@@ -834,7 +829,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         if (parts.length != 2) continue;
         final col = int.tryParse(parts[0]) ?? 0, row = int.tryParse(parts[1]) ?? 0;
         if (occupied.contains((gx + col, gy - row))) {
-          _showWarning('Клітинка зайнята', duration: const Duration(seconds: 1));
+          _showWarning(tr.mapCellBusy, duration: const Duration(seconds: 1));
           return;
         }
       }
@@ -887,7 +882,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
     if (sel.any((e) => occupied.contains((e.x + dx, e.y + dy)))) {
       _flashBlocked();
-      _showWarning("Тут уже є інший об'єкт", duration: const Duration(seconds: 2));
+      _showWarning(tr.mapCellHasOther, duration: const Duration(seconds: 2));
       return;
     }
     setState(() => _busy = true);
@@ -927,28 +922,28 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   String get _statusText {
-    if (_bindPick) return 'Торкніться вулика, щоб обрати або зняти вибір';
+    if (_bindPick) return tr.bindPickHint;
     if (!selectMode) {
       final n = _dueHere;
       return n == 0 || widget.backdrop || _guided || panelOpen
           ? ''
-          : 'Оглянути: $n ${pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів')} (червоні)';
+          : tr.mapDueHives(n);
     }
     if (pendingTemplate != null) {
-      return 'Тапай - ставити «${pendingTemplate!.name}», тягни - перемістити';
+      return tr.mapPlaceTemplate(pendingTemplate!.name);
     }
     if (selectedGroupId != null) {
       final sel = selection;
       final label = sel.map((e) => e.label).firstWhere((l) => l != null && l.isNotEmpty,
           orElse: () => null);
-      return label ?? 'Група (${sel.length})';
+      return label ?? tr.mapGroupN(sel.length);
     }
     if (selectedId != null) {
       final el = selection.firstOrNull;
       if (el == null) return '';
-      return (el.label?.isNotEmpty ?? false) ? el.label! : (el.isHive ? 'Вулик' : 'Перешкода');
+      return (el.label?.isNotEmpty ?? false) ? el.label! : (el.isHive ? tr.hive : tr.obstacle);
     }
-    return 'Оберіть вулик';
+    return tr.mapChooseHive;
   }
 
   void _flashBlocked() {
@@ -1031,7 +1026,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // урок: вулик поставили й підтвердили — далі відкрити його
     if (widget.tutorial && _lesson == _Lesson.place && elements.any((e) => e.isHive)) {
       final hive = elements.firstWhere((e) => e.isHive);
-      _lessonHive = (hive.label?.trim().isNotEmpty ?? false) ? hive.label!.trim() : 'Вулик';
+      _lessonHive = (hive.label?.trim().isNotEmpty ?? false) ? hive.label!.trim() : tr.hive;
       _lesson = _Lesson.openHive;
     }
     // «Відмінити» під видаленням діє лише в режимі редагування
@@ -1064,13 +1059,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       ..remove(pick)
       ..insert(0, pick);
     final spans = <InlineSpan>[
-      const TextSpan(text: 'Я трохи про тебе потурбувався. Створив '),
+      TextSpan(text: tr.mapTemplatesCreatedA),
       for (var i = 0; i < names.length; i++) ...[
-        if (i > 0) TextSpan(text: i == names.length - 1 ? ' і ' : ', '),
-        GuideBubble.highlight('«${names[i]}»'),
+        if (i > 0) TextSpan(text: i == names.length - 1 ? tr.and : ', '),
+        GuideBubble.highlight(tr.quoted(names[i])),
       ],
-      const TextSpan(text: '. Обери '),
-      GuideBubble.highlight('«$pick»'),
+      TextSpan(text: tr.mapTemplatesCreatedB),
+      GuideBubble.highlight(tr.quoted(pick)),
     ];
     return Stack(children: [
       // вікно вибору — вище, щоб пасічник унизу його не закривав
@@ -1099,16 +1094,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           AlertDialog(
         // ширше за звичайне вікно — щоб плитки шаблонів стали по 3 в ряд
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: const Text('Оберіть шаблон'),
+        title: Text(tr.mapChooseTemplate),
         content: SizedBox(
           width: 274,
           child: templates.isEmpty
               ? Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text('Ще немає жодного шаблону.',
+                  Text(tr.mapNoTemplate,
                       textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
                   const SizedBox(height: 16),
                   PillButton(
-                    text: 'Створити шаблон',
+                    text: tr.templateCreate,
                     bg: AppColors.accent,
                     height: 44,
                     width: double.infinity,
@@ -1172,7 +1167,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final ids = {for (final e in els) e.id};
         final occupied = {for (final e in elements) if (!ids.contains(e.id)) (e.x, e.y)};
         if (newPos.values.any(occupied.contains)) {
-          _showWarning('Немає місця для повороту', duration: const Duration(seconds: 1));
+          _showWarning(tr.mapNoRoomRotate, duration: const Duration(seconds: 1));
           _flashBlocked();
           return;
         }
@@ -1218,13 +1213,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       await _reload();
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(SnackBar(
-        content: Text(isGroup ? "Групу об'єктів видалено" : "Об'єкт видалено"),
+        content: Text(isGroup ? tr.mapGroupDeleted : tr.mapObjectDeleted),
         duration: const Duration(seconds: 5),
         // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
         // завершитись само через 5 с
         persist: false,
         action: SnackBarAction(
-          label: 'Відмінити',
+          label: tr.undoDelete,
           onPressed: () {
             if (mounted) _onUndo();
           },
@@ -1308,9 +1303,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final members = await repo.getGroupElements(fresh.groupId!);
       title = members.map((e) => e.label).firstWhere((l) => l != null && l.isNotEmpty,
               orElse: () => null) ??
-          (fresh.isHive ? 'Вулик' : 'Перешкода');
+          (fresh.isHive ? tr.hive : tr.obstacle);
     } else {
-      title = (fresh.label?.isNotEmpty ?? false) ? fresh.label! : (fresh.isHive ? 'Вулик' : 'Перешкода');
+      title = (fresh.label?.isNotEmpty ?? false) ? fresh.label! : (fresh.isHive ? tr.hive : tr.obstacle);
     }
     final params = await repo.attachedParameters(entity, elType: fresh.type);
     final latest = await repo.latestParameterValues(entity);
@@ -1375,7 +1370,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final fresh = (await repo.listTemplates()).where((t) => t.id == tpl.id).firstOrNull;
       if (!mounted) return;
       setState(() => pendingTemplate = fresh);
-      if (fresh == null) _showWarning('Шаблон видалено', duration: const Duration(seconds: 1));
+      if (fresh == null) _showWarning(tr.mapTemplateDeleted, duration: const Duration(seconds: 1));
     }
     if (panelOpen && panelElement != null) {
       await _refreshPanel();
@@ -1394,7 +1389,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final el = panelElement;
     if (el == null) return;
     final name = await showTextPrompt(context,
-        title: "Перейменувати об'єкт", initial: panelData?.title ?? '');
+        title: tr.mapRenameObject, initial: panelData?.title ?? '');
     if (name == null) return;
     if (el.groupId != null) {
       await repo.renameGroup(el.groupId!, name);
@@ -1539,7 +1534,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final first0 = await _fillPage(el);
     if (first0 == null || !mounted) return;
     if (first0.params.isEmpty) {
-      _showWarning("Спершу прив'яжіть хоча б один параметр",
+      _showWarning(tr.mapLinkParamFirst,
           duration: const Duration(milliseconds: 1200));
       return;
     }
@@ -1598,17 +1593,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         switch (r.action) {
           case FillAction.skip:
             skipped.add(ownerKeyOf(cur));
-            notice = '«$prevTitle» пропущено';
+            notice = tr.roundSkipped(prevTitle);
           case FillAction.noChange:
             last = await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
             _fillSaved = true;
             done++;
-            notice = '«$prevTitle»: змін немає · оглянуто $done';
+            notice = tr.roundNoChange(prevTitle, done);
           case FillAction.save:
             last = await _saveFill(cur, r);
             _fillSaved = true;
             done++;
-            notice = '«$prevTitle» збережено · оглянуто $done';
+            notice = tr.roundSaved(prevTitle, done);
         }
         final n = await _nextTarget(cur, skipped: skipped);
         if (n == null || !mounted) return null;
@@ -1661,11 +1656,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final messenger = ScaffoldMessenger.of(context);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(SnackBar(
-        content: Text(done > 1 ? 'Огляд «$title» збережено. Оглянуто: $done' : 'Огляд «$title» збережено'),
+        content: Text(done > 1 ? tr.inspectionSavedCount(title, done) : tr.inspectionSaved(title)),
         duration: const Duration(seconds: 5),
         persist: false,
         action: SnackBarAction(
-          label: 'Відмінити',
+          label: tr.undoDelete,
           onPressed: () {
             if (mounted) unawaited(_undoFill(undoLast));
           },
@@ -1694,12 +1689,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final stock = el.isHive ? await repo.listStockItems() : const <StockItem>[];
     final title = panelElement?.id == el.id ? panelData?.title : null;
     return FillPage(
-        params: params, latest: latest, stock: stock, title: title ?? el.label ?? 'Вулик');
+        params: params, latest: latest, stock: stock, title: title ?? el.label ?? tr.hive);
   }
 
   /// Назва вулика для повідомлень обходу.
   Future<String> _hiveTitle(MapElement el) async =>
-      (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик';
+      (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? tr.hive;
 
   /// Записати результат форми для вулика [el]. Повертає, що треба зробити,
   /// щоб це збереження відмінити.
@@ -1718,10 +1713,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       try {
         await repo.writeOffStock(feed.itemId, feed.amount,
             reason: 'Підгодівля',
-            comment: (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик');
+            comment: (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? tr.hive);
         moveId = await repo.lastStockMoveId(feed.itemId);
       } on StateError catch (e) {
-        if (mounted) await showInfo(context, e.message, title: 'Не списано');
+        if (mounted) await showInfo(context, e.message, title: tr.notWrittenOff);
       }
     }
     final note = result.note;
@@ -1763,14 +1758,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       try {
         await repo.cancelStockMove(move);
       } on StateError catch (e) {
-        if (mounted) await showInfo(context, e.message, title: 'Підгодівлю не повернуто');
+        if (mounted) await showInfo(context, e.message, title: tr.feedNotReturned);
       }
     }
     unawaited(ReminderService.instance.reschedule());
     if (!mounted) return;
     await _refreshPanel();
     await _refreshOverdue();
-    _showWarning('Огляд відмінено', duration: const Duration(milliseconds: 1500));
+    _showWarning(tr.inspectionUndone, duration: const Duration(milliseconds: 1500));
   }
 
   /// «Оглянуто, змін немає»: лише дата огляду = сьогодні, без форми.
@@ -1781,7 +1776,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
     await _refreshOverdue();
-    _showWarning('Огляд відмічено: сьогодні', duration: const Duration(milliseconds: 1200));
+    _showWarning(tr.mapVisitMarked, duration: const Duration(milliseconds: 1200));
   }
 
   /// Показати вулик на цій карті: центр, панель поруч (без форми).
@@ -1823,11 +1818,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           if (key == ownerKeyOf(cur) || skipped.contains(key) || visited.contains(key)) continue;
           return (here: e, away: null);
         }
-        _showWarning(skipped.isEmpty ? 'Усі вулики на сьогодні оглянуто' : 'Обхід завершено',
+        _showWarning(skipped.isEmpty ? tr.mapAllInspected : tr.mapRoundDone,
             duration: const Duration(milliseconds: 1500));
         return null;
       case NextHive.qr:
-        final code = await scanQrCode(context, title: 'Наступний вулик');
+        final code = await scanQrCode(context, title: tr.mapNextHive);
         if (code == null || !mounted) return null;
         final found = await repo.findByQr(code);
         if (!mounted) return null;
@@ -1835,8 +1830,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           final why = await repo.qrProblem(code);
           if (!mounted) return null;
           await showInfo(
-              context, '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code',
-              title: 'Вулик не знайдено');
+              context, tr.qrNotBoundCode(why ?? tr.qrNotBound, code),
+              title: tr.qrHiveNotFound);
           return null;
         }
         if (found.apiary.id == widget.apiary.id) {
@@ -1853,7 +1848,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ]..sort((a, b) => a.at.compareTo(b.at));
         if (!mounted) return null;
         if (due.isEmpty) {
-          await showInfo(context, 'Прострочених оглядів більше немає.', title: 'Готово');
+          await showInfo(context, tr.mapNoMoreOverdue, title: tr.done);
           return null;
         }
         final el = await repo.getElement(due.first.t.elementId);
@@ -1893,7 +1888,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final periodId = await repo.baseParameterId('hive', 'visit_period');
       if (periodId != null) editId = periodId;
       final n = await repo.daysToVisit(el.entity);
-      info.add(('Кількість днів до обходу', n?.toString() ?? '-'));
+      info.add((tr.daysToRound, n?.toString() ?? '-'));
     }
     final p = await repo.getParameter(editId);
     final latest = await repo.latestParameterValues(el.entity);
@@ -1904,7 +1899,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       latest: latest,
       infoRows: info,
       // угорі лише назва вулика; назва параметра - в самій таблиці
-      subtitle: panelData?.title ?? el.label ?? 'Вулик',
+      subtitle: panelData?.title ?? el.label ?? tr.hive,
       onHistory: () => _panelHistory(editId),
     );
     if (result == null || result.values.isEmpty || !mounted) return;
@@ -1945,7 +1940,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     }
     if (!mounted) return;
     if (noCode.isEmpty) {
-      await showInfo(context, 'У всіх вуликів цієї пасіки вже є QR-коди.', title: 'QR-коди');
+      await showInfo(context, tr.mapAllHaveQr, title: tr.qrCodes);
       return;
     }
     setState(() {
@@ -1969,7 +1964,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   void _toggleBind(MapElement hit) {
     final key = hiveObjectOf(hit, elements).first.id;
     if (!_bindNoCode.contains(key)) {
-      _showWarning('У цього вулика вже є QR-код', duration: const Duration(seconds: 1));
+      _showWarning(tr.hiveHasQr, duration: const Duration(seconds: 1));
       return;
     }
     setState(() {
@@ -1987,7 +1982,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   String _bindName(String key) {
     final l = (_bindObj[key]?.first.label ?? '').trim();
-    return l.isEmpty ? 'Вулик' : l;
+    return l.isEmpty ? tr.hive : l;
   }
 
   /// Вулики в порядку обходу: зверху вниз, зліва направо.
@@ -2008,10 +2003,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final otherName = await repo.entityLabel(other.element.entity);
       if (!mounted) return QrBindResult.rejected;
       final move = await showConfirm(context,
-          title: 'Код уже використовується',
-          text: 'Цей QR-код прив\'язаний до «$otherName» (пасіка «${other.apiary.name}»). '
-              'Перенести його на «${t.name}»?',
-          confirmText: 'Перенести',
+          title: tr.qrInUse,
+          text: tr.qrMoveTo(otherName, other.apiary.name, t.name),
+          confirmText: tr.move,
           danger: false);
       if (!move) return QrBindResult.rejected;
     }
@@ -2034,7 +2028,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       while (mounted && targets.isNotEmpty) {
         final sum = await Navigator.of(context).push<QrBindSummary>(MaterialPageRoute(
             builder: (_) => QrScanScreen(
-                  title: 'Прив\'язати наліпки',
+                  title: tr.bindLabels,
                   bind: QrBindConfig(targets: targets, bind: _bindOne),
                 )));
         if (!mounted) return;
@@ -2056,20 +2050,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final r = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(left == 0 ? 'Усе прив\'язано' : 'Прив\'язано наліпок: $linked'),
+        title: Text(left == 0 ? tr.bindAllLinked : tr.bindLinkedCount(linked)),
         content: Text(
           left == 0
-              ? 'Прив\'язано наліпок: $linked. Усі обрані вулики мають QR-коди.'
-              : 'Прив\'язано: $linked\nПропущено: $skipped\nЛишилось: $left\n\n'
-                  'Усе збережено. Продовжити можна зараз або пізніше: «Прив\'язати підряд» '
-                  'покаже лише вулики без коду.',
+              ? tr.bindAllDone(linked)
+              : tr.bindPartly(linked, skipped, left),
           style: TextStyle(color: AppColors.text),
         ),
         actions: [
           Row(children: [
             Expanded(
               child: PillButton(
-                  text: 'Готово',
+                  text: tr.done,
                   bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   onPressed: () => Navigator.pop(ctx, false)),
@@ -2078,7 +2070,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const SizedBox(width: 8),
               Expanded(
                 child: PillButton(
-                    text: 'Продовжити', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx, true)),
+                    text: tr.continueAction, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx, true)),
               ),
             ],
           ]),
@@ -2103,13 +2095,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
             Expanded(
-              child: Text('Без коду: ${_bindNoCode.length} · обрано: $n',
+              child: Text(tr.bindBarCount(_bindNoCode.length, n),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.text, fontSize: 14)),
             ),
             IconButton(
               key: const ValueKey('bind-close'),
-              tooltip: 'Закрити',
+              tooltip: tr.close,
               visualDensity: VisualDensity.compact,
               icon: Icon(Icons.close, color: AppColors.text),
               onPressed: _bindExit,
@@ -2119,7 +2111,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             Expanded(
               child: PillButton(
                 key: const ValueKey('bind-all'),
-                text: all ? 'Зняти вибір' : 'Обрати всі без коду',
+                text: all ? tr.bindDeselect : tr.bindSelectAll,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 50,
@@ -2131,7 +2123,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             Expanded(
               child: PillButton(
                 key: const ValueKey('bind-start'),
-                text: n == 0 ? 'Сканувати' : 'Сканувати ($n)',
+                text: n == 0 ? tr.scan : tr.scanCount(n),
                 bg: AppColors.accent,
                 height: 50,
                 radius: 25,
@@ -2160,8 +2152,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           context: context,
           builder: (ctx) => AlertDialog(
             title: Text(Repository.appQrNumber(current) != null
-                ? 'QR-код № ${Repository.appQrNumber(current)}'
-                : 'QR-код вулика'),
+                ? tr.qrNumber('${Repository.appQrNumber(current)}')
+                : tr.qrOfHive),
             content: SizedBox(
               width: 220,
               height: 220,
@@ -2174,19 +2166,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             actions: [
               Column(mainAxisSize: MainAxisSize.min, children: [
                 PillButton(
-                    text: 'Інший код',
+                    text: tr.qrOther,
                     bg: AppColors.accent,
                     width: double.infinity,
                     onPressed: () => Navigator.pop(ctx, 'scan')),
                 const SizedBox(height: 8),
                 PillButton(
-                    text: 'Відв\'язати',
+                    text: tr.qrUnlink,
                     bg: AppColors.danger,
                     width: double.infinity,
                     onPressed: () => Navigator.pop(ctx, 'unlink')),
                 const SizedBox(height: 8),
                 PillButton(
-                    text: 'Закрити',
+                    text: tr.close,
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     width: double.infinity,
@@ -2205,7 +2197,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return;
         }
       }
-      final scanned = await scanQrCode(context, title: 'QR-код для вулика');
+      final scanned = await scanQrCode(context, title: tr.qrForHive);
       if (scanned == null || !mounted) return;
       // введений вручну номер -> справжній код наліпки з цим номером
       final code = await repo.resolveTypedQr(scanned);
@@ -2217,10 +2209,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         final name = await repo.entityLabel(other.element.entity);
         if (!mounted) return;
         final move = await showConfirm(context,
-            title: 'Код уже використовується',
-            text: 'Цей QR-код прив\'язаний до «$name» (пасіка «${other.apiary.name}»). '
-                'Перенести його на цей вулик?',
-            confirmText: 'Перенести',
+            title: tr.qrInUse,
+            text: tr.qrMoveHere(name, other.apiary.name),
+            confirmText: tr.move,
             danger: false);
         if (!move) return;
       }
@@ -2230,7 +2221,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
       await repo.linkQr(code, target);
       await _refreshPanel();
-      _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
+      _showWarning(tr.qrLinked, duration: const Duration(seconds: 1));
     } finally {
       _qrBusy = false;
     }
@@ -2351,7 +2342,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   /// вулика; після «Зберегти» камера знову, для наступного.
   Future<void> _scanHive() async {
     if (_qrBusy) return;
-    final code = await scanQrCode(context, title: 'Сканувати вулик');
+    final code = await scanQrCode(context, title: tr.scanHive);
     if (code == null || !mounted) return;
     final found = await repo.findByQr(code);
     if (!mounted) return;
@@ -2360,9 +2351,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (!mounted) return;
       await showInfo(
           context,
-          '${why ?? 'Цей QR-код ще не прив\'язаний до жодного вулика.'}\n\nКод: $code\n\n'
-          'Прив\'язати: меню ☰ → «QR-код».',
-          title: 'Вулик не знайдено');
+          tr.qrNotBoundHowTo(why ?? tr.qrNotBound, code),
+          title: tr.qrHiveNotFound);
       return;
     }
     if (found.apiary.id != widget.apiary.id) {
@@ -2408,9 +2398,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (!mounted) return;
       if (current != null) {
         final ok = await showConfirm(context,
-            title: 'У вулика вже є код',
-            text: 'Замінити поточний QR-код цього вулика на відсканований?',
-            confirmText: 'Замінити',
+            title: tr.qrHiveHasCode,
+            text: tr.qrReplaceAsk,
+            confirmText: tr.replace,
             danger: false);
         if (!ok || !mounted) return;
       }
@@ -2424,7 +2414,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _qrBusy = false;
     }
     if (!mounted) return;
-    _showWarning('QR-код прив\'язано', duration: const Duration(seconds: 1));
+    _showWarning(tr.qrLinked, duration: const Duration(seconds: 1));
     await _fillThenPanel(el);
   }
 
@@ -2460,10 +2450,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   : null,
               hint: _menuHint
                   ? [
-                      const TextSpan(
-                          text: 'Тут ти зможеш керувати своєю пасікою. Щоб дізнатися про всі '
-                              'функції - '),
-                      GuideBubble.highlight('пройди навчання'),
+                      TextSpan(text: tr.mapMenuHintA),
+                      GuideBubble.highlight(tr.mapTakeTutorial),
                       const TextSpan(text: '.'),
                     ]
                   : null,
@@ -2535,7 +2523,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       if (!_guided) ...[
                         const SizedBox(width: 6),
                         Tooltip(
-                            message: 'Налаштування пасіки',
+                            message: tr.apiarySettings,
                             child: AppIcon('pencil', size: 20, color: AppColors.textMuted)),
                       ],
                     ]),
@@ -2571,7 +2559,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               bg: AppColors.roundBtn,
                               iconColor: AppColors.text,
                               size: 48,
-                              tooltip: 'Назад',
+                              tooltip: tr.back,
                               onPressed: widget.lesson!.exit,
                             )
                           : widget.tutorial && _lesson == _Lesson.menu
@@ -2583,7 +2571,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 bg: AppColors.roundBtn,
                                 iconColor: AppColors.text,
                                 size: 48,
-                                tooltip: 'Меню',
+                                tooltip: tr.menu,
                                 onPressed: () {
                                   setState(() => _lesson = _Lesson.drawer);
                                   Scaffold.of(ctx).openDrawer();
@@ -2597,7 +2585,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               bg: AppColors.roundBtn,
                               iconColor: AppColors.text,
                               size: 48,
-                              tooltip: 'Назад',
+                              tooltip: tr.back,
                               onPressed: () => Navigator.of(ctx).pop(),
                             )
                           : HoneyRing(
@@ -2607,7 +2595,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 bg: AppColors.roundBtn,
                                 iconColor: AppColors.text,
                                 size: 48,
-                                tooltip: 'Меню',
+                                tooltip: tr.menu,
                                 onPressed: () {
                                   if (_tourMenu) {
                                     setState(() {
@@ -2660,7 +2648,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         Icon(Icons.qr_code_scanner,
                             size: 24, color: _dueHere > 0 ? Colors.white : AppColors.text),
                         const SizedBox(width: 8),
-                        Text('Сканувати',
+                        Text(tr.scan,
                             style: TextStyle(
                                 color: _dueHere > 0 ? Colors.white : AppColors.text,
                                 fontSize: 15,
@@ -2686,7 +2674,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           bg: AppColors.roundBtn,
                           iconColor: AppColors.text,
                           size: 52,
-                          tooltip: 'Завершити додавання',
+                          tooltip: tr.mapFinishAdding,
                           onPressed: _busy || _drag != null
                               ? null
                               : () => setState(() {
@@ -2697,7 +2685,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           icon: 'plus_circle',
                           bg: AppColors.addObject,
                           size: 52,
-                          tooltip: "Додати об'єкт",
+                          tooltip: tr.mapAddObject,
                           onPressed: _busy || _drag != null ? null : _onAddObject),
                 ),
               ),
@@ -2776,8 +2764,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // справжня карта після уроку: «Наостанок покажу меню навігації»
             if (_tourMenu && !widget.tutorial && !selectMode && !panelOpen)
               ...lessonScene(pose: LessonPose.onButton, text: [
-                const TextSpan(text: 'Наостанок покажу меню навігації. '),
-                GuideBubble.highlight('Відкрий його'),
+                TextSpan(text: tr.mapLastMenuA),
+                GuideBubble.highlight(tr.mapOpenIt),
               ]),
           ]);
         }),
@@ -2813,21 +2801,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   icon: 'pencil',
                   bg: AppColors.accent,
                   size: bs,
-                  tooltip: 'Властивості',
+                  tooltip: tr.properties,
                   onPressed: _openProperties),
               const SizedBox(width: 6),
               CircleIconButton(
                   icon: 'rotate',
                   bg: AppColors.darkBtn,
                   size: bs,
-                  tooltip: 'Повернути',
+                  tooltip: tr.rotate,
                   onPressed: _onRotate),
               const SizedBox(width: 6),
               CircleIconButton(
                   icon: 'trash',
                   bg: AppColors.danger,
                   size: bs,
-                  tooltip: 'Видалити',
+                  tooltip: tr.delete,
                   onPressed: _onDelete),
             ]),
           );

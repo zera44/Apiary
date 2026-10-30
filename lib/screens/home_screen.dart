@@ -246,8 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
     } on StateError catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (_) {
-      messenger.showSnackBar(const SnackBar(
-          content: Text('Не вдалося увійти. Перевірте інтернет і спробуйте ще раз.')));
+      messenger.showSnackBar(SnackBar(content: Text(tr.signInFailed)));
     }
   }
 
@@ -262,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // логотип - теж «Що нового»: на дотик трохи пульсує й відкриває
       _PulseTap(
         key: const ValueKey('logo-whats-new'),
-        label: 'Що нового',
+        label: tr.whatsNew,
         onTap: () => WhatsNewScreen.open(nav),
         child: AppLogo(size: landscape ? 64 : 104),
       ),
@@ -272,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.text, fontSize: landscape ? 22 : 28, fontWeight: FontWeight.w800)),
     ]);
     final start = PillButton(
-      text: 'Почати',
+      text: tr.start,
       bg: AppColors.accent,
       width: double.infinity,
       height: landscape ? 48 : 56,
@@ -284,20 +283,20 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _Tile(
           icon: Icon(Icons.account_balance_wallet_outlined, size: 30, color: AppColors.text),
-          label: 'Фінанси',
+          label: tr.finances,
           onTap: () => push(FinanceScreen(repo: repo)),
           onLongPress: () => push(FinAddScreen(repo: repo))),
       _Tile(
           icon: AppIcon('box', size: 28, color: AppColors.text),
-          label: 'Склад',
+          label: tr.stock,
           onTap: () => push(StockScreen(repo: repo))),
       _Tile(
           icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
-          label: 'Навчання',
+          label: tr.tutorial,
           onTap: () => push(TutorialScreen(realRepo: repo))),
       _Tile(
           icon: AppIcon('pencil', size: 28, color: AppColors.text),
-          label: 'Відгук',
+          label: tr.feedbackShort,
           onTap: () => openFeedback(nav)),
     ]));
     // хто увійшов, «Вийти» і стан синхронізації - у Налаштуваннях → «Головне»
@@ -305,11 +304,11 @@ class _HomeScreenState extends State<HomeScreen> {
       if (auth.user == null && auth.configured) ...[
         // гість: увійти пізніше, щоб синхронізувати (дані лишаються)
         const SizedBox(height: 14),
-        Text('Дані лише на цьому пристрої',
+        Text(tr.dataOnlyHere,
             style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
         TextButton(
           onPressed: () => _signIn(context),
-          child: Text('Увійти через Google для синхронізації',
+          child: Text(tr.signInForSync,
               style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
         ),
       ],
@@ -408,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 bg: AppColors.darkBtn,
                 iconColor: AppColors.text,
                 size: 48,
-                tooltip: 'Сканувати QR-код',
+                tooltip: tr.scanQr,
                 onPressed: () => AppDrawer.openHiveByQr(nav, repo),
               ),
               const SizedBox(width: 10),
@@ -427,10 +426,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static String _greeting() {
     final h = DateTime.now().hour;
-    if (h < 5) return 'Доброї ночі, пасічнику!';
-    if (h < 12) return 'Доброго ранку, пасічнику!';
-    if (h < 18) return 'Доброго дня, пасічнику!';
-    return 'Доброго вечора, пасічнику!';
+    if (h < 5) return tr.greetNight;
+    if (h < 12) return tr.greetMorning;
+    if (h < 18) return tr.greetDay;
+    return tr.greetEvening;
   }
 }
 
@@ -555,18 +554,6 @@ class _Advisor extends StatefulWidget {
 }
 
 class _AdvisorState extends State<_Advisor> {
-  static const _tips = [
-    'Утримайте вулик на карті - і одразу перетягуйте його на нове місце.',
-    'Обхід: на карті червоні - ті, кого пора оглянути. Підійдіть до вулика й натисніть «Сканувати».',
-    'В огляді «Зберегти», «Змін немає» і «Пропустити» одразу відкривають наступний вулик.',
-    'Обрали новий параметр зі списку і не знаходите кнопку «Зберегти»? Це тому, що всі зміни зберігаються автоматично.',
-    'Утримайте «Фінанси» - і одразу відкриється нова витрата.',
-    'Наклейте QR-наліпки - і вулик відкриється з камери за секунду.',
-    'Задайте мінімальний залишок на складі - я нагадаю, коли час докупити.',
-    'Звіт по пасіці в Excel - у меню ☰ → «Історія».',
-    'Періодичність обходу задається одна на всю пасіку - торкніться назви пасіки на карті.',
-    'Якщо для вулика треба інший час обходу - торкніться «Кількість днів до обходу» на його панелі.',
-  ];
 
   List<({VisitTarget t, DateTime at})> _due = const [];
   List<String> _low = const [];
@@ -643,7 +630,7 @@ class _AdvisorState extends State<_Advisor> {
     final pick = await showDialog<VisitTarget?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Сьогодні оглянути'),
+        title: Text(tr.dueToday),
         content: SizedBox(
           width: 320,
           child: ListView(shrinkWrap: true, children: [
@@ -652,7 +639,7 @@ class _AdvisorState extends State<_Advisor> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 title: Text(d.t.name, style: TextStyle(color: AppColors.text)),
-                subtitle: Text(d.t.apiaryName.isEmpty ? 'Моя пасіка' : d.t.apiaryName,
+                subtitle: Text(d.t.apiaryName.isEmpty ? tr.myApiary : d.t.apiaryName,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
                 onTap: () => Navigator.pop(ctx, d.t),
@@ -662,13 +649,13 @@ class _AdvisorState extends State<_Advisor> {
         actions: [
           Column(mainAxisSize: MainAxisSize.min, children: [
             PillButton(
-                text: 'Показати на карті',
+                text: tr.showOnMap,
                 bg: AppColors.accent,
                 width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, _due.first.t)),
             const SizedBox(height: 8),
             PillButton(
-                text: 'Закрити',
+                text: tr.close,
                 bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 width: double.infinity,
@@ -695,19 +682,19 @@ class _AdvisorState extends State<_Advisor> {
   /// вулику-поштоматі, далі поради пасічника.
   List<({String text, VoidCallback? action})> get _messages => [
         if (_feedback > 0)
-          (text: 'Розробник відповів на ваш відгук', action: _openFeedbackChat),
+          (text: tr.feedbackReplied, action: _openFeedbackChat),
         if (_assistant > 0) (text: tr.assistantMail(_assistant), action: _openAssistant),
         if (HomeScreen.signedInMail case final email?)
           (text: tr.accountSignedInMail(email), action: _readSignedIn),
         if (_invites > 0) (text: tr.invitesMail(_invites), action: () => showInvitations(context)),
-        if (_due.isNotEmpty) (text: 'Сьогодні оглянути: ${_due.length}', action: _showDueList),
+        if (_due.isNotEmpty) (text: tr.dueTodayCount(_due.length), action: _showDueList),
         if (_low.isNotEmpty)
           (
-            text: 'Час докупити: ${_low.join(', ')}',
+            text: tr.timeToBuy(_low.join(', ')),
             action: () => Navigator.of(context)
                 .push(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo))),
           ),
-        for (final t in _tips) (text: t, action: null),
+        for (final t in tr.homeTips) (text: t, action: null),
       ];
 
   // на вулику-поштоматі: запрошення + скільки вуликів прострочено + позицій,
@@ -798,7 +785,7 @@ class _AdvisorState extends State<_Advisor> {
               const SizedBox(height: 4),
               Row(children: [
                 Expanded(
-                  child: Text(action != null ? 'Натисніть - перейти' : 'Натисніть - далі',
+                  child: Text(action != null ? tr.tapToGo : tr.tapNext,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                 ),
                 // наступне повідомлення, навіть коли це — з дією
@@ -819,7 +806,7 @@ class _AdvisorState extends State<_Advisor> {
       // вулик-поштомат: значок — скільки важливих повідомлень; натиснули —
       // пасічник показує першу «пошту»
       Tooltip(
-        message: 'Пошта',
+        message: tr.mail,
         child: HivePostbox(
           count: _mail,
           height: 104,

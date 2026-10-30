@@ -1,4 +1,4 @@
-import '../l10n/strings.dart' show pluralUk;
+import '../l10n/l10n.dart';
 
 /// Планування нагадувань про обхід вуликів. Чиста логіка без плагінів —
 /// щоб її можна було перевіряти тестами; самі повідомлення показує
@@ -102,13 +102,11 @@ const kReminderAfternoon = 14;
 String _hiveList(List<String> names) {
   const shown = 4;
   if (names.length <= shown) return names.join(', ');
-  return '${names.take(shown).join(', ')} і ще ${names.length - shown}';
+  return tr.hiveListMore(names.take(shown).join(', '), names.length - shown);
 }
 
-String _hivesWord(int n) => pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів');
-
 /// Назва пасіки для заголовка сповіщення.
-String _apiaryTitle(String name) => name.trim().isEmpty ? 'Моя пасіка' : name.trim();
+String _apiaryTitle(String name) => name.trim().isEmpty ? tr.myApiary : name.trim();
 
 /// Нагадування про обхід для набору об'єктів, за зростанням часу, не більше
 /// [limit] (ліміти системи на кількість запланованих сповіщень).
@@ -163,13 +161,13 @@ List<PlannedReminder> planReminders(
       if (first.isNotEmpty && morning.isAfter(now)) {
         final n = first.length;
         out.add(PlannedReminder(first.first.$1.elementId, title,
-            'Оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in first) d.$1.name])}', morning));
+            tr.roundInspect(n, _hiveList([for (final d in first) d.$1.name])), morning));
       }
       final rest = dueAt(afternoon);
       if (rest.isNotEmpty && afternoon.isAfter(now)) {
         final n = rest.length;
         out.add(PlannedReminder(rest.first.$1.elementId, title,
-            'Лишилось оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in rest) d.$1.name])}',
+            tr.roundLeft(n, _hiveList([for (final d in rest) d.$1.name])),
             afternoon));
       }
     }

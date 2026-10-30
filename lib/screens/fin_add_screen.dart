@@ -12,6 +12,7 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
 import '../ui/thousands_input.dart';
+import '../l10n/l10n.dart';
 
 /// Нова витрата / дохід. Одна таблиця «Товар / К-сть / Ціна» і для ручного
 /// введення, і для розпізнаного чека; категорія - з довідника; рядки з «на
@@ -229,7 +230,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         _mode = 1;
         _hasReceipt = true;
         _receiptOk = false;
-        _receiptNote = 'Розпізнавання тексту працює на телефоні. Тут заповніть таблицю вручну.';
+        _receiptNote = tr.receiptOnPhoneOnly;
       });
       return;
     }
@@ -249,8 +250,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         _declared = receiptDeclaredTotal(text);
         if (rows.isEmpty) {
           _receiptOk = false;
-          _receiptNote = 'Не вдалося розпізнати позиції. Сфотографуйте рівніше й при гарному '
-              'світлі або заповніть таблицю вручну.';
+          _receiptNote = tr.receiptNoRows;
           return;
         }
         // порожні рядки замінюються розпізнаними
@@ -274,17 +274,16 @@ class _FinAddScreenState extends State<FinAddScreen> {
         final t = _tableSum;
         final d = _declared;
         final n = rows.length;
-        final word = n == 1 ? 'рядок' : (n < 5 ? 'рядки' : 'рядків');
+        final word = tr.receiptRows(n);
         if (d != null && (d - t).abs() < 0.015) {
           _receiptOk = true;
-          _receiptNote = 'Чек розпізнано · $n $word · сума збігається з чеком ✓';
+          _receiptNote = tr.receiptOk(word);
         } else if (d != null) {
           _receiptOk = false;
-          _receiptNote = 'Чек розпізнано · $n $word. Сума на чеку ${uah(d)}, у таблиці '
-              '${uah(t)} - перевірте рядки.';
+          _receiptNote = tr.receiptMismatch(word, uah(d), uah(t));
         } else {
           _receiptOk = true;
-          _receiptNote = 'Чек розпізнано · $n $word. Перевірте таблицю: розпізнавання може помилятися.';
+          _receiptNote = tr.receiptCheck(word);
         }
       });
     } catch (e) {
@@ -292,7 +291,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       setState(() {
         _reading = false;
         _receiptOk = false;
-        _receiptNote = 'Не вдалося розпізнати чек. Заповніть таблицю вручну.';
+        _receiptNote = tr.receiptFailed;
       });
     }
   }
@@ -311,7 +310,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     if (_saving) return;
     final cat = _cat;
     if (cat == null) {
-      await showInfo(context, 'Оберіть категорію зі списку або створіть нову («+ Нова»).');
+      await showInfo(context, tr.finChooseCategory);
       return;
     }
     final used = [for (final l in _lines) if (!l.empty) l];
@@ -319,31 +318,28 @@ class _FinAddScreenState extends State<FinAddScreen> {
     if (bad.isNotEmpty) {
       await showInfo(
           context,
-          'У ${bad.length == 1 ? 'одному рядку' : '${bad.length} рядках'} не вистачає назви, '
-          'кількості (більше 0; для «шт» — ціле) або ціни. Виправте їх чи видаліть рядок.',
-          title: 'Не записано');
+          tr.finBadRows(bad.length),
+          title: tr.notRecorded);
       return;
     }
     final typed = _sum.text.trim();
     if (typed.startsWith('-')) {
-      await showInfo(context, "Сума не може бути від'ємною. Введіть додатне число.",
-          title: 'Не записано');
+      await showInfo(context, tr.finNegative, title: tr.notRecorded);
       return;
     }
     var amount = parseAmount(_sum.text) ?? 0;
     if (amount <= 0 && used.isNotEmpty) amount = _tableSum;
     if (!(amount > 0)) {
-      await showInfo(context, 'Введіть суму або заповніть таблицю.');
+      await showInfo(context, tr.finEnterSum);
       return;
     }
     final d = _declared;
     if (d != null && !_sumManual && (d - _tableSum).abs() > 0.015) {
       final ok = await showConfirm(context,
-          title: 'Сума не збігається',
-          text: 'У таблиці ${uah(_tableSum)}, а на чеку ${uah(d)}. Скоріш за все, якийсь рядок '
-              'розпізнано неправильно. Записати все одно?',
-          confirmText: 'Записати',
-          cancelText: 'Перевірити',
+          title: tr.finSumMismatch,
+          text: tr.finSumMismatchText(uah(_tableSum), uah(d)),
+          confirmText: tr.recordAction,
+          cancelText: tr.check,
           danger: false);
       if (!ok || !mounted) return;
     }
@@ -372,13 +368,13 @@ class _FinAddScreenState extends State<FinAddScreen> {
       Navigator.pop(
           context,
           toStock > 0
-              ? 'Записано · ${_expense ? 'на склад' : 'зі складу'}: $toStock'
-              : 'Записано');
+              ? tr.recordedToStock(_expense, toStock)
+              : tr.recorded);
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        await showInfo(context, e is StateError ? e.message : 'Не вдалося записати: $e',
-            title: 'Не записано');
+        await showInfo(context, e is StateError ? e.message : tr.recordFailed('$e'),
+            title: tr.notRecorded);
       }
     }
   }
@@ -397,13 +393,13 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final cur = parseAmount(_sum.text) ?? 0;
     String? note;
     if (_sumManual && t > 0 && (cur - t).abs() > 0.005) {
-      note = 'виправлено вручну · таблиця ${uah(t)}';
-      if (cur < t) note += ' · знижка −${uah(t - cur)}';
+      note = tr.finFixedByHand(uah(t));
+      if (cur < t) note += tr.finDiscount(uah(t - cur));
     }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(children: [
-        Text('Сума', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        Text(tr.sum, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         TextField(
           key: const ValueKey('fin-sum'),
           controller: _sum,
@@ -433,7 +429,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 _sumManual = false;
                 _syncSum();
               }),
-              child: Text('↺ з таблиці', style: TextStyle(color: AppColors.create, fontSize: 12.5)),
+              child: Text(tr.fromTable, style: TextStyle(color: AppColors.create, fontSize: 12.5)),
             ),
           ]),
       ]),
@@ -444,7 +440,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Категорія', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        Text(tr.category, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final c in _cats)
@@ -482,7 +478,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: AppColors.create, width: 1.5),
               ),
-              child: Text('+ Нова', style: TextStyle(color: AppColors.create, fontSize: 14)),
+              child: Text(tr.newCategoryShort, style: TextStyle(color: AppColors.create, fontSize: 14)),
             ),
           ),
         ]),
@@ -497,7 +493,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
           const SizedBox(width: 12),
-          Text('Розпізнаю чек…', style: TextStyle(color: AppColors.textMuted)),
+          Text(tr.receiptReading, style: TextStyle(color: AppColors.textMuted)),
         ]),
       );
     }
@@ -506,12 +502,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
         padding: const EdgeInsets.only(top: 8),
         child: Column(children: [
           Text(
-              'Сфотографуйте чек рівно, при гарному світлі. Усі позиції потраплять у таблицю нижче.',
+              tr.receiptPhotoHint,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.3)),
           const SizedBox(height: 10),
           PillButton(
-            text: 'Сфотографувати чек',
+            text: tr.receiptPhoto,
             bg: AppColors.accent,
             height: 46,
             radius: 16,
@@ -520,7 +516,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
           ),
           const SizedBox(height: 8),
           PillButton(
-            text: 'Обрати фото з галереї',
+            text: tr.photoFromGallery,
             bg: AppColors.darkBtn,
             fg: AppColors.text,
             height: 42,
@@ -548,7 +544,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ),
         TextButton(
           onPressed: () => _pickReceipt(camera: true),
-          child: Text('Перезняти', style: TextStyle(color: AppColors.create, fontSize: 12.5)),
+          child: Text(tr.reshoot, style: TextStyle(color: AppColors.create, fontSize: 12.5)),
         ),
       ]),
     );
@@ -559,12 +555,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
       child: Row(children: [
-        SizedBox(width: 34, child: Tooltip(message: _expense ? 'На склад' : 'Зі складу', child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
-        Expanded(flex: 5, child: Text('Товар', style: s)),
+        SizedBox(width: 34, child: Tooltip(message: _expense ? tr.toStock : tr.fromStock, child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
+        Expanded(flex: 5, child: Text(tr.goods, style: s)),
         const SizedBox(width: 6),
-        Expanded(flex: 3, child: Text('К-сть', style: s)),
+        Expanded(flex: 3, child: Text(tr.qtyShort, style: s)),
         const SizedBox(width: 6),
-        Expanded(flex: 3, child: Text('Ціна', style: s)),
+        Expanded(flex: 3, child: Text(tr.price, style: s)),
         const SizedBox(width: 30),
       ]),
     );
@@ -593,7 +589,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         minLines: 1,
         maxLines: 2,
         textCapitalization: TextCapitalization.sentences,
-        decoration: dense.copyWith(hintText: 'Назва'),
+        decoration: dense.copyWith(hintText: tr.name),
         onChanged: (_) => setState(() {
           _applyStockUnit(l);
           _syncSum();
@@ -641,24 +637,24 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final hints = <Widget>[];
     if (l.toStock && l.name.text.trim().isNotEmpty) {
       if (item != null) {
-        hints.add(Text('є на складі · ${formatAmount(item.quantity ?? 0)} ${item.unit}',
+        hints.add(Text(tr.inStockAmount('${formatAmount(item.quantity ?? 0)} ${item.unit}'),
             style: TextStyle(color: AppColors.addObject, fontSize: 12)));
         if (!_expense && (l.qtyValue ?? 0) > 0) {
           final q = stockQty(l.unit, item.unit, l.qtyValue!);
           if (l.unit.toLowerCase() != item.unit.toLowerCase()) {
-            hints.add(Text('спише ${formatAmount(q)} ${item.unit}',
+            hints.add(Text(tr.willWriteOff('${formatAmount(q)} ${item.unit}'),
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)));
           }
           final have = item.quantity ?? 0;
           if (q > have + 1e-9) {
-            hints.add(Text('більше за залишок · коригування +${formatAmount(q - have)} ${item.unit}',
+            hints.add(Text(tr.moreThanStock('${formatAmount(q - have)} ${item.unit}'),
                 style: TextStyle(color: AppColors.create, fontSize: 12, fontWeight: FontWeight.w600)));
           }
         }
       } else if (_expense) {
-        hints.add(Text('новий товар', style: TextStyle(color: AppColors.create, fontSize: 12)));
+        hints.add(Text(tr.newGoods, style: TextStyle(color: AppColors.create, fontSize: 12)));
       } else {
-        hints.add(Text('немає на складі',
+        hints.add(Text(tr.notInStock,
             style: TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w600)));
       }
     }
@@ -666,12 +662,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
     if (item != null && pv != null && pv > 0) {
       final last = _prices[item.id];
       if (last != null && (pv > last * 3 || pv < last / 3)) {
-        hints.add(Text('перевір ціну · зазвичай ${formatMoney(last)} ₴',
+        hints.add(Text(tr.checkPrice(formatMoney(last)),
             style: TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w600)));
       }
     }
     if (l.valid) {
-      hints.add(Text('сума ${uah(l.total)}', style: TextStyle(color: AppColors.textMuted, fontSize: 12)));
+      hints.add(Text(tr.sumOf(uah(l.total)), style: TextStyle(color: AppColors.textMuted, fontSize: 12)));
     }
 
     return Container(
@@ -687,7 +683,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
           SizedBox(
               width: 34,
               child: IconButton(
-                tooltip: _expense ? 'Покласти на склад' : 'Списати зі складу',
+                tooltip: _expense ? tr.putToStock : tr.writeOffFromStock,
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
                 icon: Icon(l.toStock ? Icons.inventory_2 : Icons.inventory_2_outlined,
@@ -719,7 +715,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                         ]),
                       )
                     : PopupMenuButton<String>(
-                        tooltip: 'Одиниця',
+                        tooltip: tr.unitShort,
                         padding: EdgeInsets.zero,
                         onSelected: (u) => setState(() => l.unit = u),
                         itemBuilder: (_) => [
@@ -755,7 +751,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
           SizedBox(
             width: 30,
             child: IconButton(
-              tooltip: 'Видалити рядок',
+              tooltip: tr.deleteRow,
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
               icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
@@ -782,7 +778,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         FinSegment(
-          labels: const ['Вручну', 'З чека'],
+          labels: [tr.byHand, tr.fromReceipt],
           selected: _mode,
           onChanged: (i) => setState(() => _mode = i),
         ),
@@ -794,11 +790,11 @@ class _FinAddScreenState extends State<FinAddScreen> {
             // ціль не менше 48 dp: кнопка в самому низу картки
             style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
-            child: Text('+ рядок', style: TextStyle(color: AppColors.create)),
+            child: Text(tr.addRow, style: TextStyle(color: AppColors.create)),
           ),
           const Spacer(),
           if (t > 0)
-            Text('таблиця ${uah(t)}', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         ]),
       ]),
     );
@@ -823,10 +819,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Wrap(spacing: 8, runSpacing: 8, children: [
-        chip('Сьогодні', today, () => setState(() => _date = DateTime.now())),
-        chip('Вчора', yesterday,
+        chip(tr.today, today, () => setState(() => _date = DateTime.now())),
+        chip(tr.yesterday, yesterday,
             () => setState(() => _date = DateTime.now().subtract(const Duration(days: 1)))),
-        chip(today || yesterday ? 'Інша дата' : formatDdMmYyyy(_date), !today && !yesterday, _pickDate),
+        chip(today || yesterday ? tr.otherDate : formatDdMmYyyy(_date), !today && !yesterday, _pickDate),
       ]),
     );
   }
@@ -840,10 +836,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
     if (_saving) return;
     if (_dirty) {
       final ok = await showConfirm(context,
-          title: 'Вийти без збереження?',
-          text: 'Введені дані не буде записано.',
-          confirmText: 'Вийти',
-          cancelText: 'Залишитись');
+          title: tr.leaveUnsavedTitle,
+          text: tr.leaveUnsavedText,
+          confirmText: tr.leave,
+          cancelText: tr.stay);
       if (!ok || !mounted) return;
     }
     Navigator.pop(context);
@@ -861,7 +857,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: _expense ? 'Нова витрата' : 'Новий дохід', onBack: _leave),
+            TopBar(title: _expense ? tr.newExpense : tr.newIncome, onBack: _leave),
             Expanded(
               child: ListView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -870,7 +866,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                     child: FinSegment(
-                      labels: const ['Витрати', 'Дохід'],
+                      labels: [tr.expenses, tr.income],
                       selected: _expense ? 0 : 1,
                       onChanged: (i) => _setKind(i == 0 ? kFinExpense : kFinIncome),
                     ),
@@ -885,7 +881,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
               child: PillButton(
-                text: 'Додати',
+                text: tr.add,
                 bg: AppColors.accent,
                 height: 52,
                 radius: 26,

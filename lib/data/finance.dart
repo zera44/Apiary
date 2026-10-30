@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
 import 'repository.dart';
+import '../l10n/l10n.dart';
 
 /// Фінанси: довідник категорій, витрати/доходи з таблицею рядків.
 ///
@@ -327,17 +328,14 @@ extension RepositoryFinance on Repository {
           touchedStock = true;
           final found = byName[l.name.trim().toLowerCase()];
           if (found == null) {
-            throw StateError('«${l.name.trim()}» немає на складі - спершу додайте прихід '
-                '(наприклад, відкачали мед) або зніміть позначку «зі складу».');
+            throw StateError(tr.finNotInStock(l.name.trim()));
           }
           itemId = found['id'] as String;
           final rows = await txn.query('stock_items',
               columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
           final stockUnit = rows.first['unit'] as String;
           if (!_unitsMatch(l.unit, stockUnit)) {
-            throw StateError('«${l.name.trim()}» на складі в одиницях «$stockUnit», '
-                'а в продажі «${l.unit}». Продавати можна в тих самих одиницях '
-                '(кг і л перераховуються: 1 л = $kHoneyDensity кг).');
+            throw StateError(tr.finUnitMismatch(l.name.trim(), stockUnit, l.unit, '$kHoneyDensity'));
           }
           final q = stockQty(l.unit, stockUnit, l.qty);
           final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
@@ -410,15 +408,14 @@ extension RepositoryFinance on Repository {
     var touched = false;
     await db.transaction((txn) async {
       final ops = await txn.query('fin_ops', where: 'id = ?', whereArgs: [id], limit: 1);
-      if (ops.isEmpty) throw StateError('Запис не знайдено');
+      if (ops.isEmpty) throw StateError(tr.finRecordNotFound);
       final op = ops.first;
-      if ((op['cancelled'] as int? ?? 0) == 1) throw StateError('Скасований запис не змінюють');
+      if ((op['cancelled'] as int? ?? 0) == 1) throw StateError(tr.finCancelledNotEdited);
       final lines = await txn.query('fin_lines',
           where: 'op_id = ? AND deleted = 0', whereArgs: [id]);
       final old = (op['amount'] as num?)?.toDouble() ?? 0;
       if (lines.isNotEmpty && (amount - old).abs() > 0.005) {
-        throw StateError('Суму не можна змінити: вона складається з рядків таблиці. '
-            'Скасуйте запис і внесіть новий.');
+        throw StateError(tr.finSumLocked);
       }
       final t = Repository.now();
       await txn.update(
@@ -455,8 +452,8 @@ extension RepositoryFinance on Repository {
     var touched = false;
     await db.transaction((txn) async {
       final ops = await txn.query('fin_ops', where: 'id = ?', whereArgs: [e.id], limit: 1);
-      if (ops.isEmpty) throw StateError('Запис не знайдено');
-      if ((ops.first['cancelled'] as int? ?? 0) == 1) throw StateError('Цей запис уже скасовано');
+      if (ops.isEmpty) throw StateError(tr.finRecordNotFound);
+      if ((ops.first['cancelled'] as int? ?? 0) == 1) throw StateError(tr.finAlreadyCancelled);
       final lines = await txn.query('fin_lines',
           where: 'op_id = ? AND deleted = 0 AND stock_move_id IS NOT NULL', whereArgs: [e.id]);
       for (final l in lines) {

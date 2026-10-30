@@ -9,6 +9,7 @@ import '../data/database.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
 import 'backups.dart';
+import '../l10n/l10n.dart';
 
 /// Повні копії бази на сервері: раз на ніч телефон відправляє стиснену
 /// копію; сервер перевіряє її (функція backup-commit) і тримає 2 цілі.
@@ -37,7 +38,7 @@ class ServerBackups {
       } catch (_) {}
     }
     if (gz.length > maxBytes) {
-      throw BackupException('копія завелика для сервера (${gz.length ~/ (1024 * 1024)} МБ)');
+      throw BackupException(tr.errBackupTooBig(gz.length ~/ (1024 * 1024)));
     }
     final id = Repository.newId();
     final b = ServerBackup(
@@ -62,7 +63,7 @@ class ServerBackups {
   Future<LocalBackup> restore(ServerBackup b) async {
     final gz = await api.getBackup(b.path);
     if (gz.length != b.size || sha256.convert(gz).toString() != b.sha256) {
-      throw const BackupException('копія дійшла пошкодженою - спробуйте ще раз');
+      throw BackupException(tr.errBackupArrivedBroken);
     }
     final tmp = p.join(local.dir, 'server-restore.db.tmp');
     await Directory(local.dir).create(recursive: true);

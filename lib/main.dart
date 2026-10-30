@@ -53,6 +53,7 @@ Future<void> _start() async {
     auth = await GoogleAuthService.open();
     await StockPhotos.init();
     await AppTextScale.load(repo); // розмір шрифту з налаштувань
+    await L10n.load(repo); // мова інтерфейсу з налаштувань
     await AppOrientation.load(repo); // орієнтація екрана з налаштувань
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
@@ -140,6 +141,18 @@ class _ApiaryAppState extends State<ApiaryApp> {
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
     _listenLinks();
+    L10n.language.addListener(_rebuildAll);
+  }
+
+  /// Змінили мову: перебудувати всі відкриті екрани (і const-віджети, що
+  /// читають [tr]), не закриваючи їх.
+  void _rebuildAll() {
+    void mark(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(mark);
+    }
+
+    (context as Element).visitChildren(mark);
   }
 
   /// Натиснули «Розробник відповів» - відкрити розмову.
@@ -174,6 +187,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
   @override
   void dispose() {
     _reminders.removeListener(_openFromReminder);
+    L10n.language.removeListener(_rebuildAll);
     unawaited(_links?.cancel());
     widget.sync?.stop();
     super.dispose();

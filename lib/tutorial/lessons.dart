@@ -52,25 +52,25 @@ const kVisitsGroup = 'Обходи';
 
 /// Кроки уроку «Групи і параметри обходу» (номери - як сцени в ТЗ).
 LessonCue? paramsLessonScript(LessonController c) {
-  final param = c.data['param'] ?? 'параметр';
+  final param = c.data['param'] ?? tr.lessonParamFallback;
   switch (c.step) {
     case 1:
       return LessonCue(screen: 'map', highlight: const ['hive'], text: [
-        _t('Друже, вітаю тебе. Хочеш більше дізнатись про обходи вуликів? Ти вчасно, '),
-        _h('натисни на вулик'),
+        _t(tr.lp1a),
+        _h(tr.lp1b),
         _t('!'),
       ]);
     case 2:
       // панель можна гортати (на малому екрані «Параметри» нижче)
       return LessonCue(screen: 'map', highlight: const ['panel-params'], allow: const ['panel'], text: [
-        _t('Як бачиш - геть не густо. Додаймо нові '),
-        _h('параметри'),
+        _t(tr.lp2a),
+        _h(tr.lp2b),
         _t('!'),
       ]);
     case 3:
       return LessonCue(screen: 'params', pic: LessonPic.blueprint, highlight: const ['param-create'], text: [
-        _t('В цьому меню ти можеш створювати параметри й додавати їх до таблиці. Натисни на '),
-        _h('«Створити параметр»'),
+        _t(tr.lp3a),
+        _h(tr.lp3b),
       ]);
     case 4:
       return LessonCue(
@@ -78,8 +78,7 @@ LessonCue? paramsLessonScript(LessonController c) {
         pic: LessonPic.blueprint,
         onContinue: () => c.go(5),
         text: [
-          _t('Тут ти можеш назвати свій параметр, вказати його тип даних та за потреби '
-              'одиниці виміру'),
+          _t(tr.lp4),
         ],
       );
     case 5:
@@ -89,9 +88,9 @@ LessonCue? paramsLessonScript(LessonController c) {
         allowAll: true,
         deny: const ['form-cancel', 'form-save'],
         text: [
-          _t('Створи свій параметр. Май на увазі, '),
-          GuideBubble.task('назва та тип даних'),
-          _t(' - обов\'язково вказуємо.'),
+          _t(tr.lp5a),
+          GuideBubble.task(tr.lp5b),
+          _t(tr.lp5c),
         ],
       );
     case 6:
@@ -101,18 +100,18 @@ LessonCue? paramsLessonScript(LessonController c) {
         allowAll: true,
         deny: const ['form-cancel'],
         highlight: const ['form-save'],
-        text: [_t('Не забудь '), _h('зберегти'), _t('!')],
+        text: [_t(tr.lp6a), _h(tr.lp6b), _t('!')],
       );
     case 7:
       return LessonCue(screen: 'params', pic: LessonPic.scheming, highlight: const ['tab-constructor'], text: [
-        _t('Молодець. '),
-        _h('«$param»'),
-        _t(' вже додано до конструктора таблиці. Відкрий його'),
+        _t(tr.lp7a),
+        _h(tr.quoted(param)),
+        _t(tr.lp7b),
       ]);
     case 8:
       return LessonCue(screen: 'params', pic: LessonPic.surprised, highlight: const ['new-group'], text: [
-        _t('Боже, який безлад! Швиденько створи '),
-        _h('нову групу'),
+        _t(tr.lp8a),
+        _h(tr.lp8b),
         _t('.'),
       ]);
     case 9:
@@ -122,17 +121,17 @@ LessonCue? paramsLessonScript(LessonController c) {
         allowAll: true,
         deny: const ['group-cancel'],
         highlight: const ['group-save'],
-        text: [_t('Назви її '), _h('«$kVisitsGroup»'), _t(' та збережи свій прогрес!')],
+        text: [_t(tr.lp9a), _h(tr.quoted(kVisitsGroup)), _t(tr.lp9b)],
       );
     case 10:
       return LessonCue(screen: 'params', pic: LessonPic.thinking, allow: const ['constructor'], text: [
-        _t('Перетягни '),
+        _t(tr.lp10a),
         _h('«Періодичність обходу»'),
         _t(', '),
         _h('«Кількість днів до обходу»'),
-        _t(' та '),
+        _t(tr.lp10b),
         _h('«Дату останнього обходу»'),
-        _t(' до нової групи'),
+        _t(tr.lp10c),
       ]);
     case 11:
       return LessonCue(
@@ -141,8 +140,7 @@ LessonCue? paramsLessonScript(LessonController c) {
         highlight: const ['apply-scope'],
         onContinue: () => c.go(12),
         text: [
-          _t('За потреби можна застосувати зміни як лише до 1 вулика, так і до всіх '
-              'загалом'),
+          _t(tr.lp11),
         ],
       );
     case 12:
@@ -153,13 +151,13 @@ LessonCue? paramsLessonScript(LessonController c) {
           highlight: const ['lesson-param-check'],
           allow: const ['list'],
           text: [
-        _t('Бачив, ми не все використали? '),
-        _h('Вимкни все зайве'),
+        _t(tr.lp12a),
+        _h(tr.lp12b),
       ]);
     case 13:
       return LessonCue(screen: 'params', pic: LessonPic.thinking, highlight: const ['params-back'], text: [
-        _t('Повернімось до '),
-        _h('вулика'),
+        _t(tr.lp13a),
+        _h(tr.lp13b),
       ]);
     case 14:
       return LessonCue(
@@ -167,7 +165,7 @@ LessonCue? paramsLessonScript(LessonController c) {
         pic: LessonPic.surprised,
         allow: const ['panel'],
         onDone: c.complete,
-        text: [_t('Ого! Глянь на таблицю — вона ідеальна!')],
+        text: [_t(tr.lp14)],
       );
   }
   return null;
@@ -230,34 +228,33 @@ Future<Apiary> _paramsSetup(Repository repo, LessonController c) async {
 // ---------------------------------------------------------------------------
 
 LessonCue? templatesLessonScript(LessonController c) {
-  final tpl = c.data['template'] ?? 'шаблон';
+  final tpl = c.data['template'] ?? tr.lessonTemplateFallback;
   switch (c.step) {
     case 1:
       return LessonCue(screen: 'map', onContinue: () => c.go(2), text: [
-        _t('Друже, це знову ти! Мені подобається твоя жага до знань. Сьогодні навчимося '
-            'створювати шаблони - заготовки вуликів і перешкод, які потім ставиш на карту.'),
+        _t(tr.lt1),
       ]);
     case 2:
       // налаштування - у меню ☰; в уроці меню немає, тож відкриваємо самі
       return LessonCue(screen: 'map', onContinue: () => c.go(3), text: [
-        _t('Шаблони живуть у '),
-        _h('«Налаштуваннях»'),
-        _t(' - вони в меню ☰ (три смужки). Зараз відкрию їх для тебе.'),
+        _t(tr.lt2a),
+        _h(tr.settingsQuoted),
+        _t(tr.lt2b),
       ]);
     case 3:
       return LessonCue(screen: 'settings', onContinue: () => c.go(4), text: [
-        _t('Це вкладка '),
-        _h('«${tr.settingsTabMain}»'),
-        _t(' - тут загальні налаштування застосунку.'),
+        _t(tr.lt3a),
+        _h(tr.quoted(tr.settingsTabMain)),
+        _t(tr.lt3b),
       ]);
     case 4:
       return LessonCue(screen: 'settings', pic: LessonPic.blueprint, highlight: const ['template-create'], text: [
-        _t('Те, що треба! Натисни '),
-        _h('«Створити шаблон»'),
+        _t(tr.lt4a),
+        _h(tr.templateCreateQuoted),
       ]);
     case 5:
       return LessonCue(screen: 'editor', pic: LessonPic.blueprint, highlight: const ['editor-add'], text: [
-        _t('Час малювати! Натисни '),
+        _t(tr.lt5),
         _h('«+»'),
       ]);
     case 6:
@@ -267,8 +264,8 @@ LessonCue? templatesLessonScript(LessonController c) {
           highlight: const ['picker-pages'],
           allow: const ['picker-tabs'],
           text: [
-            _t('Тут обираєш, що малювати. Вулики - одразу тут, а до перешкод '),
-            _h('свайпни картку вліво'),
+            _t(tr.lt6a),
+            _h(tr.lt6b),
           ]);
     case 7:
       return LessonCue(
@@ -277,41 +274,41 @@ LessonCue? templatesLessonScript(LessonController c) {
           highlight: const ['picker-obstacle'],
           allow: const ['picker-tabs'],
           text: [
-        _t('Обери будь-яку '),
-        _h('перешкоду'),
+        _t(tr.lt7a),
+        _h(tr.lt7b),
       ]);
     case 8:
       return LessonCue(screen: 'editor', pic: LessonPic.scheming, allow: const ['grid'], text: [
-        _t('Тепер '),
-        GuideBubble.task('торкнись поля'),
-        _t(' - постав одну плитку перешкоди'),
+        _t(tr.lt8a),
+        GuideBubble.task(tr.lt8b),
+        _t(tr.lt8c),
       ]);
     case 9:
       return LessonCue(screen: 'editor', pic: LessonPic.scheming, highlight: const ['square'], text: [
-        _t('Постав поруч ще '),
-        GuideBubble.task('3 плитки'),
-        _t(' - заповни квадрат'),
+        _t(tr.lt9a),
+        GuideBubble.task(tr.lt9b),
+        _t(tr.lt9c),
       ]);
     case 10:
       return LessonCue(screen: 'editor', pic: LessonPic.blueprint, highlight: const ['editor-add'], text: [
-        _t('Чудово! Щоб закінчити малювання, натисни '),
-        _h('червоний хрестик'),
+        _t(tr.lt10a),
+        _h(tr.lt10b),
       ]);
     case 11:
       return LessonCue(screen: 'editor', pic: LessonPic.blueprint, highlight: const ['editor-move'], text: [
-        _t('Перешкоду можна пересунути. Увімкни '),
-        _h('переміщення'),
+        _t(tr.lt11a),
+        _h(tr.lt11b),
       ]);
     case 12:
       return LessonCue(screen: 'editor', pic: LessonPic.thinking, allow: const ['grid'], text: [
-        _t('Стрілки навколо - лише підказка, натискати їх не треба. '),
-        GuideBubble.task('Візьми перешкоду пальцем і перетягни'),
+        _t(tr.lt12a),
+        GuideBubble.task(tr.lt12b),
       ]);
     case 13:
       return LessonCue(screen: 'editor', pic: LessonPic.blueprint, highlight: const ['editor-save'], text: [
-        _t('Готово! Тепер '),
-        _h('збережи'),
-        _t(' шаблон'),
+        _t(tr.lt13a),
+        _h(tr.lt13b),
+        _t(tr.lt13c),
       ]);
     case 14:
       return LessonCue(
@@ -320,13 +317,13 @@ LessonCue? templatesLessonScript(LessonController c) {
         allowAll: true,
         deny: const ['name-cancel'],
         highlight: const ['name-save'],
-        text: [_t('Дай шаблону назву і '), _h('збережи'), _t(' його')],
+        text: [_t(tr.lt14a), _h(tr.lt13b), _t(tr.lt14b)],
       );
     case 15:
       return LessonCue(screen: 'settings', onDone: c.complete, text: [
-        _t('Вау, швидко вчишся! Шаблон '),
-        _h('«$tpl»'),
-        _t(' вже у твоїх шаблонах - розміщуй його на карті сам.'),
+        _t(tr.lt15a),
+        _h(tr.quoted(tpl)),
+        _t(tr.lt15b),
       ]);
   }
   return null;
@@ -355,10 +352,10 @@ Future<Apiary> _templatesSetup(Repository repo, LessonController c) async {
 // ---------------------------------------------------------------------------
 
 /// Уроки в плитках «Навчання» (після «Базових понять»).
-final kLessons = <LessonDef>[
+List<LessonDef> get kLessons => [
   LessonDef(
     id: 'params',
-    title: 'Групи і параметри обходу',
+    title: tr.lessonParamsTitle,
     image: 'assets/guide/beekeeper_thinking.webp',
     script: paramsLessonScript,
     setup: _paramsSetup,
@@ -366,14 +363,13 @@ final kLessons = <LessonDef>[
   ),
   LessonDef(
     id: 'templates',
-    title: 'Шаблони',
+    title: tr.templates,
     image: 'assets/guide/beekeeper_blueprint.webp',
     script: templatesLessonScript,
     setup: _templatesSetup,
     checkpoint: _templatesCheckpoint,
   ),
-  const LessonDef(id: 'qr', title: 'QR-код', image: 'assets/guide/beekeeper_professor.webp', soon: true),
-  const LessonDef(id: 'stock', title: 'Склад', image: 'assets/guide/beekeeper_laptop.webp', soon: true),
-  const LessonDef(
-      id: 'history', title: 'Історія', image: 'assets/guide/beekeeper_newspaper.webp', soon: true),
+  LessonDef(id: 'qr', title: tr.qrCode, image: 'assets/guide/beekeeper_professor.webp', soon: true),
+  LessonDef(id: 'stock', title: tr.stock, image: 'assets/guide/beekeeper_laptop.webp', soon: true),
+  LessonDef(id: 'history', title: tr.history, image: 'assets/guide/beekeeper_newspaper.webp', soon: true),
 ];

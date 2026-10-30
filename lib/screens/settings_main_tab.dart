@@ -11,6 +11,7 @@ import '../services/background.dart';
 import '../services/auth.dart';
 import '../services/backups.dart';
 import '../services/server.dart';
+import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
 import '../ui/sync_status.dart';
@@ -20,7 +21,7 @@ import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
 
-/// Налаштування → «Головне»: розмір шрифту, помічник «Пасічник» (і далі -
+/// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
 /// інше про сам застосунок). Синхронізація, копії й акаунт - на вкладці
 /// «Акаунт».
 class MainSettingsTab extends StatelessWidget {
@@ -31,10 +32,79 @@ class MainSettingsTab extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
+          _LanguageSection(repo: repo),
           _TextSizeSection(repo: repo),
           _OrientationSection(repo: repo),
           _AssistantSection(repo: repo),
         ],
+      );
+}
+
+/// «Мова»: прапор поточної мови й кнопка «Змінити мову» (вибір - у вікні).
+class _LanguageSection extends StatelessWidget {
+  final Repository repo;
+  const _LanguageSection({required this.repo});
+
+  Future<void> _choose(BuildContext context) async {
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(tr.languageChange),
+        children: [
+          for (final e in L10n.supported.entries)
+            SimpleDialogOption(
+              key: ValueKey('language-${e.key}'),
+              onPressed: () => Navigator.pop(ctx, e.key),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Row(children: [
+                Text(e.value.languageFlag, style: const TextStyle(fontSize: 24)),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(e.value.languageName,
+                      style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight:
+                              e.key == tr.languageCode ? FontWeight.w700 : FontWeight.w400)),
+                ),
+                if (e.key == tr.languageCode) Icon(Icons.check, color: AppColors.create),
+              ]),
+            ),
+        ],
+      ),
+    );
+    if (code == null || code == tr.languageCode) return;
+    await L10n.set(repo, code);
+    // заплановані сповіщення - новою мовою
+    unawaited(ReminderService.instance.reschedule().catchError((Object _) {}));
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<String>(
+        valueListenable: L10n.language,
+        builder: (context, _, _) => SettingsSection(
+          title: tr.languageSection,
+          children: [
+            Row(children: [
+              Semantics(
+                label: tr.languageName,
+                child: Text(tr.languageFlag,
+                    key: const ValueKey('language-flag'), style: const TextStyle(fontSize: 30)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PillButton(
+                  key: const ValueKey('language-change'),
+                  text: tr.languageChange,
+                  bg: AppColors.darkBtn,
+                  fg: AppColors.text,
+                  height: 44,
+                  onPressed: () => _choose(context),
+                ),
+              ),
+            ]),
+          ],
+        ),
       );
 }
 
@@ -497,7 +567,7 @@ class _TextSizeSection extends StatelessWidget {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           // «А» - завжди однаковий крок, незалежно від обраного
-                          child: Text('А',
+                          child: Text(tr.textSizeLetter,
                               textScaler: TextScaler.noScaling,
                               style: TextStyle(
                                 color: j == i ? AppColors.bg : AppColors.text,

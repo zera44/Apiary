@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'common.dart';
 import 'guide_bubble.dart';
+import '../l10n/l10n.dart';
 
 /// Кнопка-пігулка: капсула з двома півкулями кольору та бликом.
 class PillChoice extends StatelessWidget {
@@ -64,20 +65,20 @@ const kPillBlue = Color(0xFF3B6FD6);
 /// Репліка вибору «синя / червона пігулка» (завершити навчання / продовжити).
 /// [blue]/[red] — що означає кожна пігулка (у дужках, медовим).
 List<InlineSpan> pillChoiceSpans(String lead,
-        {String blue = 'завершити навчання', String red = 'продовжити'}) =>
+{String? blue, String? red}) =>
     [
       TextSpan(text: lead),
-      const TextSpan(
-          text: 'Синя пігулка',
+TextSpan(
+          text: tr.pillBlueLabel,
           style: TextStyle(color: Color(0xFF6F9BFF), fontWeight: FontWeight.w800)),
-      const TextSpan(text: ' - ти власник свого життя ('),
-      GuideBubble.task(blue),
+      TextSpan(text: tr.pillBlueText),
+      GuideBubble.task(blue ?? tr.pillBlueDefault),
       const TextSpan(text: '), '),
-      const TextSpan(
-          text: 'червона',
+TextSpan(
+          text: tr.pillRedLabel,
           style: TextStyle(color: Color(0xFFFF6B6B), fontWeight: FontWeight.w800)),
-      const TextSpan(text: ' - я покажу, як глибока ця нора ('),
-      GuideBubble.task(red),
+      TextSpan(text: tr.pillRedText),
+      GuideBubble.task(red ?? tr.pillRedDefault),
       const TextSpan(text: ').'),
     ];
 
@@ -94,22 +95,22 @@ Future<bool?> showPillChoice(NavigatorState nav, {WidgetBuilder? onLearn}) {
         body: SafeArea(
           child: Stack(children: [
             Column(children: [
-              TopBar(title: 'Мої пасіки', onBack: () => Navigator.of(ctx).pop()),
+              TopBar(title: tr.myApiaries, onBack: () => Navigator.of(ctx).pop()),
             ]),
             ...lessonScene(
               pose: LessonPose.pills,
-              text: pillChoiceSpans('Колего, пропоную тобі вибір. ',
-                  blue: 'без навчання', red: 'пройти навчання'),
+              text: pillChoiceSpans(tr.pillLead,
+                  blue: tr.pillNoTutorial, red: tr.pillTakeTutorial),
               below: Row(children: [
                 Expanded(
                     child: PillChoice(
-                        text: 'Синя',
+                        text: tr.pillBlue,
                         color: kPillBlue,
                         onPressed: () => Navigator.of(ctx).pop(false))),
                 const SizedBox(width: 8),
                 Expanded(
                     child: PillChoice(
-                        text: 'Червона',
+                        text: tr.pillRed,
                         color: kPillRed,
                         onPressed: () => onLearn == null
                             ? Navigator.of(ctx).pop(true)

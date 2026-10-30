@@ -5,6 +5,7 @@ import '../data/whats_new.dart';
 import '../ui/common.dart';
 import '../ui/first_hints.dart';
 import '../ui/theme.dart';
+import '../l10n/l10n.dart';
 
 /// «Що нового»: останнє оновлення; 20% найзначніших нових функцій, решта й виправлені помилки — у «Ще».
 /// Закрити — одне натискання «До роботи» (кнопка завжди на екрані).
@@ -90,7 +91,7 @@ class WhatsNewScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
                     children: [
-                      Text(release.version.isEmpty ? 'Що нового' : 'Що нового · ${release.version}',
+                      Text(release.version.isEmpty ? tr.whatsNew : tr.whatsNewVersion(release.version),
                           style: TextStyle(
                               color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 14),
@@ -104,7 +105,7 @@ class WhatsNewScreen extends StatelessWidget {
                             iconColor: AppColors.textMuted,
                             collapsedIconColor: AppColors.textMuted,
                             title: Text(
-                                'Ще: ${release.moreFeatures.length} змін і виправлення помилок',
+                                tr.whatsNewMore(release.moreFeatures.length),
                                 style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
                             expandedCrossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -112,7 +113,7 @@ class WhatsNewScreen extends StatelessWidget {
                               if (release.fixes.isNotEmpty) ...[
                                 Padding(
                                   padding: const EdgeInsets.only(top: 6, bottom: 8),
-                                  child: Text('Виправлено',
+                                  child: Text(tr.fixed,
                                       style: TextStyle(
                                           color: AppColors.textMuted,
                                           fontSize: 14,
@@ -129,7 +130,7 @@ class WhatsNewScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                   child: PillButton(
-                    text: 'До роботи',
+                    text: tr.toWork,
                     bg: AppColors.accent,
                     width: 220,
                     height: 52,

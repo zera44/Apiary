@@ -698,7 +698,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             bg: AppColors.roundBtn,
             iconColor: AppColors.text,
             size: 44,
-            tooltip: 'Назад',
+            tooltip: tr.back,
             onPressed: () => Navigator.of(context).maybePop(),
           ),
         const SizedBox(width: 10),
@@ -1506,21 +1506,21 @@ class _ConversationsSheetState extends State<_ConversationsSheet> {
 
 /// Найчастіші запити: «Що ти вмієш?» завжди, ще два - за вкладкою.
 List<String> assistantSuggestions(ScreenContext? c) {
-  const first = 'Що ти вмієш?';
+  final first = tr.assistantWhatCanYouDo;
   switch (c?.screen) {
     case 'finance':
     case 'finance_add':
     case 'receipt':
-      return [first, 'Скільки я витратив цього місяця?', 'Додай витрату'];
+      return [first, tr.sugSpentMonth, tr.sugAddExpense];
     case 'stock':
-      return [first, 'Чого мало на складі?', 'Додай прихід цукру'];
+      return [first, tr.sugLowStock, tr.sugAddSugar];
     case 'apiaries':
     case 'map':
     case 'hive':
-      return [first, 'Які вулики треба оглянути?', 'Скільки в мене вуликів?'];
+      return [first, tr.sugDueHives, tr.sugHowManyHives];
     case 'history':
-      return [first, 'Що я записував останнім?', 'Відкрий склад'];
+      return [first, tr.sugLastRecord, tr.sugOpenStock];
     default:
-      return [first, 'Скільки в мене вуликів?', 'Які вулики треба оглянути?'];
+      return [first, tr.sugHowManyHives, tr.sugDueHives];
   }
 }

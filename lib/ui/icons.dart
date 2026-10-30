@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../icons/app_icons.dart';
+import '../l10n/l10n.dart';
 
 export '../icons/app_icons.dart' show AppIcons;
 
@@ -28,18 +29,11 @@ String obstacleVariantLabel(String? key) {
 List<(String, String)> get objectIconChoices => AppIcons.pickable;
 
 /// Кольори об'єкта (без службових кольорів карти).
-const objectColorChoices = <(String, String)>[
-  ('#ED9D2F', 'Медовий оранжевий'),
-  ('#F2B705', 'Бурштиновий жовтий'),
-  ('#CD6133', 'Теракотовий'),
-  ('#D64550', 'Малиновий червоний'),
-  ('#E0729C', 'Рожевий'),
-  ('#9B4F96', 'Пурпуровий'),
-  ('#C9A227', 'Гірчичний'),
-  ('#FF7A59', 'Кораловий'),
-  ('#8C3B3B', 'Бордовий'),
-  ('#F2A65A', 'Персиковий'),
-];
+const _objectColors = ['#ED9D2F', '#F2B705', '#CD6133', '#D64550', '#E0729C', '#9B4F96', '#C9A227', '#FF7A59', '#8C3B3B', '#F2A65A'];
+
+/// Кольори об'єкта з назвами поточною мовою.
+List<(String, String)> get objectColorChoices =>
+    [for (var i = 0; i < _objectColors.length; i++) (_objectColors[i], tr.objectColorNames[i])];
 
 /// Варіанти "Мітки матки" (тип даних "Колір"); null — без кольору.
 const queenTagChoices = <(String, Color?)>[

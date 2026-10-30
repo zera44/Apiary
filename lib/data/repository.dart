@@ -16,6 +16,7 @@ import '../logic/visit_reminders.dart';
 import 'finance.dart';
 import 'models.dart';
 import 'notes.dart';
+import '../l10n/l10n.dart';
 
 /// Назва базової характеристики "дата останнього обходу" (ключ visit_start;
 /// раніше називалась "Дата початку обходу").
@@ -1220,9 +1221,9 @@ class Repository {
     );
     if (rows.isEmpty) return null;
     final r = rows.first;
-    final label = r['number'] != null ? '№ ${r['number']}' : 'цей код';
+    final label = r['number'] != null ? tr.qrNumberShort('${r['number']}') : tr.qrThisCode;
     if ((r['deleted'] as num?) != 0) {
-      return '$label був прив\'язаний раніше, але зараз знятий (наліпку перевидано чи прив\'язку скасовано).';
+      return tr.qrWasUnlinked(label);
     }
     final gid = r['group_id'] as String?;
     final eid = r['element_id'] as String?;
@@ -1233,12 +1234,12 @@ class Repository {
     } else if (eid != null) {
       el = await getElement(eid);
     }
-    if (el == null || el.deleted) return '$label прив\'язаний до вулика, якого вже видалено.';
-    if (el.archived) return '$label прив\'язаний до вулика в архіві.';
-    if (el.apiaryId == null) return '$label прив\'язаний до об\'єкта без пасіки.';
+    if (el == null || el.deleted) return tr.qrHiveDeleted(label);
+    if (el.archived) return tr.qrHiveArchived(label);
+    if (el.apiaryId == null) return tr.qrNoApiary(label);
     final a = await getApiary(el.apiaryId!);
-    if (a == null || a.deleted) return '$label прив\'язаний до вулика видаленої пасіки.';
-    return '$label прив\'язаний, але вулик не вдалося відкрити.';
+    if (a == null || a.deleted) return tr.qrApiaryDeleted(label);
+    return tr.qrCannotOpen(label);
   }
 
   // ---------------------------------------------------------------------
@@ -1869,7 +1870,7 @@ class Repository {
         elementId: id,
         apiaryId: (r['apiary_id'] as String?) ?? '',
         apiaryName: (r['apiary_name'] as String?) ?? '',
-        name: label.isEmpty ? 'Вулик' : label,
+        name: label.isEmpty ? tr.hive : label,
         periodDays: n,
         lastVisit: last.isEmpty ? null : last,
         periodSetAt: at == null ? null : DateTime.fromMicrosecondsSinceEpoch((at * 1e6).round()),
@@ -1914,17 +1915,17 @@ class Repository {
         }
       }
       if (label == null && els.isNotEmpty) {
-        label = els.first.isHive ? 'Вулик' : 'Перешкода';
+        label = els.first.isHive ? tr.hive : tr.obstacle;
       }
-      return label ?? 'Видалена група';
+      return label ?? tr.deletedGroup;
     }
     final el = await getElement(e.elementId!);
     if (el != null && !el.deleted) {
       return (el.label != null && el.label!.isNotEmpty)
           ? el.label!
-          : (el.isHive ? 'Вулик' : 'Перешкода');
+          : (el.isHive ? tr.hive : tr.obstacle);
     }
-    return "Видалений об'єкт";
+    return tr.deletedObject;
   }
 
   /// Історія значень ОДНОГО параметра — найновіші першими. Без [entity] —
@@ -1997,7 +1998,7 @@ class Repository {
           break;
         }
       }
-      hives.add(ReportHive(ref: ref, label: label ?? 'Вулик $n'));
+      hives.add(ReportHive(ref: ref, label: label ?? tr.hiveN(n)));
       for (final id in await attachedParameterIds(ref, elType: 'hive')) {
         if (!paramIds.contains(id)) paramIds.add(id);
       }
@@ -2174,23 +2175,22 @@ class Repository {
   /// Скасування одного запису в межах чужої транзакції (без каскаду у фінанси).
   Future<double> cancelStockMoveTx(DatabaseExecutor txn, String moveId) async {
     final rows = await txn.query('stock_moves', where: 'id = ?', whereArgs: [moveId], limit: 1);
-    if (rows.isEmpty) throw StateError('Запис не знайдено');
+    if (rows.isEmpty) throw StateError(tr.finRecordNotFound);
     final m = rows.first;
     final kind = m['kind'] as String;
-    if ((m['cancelled'] as int? ?? 0) == 1) throw StateError('Цей запис уже скасовано');
-    if (kind == 'cancel') throw StateError('Скасування не можна скасувати');
-    if (kind == 'set') throw StateError('Старий запис «перезаписано» не можна скасувати');
+    if ((m['cancelled'] as int? ?? 0) == 1) throw StateError(tr.finAlreadyCancelled);
+    if (kind == 'cancel') throw StateError(tr.cancelCannotBeCancelled);
+    if (kind == 'set') throw StateError(tr.overwrittenCannotBeCancelled);
     final amount = (m['amount'] as num).toDouble();
     final effect = switch (kind) { 'out' => -amount, _ => amount }; // in/add: +, inv: зі знаком
     final itemId = m['item_id'] as String;
     final items = await txn.query('stock_items',
         columns: ['quantity', 'unit'], where: 'id = ?', whereArgs: [itemId], limit: 1);
-    if (items.isEmpty) throw StateError('Номенклатуру не знайдено');
+    if (items.isEmpty) throw StateError(tr.stockItemNotFound);
     final prev = (items.first['quantity'] as num?)?.toDouble() ?? 0;
     var next = prev - effect;
     if (next < -1e-9) {
-      throw StateError('Не можна скасувати: частину вже списано '
-          '(залишок: ${_fmtQty(prev)} ${items.first['unit']})');
+      throw StateError(tr.cannotCancelPartlyWrittenOff('${_fmtQty(prev)} ${items.first['unit']}'));
     }
     if (next.abs() < 1e-9) next = 0;
     final t = now();
@@ -2229,7 +2229,7 @@ class Repository {
     return db.transaction((txn) async {
       final rows = await txn.query('stock_items',
           columns: ['quantity', 'unit'], where: 'id = ? AND deleted = 0', whereArgs: [id], limit: 1);
-      if (rows.isEmpty) throw StateError('Номенклатуру не знайдено');
+      if (rows.isEmpty) throw StateError(tr.stockItemNotFound);
       final prev = (rows.first['quantity'] as num?)?.toDouble() ?? 0;
       if (setTo != null) {
         // різницю рахуємо по свіжому залишку всередині транзакції
@@ -2239,8 +2239,7 @@ class Repository {
       }
       var next = prev + delta;
       if (next < -1e-9) {
-        throw StateError('Не можна списати більше, ніж є на складі '
-            '(залишок: ${_fmtQty(prev)} ${rows.first['unit']})');
+        throw StateError(tr.cannotWriteOffMore('${_fmtQty(prev)} ${rows.first['unit']}'));
       }
       if (next.abs() < 1e-9) next = 0;
       final t = now();

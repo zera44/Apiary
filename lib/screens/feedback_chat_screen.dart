@@ -6,6 +6,7 @@ import '../services/feedback_chat.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'feedback_screen.dart';
+import '../l10n/l10n.dart';
 
 /// Куди ведуть кнопки «Відгук»: розмова з розробником (є сервер у збірці) або
 /// старий екран з листом через форму.
@@ -96,7 +97,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
     return Scaffold(
       body: SafeArea(
         child: Column(children: [
-          TopBar(title: "Зворотний зв'язок", onBack: () => Navigator.pop(context)),
+          TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context)),
           Expanded(
             child: ListView(
               controller: _scroll,
@@ -129,7 +130,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
                   textCapitalization: TextCapitalization.sentences,
                   style: TextStyle(color: AppColors.text, fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: 'Ваше повідомлення…',
+                    hintText: tr.yourMessage,
                     hintStyle: TextStyle(color: AppColors.textMuted),
                     filled: true,
                     fillColor: AppColors.input,
@@ -142,7 +143,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
               const SizedBox(width: 6),
               IconButton.filled(
                 key: const ValueKey('feedback-send'),
-                tooltip: 'Надіслати',
+                tooltip: tr.send,
                 style: IconButton.styleFrom(backgroundColor: AppColors.accent),
                 onPressed: _sending ? null : _send,
                 icon: const Icon(Icons.send, color: Colors.white),
@@ -154,8 +155,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
     );
   }
 
-  static const hint = 'Розробник відповість тут - ви побачите значок на вулику-поштоматі й '
-      'отримаєте сповіщення.';
+  static String get hint => tr.feedbackChatHint;
   static const maxLength = 5000;
 
   Widget _bubble(FeedbackMsg m) {
@@ -178,7 +178,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (dev)
-            Text('Розробник',
+            Text(tr.developer,
                 style: TextStyle(
                     color: AppColors.create, fontSize: 12.5, fontWeight: FontWeight.w800)),
           SelectableText(m.body,
@@ -190,7 +190,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
               const SizedBox(width: 6),
               Icon(Icons.schedule, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 3),
-              Text('чекає на інтернет',
+              Text(tr.waitingInternet,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11.5)),
             ],
           ]),

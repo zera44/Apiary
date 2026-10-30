@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/l10n.dart';
 
 /// Вулик-поштомат на головному екрані (малюнок автора —
 /// design/guide/hive_mailbox.pdf: бджола приносить лист, прапорець піднято).
@@ -16,7 +17,7 @@ class HivePostbox extends StatelessWidget {
     final w = height * 0.55;
     return Semantics(
       button: onTap != null,
-      label: count > 0 ? 'Вулик-поштомат: повідомлень $count' : 'Вулик-поштомат',
+      label: count > 0 ? tr.postboxN(count) : tr.postbox,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,

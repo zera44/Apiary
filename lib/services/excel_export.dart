@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../data/models.dart';
 import '../ui/date_picker.dart';
+import '../l10n/l10n.dart';
 
 /// Експорт історії параметра у .xlsx. Показує системний діалог
 /// "Зберегти як…" (на Android — вибір теки, зокрема "Завантаження", без
@@ -22,7 +23,7 @@ Future<String> exportHistoryToExcel({
   try {
     bytes = buildHistoryWorkbook(parameter: parameter, rows: rows);
   } catch (e) {
-    return 'Не вдалось сформувати файл:\n$e';
+    return tr.fileBuildFailed('$e');
   }
 
   final fileName = historyFileName(parameter.name, scopeName, DateTime.now());
@@ -32,30 +33,30 @@ Future<String> exportHistoryToExcel({
       fileName: fileName,
       bytes: bytes,
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: 'Зберегти історію',
+      dialogTitle: tr.saveHistory,
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
     );
-    if (uri == null) return 'Збереження скасовано.';
+    if (uri == null) return tr.saveCancelled;
     if (uri.scheme == 'file') {
       // на комп'ютері — підстраховуємось: якщо файл не записано, пишемо самі
       final f = File(uri.toFilePath());
       if (!await f.exists() || await f.length() == 0) {
         await f.writeAsBytes(bytes, flush: true);
       }
-      return 'Збережено:\n${f.path}';
+      return tr.savedAt(f.path);
     }
     // Android: адреса — внутрішній код документа (наприклад, 1361), не показуємо
-    return 'Збережено.';
+    return tr.saved;
   } catch (_) {
     // запасний варіант — власна тека застосунку
     try {
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
+      return tr.savedFallback(f.path);
     } catch (e) {
-      return 'Не вдалось зберегти файл:\n$e';
+      return tr.fileSaveFailed('$e');
     }
   }
 }
@@ -68,7 +69,7 @@ Future<String> saveApiaryReport(ApiaryReport report, String apiaryName) async {
   try {
     bytes = buildApiaryWorkbook(report);
   } catch (e) {
-    return 'Не вдалось сформувати файл:\n$e';
+    return tr.fileBuildFailed('$e');
   }
   final fileName = apiaryReportFileName(apiaryName, DateTime.now());
   try {
@@ -76,27 +77,27 @@ Future<String> saveApiaryReport(ApiaryReport report, String apiaryName) async {
       fileName: fileName,
       bytes: bytes,
       mimeType: _xlsxMime,
-      dialogTitle: 'Зберегти звіт',
+      dialogTitle: tr.saveReport,
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
     );
-    if (uri == null) return 'Збереження скасовано.';
+    if (uri == null) return tr.saveCancelled;
     if (uri.scheme == 'file') {
       final f = File(uri.toFilePath());
       if (!await f.exists() || await f.length() == 0) {
         await f.writeAsBytes(bytes, flush: true);
       }
-      return 'Збережено:\n${f.path}';
+      return tr.savedAt(f.path);
     }
-    return 'Збережено.';
+    return tr.saved;
   } catch (_) {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final f = File(p.join(dir.path, fileName));
       await f.writeAsBytes(bytes, flush: true);
-      return 'Не вдалось відкрити діалог збереження - файл збережено тут:\n${f.path}';
+      return tr.savedFallback(f.path);
     } catch (e) {
-      return 'Не вдалось зберегти файл:\n$e';
+      return tr.fileSaveFailed('$e');
     }
   }
 }
@@ -110,11 +111,11 @@ Future<String?> shareApiaryReport(ApiaryReport report, String apiaryName) async 
     await SharePlus.instance.share(ShareParams(
       files: [XFile.fromData(bytes, mimeType: _xlsxMime, name: fileName)],
       fileNameOverrides: [fileName],
-      subject: 'Звіт по пасіці «$apiaryName»',
+      subject: tr.apiaryReportOf(apiaryName),
     ));
     return null;
   } catch (e) {
-    return 'Не вдалось поділитися файлом:\n$e';
+    return tr.shareFailed('$e');
   }
 }
 
@@ -132,8 +133,8 @@ String apiaryReportFileName(String apiaryName, DateTime now) {
 Uint8List buildApiaryWorkbook(ApiaryReport report) {
   final excel = Excel.createExcel();
   final defaultName = excel.getDefaultSheet() ?? 'Sheet1';
-  const lastName = 'Останні значення';
-  const histName = 'Історія';
+  final lastName = tr.sheetLatest;
+  final histName = tr.history;
   excel.rename(defaultName, lastName);
   final bold = CellStyle(bold: true);
   final dateStyle = CellStyle(numberFormat: NumFormat.custom(formatCode: 'dd.mm.yyyy'));
@@ -142,7 +143,7 @@ Uint8List buildApiaryWorkbook(ApiaryReport report) {
 
   final last = excel[lastName];
   last.appendRow([
-    TextCellValue('Вулик'),
+    TextCellValue(tr.hive),
     for (final p in report.parameters) TextCellValue(p.nameWithUnit),
   ]);
   for (var c = 0; c <= report.parameters.length; c++) {
@@ -169,10 +170,10 @@ Uint8List buildApiaryWorkbook(ApiaryReport report) {
 
   final hist = excel[histName];
   hist.appendRow([
-    TextCellValue('Дата й час'),
-    TextCellValue('Вулик'),
-    TextCellValue('Параметр'),
-    TextCellValue('Значення'),
+    TextCellValue(tr.dateTime),
+    TextCellValue(tr.hive),
+    TextCellValue(tr.parameter),
+    TextCellValue(tr.value),
   ]);
   for (var c = 0; c < 4; c++) {
     hist.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).cellStyle = bold;
@@ -217,9 +218,9 @@ Uint8List buildHistoryWorkbook({
   final sheet = excel[sheetName];
 
   sheet.appendRow([
-    TextCellValue("Об'єкт / група"),
+    TextCellValue(tr.objectOrGroup),
     TextCellValue(parameter.nameWithUnit),
-    TextCellValue('Дата й час'),
+    TextCellValue(tr.dateTime),
   ]);
   final bold = CellStyle(bold: true);
   for (var c = 0; c < 3; c++) {
@@ -301,5 +302,5 @@ String safeSheetTitle(String name) {
   }
   // Excel не приймає апостроф на початку чи в кінці назви листа
   s = s.replaceAll(RegExp(r"^'+|'+$"), '');
-  return s.isEmpty ? 'Історія' : s;
+  return s.isEmpty ? tr.history : s;
 }

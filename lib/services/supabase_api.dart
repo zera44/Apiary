@@ -13,6 +13,7 @@ import '../data/sync_api.dart';
 import 'app_config.dart';
 import 'invite_link.dart';
 import 'sharing.dart';
+import '../l10n/l10n.dart';
 
 /// Вхід на сервер Supabase: токен доступу (живе ~годину), токен оновлення,
 /// хто увійшов.
@@ -140,7 +141,7 @@ class SupabaseApi implements SyncApi, SharingApi {
   static Future<SupabaseApi> signInWithGoogle(AppConfig config, SessionStore store, String idToken,
       {http.Client? client}) async {
     final base = config.supabaseBase;
-    if (base == null || !config.syncConfigured) throw StateError('Сервер не налаштовано в цій збірці');
+    if (base == null || !config.syncConfigured) throw StateError(tr.errServerNotConfigured);
     final c = client ?? http.Client();
     final key = config.supabaseAnonKey.trim();
     final r = await _guard(() => c
@@ -150,7 +151,7 @@ class SupabaseApi implements SyncApi, SharingApi {
         .timeout(timeout));
     _check(r);
     final s = SupabaseSession.fromJson(jsonDecode(r.body));
-    if (s == null) throw const SyncRejected(500, 'сервер входу повернув незрозумілу відповідь');
+    if (s == null) throw SyncRejected(500, tr.errLoginServerOdd);
     await store.write(s);
     return SupabaseApi._(base, key, store, s, c);
   }
@@ -218,13 +219,13 @@ class SupabaseApi implements SyncApi, SharingApi {
     try {
       return await f();
     } on SocketException catch (e) {
-      throw SyncOffline('немає зв\'язку із сервером (${e.message})');
+      throw SyncOffline(tr.errNoServerDetails(e.message));
     } on TimeoutException {
-      throw const SyncOffline('сервер не відповідає');
+      throw SyncOffline(tr.errServerNoAnswer);
     } on HandshakeException {
-      throw const SyncOffline('не вдалося встановити захищене з\'єднання');
+      throw SyncOffline(tr.errTls);
     } on http.ClientException catch (e) {
-      throw SyncOffline('немає зв\'язку із сервером (${e.message})');
+      throw SyncOffline(tr.errNoServerDetails(e.message));
     }
   }
 
@@ -232,7 +233,7 @@ class SupabaseApi implements SyncApi, SharingApi {
     final s = r.statusCode;
     if (s >= 200 && s < 300) return;
     final msg = _message(r.body);
-    if (s >= 500 || s == 408 || s == 429) throw SyncOffline('сервер тимчасово недоступний ($s)');
+    if (s >= 500 || s == 408 || s == 429) throw SyncOffline(tr.errServerBusy(s));
     throw SyncRejected(s, msg);
   }
 

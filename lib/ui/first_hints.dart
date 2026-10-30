@@ -4,6 +4,7 @@ import '../data/repository.dart';
 import 'common.dart';
 import 'guide_bubble.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// P19: обов'язкове навчання першого запуску — по ОДНІЙ підказці пасічника
 /// на ключовий екран, у ту мить, коли людина вперше туди потрапила
@@ -25,45 +26,44 @@ class Hints {
   static const edit = 'edit';
   static const stock = 'stock';
 
-  static final Map<String, List<InlineSpan>> _texts = {
+  static Map<String, List<InlineSpan>> get _texts => {
     home: [
-      const TextSpan(text: 'Вітаю на пасіці! '),
-      GuideBubble.highlight('Почати'),
-      const TextSpan(text: ' відкриває карту вашої пасіки. Коли настане час огляду, тут з\'явиться '),
-      GuideBubble.highlight('Сьогодні оглянути'),
-      const TextSpan(text: ' - одне натискання, і ви вже біля потрібного вулика.'),
+      TextSpan(text: tr.hintHomeA),
+      GuideBubble.highlight(tr.start),
+      TextSpan(text: tr.hintHomeB),
+      GuideBubble.highlight(tr.dueToday),
+      TextSpan(text: tr.hintHomeC),
     ],
     map: [
-      const TextSpan(text: 'Це карта пасіки. Натисніть на вулик - праворуч відкриються його значення. '),
-      GuideBubble.highlight('Редагування'),
-      const TextSpan(text: ' (перемикач унизу ліворуч) - щоб додати вулики, переставити їх чи змінити вигляд. Утримання вулика одразу вмикає редагування.'),
+      TextSpan(text: tr.hintMapA),
+      GuideBubble.highlight(tr.editing),
+      TextSpan(text: tr.hintMapB),
     ],
     panel: [
-      const TextSpan(text: 'Тут останні значення вулика. Натисніть на рядок - побачите історію. '),
-      GuideBubble.highlight('Оглянути'),
-      const TextSpan(text: ' - записати огляд; '),
-      GuideBubble.highlight('Змін немає'),
-      const TextSpan(text: ' - якщо змін немає.'),
+      TextSpan(text: tr.hintPanelA),
+      GuideBubble.highlight(tr.inspect),
+      TextSpan(text: tr.hintPanelB),
+      GuideBubble.highlight(tr.noChanges),
+      TextSpan(text: tr.hintPanelC),
     ],
     fill: [
-      const TextSpan(text: 'Заповніть лише те, що змінилось - решта лишиться як була. '),
-      GuideBubble.highlight('Зберегти й далі'),
-      const TextSpan(text: ' одразу відкриє наступний вулик.'),
+      TextSpan(text: tr.hintFillA),
+      GuideBubble.highlight(tr.saveAndNext),
+      TextSpan(text: tr.hintFillB),
     ],
     edit: [
-      const TextSpan(text: 'Режим редагування: оберіть шаблон і натисніть на вільну клітинку. '
-          'Вулик можна перетягнути, повернути кнопкою над ним. Видалили помилково - '),
-      GuideBubble.highlight('Відмінити'),
-      const TextSpan(text: ' внизу. Перемикач у '),
-      GuideBubble.highlight('Робочий режим'),
-      const TextSpan(text: ' - зберегти й вийти.'),
+      TextSpan(text: tr.hintEditA),
+      GuideBubble.highlight(tr.undoDelete),
+      TextSpan(text: tr.hintEditB),
+      GuideBubble.highlight(tr.workMode),
+      TextSpan(text: tr.hintEditC),
     ],
     stock: [
-      const TextSpan(text: 'Склад: '),
-      GuideBubble.highlight('Прихід'),
-      const TextSpan(text: ' - що купили, '),
-      GuideBubble.highlight('Переоблік'),
-      const TextSpan(text: ' - звірити залишки. Задайте мінімальний залишок, і застосунок підкаже, коли час докупити.'),
+      TextSpan(text: tr.hintStockA),
+      GuideBubble.highlight(tr.stockIn),
+      TextSpan(text: tr.hintStockB),
+      GuideBubble.highlight(tr.stocktake),
+      TextSpan(text: tr.hintStockC),
     ],
   };
 
@@ -99,7 +99,7 @@ class Hints {
                       await repo.setMeta('hints_off', '1');
                       if (ctx.mounted) Navigator.of(ctx).pop();
                     },
-                    child: Text('Пропустити',
+                    child: Text(tr.skip,
                         style: TextStyle(
                             color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
                   ),
@@ -109,7 +109,7 @@ class Hints {
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: PillButton(
-                      text: 'Зрозуміло',
+                      text: tr.gotIt,
                       bg: AppColors.accent,
                       width: 170,
                       height: 50,

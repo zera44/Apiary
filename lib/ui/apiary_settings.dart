@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import 'apiary_report.dart';
 import 'common.dart';
 import 'theme.dart';
+import '../l10n/l10n.dart';
 
 /// Налаштування пасіки: назва й періодичність обходу всієї пасіки (вулик із
 /// власною періодичністю її перекриває). Відкривається з карти - торкнутися
@@ -22,30 +23,29 @@ Future<bool> editApiarySettings(BuildContext context, Repository repo, Apiary a)
         }
 
         return AlertDialog(
-          title: const Text('Налаштування пасіки'),
+          title: Text(tr.apiarySettings),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             TextField(
               controller: nameCtrl,
               autofocus: true,
               style: TextStyle(color: AppColors.text),
-              decoration: const InputDecoration(labelText: 'Назва'),
+              decoration: InputDecoration(labelText: tr.name),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: periodCtrl,
               keyboardType: TextInputType.number,
               style: TextStyle(color: AppColors.text),
-              decoration: const InputDecoration(
-                  labelText: 'Обходити кожні … днів', hintText: 'порожньо - без нагадувань'),
+              decoration: InputDecoration(labelText: tr.roundEvery, hintText: tr.roundEveryHint),
               onSubmitted: (_) => save(),
             ),
             const SizedBox(height: 8),
-            Text('Діє для всіх вуликів пасіки. Вулику можна задати іншу у формі «Оглянути».',
+            Text(tr.roundEveryNote,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             TextButton.icon(
               icon: Icon(Icons.table_chart_outlined, color: AppColors.accent),
-              label: Text('Звіт по пасіці (Excel)', style: TextStyle(color: AppColors.accent)),
+              label: Text(tr.apiaryReportExcel, style: TextStyle(color: AppColors.accent)),
               onPressed: () {
                 Navigator.pop(ctx);
                 showApiaryReport(context, repo, a);
@@ -56,13 +56,13 @@ Future<bool> editApiarySettings(BuildContext context, Repository repo, Apiary a)
             Row(children: [
               Expanded(
                 child: PillButton(
-                    text: 'Скасувати',
+                    text: tr.cancel,
                     bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     onPressed: () => Navigator.pop(ctx)),
               ),
               const SizedBox(width: 8),
-              Expanded(child: PillButton(text: 'Зберегти', bg: AppColors.accent, onPressed: save)),
+              Expanded(child: PillButton(text: tr.save, bg: AppColors.accent, onPressed: save)),
             ]),
           ],
         );
