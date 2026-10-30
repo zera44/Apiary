@@ -134,6 +134,12 @@ class AppStringsUk extends AppStrings {
   @override
   String get textSizePreview => 'Вулик 12 - сьогодні оглянути';
   @override
+  String get orientationSection => 'Орієнтація екрана';
+  @override
+  String get orientationHint => 'Авто - як повернуто телефон.';
+  @override
+  List<String> get orientationLevels => const ['Авто', 'Вертикальна', 'Горизонтальна'];
+  @override
   String get inviteLinkButton => 'Створити посилання-запрошення';
   @override
   String get inviteLinkHint =>
@@ -1006,7 +1012,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get qrReceiptHint => 'Покладіть чек рівно на контрастний фон і натисніть «Зняти»';
   @override
-  String get qrHint => 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
+  String get qrHint => 'Наведіть камеру на QR-код вулика і потримайте секунду-дві';
   @override
   String get scanReceipt => 'Сканувати чек';
   @override
@@ -1120,18 +1126,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get mapAllHaveQr => 'У всіх вуликів цієї пасіки вже є QR-коди.';
   @override
-  String mapLeftWithoutCode(int n) => 'Лишилось без коду (пропущено): $n.';
-  @override
-  String mapLinkedLabels(int linked, int skipped) =>
-      'Прив\'язано наліпок: $linked.${skipped == 0 ? ' Тепер у всіх вуликів є QR-коди.' : ' Пропущено: $skipped.'}';
-  @override
   String get qrCodes => 'QR-коди';
-  @override
-  String get hiveLower => 'вулик';
-  @override
-  String mapLabelFor(String name) => 'Наліпка для: $name';
-  @override
-  String get mapSkipThisHive => 'Пропустити цей вулик';
   @override
   String get qrInUse => 'Код уже використовується';
   @override
@@ -1142,8 +1137,6 @@ class AppStringsUk extends AppStrings {
       'Цей QR-код прив\'язаний до «$other» (пасіка «$apiary»). Перенести його на цей вулик?';
   @override
   String get move => 'Перенести';
-  @override
-  String mapLinkedName(String name) => 'Прив\'язано: $name';
   @override
   String qrNumber(String n) => 'QR-код № $n';
   @override
@@ -2034,12 +2027,8 @@ class AppStringsUk extends AppStrings {
   @override
   String hiveListMore(String names, int n) => '$names і ще $n';
   @override
-  String get roundTime => 'Час обходу';
-  @override
   String roundInspect(int n, String list) =>
       'Оглянути $n ${plural(n, one: 'вулик', few: 'вулики', many: 'вуликів')}: $list';
-  @override
-  String get roundNotDone => 'Обхід ще не завершено';
   @override
   String roundLeft(int n, String list) =>
       'Лишилось оглянути $n ${plural(n, one: 'вулик', few: 'вулики', many: 'вуликів')}: $list';
@@ -2196,4 +2185,99 @@ class AppStringsUk extends AppStrings {
   String get text => 'Текст';
   @override
   String get when => 'Коли';
+
+  // Злиття main: прив'язка наліпок підряд, обхід, фінанси
+  @override
+  String finCancelText(String name, String amount, String date) =>
+      '«$name» $amount від $date буде позначено як скасований '
+      'і не рахуватиметься в підсумках. Запис лишиться в історії.';
+  @override
+  String get bindPickHint =>
+      'Торкніться вулика, щоб обрати або зняти вибір';
+  @override
+  String roundSkipped(String name) =>
+      '«$name» пропущено';
+  @override
+  String roundNoChange(String name, int done) =>
+      '«$name»: змін немає · оглянуто $done';
+  @override
+  String roundSaved(String name, int done) =>
+      '«$name» збережено · оглянуто $done';
+  @override
+  String inspectionSaved(String name) =>
+      'Огляд «$name» збережено';
+  @override
+  String inspectionSavedCount(String name, int done) =>
+      'Огляд «$name» збережено. Оглянуто: $done';
+  @override
+  String get feedNotReturned =>
+      'Підгодівлю не повернуто';
+  @override
+  String get inspectionUndone =>
+      'Огляд відмінено';
+  @override
+  String get hiveHasQr =>
+      'У цього вулика вже є QR-код';
+  @override
+  String get bindLabels =>
+      'Прив\'язати наліпки';
+  @override
+  String get bindAllLinked =>
+      'Усе прив\'язано';
+  @override
+  String bindLinkedCount(int n) =>
+      'Прив\'язано наліпок: $n';
+  @override
+  String bindAllDone(int n) =>
+      'Прив\'язано наліпок: $n. Усі обрані вулики мають QR-коди.';
+  @override
+  String bindPartly(int linked, int skipped, int left) =>
+      'Прив\'язано: $linked\nПропущено: $skipped\nЛишилось: $left\n\n'
+      'Усе збережено. Продовжити можна зараз або пізніше: «Прив\'язати підряд» '
+      'покаже лише вулики без коду.';
+  @override
+  String bindBarCount(int noCode, int chosen) =>
+      'Без коду: $noCode · обрано: $chosen';
+  @override
+  String get bindDeselect =>
+      'Зняти вибір';
+  @override
+  String get bindSelectAll =>
+      'Обрати всі без коду';
+  @override
+  String scanCount(int n) =>
+      'Сканувати ($n)';
+  @override
+  String bindLinked(String name) =>
+      'Прив\'язано: $name';
+  @override
+  String bindWithoutLabel(int n) =>
+      'Без наліпки: $n';
+  @override
+  String get bindSearch =>
+      'Пошук за назвою або номером';
+  @override
+  String get bindNow =>
+      'зараз';
+  @override
+  String get bindSkippedMark =>
+      'пропущено';
+  @override
+  String bindProgress(int done, int n, int linked, int skipped) =>
+      '$done з $n · прив\'язано $linked · пропущено $skipped';
+  @override
+  String bindLabelFor(String name) =>
+      'Наліпка для: $name';
+  @override
+  String get bindPrevHive =>
+      'Попередній вулик';
+  @override
+  String get bindNextHive =>
+      'Наступний вулик';
+  @override
+  String get bindAimHint =>
+      'Наведіть камеру на наліпку цього вулика';
+  @override
+  String get bindList =>
+      '☰ Список';
 }

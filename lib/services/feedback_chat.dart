@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../data/repository.dart';
 import 'app_config.dart';
+import 'app_foreground.dart';
 
 /// Повідомлення розмови з розробником.
 class FeedbackMsg {
@@ -228,7 +229,9 @@ class FeedbackChat {
     current = this;
     await refreshUnread();
     unawaited(poll());
-    _timer ??= Timer.periodic(const Duration(minutes: 3), (_) => unawaited(poll()));
+    _timer ??= Timer.periodic(const Duration(minutes: 3), (_) {
+      if (appInForeground()) unawaited(poll());
+    });
   }
 
   void stop() {

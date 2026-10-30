@@ -135,6 +135,12 @@ class AppStringsEn extends AppStrings {
   @override
   String get textSizePreview => 'Hive 12 - inspect today';
   @override
+  String get orientationSection => 'Screen orientation';
+  @override
+  String get orientationHint => 'Auto - follows how the phone is turned.';
+  @override
+  List<String> get orientationLevels => const ['Auto', 'Portrait', 'Landscape'];
+  @override
   String get inviteLinkButton => 'Create an invite link';
   @override
   String get inviteLinkHint =>
@@ -1004,7 +1010,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get qrReceiptHint => 'Lay the receipt flat on a contrasting background and tap "Shoot"';
   @override
-  String get qrHint => 'Point the camera at the hive QR code and hold it for a few seconds';
+  String get qrHint => 'Point the camera at the hive QR code and hold it for a second or two';
   @override
   String get scanReceipt => 'Scan receipt';
   @override
@@ -1117,18 +1123,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get mapAllHaveQr => 'All hives in this apiary already have QR codes.';
   @override
-  String mapLeftWithoutCode(int n) => 'Left without a code (skipped): $n.';
-  @override
-  String mapLinkedLabels(int linked, int skipped) =>
-      'Labels linked: $linked.${skipped == 0 ? ' Now all hives have QR codes.' : ' Skipped: $skipped.'}';
-  @override
   String get qrCodes => 'QR codes';
-  @override
-  String get hiveLower => 'hive';
-  @override
-  String mapLabelFor(String name) => 'Label for: $name';
-  @override
-  String get mapSkipThisHive => 'Skip this hive';
   @override
   String get qrInUse => 'The code is already in use';
   @override
@@ -1139,8 +1134,6 @@ class AppStringsEn extends AppStrings {
       'This QR code is linked to "$other" (apiary "$apiary"). Move it to this hive?';
   @override
   String get move => 'Move';
-  @override
-  String mapLinkedName(String name) => 'Linked: $name';
   @override
   String qrNumber(String n) => 'QR code No. $n';
   @override
@@ -2035,11 +2028,7 @@ class AppStringsEn extends AppStrings {
   @override
   String hiveListMore(String names, int n) => '$names and $n more';
   @override
-  String get roundTime => 'Time for a round';
-  @override
   String roundInspect(int n, String list) => 'Inspect ${_n(n, 'hive', 'hives')}: $list';
-  @override
-  String get roundNotDone => 'The round is not finished yet';
   @override
   String roundLeft(int n, String list) => '${_n(n, 'hive', 'hives')} left to inspect: $list';
 
@@ -2197,4 +2186,99 @@ class AppStringsEn extends AppStrings {
   String get text => 'Text';
   @override
   String get when => 'When';
+
+  // Merged from main: linking labels in a row, rounds, finances
+  @override
+  String finCancelText(String name, String amount, String date) =>
+      '"$name" $amount from $date will be marked as cancelled '
+      'and won\'t count in the totals. The record stays in the history.';
+  @override
+  String get bindPickHint =>
+      'Tap a hive to select or deselect it';
+  @override
+  String roundSkipped(String name) =>
+      '"$name" skipped';
+  @override
+  String roundNoChange(String name, int done) =>
+      '"$name": no changes · inspected $done';
+  @override
+  String roundSaved(String name, int done) =>
+      '"$name" saved · inspected $done';
+  @override
+  String inspectionSaved(String name) =>
+      'Inspection of "$name" saved';
+  @override
+  String inspectionSavedCount(String name, int done) =>
+      'Inspection of "$name" saved. Inspected: $done';
+  @override
+  String get feedNotReturned =>
+      'Feed not returned';
+  @override
+  String get inspectionUndone =>
+      'Inspection undone';
+  @override
+  String get hiveHasQr =>
+      'This hive already has a QR code';
+  @override
+  String get bindLabels =>
+      'Link labels';
+  @override
+  String get bindAllLinked =>
+      'All linked';
+  @override
+  String bindLinkedCount(int n) =>
+      'Labels linked: $n';
+  @override
+  String bindAllDone(int n) =>
+      'Labels linked: $n. All selected hives have QR codes.';
+  @override
+  String bindPartly(int linked, int skipped, int left) =>
+      'Linked: $linked\nSkipped: $skipped\nLeft: $left\n\n'
+      'Everything is saved. You can continue now or later: "Link in a row" '
+      'will show only hives without a code.';
+  @override
+  String bindBarCount(int noCode, int chosen) =>
+      'Without a code: $noCode · selected: $chosen';
+  @override
+  String get bindDeselect =>
+      'Deselect';
+  @override
+  String get bindSelectAll =>
+      'Select all without a code';
+  @override
+  String scanCount(int n) =>
+      'Scan ($n)';
+  @override
+  String bindLinked(String name) =>
+      'Linked: $name';
+  @override
+  String bindWithoutLabel(int n) =>
+      'Without a label: $n';
+  @override
+  String get bindSearch =>
+      'Search by name or number';
+  @override
+  String get bindNow =>
+      'now';
+  @override
+  String get bindSkippedMark =>
+      'skipped';
+  @override
+  String bindProgress(int done, int n, int linked, int skipped) =>
+      '$done of $n · linked $linked · skipped $skipped';
+  @override
+  String bindLabelFor(String name) =>
+      'Label for: $name';
+  @override
+  String get bindPrevHive =>
+      'Previous hive';
+  @override
+  String get bindNextHive =>
+      'Next hive';
+  @override
+  String get bindAimHint =>
+      'Point the camera at this hive\'s label';
+  @override
+  String get bindList =>
+      '☰ List';
 }

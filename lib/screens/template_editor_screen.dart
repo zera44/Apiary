@@ -939,6 +939,14 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                 height: 70,
                 color: AppColors.panel,
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  // «назад», «додати», «перемістити», «зберегти»
+                  CircleIconButton(
+                    icon: 'back_arrow',
+                    bg: AppColors.darkBtn,
+                    tooltip: tr.cancel,
+                    onPressed: _undo.isEmpty ? null : _onUndo,
+                  ),
+                  const SizedBox(width: 16),
                   // у режимі додавання «+» стає червоним хрестиком - ним і вимикають
                   LessonTarget(
                     lesson: _lesson,
@@ -960,13 +968,6 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       tooltip: moveMode ? tr.finishMoving : tr.moving,
                       onPressed: _toggleMove,
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  CircleIconButton(
-                    icon: 'back_arrow',
-                    bg: AppColors.darkBtn,
-                    tooltip: tr.cancel,
-                    onPressed: _undo.isEmpty ? null : _onUndo,
                   ),
                   const SizedBox(width: 16),
                   // дискета замість галочки

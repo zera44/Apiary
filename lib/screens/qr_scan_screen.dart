@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
-import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:flutter/services.dart' show HapticFeedback, SystemSound, SystemSoundType;
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../data/repository.dart';
@@ -36,6 +36,32 @@ Future<String?> scanQrCode(BuildContext context,
 /// Повертається замість коду, коли натиснули [skipLabel] («Пропустити цей вулик»).
 const kQrSkip = '\u0000skip';
 
+/// Вулик (об'єкт), для якого прив'язують наліпку.
+class QrBindTarget {
+  final String id;
+  final String name;
+  const QrBindTarget(this.id, this.name);
+}
+
+/// Чим закінчилась спроба прив'язати відсканований код.
+enum QrBindResult { linked, rejected }
+
+/// «Прив'язати підряд»: сканер лишається відкритим, поки пасічник іде по
+/// вуликах; кожен код [bind] записується одразу (закрили - нічого не втрачено).
+class QrBindConfig {
+  /// Вулики в порядку обходу.
+  final List<QrBindTarget> targets;
+  final Future<QrBindResult> Function(QrBindTarget target, String code) bind;
+  const QrBindConfig({required this.targets, required this.bind});
+}
+
+/// Підсумок сеансу «Прив'язати підряд».
+class QrBindSummary {
+  final Set<String> linked;
+  final Set<String> skipped;
+  const QrBindSummary(this.linked, this.skipped);
+}
+
 Future<String?> _manualEntry(BuildContext context) async {
   final v = await showTextPrompt(context, title: tr.qrManual, initial: '');
   final t = v?.trim() ?? '';
@@ -55,11 +81,18 @@ final String? title;
   /// Склад, куди потрапляє чек: якщо задано - камера шукає ще й чек і
   /// передає його у таблицю нової витрати у фінансах.
   final Repository? receiptRepo;
+
+  /// Прив'язка наліпок підряд (сканер не закривається після кожного коду).
+  final QrBindConfig? bind;
   const QrScanScreen(
-      {super.key, this.title, this.skipLabel, this.receiptRepo});
+      {super.key,
+      this.title,
+      this.skipLabel,
+      this.receiptRepo,
+      this.bind});
 
   /// Скільки тримати камеру над QR-кодом.
-  static const qrHold = Duration(seconds: 3);
+  static const qrHold = Duration(milliseconds: 1500);
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
@@ -86,6 +119,18 @@ class _QrScanScreenState extends State<QrScanScreen> {
   DateTime? _qrSince;
   DateTime _qrSeen = DateTime.fromMillisecondsSinceEpoch(0);
 
+  // прив'язка підряд: поточний вулик, що зроблено, що пропущено
+  int _bi = 0;
+  final Set<String> _bLinked = {};
+  final Set<String> _bSkipped = {};
+  bool _bBusy = false;
+  String? _bToast;
+  Timer? _toastTimer;
+
+  // щойно прив'язаний код не читаємо знову, поки наліпку не прибрали з кадру
+  String? _ignoreCode;
+  DateTime _anySeen = DateTime.fromMillisecondsSinceEpoch(0);
+
   // чек: контур у кадрі, відколи він стоїть на місці
   ReceiptQuad? _quad;
   int _quadMisses = 0;
@@ -101,6 +146,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _toastTimer?.cancel();
     unawaited(_ctrl.dispose());
     super.dispose();
   }
@@ -156,6 +202,14 @@ class _QrScanScreenState extends State<QrScanScreen> {
     if (_qr != null && now.difference(_qrSeen).inMilliseconds > 700) {
       _qr = null;
       _qrSince = null;
+    }
+    if (_ignoreCode != null && now.difference(_anySeen).inMilliseconds > 1000) _ignoreCode = null;
+    if (widget.bind != null) {
+      if (_qr != null && _qrSince != null && !_bBusy && now.difference(_qrSince!) >= QrScanScreen.qrHold) {
+        unawaited(_bindCurrent(_qr!));
+      }
+      setState(() {});
+      return;
     }
     if (_qr != null && _qrSince != null && now.difference(_qrSince!) >= QrScanScreen.qrHold) {
       _done = true;
@@ -257,11 +311,13 @@ class _QrScanScreenState extends State<QrScanScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_done || _manualOpen || _receipt) return;
+    if (_done || _manualOpen || _receipt || _bBusy) return;
     for (final b in capture.barcodes) {
       final v = b.rawValue?.trim();
       if (v != null && v.isNotEmpty) {
         final now = DateTime.now();
+        _anySeen = now;
+        if (v == _ignoreCode) return;
         if (v != _qr) {
           _qr = v;
           _qrSince = now;
@@ -282,8 +338,227 @@ class _QrScanScreenState extends State<QrScanScreen> {
       _manualOpen = false;
     }
     if (v == null || !mounted || _done) return;
+    if (widget.bind != null) {
+      unawaited(_bindCurrent(v));
+      return;
+    }
     _done = true;
     Navigator.of(context).pop(v);
+  }
+
+  // ---------------------------------------------------------------------
+  // прив'язка підряд
+  // ---------------------------------------------------------------------
+
+  List<QrBindTarget> get _targets => widget.bind!.targets;
+  QrBindTarget get _cur => _targets[_bi];
+  bool _pending(int i) => !_bLinked.contains(_targets[i].id) && !_bSkipped.contains(_targets[i].id);
+
+  void _toast(String text) {
+    _toastTimer?.cancel();
+    setState(() => _bToast = text);
+    _toastTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _bToast = null);
+    });
+  }
+
+  void _bFinish() {
+    if (_done) return;
+    _done = true;
+    Navigator.of(context).pop(QrBindSummary({..._bLinked}, {..._bSkipped}));
+  }
+
+  /// Наступний вулик, якому ще треба наліпку (по колу); немає - сеанс закінчено.
+  void _bAdvance() {
+    final n = _targets.length;
+    for (var k = 1; k <= n; k++) {
+      final i = (_bi + k) % n;
+      if (_pending(i)) {
+        setState(() {
+          _bi = i;
+          _qr = null;
+          _qrSince = null;
+        });
+        return;
+      }
+    }
+    _bFinish();
+  }
+
+  void _bGo(int delta) {
+    final n = _targets.length;
+    setState(() {
+      _bi = (_bi + delta) % n;
+      if (_bi < 0) _bi += n;
+      _qr = null;
+      _qrSince = null;
+    });
+  }
+
+  void _bSkip() {
+    if (_bBusy) return;
+    _bSkipped.add(_cur.id);
+    _bAdvance();
+  }
+
+  Future<void> _bindCurrent(String code) async {
+    final cfg = widget.bind!;
+    if (_bBusy || _done) return;
+    final t = _cur;
+    _bBusy = true;
+    _qr = null;
+    _qrSince = null;
+    try {
+      final r = await cfg.bind(t, code);
+      if (!mounted) return;
+      _ignoreCode = code; // доки наліпку не приберуть, вона не рахується знову
+      _anySeen = DateTime.now();
+      if (r == QrBindResult.linked) {
+        unawaited(HapticFeedback.heavyImpact());
+        unawaited(SystemSound.play(SystemSoundType.click));
+        _bLinked.add(t.id);
+        _bSkipped.remove(t.id);
+        _toast(tr.bindLinked(t.name));
+        _bAdvance();
+      }
+    } finally {
+      _bBusy = false;
+    }
+  }
+
+  /// «Список»: вулики без наліпки з пошуком; тап - сканер переходить на цей вулик.
+  Future<void> _bList() async {
+    if (_manualOpen || _done) return;
+    _manualOpen = true;
+    int? picked;
+    try {
+      picked = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.popupBg,
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+        builder: (ctx) {
+          var query = '';
+          return StatefulBuilder(builder: (ctx, setS) {
+            final q = query.trim().toLowerCase();
+            final rows = [
+              for (var i = 0; i < _targets.length; i++)
+                if (!_bLinked.contains(_targets[i].id) &&
+                    (q.isEmpty || _targets[i].name.toLowerCase().contains(q)))
+                  i
+            ];
+            final left = _targets.length - _bLinked.length;
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+              child: SizedBox(
+                height: MediaQuery.sizeOf(ctx).height * 0.75,
+                child: Column(children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(tr.bindWithoutLabel(left),
+                        style: TextStyle(
+                            color: AppColors.text, fontSize: 17, fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: TextField(
+                      key: const ValueKey('bind-search'),
+                      onChanged: (v) => setS(() => query = v),
+                      decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search), hintText: tr.bindSearch),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: rows.length,
+                      itemBuilder: (_, k) {
+                        final i = rows[k];
+                        final t = _targets[i];
+                        final skipped = _bSkipped.contains(t.id);
+                        return ListTile(
+                          key: ValueKey('bind-row-${t.id}'),
+                          title: Text(t.name, style: TextStyle(color: AppColors.text)),
+                          trailing: Text(
+                              i == _bi ? tr.bindNow : (skipped ? tr.bindSkippedMark : ''),
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                          onTap: () => Navigator.pop(ctx, i),
+                        );
+                      },
+                    ),
+                  ),
+                ]),
+              ),
+            );
+          });
+        },
+      );
+    } finally {
+      _manualOpen = false;
+    }
+    if (picked == null || !mounted) return;
+    setState(() {
+      _bi = picked!;
+      _bSkipped.remove(_cur.id);
+      _qr = null;
+      _qrSince = null;
+    });
+  }
+
+  /// Шапка сканера в прив'язці підряд: прогрес і сусідні вулики.
+  Widget _bindHeader() {
+    final n = _targets.length;
+    final done = _bLinked.length + _bSkipped.length;
+    Widget side(int i, {required bool next}) {
+      if (n < 2) return const SizedBox(width: 90);
+      final t = _targets[(i % n + n) % n];
+      final ok = _bLinked.contains(t.id);
+      return SizedBox(
+        width: 90,
+        child: Text(next ? '${t.name} ›' : '‹ ${t.name}${ok ? ' ✓' : ''}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: next ? TextAlign.left : TextAlign.right,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text(tr.bindProgress(done, n, _bLinked.length, _bSkipped.length),
+            key: const ValueKey('bind-progress'),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: LinearProgressIndicator(
+            value: n == 0 ? 0 : done / n,
+            minHeight: 8,
+            color: AppColors.qrLinked,
+            backgroundColor: Colors.white24,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          side(_bi - 1, next: false),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(color: AppColors.hive, borderRadius: BorderRadius.circular(16)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: Text(_cur.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: Color(0xFF3A2008), fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+          side(_bi + 1, next: true),
+        ]),
+      ]),
+    );
   }
 
   String get _hint {
@@ -297,9 +572,15 @@ class _QrScanScreenState extends State<QrScanScreen> {
   Widget build(BuildContext context) {
     final p = _progress;
     final left = (QrScanScreen.qrHold.inMilliseconds / 1000 * (1 - p)).ceil().clamp(1, 9);
+    final bind = widget.bind;
     return PopScope(
+      canPop: bind == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _done = true;
+        if (didPop) {
+          _done = true;
+        } else {
+          _bFinish(); // «назад» у прив'язці підряд - підсумок
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -308,9 +589,24 @@ class _QrScanScreenState extends State<QrScanScreen> {
             Positioned.fill(
               child: RepaintBoundary(
                 key: _previewKey,
-                child: MobileScanner(controller: _ctrl, onDetect: _onDetect),
+                child: bind != null && !qrCameraAvailable
+                    ? const ColoredBox(color: Colors.black)
+                    : MobileScanner(controller: _ctrl, onDetect: _onDetect),
               ),
             ),
+            // прив'язка підряд: гортання вліво-вправо - інший вулик
+            if (bind != null)
+              Positioned.fill(
+                child: GestureDetector(
+                  key: const ValueKey('bind-swipe'),
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragEnd: (d) {
+                    final v = d.primaryVelocity ?? 0;
+                    if (v < -300) _bGo(1);
+                    if (v > 300) _bGo(-1);
+                  },
+                ),
+              ),
             // рамка: QR - квадрат у центрі, чек - його контур
             Positioned.fill(
               child: IgnorePointer(
@@ -343,22 +639,70 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 color: Colors.black54,
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   TopBar(
-                      title: _receipt ? tr.scanReceipt : (widget.title ?? tr.scanQr),
+                      title: bind != null
+                          ? tr.bindLabelFor(_cur.name)
+                          : (_receipt ? tr.scanReceipt : (widget.title ?? tr.scanQr)),
                       onBack: () {
                         if (_done) return;
+                        if (bind != null) {
+                          _bFinish();
+                          return;
+                        }
                         _done = true; // камера ще працює під час закриття - не закривати вдруге
                         Navigator.pop(context);
                       }),
+                  if (bind != null) _bindHeader(),
                   if (_receiptOn) _modeSwitch(),
                 ]),
               ),
             ),
+            if (bind != null && _bToast != null)
+              Positioned(
+                top: 150,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  child: Center(
+                    child: Container(
+                      key: const ValueKey('bind-toast'),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                          color: AppColors.qrLinked, borderRadius: BorderRadius.circular(18)),
+                      child: Text(_bToast!,
+                          style: const TextStyle(
+                              color: Color(0xFF06240F), fontWeight: FontWeight.w700, fontSize: 13)),
+                    ),
+                  ),
+                ),
+              ),
+            if (bind != null && _targets.length > 1) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  key: const ValueKey('bind-prev'),
+                  tooltip: tr.bindPrevHive,
+                  style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                  onPressed: () => _bGo(-1),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  key: const ValueKey('bind-next'),
+                  tooltip: tr.bindNextHive,
+                  style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                  icon: const Icon(Icons.chevron_right, color: Colors.white, size: 28),
+                  onPressed: () => _bGo(1),
+                ),
+              ),
+            ],
             Positioned(
               left: 16,
               right: 16,
               bottom: 20,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(_hint,
+                Text(bind != null && _qr == null ? tr.bindAimHint : _hint,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         color: Colors.white,
@@ -406,6 +750,30 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   width: double.infinity,
                   onPressed: _manual,
                 ),
+                if (bind != null) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(
+                      child: PillButton(
+                        text: tr.bindList,
+                        bg: AppColors.neutralBtn,
+                        fg: AppColors.text,
+                        height: 44,
+                        onPressed: _bList,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: PillButton(
+                        text: tr.skip,
+                        bg: AppColors.neutralBtn,
+                        fg: AppColors.text,
+                        height: 44,
+                        onPressed: _bSkip,
+                      ),
+                    ),
+                  ]),
+                ],
                 if (!_receipt && widget.skipLabel != null) ...[
                   const SizedBox(height: 8),
                   PillButton(

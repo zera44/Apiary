@@ -23,6 +23,7 @@ import 'package:apiary/services/server.dart';
 import 'package:apiary/ui/first_hints.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/common.dart';
+import 'package:apiary/ui/orientation.dart';
 import 'package:apiary/ui/text_scale.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -117,6 +118,52 @@ void main() {
     expect(AppTextScale.value.value, 1.0);
   });
 
+  testWidgets('орієнтація: обирається в «Головному», передається системі й зберігається', (tester) async {
+    final calls = <List<String>>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (c) async {
+      if (c.method == 'SystemChrome.setPreferredOrientations') {
+        calls.add([for (final o in c.arguments as List) '$o']);
+      }
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+    AppOrientation.value.value = ScreenOrientation.auto;
+    await tester.pumpWidget(app(SettingsScreen(repo: repo)));
+    await settle(tester);
+    expect(find.text(tr.orientationSection), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('orientation-portrait')));
+    await settle(tester);
+    expect(AppOrientation.value.value, ScreenOrientation.portrait);
+    expect(calls.last, ['DeviceOrientation.portraitUp']);
+    expect(await tester.runAsync(() => repo.getMeta(AppOrientation.key)), 'portrait');
+    await tester.tap(find.byKey(const ValueKey('orientation-auto')));
+    await settle(tester);
+    expect(calls.last, isEmpty); // авто - як дозволяє система
+    // перезапуск: збережене повертається; сміття - авто
+    await tester.runAsync(() => repo.setMeta(AppOrientation.key, 'landscape'));
+    await tester.runAsync(() => AppOrientation.load(repo));
+    expect(AppOrientation.value.value, ScreenOrientation.landscape);
+    await tester.runAsync(() => repo.setMeta(AppOrientation.key, 'вбік'));
+    await tester.runAsync(() => AppOrientation.load(repo));
+    expect(AppOrientation.value.value, ScreenOrientation.auto);
+  });
+
+  testWidgets('головний на телефоні боком: «Почати» видно без прокрутки', (tester) async {
+    for (final scale in AppTextScale.levels) {
+      tester.view.physicalSize = const Size(914, 411) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      AppTextScale.value.value = scale;
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(app(HomeScreen(repo: repo, auth: FakeAuth(signedIn: true))));
+      await settle(tester);
+      final start = tester.getRect(find.widgetWithText(PillButton, 'Почати'));
+      expect(start.bottom, lessThanOrEqualTo(411), reason: 'шрифт ×$scale');
+    }
+    AppTextScale.value.value = 1.0;
+  });
+
   // дисплеї: вузький телефон з найбільшим шрифтом, найменший телефон,
   // планшет вертикально й горизонтально; ще й англійською
   final displays = {
@@ -125,8 +172,12 @@ void main() {
     'телефон 320 dp': (const Size(320, 568), 1.0, 'uk'),
     'планшет вертикально, найбільший шрифт': (const Size(800, 1280), AppTextScale.levels.last, 'uk'),
     'планшет горизонтально': (const Size(1280, 800), 1.0, 'uk'),
+    // телефон боком (як RMX3867: 914×411 dp)
+    'телефон горизонтально': (const Size(914, 411), 1.0, 'uk'),
+    'телефон горизонтально, найбільший шрифт': (const Size(914, 411), AppTextScale.levels.last, 'uk'),
     'англійською: телефон 360 dp, найбільший шрифт': (const Size(360, 640), AppTextScale.levels.last, 'en'),
     'англійською: телефон 320 dp': (const Size(320, 568), 1.0, 'en'),
+    'англійською: телефон горизонтально, найбільший шрифт': (const Size(914, 411), AppTextScale.levels.last, 'en'),
   };
   for (final d in displays.entries) {
     testWidgets('${d.key}: екрани без переповнень', (tester) async {

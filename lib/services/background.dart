@@ -14,6 +14,7 @@ import '../data/sync_api.dart';
 import '../data/sync_service.dart';
 import '../l10n/l10n.dart';
 import 'app_config.dart';
+import 'app_foreground.dart';
 import 'backups.dart';
 import 'feedback_chat.dart';
 import 'reminders.dart';
@@ -33,12 +34,12 @@ class BackgroundTasks {
   /// Резервна копія бази (кожні [BackupService.interval]).
   static const backup = 'apiary.backup';
 
-  /// Синхронізація: кожні 15 хв перевірка розкладу (щогодини у свою
+  /// Синхронізація: щогодини перевірка розкладу (у свою
   /// хвилину, понад добу без зв'язку - одразу, нічна копія). Лише коли є
   /// мережа (Android сам відкладає до її появи); без мобільного інтернету -
   /// лише Wi-Fi.
   static const sync = 'apiary.sync';
-  static const syncEvery = Duration(minutes: 15);
+  static const syncEvery = Duration(hours: 1);
 
   /// Відповіді розробника на відгук: раз на ~15 хв питає сервер (лише якщо
   /// людина вже писала) і показує сповіщення.
@@ -174,7 +175,9 @@ class ForegroundJobs {
 
   void start() {
     unawaited(tick());
-    _timer ??= Timer.periodic(checkEvery, (_) => tick());
+    _timer ??= Timer.periodic(checkEvery, (_) {
+      if (appInForeground()) tick();
+    });
   }
 
   void stop() {

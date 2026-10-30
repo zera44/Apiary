@@ -96,16 +96,6 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
       content: Text(text, style: TextStyle(color: AppColors.text)),
       actions: [
         Column(mainAxisSize: MainAxisSize.min, children: [
-          if (!e.fromStock) ...[
-            SizedBox(
-              width: double.infinity,
-              child: PillButton(
-                  text: tr.edit,
-                  bg: AppColors.accent,
-                  onPressed: () => Navigator.pop(ctx, _EntryAction.edit)),
-            ),
-            const SizedBox(height: 8),
-          ],
           Row(children: [
             Expanded(
               child: PillButton(
@@ -114,20 +104,40 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
                   fg: AppColors.text,
                   onPressed: () => Navigator.pop(ctx, _EntryAction.close)),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: PillButton(
-                  text: tr.recordCancel,
-                  bg: AppColors.danger,
-                  onPressed: () => Navigator.pop(ctx, _EntryAction.cancel)),
-            ),
+            if (!e.fromStock) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: PillButton(
+                    text: tr.edit,
+                    bg: AppColors.accent,
+                    onPressed: () => Navigator.pop(ctx, _EntryAction.edit)),
+              ),
+            ],
           ]),
+          // небезпечна дія - окремо, щоб не влучити замість «Закрити»
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              key: const ValueKey('fin-entry-cancel'),
+              onPressed: () => Navigator.pop(ctx, _EntryAction.cancel),
+              child: Text(tr.recordCancel,
+                  style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+            ),
+          ),
         ]),
       ],
     ),
   );
   if (!context.mounted || action == null || action == _EntryAction.close) return false;
   if (action == _EntryAction.edit) return _editFinEntry(context, repo, e);
+  // як на складі: скасування - лише після підтвердження
+  final ok = await showConfirm(context,
+      title: tr.recordCancelTitle,
+      text: tr.finCancelText(name, uah(e.amount), finDay(e.date)),
+      confirmText: tr.recordCancel,
+      cancelText: tr.close);
+  if (!ok || !context.mounted) return false;
   try {
     await repo.cancelFinEntry(e);
     return true;
@@ -439,9 +449,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
     await _reload();
   }
 
-  Widget _periodTabs() => SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+  // усі п'ять вкладок завжди видно: на великому шрифті ряд трохи
+  // зменшується, а не ховає «Період» за край
+  Widget _periodTabs() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: FittedBox(
+        fit: BoxFit.scaleDown,
         child: Row(children: [
           for (final p in FinPeriod.values)
             GestureDetector(
@@ -462,6 +475,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               ),
             ),
         ]),
+        ),
       );
 
   @override
@@ -473,6 +487,142 @@ class _FinanceScreenState extends State<FinanceScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
     final total = items.fold(0.0, (a, e) => a + e.value);
     Color colorOf(String? id) => id == null ? finColor('olive') : finColor(_cats[id]?.color ?? 'nut');
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height && size.height < 500;
+    final donut = landscape ? 200.0 : 250.0;
+    final Widget summary = Container(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+      decoration: BoxDecoration(
+          color: AppColors.card, borderRadius: BorderRadius.circular(20)),
+      child: Column(children: [
+        _periodTabs(),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          if (_period != FinPeriod.custom)
+            IconButton(
+                onPressed: () => _shift(-1),
+                tooltip: tr.earlier,
+                icon: Icon(Icons.chevron_left, color: AppColors.text)),
+          Flexible(
+            child: GestureDetector(
+              onTap: _period == FinPeriod.custom
+                  ? () => _setPeriod(FinPeriod.custom)
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                child: Text(_title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ),
+          if (_period != FinPeriod.custom)
+            IconButton(
+                onPressed: () => _shift(1),
+                tooltip: tr.later,
+                icon: Icon(Icons.chevron_right, color: AppColors.text)),
+        ]),
+        SizedBox(
+          width: donut,
+          height: donut,
+          child: Stack(alignment: Alignment.center, children: [
+            CustomPaint(
+              size: Size(donut, donut),
+              painter: _DonutPainter(
+                  [for (final e in items) (e.value, colorOf(e.key))],
+                  AppColors.darkBtn),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 52),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(uah(total),
+                      style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(height: 2),
+                Text(tr.finBalance(uah(s.balance)),
+                    style: TextStyle(
+                        color: s.balance < 0
+                            ? AppColors.danger
+                            : AppColors.textMuted,
+                        fontSize: 12)),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    );
+    final rows = <Widget>[
+      if (items.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Center(
+              child: Text(tr.finNothingInPeriod,
+                  style: TextStyle(color: AppColors.textMuted))),
+        ),
+      for (final e in items)
+        Builder(builder: (_) {
+          final c = e.key == null ? null : _cats[e.key];
+          final pct = total > 0 ? (e.value / total * 100).round() : 0;
+          final name = e.key == null
+              ? kFinStockCategoryName
+              : (c?.name ?? tr.noCategory);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+                color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _history(
+                  categoryId: e.key,
+                  onlyStock: e.key == null,
+                  title: '$name · $_title'),
+              onLongPress: c == null ? null : () => _editCategory(c),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(children: [
+                  e.key == null
+                      ? const FinBadge(icon: 'home', color: 'olive', size: 44)
+                      : FinBadge(
+                          icon: c?.icon ?? 'other', color: c?.color ?? 'nut', size: 44),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.text, fontSize: 16)),
+                  ),
+                  const SizedBox(width: 10),
+                  // сума над відсотком; найбільший шрифт на вузькому
+                  // телефоні - зменшується, а не вилазить за край
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(uah(e.value),
+                                style: TextStyle(color: AppColors.text, fontSize: 16)),
+                            Text('$pct%',
+                                style: TextStyle(
+                                    color: AppColors.textMuted, fontSize: 13.5)),
+                          ]),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          );
+        }),
+    ];
     return Scaffold(
       body: SafeArea(
         child: Stack(children: [
@@ -498,141 +648,25 @@ class _FinanceScreenState extends State<FinanceScreen> {
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
-                  // знизу - місце під кнопку «+» (не закриває суму в останньому рядку)
-                  : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), children: [
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
-                        decoration: BoxDecoration(
-                            color: AppColors.card, borderRadius: BorderRadius.circular(20)),
-                        child: Column(children: [
-                          _periodTabs(),
-                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            if (_period != FinPeriod.custom)
-                              IconButton(
-                                  onPressed: () => _shift(-1),
-                                  tooltip: tr.earlier,
-                                  icon: Icon(Icons.chevron_left, color: AppColors.text)),
-                            Flexible(
-                              child: GestureDetector(
-                                onTap: _period == FinPeriod.custom
-                                    ? () => _setPeriod(FinPeriod.custom)
-                                    : null,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                  child: Text(_title,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          color: AppColors.text,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                              ),
-                            ),
-                            if (_period != FinPeriod.custom)
-                              IconButton(
-                                  onPressed: () => _shift(1),
-                                  tooltip: tr.later,
-                                  icon: Icon(Icons.chevron_right, color: AppColors.text)),
-                          ]),
+                  : landscape
+                      // телефон боком: діаграма ліворуч, категорії праворуч - обидва
+                      // видно без прокрутки
+                      ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           SizedBox(
-                            width: 250,
-                            height: 250,
-                            child: Stack(alignment: Alignment.center, children: [
-                              CustomPaint(
-                                size: const Size(250, 250),
-                                painter: _DonutPainter(
-                                    [for (final e in items) (e.value, colorOf(e.key))],
-                                    AppColors.darkBtn),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 52),
-                                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                  FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(uah(total),
-                                        style: TextStyle(
-                                            color: AppColors.text,
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w600)),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(tr.finBalance(uah(s.balance)),
-                                      style: TextStyle(
-                                          color: s.balance < 0
-                                              ? AppColors.danger
-                                              : AppColors.textMuted,
-                                          fontSize: 12)),
-                                ]),
-                              ),
-                            ]),
+                            width: 300,
+                            child: ListView(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 8, 16), children: [summary]),
                           ),
-                        ]),
-                      ),
-                      const SizedBox(height: 12),
-                      if (items.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                              child: Text(tr.finNothingInPeriod,
-                                  style: TextStyle(color: AppColors.textMuted))),
-                        ),
-                      for (final e in items)
-                        Builder(builder: (_) {
-                          final c = e.key == null ? null : _cats[e.key];
-                          final pct = total > 0 ? (e.value / total * 100).round() : 0;
-                          final name = e.key == null
-                              ? kFinStockCategoryName
-                              : (c?.name ?? tr.noCategory);
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                                color: AppColors.card, borderRadius: BorderRadius.circular(16)),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => _history(
-                                  categoryId: e.key,
-                                  onlyStock: e.key == null,
-                                  title: '$name · $_title'),
-                              onLongPress: c == null ? null : () => _editCategory(c),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Row(children: [
-                                  e.key == null
-                                      ? const FinBadge(icon: 'home', color: 'olive', size: 44)
-                                      : FinBadge(
-                                          icon: c?.icon ?? 'other', color: c?.color ?? 'nut', size: 44),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Text(name,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(color: AppColors.text, fontSize: 16)),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  // сума над відсотком; найбільший шрифт на вузькому
-                                  // телефоні - зменшується, а не вилазить за край
-                                  Flexible(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerRight,
-                                      child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(uah(e.value),
-                                                style: TextStyle(color: AppColors.text, fontSize: 16)),
-                                            Text('$pct%',
-                                                style: TextStyle(
-                                                    color: AppColors.textMuted, fontSize: 13.5)),
-                                          ]),
-                                    ),
-                                  ),
-                                ]),
-                              ),
-                            ),
-                          );
-                        }),
-                    ]),
+                          Expanded(
+                            child: ListView(
+                                padding: const EdgeInsets.fromLTRB(8, 0, 16, 100),
+                                children: rows),
+                          ),
+                        ])
+                      // знизу - місце під кнопку «+» (не закриває суму в останньому рядку)
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                          children: [summary, const SizedBox(height: 12), ...rows]),
             ),
           ]),
           Positioned(

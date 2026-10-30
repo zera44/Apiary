@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:sqflite/sqflite.dart';
 
 import '../services/app_config.dart';
+import '../services/app_foreground.dart';
 import '../services/backups.dart';
 import '../services/server_backups.dart';
 import 'repository.dart';
@@ -134,7 +135,9 @@ class SyncService {
   void start() {
     current = this;
     unawaited(refreshInfo());
-    _timer ??= Timer.periodic(const Duration(minutes: 1), (_) => unawaited(tick()));
+    _timer ??= Timer.periodic(const Duration(minutes: 1), (_) {
+      if (appInForeground()) unawaited(tick());
+    });
     try {
       _net ??= Connectivity().onConnectivityChanged.listen((r) {
         if (!r.contains(ConnectivityResult.none)) unawaited(maybeSync());

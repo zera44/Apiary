@@ -72,6 +72,9 @@ abstract class AppStrings {
   String get textSizeHint;
   List<String> get textSizeLevels;
   String get textSizePreview;
+  String get orientationSection;
+  String get orientationHint;
+  List<String> get orientationLevels;
   String get inviteLinkButton;
   String get inviteLinkHint;
   String inviteLinkShare(String url);
@@ -554,17 +557,11 @@ abstract class AppStrings {
   String get done;
   String get daysToRound;
   String get mapAllHaveQr;
-  String mapLeftWithoutCode(int n);
-  String mapLinkedLabels(int linked, int skipped);
   String get qrCodes;
-  String get hiveLower;
-  String mapLabelFor(String name);
-  String get mapSkipThisHive;
   String get qrInUse;
   String qrMoveTo(String other, String apiary, String name);
   String qrMoveHere(String other, String apiary);
   String get move;
-  String mapLinkedName(String name);
   String qrNumber(String n);
   String get qrOfHive;
   String get qrOther;
@@ -1001,9 +998,7 @@ abstract class AppStrings {
   String get feedbackChannelText;
   String get reminder;
   String hiveListMore(String names, int n);
-  String get roundTime;
   String roundInspect(int n, String list);
-  String get roundNotDone;
   String roundLeft(int n, String list);
 
   // ---- Склад: назви операцій ----
@@ -1084,6 +1079,38 @@ abstract class AppStrings {
   String finUndo(bool income, String amount);
   String get text;
   String get when;
+
+  // Злиття main: прив'язка наліпок підряд, обхід, фінанси
+  String finCancelText(String name, String amount, String date);
+  String get bindPickHint;
+  String roundSkipped(String name);
+  String roundNoChange(String name, int done);
+  String roundSaved(String name, int done);
+  String inspectionSaved(String name);
+  String inspectionSavedCount(String name, int done);
+  String get feedNotReturned;
+  String get inspectionUndone;
+  String get hiveHasQr;
+  String get bindLabels;
+  String get bindAllLinked;
+  String bindLinkedCount(int n);
+  String bindAllDone(int n);
+  String bindPartly(int linked, int skipped, int left);
+  String bindBarCount(int noCode, int chosen);
+  String get bindDeselect;
+  String get bindSelectAll;
+  String scanCount(int n);
+  String bindLinked(String name);
+  String bindWithoutLabel(int n);
+  String get bindSearch;
+  String get bindNow;
+  String get bindSkippedMark;
+  String bindProgress(int done, int n, int linked, int skipped);
+  String bindLabelFor(String name);
+  String get bindPrevHive;
+  String get bindNextHive;
+  String get bindAimHint;
+  String get bindList;
 }
 
 /// Множина в українській: 1, 21, 31… - [one]; 2-4, 22-24… - [few]; решта - [many].

@@ -143,6 +143,8 @@ class CharacteristicsPanel extends StatelessWidget {
             return v.isEmpty ? tr.obstacle : tr.obstacleOf(v);
           }();
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold);
+    // телефон боком: менший значок, щоб під заголовком було видно значення
+    final low = MediaQuery.sizeOf(context).height < 500;
 
     return Material(
       color: AppColors.panel,
@@ -179,14 +181,14 @@ class CharacteristicsPanel extends StatelessWidget {
                   child: GestureDetector(
                     onTap: editable ? onIcon : null,
                     child: SizedBox.square(
-                      dimension: 72,
+                      dimension: low ? 44 : 72,
                       child: CustomPaint(
                         painter: _IconBoxPainter(data.type, data.variant, data.icon, color, editable),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: low ? 6 : 10),
                 GestureDetector(
                   onTap: editable ? onRename : null,
                   child: Text(data.title,

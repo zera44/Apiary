@@ -1825,7 +1825,7 @@ class Repository {
     final startId = await baseParameterId('hive', 'visit_start');
     if (periodId == null || startId == null) return [];
     final els = await db.rawQuery(
-      'SELECT e.id, e.label, e.group_id, a.name AS apiary_name, '
+      'SELECT e.id, e.label, e.group_id, e.apiary_id, a.name AS apiary_name, '
       'a.visit_period AS apiary_period, a.visit_period_at AS apiary_period_at FROM elements e '
       'JOIN apiaries a ON a.id = e.apiary_id '
       "WHERE e.deleted = 0 AND e.archived = 0 AND e.type = 'hive' AND a.deleted = 0 "
@@ -1868,6 +1868,7 @@ class Repository {
       out.add(VisitTarget(
         key: key,
         elementId: id,
+        apiaryId: (r['apiary_id'] as String?) ?? '',
         apiaryName: (r['apiary_name'] as String?) ?? '',
         name: label.isEmpty ? tr.hive : label,
         periodDays: n,
@@ -2152,6 +2153,14 @@ class Repository {
   /// «скасовано», а новий запис 'cancel' повертає залишок назад. Не можна
   /// скасувати двічі, скасування, старий «перезапис» і прихід, який уже
   /// (частково) списано так, що залишок став би від'ємним.
+  /// Останній рух позиції [itemId] (щойно внесений) - щоб його можна було
+  /// скасувати, напр., підгодівлю з відміненого огляду.
+  Future<String?> lastStockMoveId(String itemId) async {
+    final rows = await db.query('stock_moves',
+        columns: ['id'], where: 'item_id = ?', whereArgs: [itemId], orderBy: 'created_at DESC', limit: 1);
+    return rows.isEmpty ? null : rows.first['id'] as String;
+  }
+
   Future<double> cancelStockMove(String moveId) async {
     final r = await db.transaction((txn) async {
       final next = await cancelStockMoveTx(txn, moveId);

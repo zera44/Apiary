@@ -26,6 +26,7 @@ import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
 import 'ui/theme.dart';
 import 'ui/text_scale.dart';
+import 'ui/orientation.dart';
 import 'package:app_links/app_links.dart';
 import 'services/invite_link.dart';
 import 'ui/voice_input_bar.dart';
@@ -53,6 +54,7 @@ Future<void> _start() async {
     await StockPhotos.init();
     await AppTextScale.load(repo); // розмір шрифту з налаштувань
     await L10n.load(repo); // мова інтерфейсу з налаштувань
+    await AppOrientation.load(repo); // орієнтація екрана з налаштувань
   } catch (e) {
     runApp(StartupErrorApp(error: e, onRetry: _start));
     return;
@@ -89,7 +91,7 @@ Future<void> _startJobs(Repository repo) async {
     final jobs = ForegroundJobs(backups);
     await jobs.tick(); // копія - раніше за перетискання фото
     jobs.start();
-    unawaited(BackgroundTasks.register().catchError((Object e) {
+    unawaited(BackgroundTasks.register().then((_) => _migrateSyncPeriod(repo)).catchError((Object e) {
       debugPrint('Фонові завдання: $e');
     }));
     await StockPhotos.upgradeOld(repo);
@@ -97,6 +99,16 @@ Future<void> _startJobs(Repository repo) async {
   } catch (e) {
     debugPrint('Службові завдання: $e');
   }
+}
+
+/// Раз після оновлення: фонова синхронізація була раз на 15 хв, а тепер раз
+/// на годину; уже записане завдання система сама не змінює.
+Future<void> _migrateSyncPeriod(Repository repo) async {
+  const key = 'sync_period_hourly';
+  if (await repo.getMeta(key) != null) return;
+  final mobile = await repo.getMeta(SyncService.mobileKey) != '0';
+  await BackgroundTasks.registerSync(mobile: mobile);
+  await repo.setMeta(key, '1');
 }
 
 /// Чи можна одразу на головний екран: увійшли, обрали «без входу», або вхід
