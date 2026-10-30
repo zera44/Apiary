@@ -185,11 +185,12 @@ void main() {
         periodSetAt: setAt);
 
     VisitTarget hive(String key, String name,
-            {int period = 2, String? last = '01.10.2026'}) =>
+            {int period = 2, String? last = '01.10.2026', String apiaryId = 'a1', String apiary = 'Пасіка'}) =>
         VisitTarget(
             key: 'e:$key',
             elementId: key,
-            apiaryName: 'Пасіка',
+            apiaryId: apiaryId,
+            apiaryName: apiary,
             name: name,
             periodDays: period,
             lastVisit: last);
@@ -202,11 +203,40 @@ void main() {
       ], now: DateTime(2026, 10, 1, 10));
       // 3.10: усі троє настали одночасно - два сповіщення на всіх
       expect(p.take(2).map((r) => r.when), [DateTime(2026, 10, 3, 9), DateTime(2026, 10, 3, 14)]);
-      expect(p[0].title, 'Час обходу');
+      expect(p[0].title, 'Пасіка');
       expect(p[0].body, 'Оглянути 3 вулики: Вулик 5, Вулик 6, Вулик 7');
-      expect(p[1].title, 'Обхід ще не завершено');
+      expect(p[1].title, 'Пасіка');
       expect(p[1].body, 'Лишилось оглянути 3 вулики: Вулик 5, Вулик 6, Вулик 7');
       expect(p[0].elementId, '5'); // натискання відкриває карту його пасіки
+    });
+
+    test('окреме сповіщення на кожну пасіку з її назвою і лише її вуликами', () {
+      final p = planReminders([
+        hive('1', 'Вулик 1', apiaryId: 'a1', apiary: 'Біля хати'),
+        hive('2', 'Вулик 2', apiaryId: 'a2', apiary: 'Поле'),
+        hive('3', 'Вулик 3', apiaryId: 'a1', apiary: 'Біля хати'),
+        hive('4', 'Вулик 4', apiaryId: 'a3', apiary: ''),
+        // та сама назва, але інша пасіка - не зливається
+        hive('5', 'Вулик 5', apiaryId: 'a4', apiary: 'Поле'),
+      ], now: DateTime(2026, 10, 1, 10));
+      final morning = p.where((r) => r.when == DateTime(2026, 10, 3, 9)).toList();
+      expect([for (final r in morning) (r.title, r.body, r.elementId)], [
+        ('Біля хати', 'Оглянути 2 вулики: Вулик 1, Вулик 3', '1'),
+        ('Поле', 'Оглянути 1 вулик: Вулик 2', '2'),
+        ('Моя пасіка', 'Оглянути 1 вулик: Вулик 4', '4'),
+        ('Поле', 'Оглянути 1 вулик: Вулик 5', '5'),
+      ]);
+      final afternoon = p.where((r) => r.when == DateTime(2026, 10, 3, 14)).toList();
+      expect(afternoon.map((r) => r.title), ['Біля хати', 'Поле', 'Моя пасіка', 'Поле']);
+    });
+
+    test('у пасіці, де всіх оглянули, другого нагадування немає, в іншій - є', () {
+      final p = planReminders([
+        hive('1', 'Вулик 1', apiaryId: 'a1', apiary: 'Біля хати', last: '03.10.2026'),
+        hive('2', 'Вулик 2', apiaryId: 'a2', apiary: 'Поле'),
+      ], now: DateTime(2026, 10, 3, 10));
+      final today = p.where((r) => r.when.day == 3 && r.when.month == 10).toList();
+      expect([for (final r in today) (r.title, r.body)], [('Поле', 'Лишилось оглянути 1 вулик: Вулик 2')]);
     });
 
     test('довгий список вуликів скорочується', () {
@@ -229,7 +259,7 @@ void main() {
     test('сьогодні після 9:00 і вулик не оглянуто - лишається друге о 14:00', () {
       final p = planReminders([hive('5', 'Вулик 5')], now: DateTime(2026, 10, 3, 10));
       expect(p.first.when, DateTime(2026, 10, 3, 14));
-      expect(p.first.title, 'Обхід ще не завершено');
+      expect(p.first.body, 'Лишилось оглянути 1 вулик: Вулик 5');
     });
 
     test('сьогодні вулик оглянули вранці - ні другого, ні ранкового нагадування', () {

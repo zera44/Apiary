@@ -1824,7 +1824,7 @@ class Repository {
     final startId = await baseParameterId('hive', 'visit_start');
     if (periodId == null || startId == null) return [];
     final els = await db.rawQuery(
-      'SELECT e.id, e.label, e.group_id, a.name AS apiary_name, '
+      'SELECT e.id, e.label, e.group_id, e.apiary_id, a.name AS apiary_name, '
       'a.visit_period AS apiary_period, a.visit_period_at AS apiary_period_at FROM elements e '
       'JOIN apiaries a ON a.id = e.apiary_id '
       "WHERE e.deleted = 0 AND e.archived = 0 AND e.type = 'hive' AND a.deleted = 0 "
@@ -1867,6 +1867,7 @@ class Repository {
       out.add(VisitTarget(
         key: key,
         elementId: id,
+        apiaryId: (r['apiary_id'] as String?) ?? '',
         apiaryName: (r['apiary_name'] as String?) ?? '',
         name: label.isEmpty ? 'Вулик' : label,
         periodDays: n,

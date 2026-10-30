@@ -11,6 +11,9 @@ class VisitTarget {
 
   /// Id вулика (для групи — першого вулика групи), щоб можна було відкрити.
   final String elementId;
+
+  /// Id пасіки: нагадування про обхід приходять окремо по кожній пасіці.
+  final String apiaryId;
   final String apiaryName;
 
   /// Назва вулика як на карті ("Вулик 5"); порожньою не буває.
@@ -29,6 +32,7 @@ class VisitTarget {
   const VisitTarget({
     required this.key,
     required this.elementId,
+    this.apiaryId = '',
     required this.apiaryName,
     required this.name,
     this.periodDays,
@@ -103,31 +107,37 @@ String _hiveList(List<String> names) {
 
 String _hivesWord(int n) => pluralUk(n, one: 'вулик', few: 'вулики', many: 'вуликів');
 
+/// Назва пасіки для заголовка сповіщення.
+String _apiaryTitle(String name) => name.trim().isEmpty ? 'Моя пасіка' : name.trim();
+
 /// Нагадування про обхід для набору об'єктів, за зростанням часу, не більше
 /// [limit] (ліміти системи на кількість запланованих сповіщень).
 ///
-/// Не по одному на вулик, а одне на день: о [kReminderMorning] - які вулики
-/// пора оглянути, о [kReminderAfternoon] - друге, лише якщо за цей час їх не
-/// оглянули. День потрапляє в план, коли в когось із вуликів настав термін
-/// (дата останнього обходу + період). Друге нагадування планується з
-/// припущенням, що вранці нікого не оглянуто: щойно обхід записано, план
-/// перебудовується (див. `ReminderService`), і воно зникає або зменшується.
+/// Не по одному на вулик, а одне на день для кожної пасіки (заголовок - назва
+/// пасіки): о [kReminderMorning] - які її вулики пора оглянути, о
+/// [kReminderAfternoon] - друге, лише якщо за цей час їх не оглянули. День
+/// потрапляє в план, коли в когось із вуликів настав термін (дата останнього
+/// обходу + період). Друге нагадування планується з припущенням, що вранці
+/// нікого не оглянуто: щойно обхід записано, план перебудовується (див.
+/// `ReminderService`), і воно зникає або зменшується.
 List<PlannedReminder> planReminders(
   Iterable<VisitTarget> targets, {
   required DateTime now,
   int limit = 200,
 }) {
-  // вулик -> перший момент, коли настав термін обходу (без нового огляду)
-  final due = <(VisitTarget, DateTime)>[];
-  final days = <DateTime>{};
+  // пасіка -> її вулики з першим моментом, коли настав термін обходу (без
+  // нового огляду), і дні, коли комусь із них пора
+  final due = <String, List<(VisitTarget, DateTime)>>{};
+  final days = <String, Set<DateTime>>{};
   final today = DateTime(now.year, now.month, now.day);
   for (final t in targets) {
     final period = t.periodDays;
     if (period == null) continue;
     final anchor = _parseDate(t.lastVisit) ?? t.periodSetAt;
     if (anchor == null) continue;
+    final apiary = t.apiaryId.isNotEmpty ? 'id:${t.apiaryId}' : 'name:${t.apiaryName}';
     final last = DateTime(anchor.year, anchor.month, anchor.day);
-    due.add((t, DateTime(last.year, last.month, last.day + period, kReminderMorning)));
+    (due[apiary] ??= []).add((t, DateTime(last.year, last.month, last.day + period, kReminderMorning)));
     // наперед — приблизно на 45 днів (щоб непройдений обхід «не замовкав»,
     // навіть якщо застосунок довго не відкривали), але не менше 3 термінів
     final count = (45 ~/ period).clamp(3, 45);
@@ -138,31 +148,38 @@ List<PlannedReminder> planReminders(
         now: today.subtract(const Duration(minutes: 1)),
         count: count,
         hour: kReminderMorning)) {
-      days.add(DateTime(when.year, when.month, when.day));
+      (days[apiary] ??= {}).add(DateTime(when.year, when.month, when.day));
     }
   }
   final out = <PlannedReminder>[];
-  for (final day in days) {
-    List<(VisitTarget, DateTime)> dueAt(DateTime m) =>
-        [for (final d in due) if (!d.$2.isAfter(m)) d]..sort((a, b) => a.$2.compareTo(b.$2));
-    final morning = DateTime(day.year, day.month, day.day, kReminderMorning);
-    final afternoon = DateTime(day.year, day.month, day.day, kReminderAfternoon);
-    final first = dueAt(morning);
-    if (first.isNotEmpty && morning.isAfter(now)) {
-      final n = first.length;
-      out.add(PlannedReminder(first.first.$1.elementId, 'Час обходу',
-          'Оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in first) d.$1.name])}',
-          morning));
-    }
-    final rest = dueAt(afternoon);
-    if (rest.isNotEmpty && afternoon.isAfter(now)) {
-      final n = rest.length;
-      out.add(PlannedReminder(rest.first.$1.elementId, 'Обхід ще не завершено',
-          'Лишилось оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in rest) d.$1.name])}',
-          afternoon));
+  for (final MapEntry(key: apiary, value: hives) in due.entries) {
+    final title = _apiaryTitle(hives.first.$1.apiaryName);
+    for (final day in days[apiary] ?? const <DateTime>{}) {
+      List<(VisitTarget, DateTime)> dueAt(DateTime m) =>
+          [for (final d in hives) if (!d.$2.isAfter(m)) d]..sort((a, b) => a.$2.compareTo(b.$2));
+      final morning = DateTime(day.year, day.month, day.day, kReminderMorning);
+      final afternoon = DateTime(day.year, day.month, day.day, kReminderAfternoon);
+      final first = dueAt(morning);
+      if (first.isNotEmpty && morning.isAfter(now)) {
+        final n = first.length;
+        out.add(PlannedReminder(first.first.$1.elementId, title,
+            'Оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in first) d.$1.name])}', morning));
+      }
+      final rest = dueAt(afternoon);
+      if (rest.isNotEmpty && afternoon.isAfter(now)) {
+        final n = rest.length;
+        out.add(PlannedReminder(rest.first.$1.elementId, title,
+            'Лишилось оглянути $n ${_hivesWord(n)}: ${_hiveList([for (final d in rest) d.$1.name])}',
+            afternoon));
+      }
     }
   }
-  out.sort((a, b) => a.when.compareTo(b.when));
+  // за часом; в один момент - пасіки в тому ж порядку, що й на карті
+  final order = {for (var i = 0; i < out.length; i++) out[i]: i};
+  out.sort((a, b) {
+    final c = a.when.compareTo(b.when);
+    return c != 0 ? c : order[a]!.compareTo(order[b]!);
+  });
   return out.length > limit ? out.sublist(0, limit) : out;
 }
 
@@ -183,8 +200,7 @@ PlannedReminder? dueReminder(VisitTarget t, {required DateTime now, int hour = 9
     k--;
   }
   if (k < 1) return null;
-  final title = t.apiaryName.isEmpty ? 'Моя пасіка' : t.apiaryName;
-  return PlannedReminder(t.elementId, title, t.name, at(k));
+  return PlannedReminder(t.elementId, _apiaryTitle(t.apiaryName), t.name, at(k));
 }
 
 /// Днів до наступного обходу: період мінус дні, що минули від останнього
