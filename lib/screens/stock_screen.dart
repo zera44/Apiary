@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -275,7 +276,8 @@ class _StockScreenState extends State<StockScreen> {
           text: text,
           bg: _op == op ? AppColors.accent : AppColors.darkBtn,
           fg: _op == op ? Colors.white : AppColors.text,
-          height: 40,
+          // великий шрифт: «Прихід і списання» у два рядки - вкладка вища
+          height: math.max(40, MediaQuery.textScalerOf(context).scale(13) * 1.1 * 2 + 10),
           fontSize: 13,
           onPressed: () => setState(() => _op = op),
         ),
@@ -331,12 +333,21 @@ class _StockScreenState extends State<StockScreen> {
                           ? _inventoryList(list)
                           : GridView.builder(
                           padding: const EdgeInsets.all(12),
-                          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 170,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.62,
-                          ),
+                          // телефон боком: плитки нижчі за ширину, щоб «Прихід» і
+                          // «Списати» було видно без прокрутки
+                          gridDelegate: MediaQuery.sizeOf(context).height < 500
+                              ? const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 190,
+                                  mainAxisSpacing: 14,
+                                  crossAxisSpacing: 12,
+                                  mainAxisExtent: 200,
+                                )
+                              : const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 170,
+                                  mainAxisSpacing: 14,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.62,
+                                ),
                           itemCount: list.length,
                           itemBuilder: (_, i) => _tile(list[i]),
                         ),

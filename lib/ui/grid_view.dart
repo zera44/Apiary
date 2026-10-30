@@ -180,6 +180,9 @@ List<SceneCell> buildScene<K extends Object>({
   Map<K, Offset> shifts = const {},
   Set<K> outlined = const {},
   Color outlineColor = AppColors.qrLinked,
+
+  /// Колір ободка окремих клітинок (інакше [outlineColor]).
+  Map<K, Color> outlineColors = const {},
 }) {
   final res = mergeLayout(items);
   final selKeys = <(int, int, String)>{
@@ -219,7 +222,7 @@ List<SceneCell> buildScene<K extends Object>({
       shift: shifts[it.id] ?? Offset.zero,
       outlined: isOut,
       outlineOpen: isOut ? openAmong(it, m, outKeys) : Merge.none,
-      outlineColor: outlineColor,
+      outlineColor: outlineColors[it.id] ?? outlineColor,
     ));
   }
   return out;

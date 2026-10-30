@@ -84,8 +84,20 @@ class FillPage {
   final List<Parameter> params;
   final Map<String, String?> latest;
   final List<StockItem> stock;
+
+  /// Обхід: що сталося з попереднім вуликом («… збережено») - рядком над полями.
+  final String? notice;
+
+  /// «Відмінити» біля [notice]: скасувати збереження попереднього вулика й
+  /// повернутися до нього (дані для форми) або null - лишитись тут.
+  final Future<FillPage?> Function()? onUndo;
   const FillPage(
-      {required this.params, required this.latest, this.stock = const [], this.title});
+      {required this.params,
+      required this.latest,
+      this.stock = const [],
+      this.title,
+      this.notice,
+      this.onUndo});
 }
 
 /// Тримає поточну сторінку: на «Зберегти й далі» підміняє вміст тієї самої
@@ -134,6 +146,17 @@ class _FillHostState extends State<_FillHost> {
       withNote: widget.withNote,
       groups: widget.groups,
       stock: [for (final it in _page.stock) if ((it.quantity ?? 0) > 0) it],
+      notice: _page.notice,
+      onUndo: _page.onUndo == null
+          ? null
+          : () async {
+              final back = await _page.onUndo!();
+              if (!mounted || back == null) return;
+              setState(() {
+                _page = back;
+                _n++;
+              });
+            },
       onNext: onNext == null
           ? null
           : (result) async {
@@ -189,8 +212,12 @@ class _FillDialog extends StatefulWidget {
   /// Поле «Нотатка» під таблицею (огляд одного вулика).
   final bool withNote;
   final List<ParamGroup> groups;
+  final String? notice;
+  final Future<void> Function()? onUndo;
   const _FillDialog(
       {super.key,
+      this.notice,
+      this.onUndo,
       this.groups = const [],
       this.infoRows = const [],
       this.withNote = false,
@@ -713,6 +740,39 @@ class _FillDialogState extends State<_FillDialog> {
     ]));
   }
 
+  /// Обхід: «Вулик 3 збережено · оглянуто 3» і «Відмінити» - видно, що
+  /// попередній записано, і помилку можна виправити.
+  Widget _noticeRow() => Container(
+        key: const ValueKey('fill-notice'),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.fromLTRB(10, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: AppColors.create.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(children: [
+          Icon(Icons.check_circle_outline, size: 18, color: AppColors.create),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(widget.notice!, style: TextStyle(color: AppColors.text, fontSize: 13))),
+          if (widget.onUndo != null)
+            TextButton(
+              key: const ValueKey('fill-undo'),
+              onPressed: _saving
+                  ? null
+                  : () async {
+                      setState(() => _saving = true);
+                      try {
+                        await widget.onUndo!();
+                      } finally {
+                        if (mounted) setState(() => _saving = false);
+                      }
+                    },
+              child: Text('Відмінити', style: TextStyle(color: AppColors.create)),
+            ),
+        ]),
+      );
+
   // поки «Зберегти й далі» працює, форма не реагує на дотики
   Widget _dialog() => AbsorbPointer(absorbing: _saving, child: _dialogBody());
 
@@ -751,6 +811,7 @@ class _FillDialogState extends State<_FillDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.notice != null) _noticeRow(),
             _table(),
             if (widget.withNote) ...[
               const SizedBox(height: 10),

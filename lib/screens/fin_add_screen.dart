@@ -791,6 +791,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
         for (final l in _lines) _row(l),
         Row(children: [
           TextButton(
+            // ціль не менше 48 dp: кнопка в самому низу картки
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
             onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
             child: Text('+ рядок', style: TextStyle(color: AppColors.create)),
           ),

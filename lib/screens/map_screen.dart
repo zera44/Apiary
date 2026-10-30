@@ -797,6 +797,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   Future<void> _onTap(GridPress p) async {
+    if (_bindPick) {
+      final hit = _elementAt(p.cell);
+      if (hit != null && hit.isHive) _toggleBind(hit);
+      return;
+    }
     if (!selectMode) {
       final hit = _elementAt(p.cell);
       if (_bindCode != null) {
@@ -922,6 +927,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   String get _statusText {
+    if (_bindPick) return 'Торкніться вулика, щоб обрати або зняти вибір';
     if (!selectMode) {
       final n = _dueHere;
       return n == 0 || widget.backdrop || _guided || panelOpen
@@ -1564,6 +1570,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             title: pg.title);
     final first = formPage(first0);
     final skipped = <String>{}; // «Пропустити» в цьому обході — не пропонувати знову
+    var done = 0; // скільки вуликів записано в цьому обході
+    _FillUndo? last; // останнє збереження - для «Відмінити»
     if (!mounted) return;
     if (lesson != null) setState(() => _lessonFormOpen = true);
     // групи параметрів («Обхід», «Корпус 1»…) - як на панелі «Характеристики»
@@ -1583,15 +1591,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       // наступний вулик на карті й підставити його дані в ту саму форму
       // (вікно не закривається); далі нікого — огляд закривається
       onNext: (r) async {
+        final prev = cur;
+        final prevTitle = await _hiveTitle(prev);
+        String notice;
+        last = null;
         switch (r.action) {
           case FillAction.skip:
             skipped.add(ownerKeyOf(cur));
+            notice = '«$prevTitle» пропущено';
           case FillAction.noChange:
-            await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
+            last = await _saveFill(cur, FillResult(const {}, note: r.note)); // лише дата огляду
             _fillSaved = true;
+            done++;
+            notice = '«$prevTitle»: змін немає · оглянуто $done';
           case FillAction.save:
-            await _saveFill(cur, r);
+            last = await _saveFill(cur, r);
             _fillSaved = true;
+            done++;
+            notice = '«$prevTitle» збережено · оглянуто $done';
         }
         final n = await _nextTarget(cur, skipped: skipped);
         if (n == null || !mounted) return null;
@@ -1603,13 +1620,57 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         cur = here;
         await _showOnMap(here, openPanel: panelWasOpen);
         final pg = await _fillPage(here);
-        return pg == null ? null : formPage(pg);
+        if (pg == null) return null;
+        final undo = last;
+        final f = formPage(pg);
+        return FillPage(
+          params: f.params,
+          latest: f.latest,
+          stock: f.stock,
+          title: f.title,
+          notice: notice,
+          // «Відмінити»: записане для попереднього вулика скасовується, форма
+          // повертається до нього
+          onUndo: undo == null
+              ? null
+              : () async {
+                  await _undoFill(undo);
+                  last = null;
+                  done--;
+                  if (!mounted) return null;
+                  cur = prev;
+                  await _showOnMap(prev, openPanel: panelWasOpen);
+                  final back = await _fillPage(prev);
+                  return back == null ? null : formPage(back);
+                },
+        );
       },
     );
     if (lesson != null && mounted) setState(() => _lessonFormOpen = false);
     if (result != null) {
-      await _saveFill(cur, result);
+      last = await _saveFill(cur, result);
       _fillSaved = true;
+      if (el.isHive) done++;
+    }
+    // обхід закінчився (останній вулик записано): підсумок і «Відмінити»
+    // останнє збереження
+    final undoLast = last;
+    if (undoLast != null && lesson == null && mounted) {
+      final title = await _hiveTitle(cur);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(
+        content: Text(done > 1 ? 'Огляд «$title» збережено. Оглянуто: $done' : 'Огляд «$title» збережено'),
+        duration: const Duration(seconds: 5),
+        persist: false,
+        action: SnackBarAction(
+          label: 'Відмінити',
+          onPressed: () {
+            if (mounted) unawaited(_undoFill(undoLast));
+          },
+        ),
+      ));
     }
     // урок: огляд зроблено — одразу далі, до меню навігації
     if (result != null && lesson != null && mounted) {
@@ -1636,10 +1697,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         params: params, latest: latest, stock: stock, title: title ?? el.label ?? 'Вулик');
   }
 
-  /// Записати результат форми для вулика [el].
-  Future<void> _saveFill(MapElement el, FillResult result) async {
+  /// Назва вулика для повідомлень обходу.
+  Future<String> _hiveTitle(MapElement el) async =>
+      (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик';
+
+  /// Записати результат форми для вулика [el]. Повертає, що треба зробити,
+  /// щоб це збереження відмінити.
+  Future<_FillUndo> _saveFill(MapElement el, FillResult result) async {
     final entity = el.entity;
     final values = result.values;
+    final before = await repo.latestParameterValues(entity);
+    String? moveId;
+    String? noteId;
     for (final e in values.entries) {
       await repo.addParameterRecord(e.key, e.value, entity);
     }
@@ -1650,12 +1719,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         await repo.writeOffStock(feed.itemId, feed.amount,
             reason: 'Підгодівля',
             comment: (panelElement?.id == el.id ? panelData?.title : null) ?? el.label ?? 'Вулик');
+        moveId = await repo.lastStockMoveId(feed.itemId);
       } on StateError catch (e) {
         if (mounted) await showInfo(context, e.message, title: 'Не списано');
       }
     }
     final note = result.note;
-    if (note != null && el.isHive) await repo.addInspectionNote(entity, note);
+    if (note != null && el.isHive) noteId = await repo.addInspectionNote(entity, note);
     if (el.isHive) {
       // обхід зроблено: дата останнього обходу = сьогодні, якщо її самі
       // не змінювали в цій формі
@@ -1664,9 +1734,43 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         await repo.markVisited(entity, elType: el.type);
       }
     }
+    final after = await repo.latestParameterValues(entity);
     unawaited(ReminderService.instance.reschedule());
     await _refreshPanel();
     await _refreshOverdue();
+    return _FillUndo(
+      entity: entity,
+      restore: {
+        for (final k in after.keys)
+          if (after[k] != before[k]) k: before[k] ?? '',
+      },
+      noteId: noteId,
+      moveId: moveId,
+    );
+  }
+
+  /// Відмінити збереження огляду: попередні значення - новими записами
+  /// (історія не стирається, як і зі сторнуванням на складі), нотатка
+  /// видаляється, підгодівля повертається на склад.
+  Future<void> _undoFill(_FillUndo u) async {
+    for (final e in u.restore.entries) {
+      await repo.addParameterRecord(e.key, e.value, u.entity);
+    }
+    final note = u.noteId;
+    if (note != null) await repo.deleteHiveNote(note);
+    final move = u.moveId;
+    if (move != null) {
+      try {
+        await repo.cancelStockMove(move);
+      } on StateError catch (e) {
+        if (mounted) await showInfo(context, e.message, title: 'Підгодівлю не повернуто');
+      }
+    }
+    unawaited(ReminderService.instance.reschedule());
+    if (!mounted) return;
+    await _refreshPanel();
+    await _refreshOverdue();
+    _showWarning('Огляд відмінено', duration: const Duration(milliseconds: 1500));
   }
 
   /// «Оглянуто, змін немає»: лише дата огляду = сьогодні, без форми.
@@ -1814,80 +1918,230 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   bool _qrBusy = false;
 
-  /// Прив'язати / замінити / відв'язати QR-код вулика з панелі.
-  /// «Прив'язати наліпки підряд»: застосунок по черзі виділяє вулики без
-  /// коду (зверху вниз, зліва направо), пасічник лише сканує наліпки.
-  /// Закрили камеру — зупинились.
+  // ---------------------------------------------------------------------
+  // «Прив'язати підряд»
+  // ---------------------------------------------------------------------
+
+  /// Вибір вуликів на карті: червоний ободок - без коду, зелений - код є.
+  bool _bindPick = false;
+  int _bindRev = 0;
+
+  /// Вулики (об'єкти) пасіки: ключ - id першого елемента.
+  Map<String, List<MapElement>> _bindObj = {};
+
+  /// Ключі вуликів без QR-коду й обрані з них.
+  Set<String> _bindNoCode = {};
+  Set<String> _bindChosen = {};
+
+  /// Відкриває карту в режимі вибору вуликів для наліпок: пасіка вже та, що була
+  /// останньою активною (її й відкрито).
   Future<void> _bindQrInRow() async {
     if (_qrBusy || _busy) return;
+    if (selectMode) _exitEdit();
+    final objs = {for (final o in hiveObjects(elements)) o.first.id: o};
+    final noCode = <String>{};
+    for (final o in objs.entries) {
+      if (await repo.qrForObject(o.value) == null) noCode.add(o.key);
+    }
+    if (!mounted) return;
+    if (noCode.isEmpty) {
+      await showInfo(context, 'У всіх вуликів цієї пасіки вже є QR-коди.', title: 'QR-коди');
+      return;
+    }
+    setState(() {
+      panelOpen = false;
+      _bindObj = objs;
+      _bindNoCode = noCode;
+      _bindChosen = {};
+      _bindPick = true;
+      _bindRev++;
+    });
+  }
+
+  void _bindExit() {
+    setState(() {
+      _bindPick = false;
+      _bindChosen = {};
+      _bindRev++;
+    });
+  }
+
+  void _toggleBind(MapElement hit) {
+    final key = hiveObjectOf(hit, elements).first.id;
+    if (!_bindNoCode.contains(key)) {
+      _showWarning('У цього вулика вже є QR-код', duration: const Duration(seconds: 1));
+      return;
+    }
+    setState(() {
+      if (!_bindChosen.remove(key)) _bindChosen.add(key);
+      _bindRev++;
+    });
+  }
+
+  void _bindToggleAll() {
+    setState(() {
+      _bindChosen = _bindChosen.length == _bindNoCode.length ? {} : {..._bindNoCode};
+      _bindRev++;
+    });
+  }
+
+  String _bindName(String key) {
+    final l = (_bindObj[key]?.first.label ?? '').trim();
+    return l.isEmpty ? 'Вулик' : l;
+  }
+
+  /// Вулики в порядку обходу: зверху вниз, зліва направо.
+  List<QrBindTarget> _bindTargets(Iterable<String> keys) {
+    final els = [for (final k in keys) if (_bindObj[k] != null) _bindObj[k]!.first]
+      ..sort((a, b) => a.y != b.y ? b.y.compareTo(a.y) : a.x.compareTo(b.x));
+    return [for (final e in els) QrBindTarget(e.id, _bindName(e.id))];
+  }
+
+  /// Записати відсканований код на вулик; код чужого вулика - лише після підтвердження.
+  Future<QrBindResult> _bindOne(QrBindTarget t, String scanned) async {
+    final members = _bindObj[t.id];
+    if (members == null) return QrBindResult.rejected;
+    final code = await repo.resolveTypedQr(scanned);
+    final other = await repo.findByQr(code);
+    if (!mounted) return QrBindResult.rejected;
+    if (other != null) {
+      final otherName = await repo.entityLabel(other.element.entity);
+      if (!mounted) return QrBindResult.rejected;
+      final move = await showConfirm(context,
+          title: 'Код уже використовується',
+          text: 'Цей QR-код прив\'язаний до «$otherName» (пасіка «${other.apiary.name}»). '
+              'Перенести його на «${t.name}»?',
+          confirmText: 'Перенести',
+          danger: false);
+      if (!move) return QrBindResult.rejected;
+    }
+    for (final m in members.skip(1)) {
+      await repo.unlinkQr(EntityRef.element(m.id));
+    }
+    await repo.linkQr(code, EntityRef.element(members.first.id));
+    _bindNoCode.remove(t.id);
+    return QrBindResult.linked;
+  }
+
+  /// «Сканувати»: сканер лишається відкритим для всіх обраних вуликів; наприкінці
+  /// (чи коли закрили) - підсумок і «Продовжити» для тих, що лишились.
+  Future<void> _bindStart() async {
+    if (_qrBusy || _bindChosen.isEmpty) return;
     _qrBusy = true;
     var linked = 0;
-    final skipped = <String>{}; // «Пропустити цей вулик»
     try {
-      if (selectMode) _exitEdit();
-      setState(() => panelOpen = false);
-      while (mounted) {
-        List<MapElement>? members;
-        for (final o in hiveObjects(elements)) {
-          if (!skipped.contains(o.first.id) && await repo.qrForObject(o) == null) {
-            members = o;
-            break;
-          }
-        }
+      var targets = _bindTargets(_bindChosen);
+      while (mounted && targets.isNotEmpty) {
+        final sum = await Navigator.of(context).push<QrBindSummary>(MaterialPageRoute(
+            builder: (_) => QrScanScreen(
+                  title: 'Прив\'язати наліпки',
+                  bind: QrBindConfig(targets: targets, bind: _bindOne),
+                )));
         if (!mounted) return;
-        if (members == null) {
-          await showInfo(
-              context,
-              linked == 0
-                  ? (skipped.isEmpty
-                      ? 'У всіх вуликів цієї пасіки вже є QR-коди.'
-                      : 'Лишилось без коду (пропущено): ${skipped.length}.')
-                  : 'Прив\'язано наліпок: $linked.'
-                      '${skipped.isEmpty ? ' Тепер у всіх вуликів є QR-коди.' : ' Пропущено: ${skipped.length}.'}',
-              title: 'QR-коди');
-          return;
-        }
-        final hive = members.first;
-        final name = (hive.label ?? '').trim().isEmpty ? 'вулик' : hive.label!.trim();
-        grid.centerOnGrid(hive.x + 0.5, hive.y + 0.5);
-        setState(() => _select(hive)); // підсвітити, для якого вулика наліпка
-        final scanned = await scanQrCode(context,
-            title: 'Наліпка для: $name', skipLabel: 'Пропустити цей вулик');
-        if (scanned == null || !mounted) break;
-        if (scanned == kQrSkip) {
-          skipped.add(hive.id);
-          continue;
-        }
-        final code = await repo.resolveTypedQr(scanned);
-        final other = await repo.findByQr(code);
+        linked += sum?.linked.length ?? 0;
+        final left = [for (final t in targets) if (!(sum?.linked.contains(t.id) ?? false)) t];
+        final again = await _bindSummary(linked, sum?.skipped.length ?? 0, left.length);
         if (!mounted) return;
-        if (other != null) {
-          final otherName = await repo.entityLabel(other.element.entity);
-          if (!mounted) return;
-          final move = await showConfirm(context,
-              title: 'Код уже використовується',
-              text: 'Цей QR-код прив\'язаний до «$otherName» (пасіка «${other.apiary.name}»). '
-                  'Перенести його на «$name»?',
-              confirmText: 'Перенести',
-              danger: false);
-          if (!move) continue; // той самий вулик — сканувати іншу наліпку
-        }
-        for (final m in members.skip(1)) {
-          await repo.unlinkQr(EntityRef.element(m.id));
-        }
-        await repo.linkQr(code, EntityRef.element(hive.id));
-        linked++;
-        _showWarning('Прив\'язано: $name', duration: const Duration(milliseconds: 900));
+        if (!again) break;
+        targets = left;
       }
     } finally {
       _qrBusy = false;
-      if (mounted) {
-        setState(() {
-          selectedId = null;
-          selectedGroupId = null;
-        });
-      }
+      if (mounted) _bindExit();
     }
+  }
+
+  /// Підсумок; true - «Продовжити» з тими, що лишились.
+  Future<bool> _bindSummary(int linked, int skipped, int left) async {
+    final r = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(left == 0 ? 'Усе прив\'язано' : 'Прив\'язано наліпок: $linked'),
+        content: Text(
+          left == 0
+              ? 'Прив\'язано наліпок: $linked. Усі обрані вулики мають QR-коди.'
+              : 'Прив\'язано: $linked\nПропущено: $skipped\nЛишилось: $left\n\n'
+                  'Усе збережено. Продовжити можна зараз або пізніше: «Прив\'язати підряд» '
+                  'покаже лише вулики без коду.',
+          style: TextStyle(color: AppColors.text),
+        ),
+        actions: [
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                  text: 'Готово',
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  onPressed: () => Navigator.pop(ctx, false)),
+            ),
+            if (left > 0) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: PillButton(
+                    text: 'Продовжити', bg: AppColors.accent, onPressed: () => Navigator.pop(ctx, true)),
+              ),
+            ],
+          ]),
+        ],
+      ),
+    );
+    return r ?? false;
+  }
+
+  /// Панель вибору внизу: скільки без коду, скільки обрано, «Обрати всі без коду» і «Сканувати».
+  Widget _bindBar() {
+    final all = _bindChosen.length == _bindNoCode.length;
+    final n = _bindChosen.length;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: Container(
+        key: const ValueKey('bind-bar'),
+        color: AppColors.panel,
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Expanded(
+              child: Text('Без коду: ${_bindNoCode.length} · обрано: $n',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.text, fontSize: 14)),
+            ),
+            IconButton(
+              key: const ValueKey('bind-close'),
+              tooltip: 'Закрити',
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close, color: AppColors.text),
+              onPressed: _bindExit,
+            ),
+          ]),
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                key: const ValueKey('bind-all'),
+                text: all ? 'Зняти вибір' : 'Обрати всі без коду',
+                bg: AppColors.neutralBtn,
+                fg: AppColors.text,
+                height: 50,
+                radius: 25,
+                onPressed: _bindToggleAll,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PillButton(
+                key: const ValueKey('bind-start'),
+                text: n == 0 ? 'Сканувати' : 'Сканувати ($n)',
+                bg: AppColors.accent,
+                height: 50,
+                radius: 25,
+                onPressed: n == 0 ? null : _bindStart,
+              ),
+            ),
+          ]),
+        ]),
+      ),
+    );
   }
 
   Future<void> _panelQr() async {
@@ -1996,6 +2250,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Set<String> _sceneSel = const {};
 
   String? _scenePanelKey;
+  int? _sceneBindRev;
 
   /// Урок: вулик, чию панель відкрили, — обведений.
   Set<String>? get _lessonOutlined {
@@ -2021,9 +2276,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         _sceneSelId != selectedId ||
         _sceneSelGid != selectedGroupId ||
         !identical(_scenePlaced, _placedGids) ||
+        _sceneBindRev != _bindRev ||
         _scenePanelKey != _lessonPanelKey) {
       _scenePanelKey = _lessonPanelKey;
-      _sceneSel = {for (final e in selection) e.id};
+      _sceneBindRev = _bindRev;
+      _sceneSel = _bindPick
+          ? {for (final k in _bindChosen) for (final e in _bindObj[k] ?? const <MapElement>[]) e.id}
+          : {for (final e in selection) e.id};
       _sceneBase = _buildBaseScene(_sceneSel);
       _sceneEls = elements;
       _sceneSelId = selectedId;
@@ -2055,6 +2314,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       for (final e in elements)
         e.id: (type: e.type, variant: e.variant, icon: e.icon, color: e.color)
     };
+    if (_bindPick) {
+      // «Прив'язати підряд»: червоний ободок - без коду, зелений - код є
+      final ring = <String, Color>{};
+      for (final o in _bindObj.entries) {
+        final c = _bindNoCode.contains(o.key) ? AppColors.danger : AppColors.qrLinked;
+        for (final e in o.value) {
+          ring[e.id] = c;
+        }
+      }
+      return buildScene<String>(
+        items: items,
+        look: look,
+        selected: sel,
+        outlined: ring.keys.toSet(),
+        outlineColors: ring,
+      );
+    }
     return buildScene<String>(
       items: items,
       look: look,
@@ -2169,7 +2445,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     // урок: вийти можна лише кнопкою «назад» угорі ліворуч (системне «назад»
     // і меню ☰ вивели б із пісочниці на справжні екрани)
     return PopScope(
-      canPop: !widget.tutorial,
+      canPop: !widget.tutorial && !_bindPick,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _bindPick) _bindExit();
+      },
       child: Scaffold(
       drawer: widget.lesson != null || (widget.tutorial && _lesson != _Lesson.menu && _lesson != _Lesson.drawer)
           ? null
@@ -2353,15 +2632,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             ),
             // перемикач режимів: унизу ліворуч (у редагуванні — над панеллю дій;
             // в уроці — завжди на одному місці, на ньому спирається пасічник)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              left: kToggleLeft,
-              bottom: _toggleBottom,
-              child: _modeToggle(),
-            ),
+            if (!_bindPick)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                left: kToggleLeft,
+                bottom: _toggleBottom,
+                child: _modeToggle(),
+              ),
+            if (_bindPick) _bindBar(),
             // обхід: підійшов до вулика - сканує наліпку
-            if (!selectMode && !panelOpen && !_guided)
+            if (!selectMode && !panelOpen && !_guided && !_bindPick)
               Positioned(
                 right: 14,
                 bottom: _toggleBottom + (kToggleH - 52) / 2,
@@ -2586,4 +2867,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (elements.isEmpty) await _onAddObject();
   }
 
+}
+
+/// Що відкотити, щоб відмінити збереження огляду: попередні значення
+/// параметрів ('' - значення не було), нотатка огляду, підгодівля зі складу.
+class _FillUndo {
+  final EntityRef entity;
+  final Map<String, String> restore;
+  final String? noteId;
+  final String? moveId;
+  const _FillUndo({required this.entity, required this.restore, this.noteId, this.moveId});
 }

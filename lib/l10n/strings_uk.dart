@@ -134,6 +134,12 @@ class AppStringsUk extends AppStrings {
   @override
   String get textSizePreview => 'Вулик 12 - сьогодні оглянути';
   @override
+  String get orientationSection => 'Орієнтація екрана';
+  @override
+  String get orientationHint => 'Авто - як повернуто телефон.';
+  @override
+  List<String> get orientationLevels => const ['Авто', 'Вертикальна', 'Горизонтальна'];
+  @override
   String get inviteLinkButton => 'Створити посилання-запрошення';
   @override
   String get inviteLinkHint =>

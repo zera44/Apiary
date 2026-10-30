@@ -2152,6 +2152,14 @@ class Repository {
   /// «скасовано», а новий запис 'cancel' повертає залишок назад. Не можна
   /// скасувати двічі, скасування, старий «перезапис» і прихід, який уже
   /// (частково) списано так, що залишок став би від'ємним.
+  /// Останній рух позиції [itemId] (щойно внесений) - щоб його можна було
+  /// скасувати, напр., підгодівлю з відміненого огляду.
+  Future<String?> lastStockMoveId(String itemId) async {
+    final rows = await db.query('stock_moves',
+        columns: ['id'], where: 'item_id = ?', whereArgs: [itemId], orderBy: 'created_at DESC', limit: 1);
+    return rows.isEmpty ? null : rows.first['id'] as String;
+  }
+
   Future<double> cancelStockMove(String moveId) async {
     final r = await db.transaction((txn) async {
       final next = await cancelStockMoveTx(txn, moveId);
