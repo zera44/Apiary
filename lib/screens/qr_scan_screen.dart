@@ -91,7 +91,7 @@ class QrScanScreen extends StatefulWidget {
       this.bind});
 
   /// Скільки тримати камеру над QR-кодом.
-  static const qrHold = Duration(seconds: 3);
+  static const qrHold = Duration(milliseconds: 1500);
 
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
@@ -564,7 +564,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     if (_qr != null) return 'QR-код знайдено - тримайте камеру нерухомо';
     return _receipt
         ? 'Покладіть чек рівно на контрастний фон і натисніть «Зняти»'
-        : 'Наведіть камеру на QR-код вулика і потримайте кілька секунд';
+        : 'Наведіть камеру на QR-код вулика і потримайте секунду-дві';
   }
 
   @override
