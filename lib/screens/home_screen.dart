@@ -285,7 +285,14 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icon(Icons.account_balance_wallet_outlined, size: 30, color: AppColors.text),
           label: tr.finances,
           onTap: () => push(FinanceScreen(repo: repo)),
-          onLongPress: () => push(FinAddScreen(repo: repo))),
+          // швидка витрата: після збереження лишаємось у фінансах, а не на головному
+          onLongPress: () async {
+            final msg = await nav.push<String>(
+                MaterialPageRoute(builder: (_) => FinAddScreen(repo: repo)));
+            if (msg == null || !context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+            nav.push(MaterialPageRoute(builder: (_) => FinanceScreen(repo: repo)));
+          }),
       _Tile(
           icon: AppIcon('box', size: 28, color: AppColors.text),
           label: tr.stock,
