@@ -1355,6 +1355,11 @@ class AppStringsEn extends AppStrings {
   String receiptMismatch(String rows, String declared, String table) =>
       'Receipt recognized · $rows. The receipt total is $declared, the table has $table - check the rows.';
   @override
+  String receiptRest(String rows, String rest) =>
+      'Receipt recognized · $rows. $rest of the receipt was not recognized - added as a separate row, fix its name and price.';
+  @override
+  String get receiptRestName => 'Not recognized';
+  @override
   String receiptCheck(String rows) =>
       'Receipt recognized · $rows. Check the table: recognition can make mistakes.';
   @override
