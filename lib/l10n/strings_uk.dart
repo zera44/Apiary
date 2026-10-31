@@ -1354,6 +1354,11 @@ class AppStringsUk extends AppStrings {
   String receiptMismatch(String rows, String declared, String table) =>
       'Чек розпізнано · $rows. Сума на чеку $declared, у таблиці $table - перевірте рядки.';
   @override
+  String receiptRest(String rows, String rest) =>
+      'Чек розпізнано · $rows. Ще $rest з чека не розпізнано - додано окремим рядком, уточніть назву й ціну.';
+  @override
+  String get receiptRestName => 'Не розпізнано';
+  @override
   String receiptCheck(String rows) =>
       'Чек розпізнано · $rows. Перевірте таблицю: розпізнавання може помилятися.';
   @override

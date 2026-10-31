@@ -248,7 +248,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
         _reading = false;
         _hasReceipt = true;
         _declared = receiptDeclaredTotal(text);
-        if (rows.isEmpty) {
+        // що не розпізнано до суми чека - окремим рядком: нічого не губиться,
+        // а назву й ціну людина виправить
+        final read = rows.fold<double>(0, (s, r) => s + r.total);
+        final rest = _declared == null ? 0.0 : ((_declared! - read) * 100).round() / 100;
+        final addRest = rest > 0.015;
+        if (rows.isEmpty && !addRest) {
           _receiptOk = false;
           _receiptNote = tr.receiptNoRows;
           return;
@@ -269,13 +274,22 @@ class _FinAddScreenState extends State<FinAddScreen> {
           _applyStockUnit(l);
           _lines.add(l);
         }
+        if (addRest) {
+          _lines.add(_FLine(name: tr.receiptRestName, qty: 1, unit: 'шт', price: rest));
+        }
         _sumManual = false;
         _syncSum();
         final t = _tableSum;
         final d = _declared;
         final n = rows.length;
         final word = tr.receiptRows(n);
-        if (d != null && (d - t).abs() < 0.015) {
+        if (rows.isEmpty) {
+          _receiptOk = false;
+          _receiptNote = tr.receiptNoRows;
+        } else if (addRest) {
+          _receiptOk = false;
+          _receiptNote = tr.receiptRest(word, uah(rest));
+        } else if (d != null && (d - t).abs() < 0.015) {
           _receiptOk = true;
           _receiptNote = tr.receiptOk(word);
         } else if (d != null) {
