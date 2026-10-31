@@ -34,6 +34,8 @@
     {"id": "close", "file": "ui/close.svg", "label": "Закрити", "category": "ui"},
     {"id": "arrow_left", "file": "ui/arrow_left.svg", "label": "Стрілка вліво", "category": "ui"},
     {"id": "arrow_right", "file": "ui/arrow_right.svg", "label": "Стрілка вправо", "category": "ui"},
-    {"id": "history", "file": "ui/history.svg", "label": "Історія", "category": "ui"}
+    {"id": "history", "file": "ui/history.svg", "label": "Історія", "category": "ui"},
+    {"id": "apiaries", "file": "ui/apiaries.svg", "label": "Мої пасіки", "category": "ui"},
+    {"id": "feedback", "file": "ui/feedback.svg", "label": "Відгук", "category": "ui"}
   ]
 }

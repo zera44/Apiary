@@ -302,7 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
           label: tr.tutorial,
           onTap: () => push(TutorialScreen(realRepo: repo))),
       _Tile(
-          icon: AppIcon('pencil', size: 28, color: AppColors.text),
+          icon: AppIcon('feedback', size: 28, color: AppColors.text),
           label: tr.feedbackShort,
           onTap: () => openFeedback(nav)),
     ]));
