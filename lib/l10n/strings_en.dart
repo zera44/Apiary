@@ -1289,6 +1289,8 @@ class AppStringsEn extends AppStrings {
   String get finFromStockNote =>
       '\n\nThe arrival was entered in stock. Cancelling it here cancels it in stock too.';
   @override
+  String get finBoughtTitle => 'Bought:';
+  @override
   String get finLinesNote => '\n\nCancelling also cancels this operation\'s arrivals in stock.';
   @override
   String get finCancelledNote => '\n\nThis record is cancelled.';
