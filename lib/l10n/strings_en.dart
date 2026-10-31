@@ -1356,7 +1356,10 @@ class AppStringsEn extends AppStrings {
       'Receipt recognized · $rows. The receipt total is $declared, the table has $table - check the rows.';
   @override
   String receiptRest(String rows, String rest) =>
-      'Receipt recognized · $rows. $rest of the receipt was not recognized - added as a separate row, fix its name and price.';
+      'Receipt recognized · $rows. The receipt total is counted, $rest could not be read - added as a separate row, give it a name.';
+  @override
+  String receiptTotalOnly(String total) =>
+      'The items could not be read, but the receipt total ($total) is counted as one row. Add a name or retake the photo.';
   @override
   String get receiptRestName => 'Not recognized';
   @override

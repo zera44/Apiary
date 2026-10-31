@@ -670,6 +670,7 @@ abstract class AppStrings {
   String receiptOk(String rows);
   String receiptMismatch(String rows, String declared, String table);
   String receiptRest(String rows, String rest);
+  String receiptTotalOnly(String total);
   String get receiptRestName;
   String receiptCheck(String rows);
   String get receiptFailed;

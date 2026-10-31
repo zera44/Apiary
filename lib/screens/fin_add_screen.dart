@@ -92,6 +92,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
   bool _reading = false;
   String? _receiptNote;
   bool _receiptOk = false;
+
+  /// Суму чека враховано, але частину позицій не прочитано: м'яке попередження.
+  bool _receiptSoft = false;
   double? _declared;
   bool _hasReceipt = false;
 
@@ -238,6 +241,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       _mode = 1;
       _reading = true;
       _receiptNote = null;
+      _receiptSoft = false;
     });
     try {
       final text = await _ocr.read(path);
@@ -253,6 +257,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         final read = rows.fold<double>(0, (s, r) => s + r.total);
         final rest = _declared == null ? 0.0 : ((_declared! - read) * 100).round() / 100;
         final addRest = rest > 0.015;
+        _receiptSoft = false;
         if (rows.isEmpty && !addRest) {
           _receiptOk = false;
           _receiptNote = tr.receiptNoRows;
@@ -285,9 +290,11 @@ class _FinAddScreenState extends State<FinAddScreen> {
         final word = tr.receiptRows(n);
         if (rows.isEmpty) {
           _receiptOk = false;
-          _receiptNote = tr.receiptNoRows;
+          _receiptSoft = true;
+          _receiptNote = tr.receiptTotalOnly(uah(rest));
         } else if (addRest) {
           _receiptOk = false;
+          _receiptSoft = true;
           _receiptNote = tr.receiptRest(word, uah(rest));
         } else if (d != null && (d - t).abs() < 0.015) {
           _receiptOk = true;
@@ -546,11 +553,17 @@ class _FinAddScreenState extends State<FinAddScreen> {
       decoration: BoxDecoration(
         color: AppColors.bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _receiptOk ? AppColors.addObject : AppColors.danger),
+        border: Border.all(color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.create : AppColors.danger),
       ),
       child: Row(children: [
-        Icon(_receiptOk ? Icons.check_circle_outline : Icons.warning_amber_rounded,
-            size: 20, color: _receiptOk ? AppColors.addObject : AppColors.danger),
+        Icon(
+            _receiptOk
+                ? Icons.check_circle_outline
+                : _receiptSoft
+                    ? Icons.info_outline
+                    : Icons.warning_amber_rounded,
+            size: 20,
+            color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.create : AppColors.danger),
         const SizedBox(width: 8),
         Expanded(
           child: Text(_receiptNote ?? '',
