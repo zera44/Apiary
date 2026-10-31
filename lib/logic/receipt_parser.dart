@@ -199,10 +199,42 @@ bool _qtyFirst(List<String> lines) {
 
 /// «ШК 4820217000055» / «Штрихкод 2099901024039»: початок позиції в чеках, де
 /// кожному товару передує його штрихкод (АТБ, «Вигідна покупка» тощо).
-final _barcodeLine = RegExp(r'^(?:[ШЩ]К|штрихкод)(?![а-яіїєґa-z])', caseSensitive: false);
+final _barcodeLine = RegExp(
+    r'^(?:(?:[ШЩ]\s?[КK]|штрих[\s-]?код)(?![а-яіїєґa-z])|\d{13}$)',
+    caseSensitive: false);
 
 /// «Арт № 138807 Навушники» - артикул перед назвою.
 final _articlePrefix = RegExp(r'^арт\.?\s*[^\s\d]{0,2}\d?\s*\d{4,}\s*', caseSensitive: false);
+
+/// Ціна без роздільника в кінці назви («… 8140 А» замість «81,40 А») - сміття.
+final _priceJunk = RegExp(r'\s\d{3,6}\s*[A-Za-zА-ЯІЇЄҐа-яіїєґ]?$');
+
+/// «ПІДСУМОК ЛистівкКонвер 54.90 А 96.80»: OCR зливає з позицією сусідній
+/// рядок «ПІДСУМОК» (і його суму праворуч).
+final _subtotalPrefix = RegExp(r'^підсумок\s+(?=\S*[A-Za-zА-ЯІЇЄҐа-яіїєґ]{3})', caseSensitive: false);
+final _mergedSubtotal =
+    RegExp(r'^(.*?\d[.,]\d{2}\s*[A-Za-zА-ЯІЇЄҐа-яіїєґ])\s+\d+[.,]\d{2}$');
+
+/// «ШК 2000008480376 Ковбаса 41.90 А»: штрихкод наступної позиції злитий з
+/// рядком попередньої.
+final _barcodeWithTail = RegExp(r'^((?:[ШЩ]\s?[КK]|штрих[\s-]?код)\s*\d{8,14})\s+(\S.*)$', caseSensitive: false);
+
+List<String> _normalizeLines(List<String> lines) {
+  final out = <String>[];
+  for (var l in lines) {
+    l = l.replaceFirst(_subtotalPrefix, '');
+    final m = _mergedSubtotal.firstMatch(l);
+    if (m != null) l = m.group(1)!;
+    final b = _barcodeWithTail.firstMatch(l);
+    if (b != null) {
+      out.add(b.group(1)!);
+      out.add(b.group(2)!);
+    } else {
+      out.add(l);
+    }
+  }
+  return out;
+}
 
 /// Рядок, що закінчується сумою: «… 31,90 А», «… 134,00 А».
 final _moneyEnd = RegExp(
@@ -213,6 +245,9 @@ final _nameNoise = RegExp(r'гарантій|термін', caseSensitive: false
 
 /// Знижка під позицією: «ЗНИЖКА -3,16», «ЦІНА КГ/Л ЗІ ЗНИЖКОЮ 29,32».
 final _discountLine = RegExp(r'^(?:зни[а-яіїєґ]{1,2}ка|ціна\s)', caseSensitive: false);
+
+/// Саме «ЗНИЖКА -3,16» (без «ціна за кг»).
+final _discountOnly = RegExp(r'^зни[а-яіїєґ]{1,2}ка', caseSensitive: false);
 
 /// «СУМА ЗІ ЗНИЖКОЮ 58,64» (OCR часом читає «СНМА»).
 final _discountSum = RegExp(r'^[сc][а-яіa-z]{2,3}\s+[зз3][іi]\s', caseSensitive: false);
@@ -246,7 +281,9 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
       final l = lines[j];
       if (bc(l) || _end.hasMatch(l.toLowerCase())) break;
       final qi = _qtyInfo(l);
-      if (qi != null) {
+      // «220х400мм» у назві - не кількість: коли кількість уже відома з «1х 7,00»
+      // перед штрихкодом, такий рядок мусить мати ще й суму («2 x 30,90 61,80»)
+      if (qi != null && (qty == null || qi.m.namedGroup('sum') != null)) {
         final n = _cleanName(qi.m.namedGroup('name') ?? '');
         if (_hasWord(n)) name.add(n);
         qty = qi.qty;
@@ -266,27 +303,66 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
       final n = _cleanName(l.replaceFirst(_articlePrefix, ''));
       if (_hasWord(n)) name.add(n);
     }
-    if (sum == null) continue; // блок без суми - не позиція
+    if (sum == null) {
+      // назва є, а ціну OCR не прочитав («8100 А» замість «81,40 А») - позиція з
+      // невідомою ціною: далі її заповнить підсумок чека
+      final t = name.join(' ').replaceAll(_priceJunk, '').trim();
+      if (_hasWord(t) && !_nameNoise.hasMatch(t)) {
+        rows.add(ReceiptRow(name: _cleanName(t), qty: qty ?? 1, unit: _guessUnit(unit, qty ?? 1), price: 0));
+      }
+      continue;
+    }
     var paid = sum;
-    // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено
+    double? discount;
+    // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено; а коли є лише
+    // «ЗНИЖКА -9,40», її віднімаємо від суми позиції
     for (var k = j; k < lines.length && k < j + 4; k++) {
       final l = lines[k];
       final low = l.toLowerCase();
       if (bc(l)) break;
       if (_discountSum.hasMatch(low)) {
         paid = _lastMoney(l) ?? paid;
+        discount = null;
+        break;
+      } else if (_discountOnly.hasMatch(low)) {
+        final d = _lastMoney(l);
+        if (d != null && d < sum) discount = (discount ?? 0) + d;
       } else if (!_discountLine.hasMatch(low)) {
         break;
       }
     }
-    final title = name.join(' ').trim();
+    if (discount != null) paid = _to(sum - discount, 2);
+    final title = name.join(' ').replaceAll(_priceJunk, '').trim();
     if (!_hasWord(title)) continue;
     final q = (qty == null || qty <= 0) ? 1.0 : qty;
     rows.add(ReceiptRow(
         name: title, qty: q, unit: _guessUnit(unit, q), price: _to(paid / q, 2)));
+    // рядки «назва … сума» одразу після блоку, без свого штрихкоду - теж позиції
+    // (OCR зсунув штрихкод на сусідній рядок)
+    for (var k = j; k < lines.length; k++) {
+      final l = lines[k];
+      final low = l.toLowerCase();
+      if (bc(l) || _end.hasMatch(low)) break;
+      if (_discountLine.hasMatch(low) || _discountSum.hasMatch(low)) continue;
+      if (_skip.hasMatch(low)) break;
+      final m = _moneyEnd.firstMatch(l);
+      if (m == null) break;
+      final n = _cleanName(m.namedGroup('name')!.replaceFirst(_articlePrefix, ''));
+      if (!_hasWord(n) || _nameNoise.hasMatch(n)) break;
+      rows.add(ReceiptRow(name: n, price: _num(m.namedGroup('sum')!.replaceAll(' ', ''))!));
+    }
   }
   // штрихкод тут не відкриває позицію (інший порядок рядків): хай читає звичайний розбір
   if (rows.length * 2 < lines.where(bc).length) return [];
+  return rows;
+}
+
+/// Одна позиція без ціни + відомий підсумок чека: ціна = підсумок мінус решта.
+List<ReceiptRow> _fillUnknownPrice(List<ReceiptRow> rows, double? declared) {
+  final unknown = rows.where((r) => r.price == 0).toList();
+  if (unknown.length != 1 || declared == null) return rows;
+  final rest = _to(declared - rows.fold<double>(0, (s, r) => s + r.total), 2);
+  if (rest > 0) unknown.single.price = _to(rest / unknown.single.qty, 2);
   return rows;
 }
 
@@ -300,8 +376,9 @@ List<ReceiptRow> parseReceipt(String text) {
       .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
       .where((l) => l.isNotEmpty)
       .toList();
-  final blocks = _barcodeBlocks(lines);
-  if (blocks.isNotEmpty) return blocks;
+  final norm = _normalizeLines(lines);
+  final blocks = _barcodeBlocks(norm);
+  if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, receiptDeclaredTotal(text));
   final qtyFirst = _qtyFirst(lines);
 
   void add(String name, double qty, String? unit, double price) {
@@ -314,7 +391,11 @@ List<ReceiptRow> parseReceipt(String text) {
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
     final low = line.toLowerCase();
-    if (_end.hasMatch(low) && rows.isNotEmpty) break;
+    if (_end.hasMatch(low)) {
+      if (rows.isNotEmpty) break;
+      pending = null; // «СУМА … ПДВ …» - не товар
+      continue;
+    }
 
     final q = _qtyInfo(line);
     if (q != null) {
@@ -401,10 +482,32 @@ double? receiptDeclaredTotal(String text) {
     return double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
   }
 
+  // та сама сума друкується кілька разів («СУМА», «ДО СПЛАТИ», «БЕЗГОТІВКОВА»,
+  // «КАРТКА»): OCR псує зазвичай один рядок, тож перемагає значення, що
+  // повторилось
+  final votes = <double, int>{};
+  final pay = RegExp(r'^(до сплати|безго|картка)', caseSensitive: false);
+  for (final l in lines) {
+    final low = l.toLowerCase();
+    if (!pay.hasMatch(low) && !RegExp(r'^сума(?![а-яіїєґa-z])').hasMatch(low)) continue;
+    final v = read(l);
+    if (v != null) votes[v] = (votes[v] ?? 0) + 1;
+  }
+  double? best;
+  votes.forEach((v, n) {
+    if (n >= 2 && (best == null || n > votes[best]!)) best = v;
+  });
+  if (best != null) return best;
+
   for (var i = 0; i < lines.length; i++) {
     if (!_end.hasMatch(lines[i].toLowerCase())) continue;
     final v = read(lines[i]) ?? (i + 1 < lines.length ? read(lines[i + 1]) : null);
     if (v != null) return v;
   }
-  return null;
+  // «СУМА» не прочиталась - беремо найчастіше значення з рядків оплати
+  double? any;
+  votes.forEach((v, n) {
+    if (any == null || n > votes[any]!) any = v;
+  });
+  return any;
 }
