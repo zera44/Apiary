@@ -668,6 +668,8 @@ abstract class AppStrings {
   String receiptRows(int n);
   String receiptOk(String rows);
   String receiptMismatch(String rows, String declared, String table);
+  String receiptRest(String rows, String rest);
+  String get receiptRestName;
   String receiptCheck(String rows);
   String get receiptFailed;
   String get finChooseCategory;

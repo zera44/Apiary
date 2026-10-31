@@ -199,7 +199,9 @@ bool _qtyFirst(List<String> lines) {
 
 /// «ШК 4820217000055» / «Штрихкод 2099901024039»: початок позиції в чеках, де
 /// кожному товару передує його штрихкод (АТБ, «Вигідна покупка» тощо).
-final _barcodeLine = RegExp(r'^(?:[ШЩ]К|штрихкод)(?![а-яіїєґa-z])', caseSensitive: false);
+final _barcodeLine = RegExp(
+    r'^(?:(?:[ШЩ]\s?[КK]|штрих[\s-]?код)(?![а-яіїєґa-z])|\d{13}$)',
+    caseSensitive: false);
 
 /// «Арт № 138807 Навушники» - артикул перед назвою.
 final _articlePrefix = RegExp(r'^арт\.?\s*[^\s\d]{0,2}\d?\s*\d{4,}\s*', caseSensitive: false);
@@ -213,6 +215,9 @@ final _nameNoise = RegExp(r'гарантій|термін', caseSensitive: false
 
 /// Знижка під позицією: «ЗНИЖКА -3,16», «ЦІНА КГ/Л ЗІ ЗНИЖКОЮ 29,32».
 final _discountLine = RegExp(r'^(?:зни[а-яіїєґ]{1,2}ка|ціна\s)', caseSensitive: false);
+
+/// Саме «ЗНИЖКА -3,16» (без «ціна за кг»).
+final _discountOnly = RegExp(r'^зни[а-яіїєґ]{1,2}ка', caseSensitive: false);
 
 /// «СУМА ЗІ ЗНИЖКОЮ 58,64» (OCR часом читає «СНМА»).
 final _discountSum = RegExp(r'^[сc][а-яіa-z]{2,3}\s+[зз3][іi]\s', caseSensitive: false);
@@ -246,7 +251,9 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
       final l = lines[j];
       if (bc(l) || _end.hasMatch(l.toLowerCase())) break;
       final qi = _qtyInfo(l);
-      if (qi != null) {
+      // «220х400мм» у назві - не кількість: коли кількість уже відома з «1х 7,00»
+      // перед штрихкодом, такий рядок мусить мати ще й суму («2 x 30,90 61,80»)
+      if (qi != null && (qty == null || qi.m.namedGroup('sum') != null)) {
         final n = _cleanName(qi.m.namedGroup('name') ?? '');
         if (_hasWord(n)) name.add(n);
         qty = qi.qty;
@@ -268,17 +275,25 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
     }
     if (sum == null) continue; // блок без суми - не позиція
     var paid = sum;
-    // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено
+    double? discount;
+    // знижка: «СУМА ЗІ ЗНИЖКОЮ» - те, що справді заплачено; а коли є лише
+    // «ЗНИЖКА -9,40», її віднімаємо від суми позиції
     for (var k = j; k < lines.length && k < j + 4; k++) {
       final l = lines[k];
       final low = l.toLowerCase();
       if (bc(l)) break;
       if (_discountSum.hasMatch(low)) {
         paid = _lastMoney(l) ?? paid;
+        discount = null;
+        break;
+      } else if (_discountOnly.hasMatch(low)) {
+        final d = _lastMoney(l);
+        if (d != null && d < sum) discount = (discount ?? 0) + d;
       } else if (!_discountLine.hasMatch(low)) {
         break;
       }
     }
+    if (discount != null) paid = _to(sum - discount, 2);
     final title = name.join(' ').trim();
     if (!_hasWord(title)) continue;
     final q = (qty == null || qty <= 0) ? 1.0 : qty;
@@ -314,7 +329,11 @@ List<ReceiptRow> parseReceipt(String text) {
   for (var i = 0; i < lines.length; i++) {
     final line = lines[i];
     final low = line.toLowerCase();
-    if (_end.hasMatch(low) && rows.isNotEmpty) break;
+    if (_end.hasMatch(low)) {
+      if (rows.isNotEmpty) break;
+      pending = null; // «СУМА … ПДВ …» - не товар
+      continue;
+    }
 
     final q = _qtyInfo(line);
     if (q != null) {
