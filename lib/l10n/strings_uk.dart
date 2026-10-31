@@ -1291,6 +1291,8 @@ class AppStringsUk extends AppStrings {
   String get finFromStockNote =>
       '\n\nПрихід внесено на складі. Скасування тут скасує його й на складі.';
   @override
+  String get finBoughtTitle => 'Куплено:';
+  @override
   String get finLinesNote => '\n\nСкасування скасує й приходи цієї операції на складі.';
   @override
   String get finCancelledNote => '\n\nЦей запис скасовано.';
@@ -1355,7 +1357,10 @@ class AppStringsUk extends AppStrings {
       'Чек розпізнано · $rows. Сума на чеку $declared, у таблиці $table - перевірте рядки.';
   @override
   String receiptRest(String rows, String rest) =>
-      'Чек розпізнано · $rows. Ще $rest з чека не розпізнано - додано окремим рядком, уточніть назву й ціну.';
+      'Чек розпізнано · $rows. Суму чека враховано, ще $rest не прочитано - додано окремим рядком, уточніть його назву.';
+  @override
+  String receiptTotalOnly(String total) =>
+      'Позиції не прочитано, але суму чека ($total) враховано одним рядком. Допишіть назву або перезніміть.';
   @override
   String get receiptRestName => 'Не розпізнано';
   @override

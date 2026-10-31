@@ -639,6 +639,7 @@ abstract class AppStrings {
   String finEntryText(String name, bool expense, String amount, String rest);
   String get finFromStockNote;
   String get finLinesNote;
+  String get finBoughtTitle;
   String get finCancelledNote;
   String get record;
   String get notCancelled;
@@ -669,6 +670,7 @@ abstract class AppStrings {
   String receiptOk(String rows);
   String receiptMismatch(String rows, String declared, String table);
   String receiptRest(String rows, String rest);
+  String receiptTotalOnly(String total);
   String get receiptRestName;
   String receiptCheck(String rows);
   String get receiptFailed;

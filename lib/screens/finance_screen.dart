@@ -84,6 +84,9 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
   final note = (e.comment ?? '').isEmpty || e.fromStock ? '' : '\n«${e.comment}»';
   final text = tr.finEntryText(name, e.isExpense, uah(e.amount), '${finDay(e.date)}$what$note')
       + (e.fromStock ? tr.finFromStockNote : '')
+      + (e.lines.isEmpty
+          ? ''
+          : '\n\n${tr.finBoughtTitle}\n${e.lines.map((l) => '• ${l.name} - ${_plain(l.qty)} ${l.unit} × ${uah(l.price)} = ${uah(l.total)}').join('\n')}')
       + (!e.fromStock && e.lineCount > 0 ? tr.finLinesNote : '');
   if (e.cancelled) {
     await showInfo(context, '$text${tr.finCancelledNote}', title: tr.record);
