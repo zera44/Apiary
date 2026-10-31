@@ -326,7 +326,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
     final panel = Column(mainAxisSize: MainAxisSize.min, children: [
       hivePanel([
-        _Banner(text: _greeting()),
+        _Banner(
+            text: _greeting(), onSettings: () => SettingsScreen.open(nav, repo)),
         const SizedBox(height: 10),
         _Advisor(repo: repo),
         const SizedBox(height: 14),
@@ -349,7 +350,8 @@ class _HomeScreenState extends State<HomeScreen> {
       const SizedBox(width: 20),
       Expanded(
           child: hivePanel([
-        _Banner(text: _greeting()),
+        _Banner(
+            text: _greeting(), onSettings: () => SettingsScreen.open(nav, repo)),
         const SizedBox(height: 6),
         _Advisor(repo: repo, compact: true),
         const SizedBox(height: 8),
@@ -410,11 +412,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 tooltip: tr.scanQr,
                 onPressed: () => AppDrawer.openHiveByQr(nav, repo),
               ),
-              const SizedBox(width: 10),
-              GearButton(
-                  size: 48,
-                  bg: AppColors.darkBtn,
-                  onPressed: () => SettingsScreen.open(nav, repo)),
             ]),
           ),
           const Positioned.fill(child: ScreenFrame()),
@@ -436,19 +433,26 @@ class _HomeScreenState extends State<HomeScreen> {
 /// Стрічка-заголовок панелі (як табличка на вулику).
 class _Banner extends StatelessWidget {
   final String text;
-  const _Banner({required this.text});
+  final VoidCallback onSettings;
+  const _Banner({required this.text, required this.onSettings});
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
         decoration: BoxDecoration(
           color: AppColors.hive,
           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
         ),
-        child: Text(text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: Color(0xFF3A2410), fontSize: 15, fontWeight: FontWeight.w800)),
+        // текст - по центру, шестірня налаштувань - праворуч у стрічці
+        child: Row(children: [
+          const SizedBox(width: 40),
+          Expanded(
+              child: Text(text,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: Color(0xFF3A2410), fontSize: 15, fontWeight: FontWeight.w800))),
+          GearButton(size: 40, bg: AppColors.darkBtn, onPressed: onSettings),
+        ]),
       );
 }
 
