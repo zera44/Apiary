@@ -256,7 +256,7 @@ class _AppDrawerState extends State<AppDrawer> {
             child: Text(tr.navMenu,
                 style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w800)),
           ),
-          _t(0, _item(context, 'beehive', tr.myApiaries, widget.tour ? () {} : () {
+          _t(0, _item(context, 'apiaries', tr.myApiaries, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             nav.popUntil((r) => r.isFirst);
             nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
@@ -289,7 +289,7 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(6, _item(context, '', tr.settingsTitle,
               widget.tour ? () {} : () => _open(nav, SettingsScreen(repo: repo)),
               iconData: Icons.settings)),
-          _t(7, _item(context, 'pencil', tr.feedbackTitle, widget.tour ? () {} : () {
+          _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav);
           })),

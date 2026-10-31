@@ -639,6 +639,7 @@ abstract class AppStrings {
   String finEntryText(String name, bool expense, String amount, String rest);
   String get finFromStockNote;
   String get finLinesNote;
+  String get finBoughtTitle;
   String get finCancelledNote;
   String get record;
   String get notCancelled;

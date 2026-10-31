@@ -76,6 +76,9 @@ class FinEntry {
   final DateTime date;
   final String title;
   final int lineCount;
+
+  /// Позиції власної операції (що саме куплено); для складських записів порожньо.
+  final List<FinLineInput> lines;
   final String? comment;
   final bool cancelled;
 
@@ -89,6 +92,7 @@ class FinEntry {
     required this.date,
     required this.title,
     required this.lineCount,
+    this.lines = const [],
     required this.cancelled,
     required this.fromStock,
     this.comment,
@@ -533,6 +537,15 @@ extension RepositoryFinance on Repository {
         date: _dt(o['op_date'] as num),
         title: ls.map((l) => l['name'] as String).join(', '),
         lineCount: ls.length,
+        lines: [
+          for (final l in ls)
+            FinLineInput(
+                name: l['name'] as String,
+                qty: (l['qty'] as num).toDouble(),
+                unit: l['unit'] as String,
+                price: (l['price'] as num).toDouble(),
+                toStock: (l['to_stock'] as int? ?? 0) == 1)
+        ],
         comment: o['comment'] as String?,
         cancelled: (o['cancelled'] as int? ?? 0) == 1,
         fromStock: false,

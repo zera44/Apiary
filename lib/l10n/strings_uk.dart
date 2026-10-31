@@ -1291,6 +1291,8 @@ class AppStringsUk extends AppStrings {
   String get finFromStockNote =>
       '\n\nПрихід внесено на складі. Скасування тут скасує його й на складі.';
   @override
+  String get finBoughtTitle => 'Куплено:';
+  @override
   String get finLinesNote => '\n\nСкасування скасує й приходи цієї операції на складі.';
   @override
   String get finCancelledNote => '\n\nЦей запис скасовано.';
