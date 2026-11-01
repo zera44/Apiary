@@ -57,7 +57,7 @@ final _skip = RegExp(
   r'(пдв|податк|фн(?=\s|$|[.:№])|пн(?=\s|$|[.:№])|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
   r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
   r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість|гарантій|епз|платіжн|рнн|термін|'
-  r'\*{2,}|rrn|auth|visa|master)',
+  r'комісі|нарахован|витрачен|залишок|баланс|\*{2,}|rrn|auth|visa|master)',
   caseSensitive: false,
 );
 
@@ -368,6 +368,8 @@ List<ReceiptRow> _fillUnknownPrice(List<ReceiptRow> rows, double? declared) {
 
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
 List<ReceiptRow> parseReceipt(String text) {
+  final np = _novaPoshtaTotal(text);
+  if (np != null) return [ReceiptRow(name: 'ДОСТАВКА', qty: 1, unit: 'шт', price: np)];
   final rows = <ReceiptRow>[];
   String? pending; // рядок-назва, чекає на рядок «кількість x ціна»
 
@@ -470,7 +472,30 @@ String receiptAsText(List<ReceiptRow> rows) => rows
 /// Підсумок, надрукований на чеку («СУМА 1 250,00», «РАЗОМ: 97.00»; число може
 /// стояти й у наступному рядку). null - не знайдено. Потрібен, щоб звірити
 /// суму розпізнаної таблиці з чеком.
-double? receiptDeclaredTotal(String text) {
+double? receiptDeclaredTotal(String text) => _novaPoshtaTotal(text) ?? _declaredTotal(text);
+
+/// Чек Нової пошти (переказ коштів, НоваПей): це оплата доставки, одна позиція
+/// на всю суму. null - чек не від Нової пошти або суму не знайдено.
+double? _novaPoshtaTotal(String text) {
+  if (!RegExp(r'нова\s*пошта|новапей|novapay', caseSensitive: false).hasMatch(text)) return null;
+  final money = RegExp(r'(\d[\d ]*[.,]\d{2})(?!\d)');
+  final votes = <double, int>{};
+  for (final raw in text.split('\n')) {
+    final l = _fixDigits(raw.trim());
+    if (!RegExp(r'до сплати|загальна сума|засіб оплати', caseSensitive: false).hasMatch(l)) continue;
+    final all = money.allMatches(l).toList();
+    if (all.isEmpty) continue;
+    final v = double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+    if (v != null && v > 0) votes[v] = (votes[v] ?? 0) + 1;
+  }
+  double? best;
+  votes.forEach((v, n) {
+    if (best == null || n > votes[best]!) best = v;
+  });
+  return best;
+}
+
+double? _declaredTotal(String text) {
   final lines = [
     for (final l in text.split('\n'))
       if (l.trim().isNotEmpty) _fixDigits(l.trim())
