@@ -385,7 +385,7 @@ List<ReceiptRow> _fillUnknownPrice(List<ReceiptRow> rows, double? declared) {
 /// Квитанція інтернет-магазину нумізматики НБУ: позиції не в таблиці, а
 /// списком «Назва / Кількість, шт N / Ціна продажу, грн X».
 List<ReceiptRow> _coinShopRows(String text) {
-  if (!RegExp(r'квитанці', caseSensitive: false).hasMatch(text) ||
+  if (!RegExp(r'номінал', caseSensitive: false).hasMatch(text) ||
       !RegExp(r'ціна\s+продажу', caseSensitive: false).hasMatch(text)) {
     return [];
   }
@@ -396,13 +396,13 @@ List<ReceiptRow> _coinShopRows(String text) {
   for (final raw in text.split('\n')) {
     final l = _fixDigits(raw.trim());
     if (l.isEmpty) continue;
-    final start = RegExp(r'^\d{1,2}\.\s+(.+)').firstMatch(l);
+    final start = RegExp(r'^\d{1,2}[.\s]\s*(.+)').firstMatch(l);
     if (start != null && !nameDone && name == null) {
       name = start.group(1)!;
       continue;
     }
     if (name != null && !nameDone) {
-      if (RegExp(r'^(метал|номінал)', caseSensitive: false).hasMatch(l)) {
+      if (RegExp(r'^(метал|номінал|нейз)', caseSensitive: false).hasMatch(l)) {
         nameDone = true;
       } else {
         name = '$name $l';
@@ -412,9 +412,11 @@ List<ReceiptRow> _coinShopRows(String text) {
     if (name == null) continue;
     final q = RegExp(r'^кількість,?\s*шт\D*(\d+)', caseSensitive: false).firstMatch(l);
     if (q != null) qty = double.parse(q.group(1)!);
-    final pr = RegExp(r'^ціна\s+продажу\D*(\d[\d ]*[.,]\d{2})', caseSensitive: false).firstMatch(l);
+    final pr = RegExp(r'^ціна\s+продажу\D*(\d[\d .]*[.,]\d{2})', caseSensitive: false).firstMatch(l);
     if (pr != null) {
-      final price = _num(pr.group(1)!.replaceAll(' ', ''));
+      var ps = pr.group(1)!.replaceAll(' ', '');
+      if (ps.contains(',')) ps = ps.replaceAll('.', '');
+      final price = _num(ps);
       if (price != null) {
         rows.add(ReceiptRow(
             name: _cleanName(name.replaceAll(RegExp(r'[\s)(\d]+$'), '')),
@@ -425,6 +427,44 @@ List<ReceiptRow> _coinShopRows(String text) {
       nameDone = false;
       qty = 1;
     }
+  }
+  return rows;
+}
+
+/// «0,740Х394,00 = 291,56 А», «1,000x54,00 54,00 А»: кількість, ціна, сума.
+final _weightLine = RegExp(
+    r'(?<q>\d+[.,]\d{3})\s*[хxXХ*]?\s*(?<p>\d+[.,]\d{2})\s*[=0]?\s*(?<s>\d+[.,]\d{2})\s*[A-Za-zА-ЯІЇЄҐа-яіїєґ]?$');
+
+/// Чек, де кожна позиція закінчується рядком «кількість x ціна = сума», а назва
+/// (в одному-двох рядках) стоїть над ним (вагові сири тощо).
+List<ReceiptRow> _weightRows(List<String> lines) {
+  final rows = <ReceiptRow>[];
+  final name = <String>[];
+  var started = false;
+  for (final l in lines) {
+    if (!started) {
+      if (RegExp(r'^пн(?![а-яіїєґa-z])', caseSensitive: false).hasMatch(l)) started = true;
+      continue;
+    }
+    if (_end.hasMatch(l.toLowerCase())) break;
+    final m = _weightLine.firstMatch(l);
+    if (m == null) {
+      name.add(l);
+      continue;
+    }
+    final prefix = l.substring(0, m.start).trim();
+    if (prefix.isNotEmpty) name.add(prefix);
+    final qty = _num(m.namedGroup('q'));
+    final sum = _num(m.namedGroup('s'));
+    final title = _cleanName(name.join(' '));
+    final kg = RegExp(r'\(кг\)', caseSensitive: false).hasMatch(title);
+    name.clear();
+    if (qty == null || sum == null || qty <= 0 || title.isEmpty) continue;
+    rows.add(ReceiptRow(
+        name: title,
+        qty: qty,
+        unit: kg ? 'кг' : _guessUnit(null, qty),
+        price: _to(sum / qty, 2)));
   }
   return rows;
 }
@@ -443,6 +483,10 @@ List<ReceiptRow> parseReceipt(String text) {
       .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
       .where((l) => l.isNotEmpty)
       .toList();
+  if (lines.where(_weightLine.hasMatch).length >= 2) {
+    final w = _weightRows(lines);
+    if (w.length >= 2) return w;
+  }
   final norm = _normalizeLines(lines);
   final blocks = _barcodeBlocks(norm);
   if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, _declaredTotal(text));
