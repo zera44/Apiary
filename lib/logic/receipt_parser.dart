@@ -49,20 +49,20 @@ final _qtyLine = RegExp(
 
 /// «Мед липовий 0.5кг 150.00 А»: назва і сума в кінці.
 final _priceLine = RegExp(
-  r'^(?<name>.*?[' + _letters + r'].*?)\s+(?<sum>\d+[.,]\d{2})\s*[' + _letters + r']?$',
+  r'^(?<name>.*?[' + _letters + r'].*?)\s+[гГ]?(?<sum>\d+[.,]\d{2})\s*[' + _letters + r']?$',
 );
 
 /// Службові рядки чека - не товари.
 final _skip = RegExp(
   r'(пдв|податк|фн(?=\s|$|[.:№])|пн(?=\s|$|[.:№])|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
-  r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
+  r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|(?<![а-яіїєґ])код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
   r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість|гарантій|епз|платіжн|рнн|термін|'
   r'комісі|нарахован|витрачен|залишок|баланс|\*{2,}|rrn|auth|visa|master)',
   caseSensitive: false,
 );
 
 /// Кінець переліку товарів («СУМА», «Сума!», «РАЗОМ:»…).
-final _end = RegExp(r'^(сума|разом|всього|до сплати|усього|підсумок)(?![а-яіїєґa-z])', caseSensitive: false);
+final _end = RegExp(r'^([сc][уy][мm][аa]|разом|всього|до сплати|усього|підсумок)(?![а-яіїєґa-z])', caseSensitive: false);
 
 /// Велика літера «О» всередині числа (45.5О, 1О0) - це нуль.
 String _fixDigits(String s) => s.replaceAllMapped(
@@ -238,7 +238,13 @@ List<String> _normalizeLines(List<String> lines) {
 
 /// Рядок, що закінчується сумою: «… 31,90 А», «… 134,00 А».
 final _moneyEnd = RegExp(
-    r'^(?<name>.*?)\s*(?<sum>\d+[.,]\s?\d{2})\s*[A-Za-zА-ЯІЇЄҐа-яіїєґ]?\s*(?:грн\.?)?\s*$');
+    r'^(?<name>.*?)\s*(?<sum>\d+[.,]\s?\d{2})\s*(?:[МM]/\+?|[-+]\s?)?[A-Za-zА-ЯІЇЄҐа-яіїєґ]?\s*(?:грн\.?)?\s*$');
+
+/// «30 Х 4.50 Яйце 135.00 А»: кількість, ціна, назва і сума в одному рядку.
+final _qtyNameSum = RegExp(
+    r'^(?<q>\d+(?:[.,]\d+)?)\s*[хxХ]\s*\d+[.,]\d{2}\s+(?<n>.*?[' +
+        _letters +
+        r'].*?)\s+(?<s>\d+[.,]\d{2})\s*(?:[МM]/\+?)?[A-Za-zА-ЯІЇЄҐа-яіїєґ]?$');
 
 /// Службовий кінець назви: «Гарантійний термін 1 рік».
 final _nameNoise = RegExp(r'гарантій|термін', caseSensitive: false);
@@ -280,6 +286,15 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
     for (; j < lines.length; j++) {
       final l = lines[j];
       if (bc(l) || _end.hasMatch(l.toLowerCase())) break;
+      // «30 Х 4.50 Яйце 135.00 А» і «2 Х 24.99 Пиво … 49.98»: кількість, ціна, назва, сума
+      final qn = _qtyNameSum.firstMatch(l);
+      if (qn != null) {
+        name.add(_cleanName(qn.namedGroup('n')!));
+        qty = _num(qn.namedGroup('q'));
+        sum = _num(qn.namedGroup('s'));
+        j++;
+        break;
+      }
       final qi = _qtyInfo(l);
       // «220х400мм» у назві - не кількість: коли кількість уже відома з «1х 7,00»
       // перед штрихкодом, такий рядок мусить мати ще й суму («2 x 30,90 61,80»)
@@ -300,6 +315,7 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
         j++;
         break;
       }
+      if (RegExp(r'^укт\s', caseSensitive: false).hasMatch(l)) continue;
       final n = _cleanName(l.replaceFirst(_articlePrefix, ''));
       if (_hasWord(n)) name.add(n);
     }
@@ -366,8 +382,57 @@ List<ReceiptRow> _fillUnknownPrice(List<ReceiptRow> rows, double? declared) {
   return rows;
 }
 
+/// Квитанція інтернет-магазину нумізматики НБУ: позиції не в таблиці, а
+/// списком «Назва / Кількість, шт N / Ціна продажу, грн X».
+List<ReceiptRow> _coinShopRows(String text) {
+  if (!RegExp(r'квитанці', caseSensitive: false).hasMatch(text) ||
+      !RegExp(r'ціна\s+продажу', caseSensitive: false).hasMatch(text)) {
+    return [];
+  }
+  final rows = <ReceiptRow>[];
+  String? name;
+  var nameDone = false;
+  var qty = 1.0;
+  for (final raw in text.split('\n')) {
+    final l = _fixDigits(raw.trim());
+    if (l.isEmpty) continue;
+    final start = RegExp(r'^\d{1,2}\.\s+(.+)').firstMatch(l);
+    if (start != null && !nameDone && name == null) {
+      name = start.group(1)!;
+      continue;
+    }
+    if (name != null && !nameDone) {
+      if (RegExp(r'^(метал|номінал)', caseSensitive: false).hasMatch(l)) {
+        nameDone = true;
+      } else {
+        name = '$name $l';
+        continue;
+      }
+    }
+    if (name == null) continue;
+    final q = RegExp(r'^кількість,?\s*шт\D*(\d+)', caseSensitive: false).firstMatch(l);
+    if (q != null) qty = double.parse(q.group(1)!);
+    final pr = RegExp(r'^ціна\s+продажу\D*(\d[\d ]*[.,]\d{2})', caseSensitive: false).firstMatch(l);
+    if (pr != null) {
+      final price = _num(pr.group(1)!.replaceAll(' ', ''));
+      if (price != null) {
+        rows.add(ReceiptRow(
+            name: _cleanName(name.replaceAll(RegExp(r'[\s)(\d]+$'), '')),
+            qty: qty,
+            price: price));
+      }
+      name = null;
+      nameDone = false;
+      qty = 1;
+    }
+  }
+  return rows;
+}
+
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
 List<ReceiptRow> parseReceipt(String text) {
+  final coin = _coinShopRows(text);
+  if (coin.isNotEmpty) return coin;
   final np = _novaPoshtaTotal(text);
   if (np != null) return [ReceiptRow(name: 'ДОСТАВКА', qty: 1, unit: 'шт', price: np)];
   final rows = <ReceiptRow>[];
@@ -380,7 +445,7 @@ List<ReceiptRow> parseReceipt(String text) {
       .toList();
   final norm = _normalizeLines(lines);
   final blocks = _barcodeBlocks(norm);
-  if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, receiptDeclaredTotal(text));
+  if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, _declaredTotal(text));
   final qtyFirst = _qtyFirst(lines);
 
   void add(String name, double qty, String? unit, double price) {
@@ -472,30 +537,43 @@ String receiptAsText(List<ReceiptRow> rows) => rows
 /// Підсумок, надрукований на чеку («СУМА 1 250,00», «РАЗОМ: 97.00»; число може
 /// стояти й у наступному рядку). null - не знайдено. Потрібен, щоб звірити
 /// суму розпізнаної таблиці з чеком.
-double? receiptDeclaredTotal(String text) => _novaPoshtaTotal(text) ?? _declaredTotal(text);
+double? receiptDeclaredTotal(String text) {
+  final np = _novaPoshtaTotal(text);
+  if (np != null) return np;
+  final rows = parseReceipt(text);
+  final sum = rows.isEmpty ? null : _to(rows.fold<double>(0, (a, r) => a + r.total), 2);
+  return _declaredTotal(text, sum);
+}
 
 /// Чек Нової пошти (переказ коштів, НоваПей): це оплата доставки, одна позиція
 /// на всю суму. null - чек не від Нової пошти або суму не знайдено.
 double? _novaPoshtaTotal(String text) {
   if (!RegExp(r'нова\s*пошта|новапей|novapay', caseSensitive: false).hasMatch(text)) return null;
-  final money = RegExp(r'(\d[\d ]*[.,]\d{2})(?!\d)');
-  final votes = <double, int>{};
-  for (final raw in text.split('\n')) {
-    final l = _fixDigits(raw.trim());
-    if (!RegExp(r'до сплати|загальна сума|засіб оплати', caseSensitive: false).hasMatch(l)) continue;
-    final all = money.allMatches(l).toList();
-    if (all.isEmpty) continue;
-    final v = double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
-    if (v != null && v > 0) votes[v] = (votes[v] ?? 0) + 1;
+  final money = RegExp(r'(\d[\d ]*[.,]\d{1,2})(?!\d)');
+  double? lastIn(RegExp key) {
+    double? res;
+    final votes = <double, int>{};
+    for (final raw in text.split('\n')) {
+      final l = _fixDigits(raw.trim());
+      if (!key.hasMatch(l)) continue;
+      final all = money.allMatches(l).toList();
+      if (all.isEmpty) continue;
+      final v = double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+      if (v != null && v > 0) {
+        res = v;
+        votes[v] = (votes[v] ?? 0) + 1;
+      }
+    }
+    return res;
   }
-  double? best;
-  votes.forEach((v, n) {
-    if (best == null || n > votes[best]!) best = v;
-  });
-  return best;
+
+  // кілька переказів в одному чеку: підсумок - останній «Загальна сума»
+  return lastIn(RegExp(r'до сплати', caseSensitive: false)) ??
+      lastIn(RegExp(r'загальна сума', caseSensitive: false)) ??
+      lastIn(RegExp(r'засіб оплати', caseSensitive: false));
 }
 
-double? _declaredTotal(String text) {
+double? _declaredTotal(String text, [double? rowsSum]) {
   final lines = [
     for (final l in text.split('\n'))
       if (l.trim().isNotEmpty) _fixDigits(l.trim())
@@ -524,12 +602,14 @@ double? _declaredTotal(String text) {
   });
   if (best != null) return best;
 
+  if (rowsSum != null && votes.containsKey(rowsSum)) return rowsSum;
   for (var i = 0; i < lines.length; i++) {
     if (!_end.hasMatch(lines[i].toLowerCase())) continue;
     final v = read(lines[i]) ?? (i + 1 < lines.length ? read(lines[i + 1]) : null);
     if (v != null) return v;
   }
   // «СУМА» не прочиталась - беремо найчастіше значення з рядків оплати
+  if (rowsSum != null && votes.containsKey(rowsSum)) return rowsSum;
   double? any;
   votes.forEach((v, n) {
     if (any == null || n > votes[any]!) any = v;
