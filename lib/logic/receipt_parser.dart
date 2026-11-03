@@ -469,8 +469,59 @@ List<ReceiptRow> _weightRows(List<String> lines) {
   return rows;
 }
 
+/// «46.73 х 100.90», «43,92 л Х 105,90», «100,90× 35,68 ЛІТР = 3600,11»:
+/// літри і ціна літра (порядок різний, але біля літрів стоїть «л»/«літр»).
+final _fuelQty = RegExp(
+    r'(?<a>\d+[.,]\d{2,3})\s*(?<ua>л(?![а-яіїєґ])|літр[а-яіїєґ]*)?\s*[хxXХ×]{1,2}\s*(?<b>\d+[.,]\d{2,3})\s*(?<ub>л(?![а-яіїєґ])|літр[а-яіїєґ]*)?',
+    caseSensitive: false);
+
+/// Чек АЗС (код УКТ ЗЕД 2710…): одна позиція - паливо, літри x ціна літра;
+/// знижка на чеку зменшує ціну (підсумок / літри). Усе інше - бонуси, баланс,
+/// ПДВ - не товари.
+List<ReceiptRow> _fuelRows(List<String> lines, String text) {
+  if (!RegExp(r'укт\s*[зз3]\s*ед\W{0,3}\s*2710', caseSensitive: false).hasMatch(text)) return [];
+  double? qty;
+  double? unitPrice;
+  for (var i = 0; i < lines.length; i++) {
+    final m = _fuelQty.firstMatch(lines[i]);
+    if (m == null) continue;
+    final a = _num(m.namedGroup('a'));
+    final b = _num(m.namedGroup('b'));
+    if (a == null || b == null) continue;
+    final secondIsQty = m.namedGroup('ub') != null && m.namedGroup('ua') == null;
+    qty = secondIsQty ? b : a;
+    unitPrice = secondIsQty ? a : b;
+    break;
+  }
+  if (qty == null || unitPrice == null || qty <= 0) return [];
+  final low = text.toLowerCase();
+  final String name;
+  if (RegExp(r'дп|диз|дизел|energy').hasMatch(low)) {
+    name = low.contains('energy') ? 'Дизельне паливо ENERGY' : 'Дизельне паливо';
+  } else if (RegExp(r'а-?\s?(9[58]|92|100)').hasMatch(low)) {
+    name = 'Бензин ${RegExp(r'а-?\s?(9[58]|92|100)').firstMatch(low)!.group(1)}';
+  } else if (RegExp(r'газ').hasMatch(low)) {
+    name = 'Автогаз';
+  } else {
+    name = 'Паливо';
+  }
+  final product = qty * unitPrice;
+  final declared = _declaredTotal(text);
+  // знижка: оплачено менше, ніж літри x ціна, - ціну літра рахуємо з підсумку
+  final paid = (declared != null && declared > 0 && (declared - product).abs() <= product * 0.2)
+      ? declared
+      : product;
+  return [
+    ReceiptRow(name: name, qty: qty, unit: 'л', price: _to(paid / qty, 2)),
+  ];
+}
+
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
 List<ReceiptRow> parseReceipt(String text) {
+  final fuel = _fuelRows(
+      text.split(RegExp(r'[\r\n]+')).map((l) => _fixDigits(l.trim())).where((l) => l.isNotEmpty).toList(),
+      text);
+  if (fuel.isNotEmpty) return fuel;
   final coin = _coinShopRows(text);
   if (coin.isNotEmpty) return coin;
   final np = _novaPoshtaTotal(text);
@@ -633,10 +684,10 @@ double? _declaredTotal(String text, [double? rowsSum]) {
   // «КАРТКА»): OCR псує зазвичай один рядок, тож перемагає значення, що
   // повторилось
   final votes = <double, int>{};
-  final pay = RegExp(r'^(до сплати|безго|картка)', caseSensitive: false);
+  final pay = RegExp(r'^(до сплат|безго|картка)', caseSensitive: false);
   for (final l in lines) {
     final low = l.toLowerCase();
-    if (!pay.hasMatch(low) && !RegExp(r'^сума(?![а-яіїєґa-z])').hasMatch(low)) continue;
+    if (!pay.hasMatch(low) && !RegExp(r'^[сc][уy][мm][аa](?![а-яіїєґa-z])').hasMatch(low)) continue;
     final v = read(l);
     if (v != null) votes[v] = (votes[v] ?? 0) + 1;
   }
