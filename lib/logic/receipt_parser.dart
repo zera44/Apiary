@@ -482,7 +482,6 @@ List<ReceiptRow> _fuelRows(List<String> lines, String text) {
   if (!RegExp(r'укт\s*[зз3]\s*ед\W{0,3}\s*2710', caseSensitive: false).hasMatch(text)) return [];
   double? qty;
   double? unitPrice;
-  var qtyLine = -1;
   for (var i = 0; i < lines.length; i++) {
     final m = _fuelQty.firstMatch(lines[i]);
     if (m == null) continue;
@@ -492,7 +491,6 @@ List<ReceiptRow> _fuelRows(List<String> lines, String text) {
     final secondIsQty = m.namedGroup('ub') != null && m.namedGroup('ua') == null;
     qty = secondIsQty ? b : a;
     unitPrice = secondIsQty ? a : b;
-    qtyLine = i;
     break;
   }
   if (qty == null || unitPrice == null || qty <= 0) return [];
