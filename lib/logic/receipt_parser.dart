@@ -167,15 +167,17 @@ _Qty? _qtyInfo(String line) {
   final m = _qtyLine.firstMatch(line);
   if (m == null) return null;
   // «220х400мм», «12*9*36 СМ» - розмір у назві, а не «кількість x ціна»
-  if (_dimension.hasMatch(line) && !RegExp(r'\d[.,]\d{2}(?!\d)').hasMatch(line)) return null;
+  final dim = _dimension.firstMatch(line);
+  if (dim != null && m.start < dim.end && dim.start < m.end) return null;
   final qty = _num(m.namedGroup('qty'));
   final price = _num(m.namedGroup('price'));
   if (qty == null || qty <= 0 || price == null) return null;
   return _Qty(m, qty, price);
 }
 
-/// Розмір товару: «220х400мм», «30х50см», «12*9*36 СМ».
-final _dimension = RegExp(r'\d+\s*[xхХ×*]\s*\d+(?:\s*[xхХ×*]\s*\d+)?\s*(?:мм|см|mm|cm)(?![а-яіїєґa-z])',
+/// Розмір товару: «220х400мм», «30х50см», «12*9*36 СМ», «35*26*51» (три числа без одиниць).
+final _dimension = RegExp(
+    r'\d+\s*[xхХ×*]\s*\d+\s*[xхХ×*]\s*\d+|\d+\s*[xхХ×*]\s*\d+\s*(?:мм|см|mm|cm)(?![а-яіїєґa-z])',
     caseSensitive: false);
 
 /// Чи «кількість x ціна» друкується ПЕРЕД назвою (назва з сумою - рядком нижче).
@@ -212,11 +214,12 @@ bool _qtyFirst(List<String> lines) {
 /// «ШК 4820217000055» / «Штрихкод 2099901024039»: початок позиції в чеках, де
 /// кожному товару передує його штрихкод (АТБ, «Вигідна покупка» тощо).
 /// OCR псує слово: «Штриход», «ШтриКод», «ШРИК-К0Д».
-const _barcodeWord = r'ш[тt]?р[иi][хк]?[\s-]?[хк]?[оo0]д';
+const _barcodeWord = r'ш[тпнt]?р[иi][хк]{1,2}[\s-]?[кх]?[оo0]д';
 
-/// Після слова мусить іти сам код (8+ знаків): «ШК5056» у підвалі чека - не позиція.
+/// Скорочення «ШК» вимагає сам код (8+ цифр, OCR може вставити пропуск):
+/// «ШК5056» у підвалі чека - не позиція. Повне слово «штрихкод» достатньо саме по собі.
 final _barcodeLine = RegExp(
-    r'^(?:(?:[ШЩ]\s?[КK]|' + _barcodeWord + r')(?![а-яіїєґa-z])[:\s]*[\dOОСC]{8}|\d{13}$)',
+    r'^(?:[ШЩ]\s?[КK](?![а-яіїєґa-z])[:\s]*(?:[\dOОСC]\s?){8}|' + _barcodeWord + r'(?![а-яіїєґa-z])|\d{13}$)',
     caseSensitive: false);
 
 /// «Арт № 138807 Навушники» - артикул перед назвою.
@@ -233,7 +236,8 @@ final _mergedSubtotal =
 
 /// «ШК 2000008480376 Ковбаса 41.90 А»: штрихкод наступної позиції злитий з
 /// рядком попередньої.
-final _barcodeWithTail = RegExp(r'^((?:[ШЩ]\s?[КK]|' + _barcodeWord + r')[:\s]*\d{8,14})\s+(\S.*)$', caseSensitive: false);
+final _barcodeWithTail =
+    RegExp(r'^((?:[ШЩ]\s?[КK]|' + _barcodeWord + r')[:\s]*\d(?:\s?\d){7,13})\s+(\S.*)$', caseSensitive: false);
 
 List<String> _normalizeLines(List<String> lines) {
   final out = <String>[];
