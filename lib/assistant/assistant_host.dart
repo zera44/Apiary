@@ -38,9 +38,9 @@ class AssistantHost extends StatefulWidget {
   static final dockOpen = ValueNotifier<bool>(false);
 
   /// Екрани, де плашки немає: навчання (і самі уроки), відгук - свій потік,
-  /// заставка входу. На решті (разом з головним і картою) іконка завжди в
+  /// заставка входу, сканер QR-коду. На решті (разом з головним і картою) іконка завжди в
   /// одному місці.
-  static const hiddenOn = {'lessons', 'lesson', 'feedback', 'splash'};
+  static const hiddenOn = {'lessons', 'lesson', 'feedback', 'splash', 'scanner'};
 
   @override
   State<AssistantHost> createState() => _AssistantHostState();
