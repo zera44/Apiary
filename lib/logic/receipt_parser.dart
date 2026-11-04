@@ -537,7 +537,7 @@ List<ReceiptRow> _fuelRows(List<String> lines, String text) {
 }
 
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
-List<ReceiptRow> parseReceipt(String text) {
+List<ReceiptRow> _parseOnce(String text) {
   final fuel = _fuelRows(
       text.split(RegExp(r'[\r\n]+')).map((l) => _fixDigits(l.trim())).where((l) => l.isNotEmpty).toList(),
       text);
@@ -649,6 +649,56 @@ String receiptAsText(List<ReceiptRow> rows) => rows
         'сума ${formatMoney(r.total)} грн')
     .join('\n');
 
+/// Розбір чека з перевіркою за підсумком. Чек сам задає рівність «сума позицій =
+/// СУМА»; якщо вона не виконується, пробуємо типові OCR-виправлення («150»
+/// замість «1.50», зниклий «*» у розмірі «35*26*51»), а якщо суми все ще не
+/// вистачає, додаємо рядок «Не розпізнано» на різницю, щоб користувач поправив
+/// його, а не втратив гроші.
+List<ReceiptRow> parseReceipt(String text) {
+  final rows = _parseOnce(text);
+  final declared = _declaredTotal(text, _rowsSum(rows));
+  if (declared == null || declared < 1 || _sumMatches(_rowsSum(rows), declared, text)) return rows;
+  for (final v in _ocrVariants(text)) {
+    final r = _parseOnce(v);
+    if (r.isNotEmpty && _sumMatches(_rowsSum(r), declared, v)) return r;
+  }
+  final missing = _to(declared - _rowsSum(rows), 2);
+  if (missing >= 0.5 && declared < 100000) {
+    return [
+      ...rows,
+      ReceiptRow(name: rows.isEmpty ? 'Покупка (без розбивки)' : 'Не розпізнано', price: missing),
+    ];
+  }
+  return rows;
+}
+
+double _rowsSum(List<ReceiptRow> rows) => _to(rows.fold<double>(0, (a, r) => a + r.total), 2);
+
+/// Сума позицій збігається з підсумком (чек із «ЗАОКРУГЛЕННЯМ» - з точністю до 0.5).
+bool _sumMatches(double sum, double declared, String text) {
+  final d = (sum - declared).abs();
+  return d <= 0.02 || (d <= 0.5 && RegExp(r'[зс][а-яіїє]?[ао]кру', caseSensitive: false).hasMatch(text));
+}
+
+/// Варіанти тексту з виправленими типовими помилками OCR.
+Iterable<String> _ocrVariants(String text) sync* {
+  // «Київхліб 150 Н» → «1.50 Н»: загублена крапка в ціні в кінці рядка
+  final dot = text
+      .split('\n')
+      .map((l) => RegExp(r'\d[.,]\d{2}(?!\d)').hasMatch(l)
+          ? l
+          : l.replaceFirstMapped(RegExp(r'(?<=\s)(\d{1,3})(\d{2})(?=\s*[A-Za-zА-ЯІЇЄҐ]?\s*$)'), (m) => '${m[1]}.${m[2]}'))
+      .join('\n');
+  // «35*2651», «3526*51» → «35*26*51»: загублена зірочка в розмірі
+  String star(String t) => t.replaceAllMapped(RegExp(r'\b(\d{2})(\*?)(\d{2})(\*?)(\d{2})\b'), (m) {
+        final a = m[2]!.isNotEmpty, b = m[4]!.isNotEmpty;
+        return a != b ? '${m[1]}*${m[3]}*${m[5]}' : m[0]!;
+      });
+  yield dot;
+  yield star(text);
+  yield star(dot);
+}
+
 /// Підсумок, надрукований на чеку («СУМА 1 250,00», «РАЗОМ: 97.00»; число може
 /// стояти й у наступному рядку). null - не знайдено. Потрібен, щоб звірити
 /// суму розпізнаної таблиці з чеком.
@@ -697,7 +747,18 @@ double? _declaredTotal(String text, [double? rowsSum]) {
   double? read(String l) {
     final all = money.allMatches(l).toList();
     if (all.isEmpty) return null;
-    return double.tryParse(all.last.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+    double? val(RegExpMatch m) => double.tryParse(m.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+    final last = val(all.last);
+    // «СУМА ПДВ А = 20.00% 43,87 7.31 0,13»: останнє число - залишок заокруглення,
+    // сума - перше число, що не є відсотком
+    if (last != null && last < 1 && all.length >= 2) {
+      for (final m in all) {
+        if (RegExp(r'^\s*%').hasMatch(l.substring(m.end))) continue;
+        final v = val(m);
+        if (v != null && v >= 1) return v;
+      }
+    }
+    return last;
   }
 
   // та сама сума друкується кілька разів («СУМА», «ДО СПЛАТИ», «БЕЗГОТІВКОВА»,
@@ -717,9 +778,23 @@ double? _declaredTotal(String text, [double? rowsSum]) {
   });
   if (best != null) return best;
 
+  // непряма перевірка: сума розпізнаних позицій надрукована серед підсумкових
+  // рядків (СУМА, ДО СПЛАТИ, БЕЗГОТІВКОВА...) - отже, позиції прочитано вірно
+  if (rowsSum != null && rowsSum >= 1) {
+    for (final l in lines) {
+      if (!RegExp(r'сума|сплат|безго|картк|готівк', caseSensitive: false).hasMatch(l)) continue;
+      for (final m in money.allMatches(l)) {
+        final v = double.tryParse(m.group(1)!.replaceAll(' ', '').replaceAll(',', '.'));
+        if (v != null && (v - rowsSum).abs() < 0.005) return rowsSum;
+      }
+    }
+  }
   if (rowsSum != null && votes.containsKey(rowsSum)) return rowsSum;
   for (var i = 0; i < lines.length; i++) {
-    if (!_end.hasMatch(lines[i].toLowerCase())) continue;
+    final low = lines[i].toLowerCase();
+    if (!_end.hasMatch(low)) continue;
+    // рядок лише з ПДВ - це податок, а не підсумок
+    if (low.contains('пдв') && !RegExp(r'^(сума|до сплат)').hasMatch(low)) continue;
     final v = read(lines[i]) ?? (i + 1 < lines.length ? read(lines[i + 1]) : null);
     if (v != null) return v;
   }
@@ -729,5 +804,14 @@ double? _declaredTotal(String text, [double? rowsSum]) {
   votes.forEach((v, n) {
     if (any == null || n > votes[any]!) any = v;
   });
-  return any;
+  if (any != null) return any;
+  // готівка мінус решта
+  double? cash, change;
+  for (final l in lines) {
+    final low = l.toLowerCase();
+    if (low.startsWith('готівка')) cash = read(l);
+    if (low.startsWith('решта')) change = read(l);
+  }
+  if (cash != null && change != null && cash > change) return _to(cash - change, 2);
+  return null;
 }
