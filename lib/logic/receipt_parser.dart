@@ -551,7 +551,7 @@ List<ReceiptRow> _parseOnce(String text) {
 
   final lines = text
       .split(RegExp(r'[\r\n]+'))
-      .map((l) => _fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim()))
+      .map((l) => _fixKeywords(_fixDigits(l.replaceAll(' ', ' ').replaceAll(RegExp(r'[ \t]+'), ' ').trim())))
       .where((l) => l.isNotEmpty)
       .toList();
   if (lines.where(_weightLine.hasMatch).length >= 2) {
@@ -649,6 +649,60 @@ String receiptAsText(List<ReceiptRow> rows) => rows
         'сума ${formatMoney(r.total)} грн')
     .join('\n');
 
+/// Службові слова, які OCR найчастіше псує на початку рядка підсумку:
+/// «ГОТІВКН», «ЗНИЖКН», «БЕЗГОТВКОВА», «ЗАОКРУПЕННЯ», «СПОАТИ».
+const _keyWords = [
+  'знижка',
+  'сплати',
+  'безготівкова',
+  'готівка',
+  'решта',
+  'картка',
+  'заокруглення',
+  'підсумок',
+];
+
+int _editDistance(String a, String b) {
+  var prev = List<int>.generate(b.length + 1, (i) => i);
+  for (var i = 1; i <= a.length; i++) {
+    final cur = List<int>.filled(b.length + 1, 0);
+    cur[0] = i;
+    for (var j = 1; j <= b.length; j++) {
+      final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+      cur[j] = [prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost].reduce((x, y) => x < y ? x : y);
+    }
+    prev = cur;
+  }
+  return prev.last;
+}
+
+/// Виправляє спотворене службове слово на початку рядка («ГОТІВКН» → «ГОТІВКА»).
+/// Лише перше слово (або слово після «ДО»), щоб не чіпати назви товарів; слово має
+/// відрізнятись від ключового не більше ніж на одну букву (на дві - для довгих).
+String _fixKeywords(String line) {
+  final m = RegExp(r'^((?:до\s+)?)([A-Za-zА-ЯІЇЄҐа-яіїєґ]{4,})', caseSensitive: false).firstMatch(line);
+  if (m == null) return line;
+  final word = m.group(2)!;
+  final low = word.toLowerCase();
+  String? best;
+  var bestD = 99;
+  for (final k in _keyWords) {
+    if (low == k) return line;
+    if ((low.length - k.length).abs() > 2) continue;
+    final d = _editDistance(low, k);
+    final limit = k.length >= 8 ? 2 : 1;
+    if (d <= limit && d < bestD) {
+      best = k;
+      bestD = d;
+    } else if (d == bestD && d <= limit) {
+      best = null; // двозначно
+    }
+  }
+  if (best == null) return line;
+  final fixed = word == word.toUpperCase() ? best.toUpperCase() : best[0].toUpperCase() + best.substring(1);
+  return line.replaceRange(m.start + m.group(1)!.length, m.end, fixed);
+}
+
 /// Розбір чека з перевіркою за підсумком. Чек сам задає рівність «сума позицій =
 /// СУМА»; якщо вона не виконується, пробуємо типові OCR-виправлення («150»
 /// замість «1.50», зниклий «*» у розмірі «35*26*51»), а якщо суми все ще не
@@ -741,7 +795,7 @@ double? _novaPoshtaTotal(String text) {
 double? _declaredTotal(String text, [double? rowsSum]) {
   final lines = [
     for (final l in text.split('\n'))
-      if (l.trim().isNotEmpty) _fixDigits(l.trim())
+      if (l.trim().isNotEmpty) _fixKeywords(_fixDigits(l.trim()))
   ];
   final money = RegExp(r'(\d[\d ]*[.,]\d{2})(?!\d)');
   double? read(String l) {
