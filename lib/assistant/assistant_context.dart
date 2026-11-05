@@ -10,6 +10,7 @@ import '../screens/helpers_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/parameters_screen.dart';
+import '../screens/qr_scan_screen.dart';
 import '../screens/receipt_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/splash_screen.dart';
@@ -88,6 +89,8 @@ ScreenContext? screenContextOf(Widget w) {
     return const ScreenContext('lesson', 'Навчання');
   }
   if (w is SplashScreen) return const ScreenContext('splash', 'Вхід');
+  // сканер QR: помічника там немає (кнопка заважає камері)
+  if (w is QrScanScreen) return const ScreenContext('scanner', 'Сканувати QR-код');
   if (w is FinanceScreen) return const ScreenContext('finance', 'Фінанси');
   if (w is FinAddScreen) return const ScreenContext('finance_add', 'Новий запис');
   if (w is StockScreen) return const ScreenContext('stock', 'Склад');
