@@ -1,0 +1,15 @@
+train 1470 dropped(out-of-dict) 0
+base eval_all.txt 6.7% | eval_print.txt 7.3% | eval_screen.txt 5.1%
+ep1 loss 0.647 207s eval_all.txt 5.4% | eval_print.txt 5.7% | eval_screen.txt 4.4%
+  saved best 5.353075170842825
+ep2 loss 0.534 432s eval_all.txt 6.7% | eval_print.txt 7.2% | eval_screen.txt 5.4%
+ep3 loss 0.470 660s eval_all.txt 5.9% | eval_print.txt 6.3% | eval_screen.txt 4.6%
+ep4 loss 0.427 897s eval_all.txt 6.2% | eval_print.txt 6.6% | eval_screen.txt 5.1%
+ep5 loss 0.381 1122s eval_all.txt 6.3% | eval_print.txt 6.9% | eval_screen.txt 4.7%
+ep6 loss 0.350 1346s eval_all.txt 5.7% | eval_print.txt 6.1% | eval_screen.txt 4.6%
+ep7 loss 0.315 1577s eval_all.txt 5.5% | eval_print.txt 5.9% | eval_screen.txt 4.4%
+ep8 loss 0.314 1800s eval_all.txt 5.6% | eval_print.txt 6.0% | eval_screen.txt 4.4%
+ep9 loss 0.302 2027s eval_all.txt 5.4% | eval_print.txt 5.7% | eval_screen.txt 4.6%
+ep10 loss 0.278 2245s eval_all.txt 5.7% | eval_print.txt 6.2% | eval_screen.txt 4.5%
+ep11 loss 0.276 2470s eval_all.txt 5.4% | eval_print.txt 5.7% | eval_screen.txt 4.7%
+ep12 loss 0.285 2694s eval_all.txt 5.4% | eval_print.txt 5.7% | eval_screen.txt 4.6%
