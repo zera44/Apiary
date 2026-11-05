@@ -1722,6 +1722,14 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptBlurry => 'The photo is blurry: retake the receipt closer, in even light.';
   @override
+  String get receiptShareTitle => "Help improve recognition?";
+  @override
+  String get receiptShareText => "Send receipt photos to the developer so recognition can be trained on real receipts? A receipt may show part of a card number. The photo is not linked to your name or email. You can change your mind any time by writing to the developer in feedback.";
+  @override
+  String get receiptShareYes => "Yes, send";
+  @override
+  String get receiptShareNo => "No";
+  @override
   String get receiptFailedAdd => 'Could not recognize the receipt. Add rows by hand.';
   @override
   String get listCopied => 'List copied';

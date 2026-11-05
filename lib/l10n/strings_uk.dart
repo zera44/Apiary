@@ -1720,6 +1720,14 @@ class AppStringsUk extends AppStrings {
   @override
   String get receiptBlurry => 'Знімок розмитий: перезніміть чек ближче, при рівному світлі.';
   @override
+  String get receiptShareTitle => "Допомогти вдосконалити розпізнавання?";
+  @override
+  String get receiptShareText => "Надсилати фото чеків розробнику, щоб він навчав розпізнавання на реальних чеках? На чеку може бути частина номера картки. Фото не зв'язане з вашим іменем чи поштою. Передумати можна в будь-який момент, написавши розробнику у відгуку.";
+  @override
+  String get receiptShareYes => "Так, надсилати";
+  @override
+  String get receiptShareNo => "Ні";
+  @override
   String get receiptFailedAdd => 'Не вдалося розпізнати чек. Додайте рядки вручну.';
   @override
   String get listCopied => 'Список скопійовано';

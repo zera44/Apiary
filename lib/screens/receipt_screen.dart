@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import '../logic/receipt_image.dart';
 import '../logic/receipt_parser.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
+import '../services/receipt_photo_share.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'stock_screen.dart';
@@ -98,6 +100,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       final text = await _ocr.read(path);
       final rows = parseReceipt(text);
       final blurry = await _isBlurry(path);
+      unawaited(_shareForTraining(path));
       if (!mounted) return;
       setState(() {
         _lines.addAll(rows.map(_Line.new));
@@ -114,6 +117,27 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         _note = tr.receiptFailedAdd;
       });
     }
+  }
+
+  /// Фото - розробнику для вдосконалення розпізнавання: один раз питаємо
+  /// згоду, далі надсилаємо без запитів. Якщо сервера в збірці немає - нічого.
+  Future<void> _shareForTraining(String path) async {
+    try {
+      final share = ReceiptPhotoShare(widget.repo);
+      if (!share.available) return;
+      var yes = await share.consent();
+      if (yes == null) {
+        if (!mounted) return;
+        yes = await showConfirm(context,
+            title: tr.receiptShareTitle,
+            text: tr.receiptShareText,
+            confirmText: tr.receiptShareYes,
+            cancelText: tr.receiptShareNo,
+            danger: false);
+        await share.setConsent(yes);
+      }
+      if (yes) await share.sendIfAllowed(path);
+    } catch (_) {}
   }
 
   /// Чи фото розмите (див. [receiptSharpness]); не вдалося прочитати - ні.

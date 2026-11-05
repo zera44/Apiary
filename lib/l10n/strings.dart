@@ -844,6 +844,10 @@ abstract class AppStrings {
   String get receiptNoRowsAdd;
   String get receiptCheckTable;
   String get receiptBlurry;
+  String get receiptShareTitle;
+  String get receiptShareText;
+  String get receiptShareYes;
+  String get receiptShareNo;
   String get receiptFailedAdd;
   String get listCopied;
   String get receiptNothingChecked;

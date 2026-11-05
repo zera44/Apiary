@@ -25,5 +25,5 @@ jobs:
           node-version: '22'
       - name: Міграції й правила доступу (PostgreSQL)
         run: supabase/tests/run.sh
-      - name: Функції (backup-commit, delete-account, join, assistant)
+      - name: Функції (backup-commit, delete-account, join, assistant, receipt-photo)
         run: node --test supabase/tests/*.test.ts
