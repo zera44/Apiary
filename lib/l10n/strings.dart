@@ -843,6 +843,7 @@ abstract class AppStrings {
   // ---- Чек на склад ----
   String get receiptNoRowsAdd;
   String get receiptCheckTable;
+  String get receiptBlurry;
   String get receiptFailedAdd;
   String get listCopied;
   String get receiptNothingChecked;

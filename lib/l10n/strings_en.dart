@@ -1720,6 +1720,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptCheckTable => 'Check the table: recognition can make mistakes.';
   @override
+  String get receiptBlurry => 'The photo is blurry: retake the receipt closer, in even light.';
+  @override
   String get receiptFailedAdd => 'Could not recognize the receipt. Add rows by hand.';
   @override
   String get listCopied => 'List copied';

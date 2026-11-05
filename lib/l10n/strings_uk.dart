@@ -1718,6 +1718,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get receiptCheckTable => 'Перевірте таблицю: розпізнавання може помилятися.';
   @override
+  String get receiptBlurry => 'Знімок розмитий: перезніміть чек ближче, при рівному світлі.';
+  @override
   String get receiptFailedAdd => 'Не вдалося розпізнати чек. Додайте рядки вручну.';
   @override
   String get listCopied => 'Список скопійовано';

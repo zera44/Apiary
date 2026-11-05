@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
+import '../logic/receipt_image.dart';
 import '../logic/receipt_parser.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
@@ -96,6 +97,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     try {
       final text = await _ocr.read(path);
       final rows = parseReceipt(text);
+      final blurry = await _isBlurry(path);
       if (!mounted) return;
       setState(() {
         _lines.addAll(rows.map(_Line.new));
@@ -103,6 +105,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         _note = rows.isEmpty
             ? tr.receiptNoRowsAdd
             : tr.receiptCheckTable;
+        if (blurry) _note = '$_note ${tr.receiptBlurry}';
       });
     } catch (e) {
       if (!mounted) return;
@@ -110,6 +113,16 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         _reading = false;
         _note = tr.receiptFailedAdd;
       });
+    }
+  }
+
+  /// Чи фото розмите (див. [receiptSharpness]); не вдалося прочитати - ні.
+  Future<bool> _isBlurry(String path) async {
+    try {
+      final s = receiptSharpness(await File(path).readAsBytes());
+      return s != null && s < receiptBlurLimit;
+    } catch (_) {
+      return false;
     }
   }
 
