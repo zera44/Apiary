@@ -1724,11 +1724,17 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptShareTitle => "Help improve recognition?";
   @override
-  String get receiptShareText => "Send receipt photos to the developer so recognition can be trained on real receipts? A receipt may show part of a card number. The photo is not linked to your name or email. You can change your mind any time by writing to the developer in feedback.";
+  String get receiptShareText => "Send receipt photos to the developer so recognition can be trained on real receipts? A receipt may show part of a card number. The photo is not linked to your name or email. You can turn it off in Settings.";
   @override
   String get receiptShareYes => "Yes, send";
   @override
   String get receiptShareNo => "No";
+  @override
+  String get receiptShareSection => "Receipts";
+  @override
+  String get receiptShareSetting => "Send receipt photos to the developer";
+  @override
+  String get receiptShareHint => "To improve recognition. A receipt may show part of a card number; the photo is not linked to your name or email. Turn off to stop sending new photos.";
   @override
   String get receiptFailedAdd => 'Could not recognize the receipt. Add rows by hand.';
   @override

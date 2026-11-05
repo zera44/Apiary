@@ -1,0 +1,51 @@
+name: Фото чеків → ocr-training
+
+# Раз на добу (і за кнопкою) забирає нові фото чеків зі сховища Supabase
+# `receipt-training` у гілку ocr-training, каталог inbox/. Розклад працює лише
+# з головної гілки репозиторію.
+#
+# Потрібні секрети репозиторію: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
+# Без них нічого не робить (завершується успішно).
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: receipt-photos
+
+jobs:
+  pull:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Є секрети?
+        id: has
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "yes=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v4
+        if: steps.has.outputs.yes == 'true'
+      - uses: actions/checkout@v4
+        if: steps.has.outputs.yes == 'true'
+        with:
+          ref: ocr-training
+          path: data
+      - name: Забрати нові фото
+        if: steps.has.outputs.yes == 'true'
+        run: python3 tool/pull_receipt_photos.py data/inbox
+      - name: Записати в гілку
+        if: steps.has.outputs.yes == 'true'
+        working-directory: data
+        run: |
+          if [ -z "$(git status --porcelain inbox)" ]; then echo "нових фото немає"; exit 0; fi
+          git config user.name "receipt-photos"
+          git config user.email "receipt-photos@users.noreply.github.com"
+          git add inbox
+          git commit -m "inbox: нові фото чеків із застосунку"
+          git push origin HEAD:ocr-training

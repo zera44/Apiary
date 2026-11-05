@@ -21,3 +21,10 @@
 Storage → `receipt-training` → папка кожного телефона → завантажити. Фото чека
 може містити частину номера картки: зберігати лише в закритому сховищі й у
 гілці, яку бачите лише ви.
+
+## Автоперенесення в ocr-training
+`.github/workflows/receipt-photos.yml` раз на добу (3:17 UTC) і за кнопкою
+«Run workflow» запускає `tool/pull_receipt_photos.py`: нові фото лягають у
+гілку `ocr-training`, каталог `inbox/<8 символів device_id>/`. Секрети
+репозиторію: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Settings → Secrets
+and variables → Actions). Розклад працює лише після злиття в головну гілку.

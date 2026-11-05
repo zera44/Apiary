@@ -848,6 +848,9 @@ abstract class AppStrings {
   String get receiptShareText;
   String get receiptShareYes;
   String get receiptShareNo;
+  String get receiptShareSection;
+  String get receiptShareSetting;
+  String get receiptShareHint;
   String get receiptFailedAdd;
   String get listCopied;
   String get receiptNothingChecked;
