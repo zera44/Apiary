@@ -11,6 +11,7 @@ import '../services/background.dart';
 import '../services/auth.dart';
 import '../services/backups.dart';
 import '../services/server.dart';
+import '../services/receipt_photo_share.dart';
 import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
@@ -36,6 +37,7 @@ class MainSettingsTab extends StatelessWidget {
           _TextSizeSection(repo: repo),
           _OrientationSection(repo: repo),
           _AssistantSection(repo: repo),
+          if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
         ],
       );
 }
@@ -141,6 +143,48 @@ class _AssistantSectionState extends State<_AssistantSection> {
             onChanged: (v) async {
               setState(() => _speak = v);
               await AssistantVoiceSettings.setSpeak(widget.repo, v);
+            },
+          ),
+        ],
+      );
+}
+
+/// «Чеки»: «Надсилати фото чеків розробнику» - згода, яку людина дає на екрані
+/// чека, тут її можна вимкнути (і ввімкнути знову).
+class _ReceiptShareSection extends StatefulWidget {
+  final Repository repo;
+  const _ReceiptShareSection({required this.repo});
+
+  @override
+  State<_ReceiptShareSection> createState() => _ReceiptShareSectionState();
+}
+
+class _ReceiptShareSectionState extends State<_ReceiptShareSection> {
+  bool _share = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ReceiptPhotoShare(widget.repo).consent().then((v) {
+      if (mounted) setState(() => _share = v ?? false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => SettingsSection(
+        title: tr.receiptShareSection,
+        children: [
+          SwitchListTile(
+            key: const ValueKey('receipt-share'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(tr.receiptShareSetting,
+                style: TextStyle(color: AppColors.text, fontSize: 14)),
+            subtitle: Text(tr.receiptShareHint,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            value: _share,
+            onChanged: (v) async {
+              setState(() => _share = v);
+              await ReceiptPhotoShare(widget.repo).setConsent(v);
             },
           ),
         ],

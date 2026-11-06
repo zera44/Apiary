@@ -93,3 +93,42 @@ Uint8List? prepareReceiptImage(Uint8List bytes) {
   }
   return img.encodePng(out);
 }
+
+/// Нижня межа різкості знімка чека ([receiptSharpness]). Підібрана на 27
+/// фото складних чеків: нижче неї текст зазвичай розмитий (рух, фокус).
+const receiptBlurLimit = 300.0;
+
+/// Різкість фото: дисперсія лапласіана сірого зображення, зменшеного до
+/// [receiptOcrWidth]. Чим більше, тим різкіше; розмите фото дає малі числа.
+/// null - файл не вдалося прочитати.
+double? receiptSharpness(Uint8List bytes) {
+  img.Image? decoded;
+  try {
+    decoded = decodeReceiptPhoto(bytes);
+  } catch (_) {
+    return null;
+  }
+  if (decoded == null) return null;
+  var image = img.bakeOrientation(decoded);
+  if (image.width > receiptOcrWidth) {
+    image = img.copyResize(image, width: receiptOcrWidth, interpolation: img.Interpolation.average);
+  }
+  final w = image.width, h = image.height;
+  if (w < 3 || h < 3) return null;
+  final gray = Float64List(w * h);
+  for (final p in image) {
+    gray[p.y * w + p.x] = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+  }
+  var sum = 0.0, sumSq = 0.0;
+  final n = (w - 2) * (h - 2);
+  for (var y = 1; y < h - 1; y++) {
+    for (var x = 1; x < w - 1; x++) {
+      final i = y * w + x;
+      final l = gray[i - 1] + gray[i + 1] + gray[i - w] + gray[i + w] - 4 * gray[i];
+      sum += l;
+      sumSq += l * l;
+    }
+  }
+  final mean = sum / n;
+  return sumSq / n - mean * mean;
+}

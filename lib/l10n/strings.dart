@@ -843,6 +843,14 @@ abstract class AppStrings {
   // ---- Чек на склад ----
   String get receiptNoRowsAdd;
   String get receiptCheckTable;
+  String get receiptBlurry;
+  String get receiptShareTitle;
+  String get receiptShareText;
+  String get receiptShareYes;
+  String get receiptShareNo;
+  String get receiptShareSection;
+  String get receiptShareSetting;
+  String get receiptShareHint;
   String get receiptFailedAdd;
   String get listCopied;
   String get receiptNothingChecked;
