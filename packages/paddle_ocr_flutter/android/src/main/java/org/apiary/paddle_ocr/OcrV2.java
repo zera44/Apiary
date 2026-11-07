@@ -119,45 +119,135 @@ final class OcrV2 {
 
     static byte sat(double v) { return (byte) Math.max(0, Math.min(255, Math.round(v))); }
 
-    /** cv2.resize INTER_LINEAR. */
+    /**
+     * cv2.resize(INTER_LINEAR) для uint8 бітово точно, як OpenCV на ПК (x86, SIMD): ваги з float у фіксованій
+     * точці 11 біт, по вертикалі ((b0*(r0>>4))>>16 + (b1*(r1>>4))>>16 + 2) >> 2.
+     */
     static Gray resizeLinear(Gray g, int nw, int nh) {
+        int[] xs = new int[nw], xa0 = new int[nw], xa1 = new int[nw];
+        linTab(g.w, nw, true, xs, xa0, xa1);
+        int[] ys = new int[nh], ya0 = new int[nh], ya1 = new int[nh];
+        linTab(g.h, nh, false, ys, ya0, ya1);
+        int[][] rows = new int[g.h][];
         byte[] o = new byte[nw * nh];
-        double sx = (double) g.w / nw, sy = (double) g.h / nh;
         for (int y = 0; y < nh; y++) {
-            double fy = (y + 0.5) * sy - 0.5;
-            for (int x = 0; x < nw; x++) o[y * nw + x] = sat(bilinear(g, (x + 0.5) * sx - 0.5, fy));
+            int r0i = Math.min(Math.max(ys[y], 0), g.h - 1), r1i = Math.min(Math.max(ys[y] + 1, 0), g.h - 1);
+            int[] r0 = linRow(g, rows, r0i, xs, xa0, xa1), r1 = linRow(g, rows, r1i, xs, xa0, xa1);
+            long b0 = ya0[y], b1 = ya1[y];
+            for (int x = 0; x < nw; x++) {
+                long v = (((b0 * (r0[x] >> 4)) >> 16) + ((b1 * (r1[x] >> 4)) >> 16) + 2) >> 2;
+                o[y * nw + x] = (byte) Math.max(0, Math.min(255, v));
+            }
         }
         return new Gray(o, nw, nh);
     }
 
-    /** cv2.resize INTER_AREA для зменшення: середнє з вагами за площею перекриття. */
+    private static int[] linRow(Gray g, int[][] cache, int y, int[] xs, int[] a0, int[] a1) {
+        if (cache[y] != null) return cache[y];
+        int[] r = new int[xs.length];
+        int base = y * g.w;
+        for (int x = 0; x < xs.length; x++) {
+            int s0 = xs[x], s1 = Math.min(s0 + 1, g.w - 1);
+            r[x] = (g.p[base + s0] & 255) * a0[x] + (g.p[base + s1] & 255) * a1[x];
+        }
+        cache[y] = r;
+        return r;
+    }
+
+    /** Таблиця лінійної інтерполяції OpenCV: f у float, по x - притиснута до країв, по y - ні. */
+    private static void linTab(int ss, int ds, boolean clampF, int[] idx, int[] a0, int[] a1) {
+        double scale = 1.0 / ((double) ds / ss);
+        for (int d = 0; d < ds; d++) {
+            float f = (float) ((d + 0.5) * scale - 0.5);
+            int s = (int) Math.floor(f);
+            f -= s;
+            if (clampF) {
+                if (s < 0) { f = 0; s = 0; }
+                if (s + 1 >= ss && s >= ss - 1) { f = 0; s = ss - 1; }
+            }
+            idx[d] = s;
+            a0[d] = (int) Math.rint((1.f - f) * 2048f);
+            a1[d] = (int) Math.rint(f * 2048f);
+        }
+    }
+
+    /** cv2.resize(INTER_AREA) для зменшення: ваги й суми у float, округлення до парного (cvRound), як в OpenCV. */
     static Gray resizeArea(Gray g, int nw, int nh) {
-        double sx = (double) g.w / nw, sy = (double) g.h / nh;
-        double[] tmp = new double[nw * g.h];
-        for (int x = 0; x < nw; x++) {
-            double a = x * sx, b = Math.min(g.w, (x + 1) * sx);
-            for (int y = 0; y < g.h; y++) {
-                double s = 0;
-                for (int k = (int) Math.floor(a); k < Math.ceil(b); k++) {
-                    double wgt = Math.min(b, k + 1) - Math.max(a, k);
-                    if (wgt > 0) s += wgt * (g.p[y * g.w + k] & 255);
-                }
-                tmp[y * nw + x] = s / (b - a);
-            }
-        }
+        double scx = 1.0 / ((double) nw / g.w), scy = 1.0 / ((double) nh / g.h);
+        int isx = (int) Math.rint(scx), isy = (int) Math.rint(scy);
         byte[] o = new byte[nw * nh];
-        for (int y = 0; y < nh; y++) {
-            double a = y * sy, b = Math.min(g.h, (y + 1) * sy);
-            for (int x = 0; x < nw; x++) {
-                double s = 0;
-                for (int k = (int) Math.floor(a); k < Math.ceil(b); k++) {
-                    double wgt = Math.min(b, k + 1) - Math.max(a, k);
-                    if (wgt > 0) s += wgt * tmp[k * nw + x];
+        if (Math.abs(scx - isx) < 2.220446049250313e-16 && Math.abs(scy - isy) < 2.220446049250313e-16) {
+            float k = 1.f / (isx * isy); // ціле зменшення: середнє блоку
+            for (int y = 0; y < nh; y++) {
+                for (int x = 0; x < nw; x++) {
+                    int sum = 0;
+                    for (int dy = 0; dy < isy; dy++)
+                        for (int dx = 0; dx < isx; dx++) sum += g.p[(y * isy + dy) * g.w + x * isx + dx] & 255;
+                    o[y * nw + x] = satF(sum * k);
                 }
-                o[y * nw + x] = sat(s / (b - a));
+            }
+            return new Gray(o, nw, nh);
+        }
+        int[][] xt = areaTab(g.w, nw, scx), yt = areaTab(g.h, nh, scy);
+        float[] xa = areaAlpha(g.w, nw, scx), ya = areaAlpha(g.h, nh, scy);
+        float[] buf = new float[nw], sum = new float[nw];
+        int prev = yt[0][0];
+        for (int k = 0; k < yt[0].length; k++) {
+            int sy = yt[1][k], dy = yt[0][k];
+            java.util.Arrays.fill(buf, 0f);
+            int row = sy * g.w;
+            for (int t = 0; t < xt[0].length; t++) buf[xt[0][t]] += (g.p[row + xt[1][t]] & 255) * xa[t];
+            float beta = ya[k];
+            if (dy != prev) {
+                for (int x = 0; x < nw; x++) { o[prev * nw + x] = satF(sum[x]); sum[x] = beta * buf[x]; }
+                prev = dy;
+            } else {
+                for (int x = 0; x < nw; x++) sum[x] += beta * buf[x];
             }
         }
+        for (int x = 0; x < nw; x++) o[prev * nw + x] = satF(sum[x]);
         return new Gray(o, nw, nh);
+    }
+
+    static byte satF(float v) { return (byte) Math.max(0, Math.min(255, (int) Math.rint(v))); }
+
+    /** computeResizeAreaTab з OpenCV: [0] - індекс у результаті, [1] - у джерелі. */
+    private static int[][] areaTab(int ssize, int dsize, double scale) {
+        List<int[]> t = new ArrayList<>();
+        areaWalk(ssize, dsize, scale, t, null);
+        int[][] r = new int[2][t.size()];
+        for (int i = 0; i < t.size(); i++) { r[0][i] = t.get(i)[0]; r[1][i] = t.get(i)[1]; }
+        return r;
+    }
+
+    private static float[] areaAlpha(int ssize, int dsize, double scale) {
+        List<Float> a = new ArrayList<>();
+        areaWalk(ssize, dsize, scale, null, a);
+        float[] r = new float[a.size()];
+        for (int i = 0; i < r.length; i++) r[i] = a.get(i);
+        return r;
+    }
+
+    private static void areaWalk(int ssize, int dsize, double scale, List<int[]> idx, List<Float> alpha) {
+        for (int dx = 0; dx < dsize; dx++) {
+            double f1 = dx * scale, f2 = f1 + scale;
+            double cw = Math.min(scale, ssize - f1);
+            int s1 = (int) Math.ceil(f1), s2 = (int) Math.floor(f2);
+            s2 = Math.min(s2, ssize - 1);
+            s1 = Math.min(s1, s2);
+            if (s1 - f1 > 1e-3) {
+                if (idx != null) idx.add(new int[] {dx, s1 - 1});
+                if (alpha != null) alpha.add((float) ((s1 - f1) / cw));
+            }
+            for (int sx = s1; sx < s2; sx++) {
+                if (idx != null) idx.add(new int[] {dx, sx});
+                if (alpha != null) alpha.add((float) (1.0 / cw));
+            }
+            if (f2 - s2 > 1e-3) {
+                if (idx != null) idx.add(new int[] {dx, s2});
+                if (alpha != null) alpha.add((float) (Math.min(Math.min(f2 - s2, 1.), cw) / cw));
+            }
+        }
     }
 
     private static double cubicW(double x) {
@@ -218,14 +308,64 @@ final class OcrV2 {
     }
 
     /** Вирізати чотирикутник у прямокутник cw x ch (cv2.getAffineTransform за 3 кутами + warpAffine, BORDER_REPLICATE). */
+    /**
+     * cv2.warpAffine(getAffineTransform(b[0,1,3] -> (0,0),(cw,0),(0,ch)), INTER_LINEAR, BORDER_REPLICATE) як в
+     * OpenCV 5 (на ньому зроблено еталон курсової): обернена матриця у float, координата джерела
+     * x·m0 + float(y·m1 + m2) з одним округленням, інтерполяція у float, округлення до парного.
+     */
     static Gray warp(Gray g, Quad b, int cw, int ch) {
+        double[] m = affine(new double[] {(float) b.x[0], (float) b.x[1], (float) b.x[3]},
+                new double[] {(float) b.y[0], (float) b.y[1], (float) b.y[3]}, cw, ch);
+        double d = m[0] * m[4] - m[1] * m[3];
+        d = d != 0 ? 1. / d : 0.;
+        double a11 = m[4] * d, a22 = m[0] * d, a12 = -m[1] * d, a21 = -m[3] * d;
+        double b1 = -a11 * m[2] - a12 * m[5], b2 = -a21 * m[2] - a22 * m[5];
+        float i0 = (float) a11, i1 = (float) a12, i2 = (float) b1, i3 = (float) a21, i4 = (float) a22, i5 = (float) b2;
         byte[] o = new byte[cw * ch];
-        double ax = (b.x[1] - b.x[0]) / cw, ay = (b.y[1] - b.y[0]) / cw;
-        double bx = (b.x[3] - b.x[0]) / ch, by = (b.y[3] - b.y[0]) / ch;
-        for (int y = 0; y < ch; y++)
-            for (int x = 0; x < cw; x++)
-                o[y * cw + x] = sat(bilinear(g, b.x[0] + ax * x + bx * y, b.y[0] + ay * x + by * y));
+        for (int y = 0; y < ch; y++) {
+            float tx = i1 * y + i2, ty = i4 * y + i5;
+            for (int x = 0; x < cw; x++) {
+                float sx = (float) ((double) i0 * x + tx), sy = (float) ((double) i3 * x + ty);
+                int ix = (int) Math.floor(sx), iy = (int) Math.floor(sy);
+                float al = sx - ix, be = sy - iy;
+                float p00 = px(g, ix, iy), p01 = px(g, ix + 1, iy), p10 = px(g, ix, iy + 1), p11 = px(g, ix + 1, iy + 1);
+                float v0 = p00 + al * (p01 - p00), v1 = p10 + al * (p11 - p10);
+                float v = v0 + be * (v1 - v0);
+                o[y * cw + x] = (byte) Math.max(0, Math.min(255, (int) Math.rint(v)));
+            }
+        }
         return new Gray(o, cw, ch);
+    }
+
+    /** getAffineTransform: (x[i], y[i]) -> (0,0), (cw,0), (0,ch); результат [m00 m01 m02 m10 m11 m12]. */
+    static double[] affine(double[] x, double[] y, int cw, int ch) {
+        // розв'язок 6x6 як в OpenCV (LU з частковим вибором) для двох незалежних систем 3x3
+        double[][] a = {{x[0], y[0], 1}, {x[1], y[1], 1}, {x[2], y[2], 1}};
+        double[] u = solve3(a, new double[] {0, cw, 0}), v = solve3(a, new double[] {0, 0, ch});
+        return new double[] {u[0], u[1], u[2], v[0], v[1], v[2]};
+    }
+
+    private static double[] solve3(double[][] a0, double[] b0) {
+        double[][] a = {a0[0].clone(), a0[1].clone(), a0[2].clone()};
+        double[] b = b0.clone();
+        for (int i = 0; i < 3; i++) {
+            int p = i;
+            for (int k = i + 1; k < 3; k++) if (Math.abs(a[k][i]) > Math.abs(a[p][i])) p = k;
+            double[] t = a[i]; a[i] = a[p]; a[p] = t;
+            double tb = b[i]; b[i] = b[p]; b[p] = tb;
+            for (int k = i + 1; k < 3; k++) {
+                double f = a[k][i] / a[i][i];
+                for (int j = i; j < 3; j++) a[k][j] -= f * a[i][j];
+                b[k] -= f * b[i];
+            }
+        }
+        double[] r = new double[3];
+        for (int i = 2; i >= 0; i--) {
+            double s = b[i];
+            for (int j = i + 1; j < 3; j++) s -= a[i][j] * r[j];
+            r[i] = s / a[i][i];
+        }
+        return r;
     }
 
     // ------------------------------------------------------------------ детектор

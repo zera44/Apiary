@@ -85,7 +85,7 @@ public class OcrV2Main {
         Class<?> gc = Class.forName("org.apiary.paddle_ocr.OcrV2$Gray");
         Class<?> rdc = Class.forName("org.apiary.paddle_ocr.OcrV2$Reader");
         Class<?> ic = Class.forName("org.apiary.paddle_ocr.Img");
-        Method best = ic.getDeclaredMethod("bestGray", int[].class, int.class);
+        Method best = ic.getDeclaredMethod("bestGrayPy", int[].class, int.class);
         best.setAccessible(true);
         Constructor<?> gcons = gc.getDeclaredConstructor(byte[].class, int.class, int.class);
         gcons.setAccessible(true);

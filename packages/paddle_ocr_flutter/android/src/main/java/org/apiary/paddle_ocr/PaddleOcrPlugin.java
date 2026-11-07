@@ -151,7 +151,9 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     }
 
     /** Фото -> сірі пікселі з урахуванням повороту EXIF; зображення зменшується при читанні, якщо воно завелике. */
-    private Object[] readGray(String path) throws Exception {
+    private Object[] readGray(String path) throws Exception { return readGray(path, false); }
+
+    private Object[] readGray(String path, boolean py) throws Exception {
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(path, o);
@@ -165,7 +167,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         int[] px = new int[w * h];
         bmp.getPixels(px, 0, w, 0, 0, w, h);
         bmp.recycle();
-        byte[] g = Img.bestGray(px, px.length);
+        byte[] g = py ? Img.bestGrayPy(px, px.length) : Img.bestGray(px, px.length);
         int orient = ExifInterface.ORIENTATION_NORMAL;
         try { orient = new ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL); } catch (Exception ignored) {}
         if (orient == ExifInterface.ORIENTATION_ROTATE_90) { g = Img.rotate90cw(g, w, h); int t = w; w = h; h = t; }
@@ -190,7 +192,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     private Map<String, Object> recognizeFrags(String path, String image) throws Exception {
         long t0 = System.currentTimeMillis();
         load();
-        Object[] im = readGray(path);
+        Object[] im = readGray(path, true);
         OcrV2.Gray g = new OcrV2.Gray((byte[]) im[0], (Integer) im[1], (Integer) im[2]);
         OcrV2.Result res = OcrRecover.recognize(g, new OcrV2.Reader(runner(), chars), "all");
         List<Map<String, Object>> frags = new ArrayList<>();

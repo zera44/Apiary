@@ -5,6 +5,35 @@ final class Img {
     private Img() {}
 
     /** ARGB -> сіре. Береться канал з найбільшим контрастом (R, G, B або яскравість): чек при кольоровому світлі чіткіший в одному каналі. */
+    /** Як best_gray у coursework/fuzzy_v2/ocr.py: яскравість у float32 і відкидання дробу (astype(uint8)). */
+    static byte[] bestGrayPy(int[] argb, int n) {
+        double[] sum = new double[4], sq = new double[4];
+        for (int i = 0; i < n; i++) {
+            int p = argb[i];
+            int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
+            float l = 0.299f * r + 0.587f * g + 0.114f * b;
+            sum[0] += r; sq[0] += (double) r * r;
+            sum[1] += g; sq[1] += (double) g * g;
+            sum[2] += b; sq[2] += (double) b * b;
+            sum[3] += l; sq[3] += (double) l * l;
+        }
+        int best = 0;
+        double bs = -1;
+        int[] order = {0, 1, 2, 3}; // max([r, g, b, l]): за рівності - перший
+        for (int k : order) {
+            double m = sum[k] / n, sd = Math.sqrt(Math.max(0, sq[k] / n - m * m));
+            if (sd > bs) { bs = sd; best = k; }
+        }
+        byte[] out = new byte[n];
+        for (int i = 0; i < n; i++) {
+            int p = argb[i];
+            int r = (p >> 16) & 255, g = (p >> 8) & 255, b = p & 255;
+            int v = best == 0 ? r : best == 1 ? g : best == 2 ? b : (int) (0.299f * r + 0.587f * g + 0.114f * b);
+            out[i] = (byte) Math.min(255, v);
+        }
+        return out;
+    }
+
     static byte[] bestGray(int[] argb, int n) {
         double[] sum = new double[4], sq = new double[4];
         for (int i = 0; i < n; i++) {
