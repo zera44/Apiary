@@ -11,7 +11,8 @@
 //   {action:'admin_thread', thread_id}     - повідомлення розмови (і «прочитано»);
 //   {action:'admin_reply', thread_id, body} - відповісти.
 //
-// Новий відгук - лист на FEEDBACK_NOTIFY_TO (через Resend: RESEND_API_KEY).
+// Сповіщень поштою немає: нові відгуки видно в адмін-сторінці (позначка
+// непрочитаного).
 // Журнал: лише лічильники й коди, БЕЗ текстів.
 //
 // Публічна для шлюзу Supabase (--no-verify-jwt): доступ перевіряє сама.
@@ -35,7 +36,6 @@ export type Env = (name: string) => string | undefined;
 export type Deps = {
   store: Store;
   env: Env;
-  fetch: typeof fetch;
   log: (line: string) => void;
   now: () => number;
 };
@@ -70,30 +70,6 @@ function same(a: string, b: string): boolean {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const view = (m: Message) => ({ seq: m.seq, from_dev: m.from_dev, body: m.body, at: m.created_at });
-
-/** Лист розробнику про новий відгук (Resend: безкоштовно, лише на адресу
- *  власника акаунта). Не вдалося - не страшно: відгук уже збережено. */
-async function notify(deps: Deps, body: string, platform: string | null): Promise<boolean> {
-  const key = deps.env('RESEND_API_KEY')?.trim();
-  const to = deps.env('FEEDBACK_NOTIFY_TO')?.trim();
-  if (!key || !to) return false;
-  const adminUrl = deps.env('FEEDBACK_ADMIN_URL')?.trim();
-  try {
-    const res = await deps.fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: 'Vulyk <onboarding@resend.dev>',
-        to: [to],
-        subject: "Vulyk: новий відгук",
-        text: `${body}\n\n— ${platform ?? 'невідомо'}${adminUrl ? `\n\nВідповісти: ${adminUrl}` : '\n\nВідповідати - в адмін-сторінці відгуків.'}`,
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -135,8 +111,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const since = new Date(deps.now() - 24 * 3600 * 1000).toISOString();
     if ((await deps.store.userMessagesSince(thread.id, since)) >= DAILY_LIMIT) return fail(429, 'limit');
     const m = await deps.store.addMessage(thread.id, false, text);
-    const mailed = await notify(deps, text, platform);
-    deps.log(JSON.stringify({ fn: 'feedback', result: 'sent', mailed, length: text.length }));
+    deps.log(JSON.stringify({ fn: 'feedback', result: 'sent', length: text.length }));
     return json({ message: view(m) });
   }
   return fail(400, 'action');
@@ -186,7 +161,6 @@ if (typeof Deno !== 'undefined') {
     handle(req, {
       store: new RestStore(url, key),
       env: (n) => Deno.env.get(n),
-      fetch,
       log: (l) => console.log(l),
       now: () => Date.now(),
     }),
