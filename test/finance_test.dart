@@ -1,9 +1,12 @@
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/finance.dart';
 import 'package:apiary/data/repository.dart';
+import 'package:apiary/logic/fz2/fz2.dart';
+import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
 import 'package:apiary/screens/finance_screen.dart' show openFinEntry;
+import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
 import 'package:apiary/ui/theme.dart';
@@ -18,7 +21,38 @@ class _FakeOcr implements ReceiptOcr {
   bool get supported => true;
   @override
   Future<String> read(String imagePath) async => text;
+  @override
+  Future<MarkedReceipt?> mark(String imagePath) async => null;
 }
+
+/// Розпізнавач із нечіткою розміткою: позиції й підсумок уже зібрано.
+class _MarkOcr implements ReceiptOcr {
+  final MarkedReceipt marked;
+  _MarkOcr(this.marked);
+  @override
+  bool get supported => true;
+  @override
+  Future<String> read(String imagePath) async => throw StateError('текст не потрібен');
+  @override
+  Future<MarkedReceipt?> mark(String imagePath) async => marked;
+}
+
+Labeled _l(String cls, String text, double y, double x) =>
+    Labeled(Frag(text: text, x: x, y: y, w: 100, h: 30, xLeft: x - 50, xRight: x + 50), cls);
+
+MarkedReceipt _marked(String total) => MarkedReceipt(
+    assemble([
+      _l('NAME', 'Вощина пасічна', 100, 200),
+      _l('QTY', '5', 140, 100),
+      _l('PRICE', '120,00', 140, 300),
+      _l('ITEM', '600,00', 140, 700),
+      _l('NAME', 'Мед липовий 0.5кг', 200, 200),
+      _l('ITEM', '150,00', 200, 700),
+      _l('TOTAL', 'СУМА', 300, 200),
+      _l('TOTAL', total, 300, 700),
+    ]),
+    null,
+    0);
 
 const _receipt = '''
 Цукор білий 1кг
@@ -415,6 +449,31 @@ void main() {
           (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
       expect(entries.where((e) => !e.fromStock).single.amount, 300);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('нечітка розмітка: позиції з неї, «Корегування» і перегляд розмітки', (tester) async {
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _MarkOcr(_marked('770,00'))));
+      expect(find.widgetWithText(TextField, 'Вощина пасічна'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '120'), findsOneWidget); // ціна за одиницю, 5 x 120 = 600
+      expect(find.widgetWithText(TextField, 'Мед липовий 0.5кг'), findsOneWidget);
+      expect(find.textContaining('Сума не зійшлась'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Корегування'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '20'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '770'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('receipt-markup')));
+      await settle(tester);
+      expect(find.byType(ReceiptMarkupScreen), findsOneWidget);
+      expect(find.text('Розмітка чека'), findsOneWidget);
+      expect(find.text('600'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('нечітка розмітка: сума зійшлась - без «Корегування»', (tester) async {
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _MarkOcr(_marked('750,00'))));
+      expect(find.textContaining('сума збігається'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Корегування'), findsNothing);
+      expect(find.widgetWithText(TextField, '750'), findsOneWidget);
     });
 
     testWidgets('виправили позицію - «Корегування» перераховується і зникає, коли сума зійшлась',

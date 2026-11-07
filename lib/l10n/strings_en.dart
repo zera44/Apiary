@@ -1363,6 +1363,25 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptAdjustName => 'Adjustment';
   @override
+  String get receiptMarkupOpen => 'Markup';
+  @override
+  String get receiptMarkupTitle => 'Receipt markup';
+  @override
+  String get receiptMarkupNoImage => 'The receipt image was not kept: only the items are shown.';
+  @override
+  String receiptMarkupClass(String cls) => const {
+        'NAME': 'name',
+        'ITEM': 'item sum',
+        'PRICE': 'unit price',
+        'QTY': 'quantity',
+        'TOTAL': 'total',
+        'DISC': 'discount',
+        'VAT': 'VAT',
+      }[cls] ??
+      cls;
+  @override
+  String receiptMarkupSum(String rows, String total) => 'Items: $rows · receipt: $total';
+  @override
   String receiptCheck(String rows) =>
       'Receipt recognized · $rows. Check the table: recognition can make mistakes.';
   @override

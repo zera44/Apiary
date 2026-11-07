@@ -672,6 +672,11 @@ abstract class AppStrings {
   String receiptAdjust(String rows, String items, String receipt, String diff);
   String receiptTotalOnly(String total);
   String get receiptAdjustName;
+  String get receiptMarkupOpen;
+  String get receiptMarkupTitle;
+  String get receiptMarkupNoImage;
+  String receiptMarkupClass(String cls);
+  String receiptMarkupSum(String rows, String total);
   String receiptCheck(String rows);
   String get receiptFailed;
   String get finChooseCategory;

@@ -1364,6 +1364,25 @@ class AppStringsUk extends AppStrings {
   @override
   String get receiptAdjustName => 'Корегування';
   @override
+  String get receiptMarkupOpen => 'Розмітка';
+  @override
+  String get receiptMarkupTitle => 'Розмітка чека';
+  @override
+  String get receiptMarkupNoImage => 'Зображення чека не збереглося: показано лише позиції.';
+  @override
+  String receiptMarkupClass(String cls) => const {
+        'NAME': 'назва',
+        'ITEM': 'сума позиції',
+        'PRICE': 'ціна за од.',
+        'QTY': 'кількість',
+        'TOTAL': 'підсумок',
+        'DISC': 'знижка',
+        'VAT': 'ПДВ',
+      }[cls] ??
+      cls;
+  @override
+  String receiptMarkupSum(String rows, String total) => 'Позиції: $rows · на чеку: $total';
+  @override
   String receiptCheck(String rows) =>
       'Чек розпізнано · $rows. Перевірте таблицю: розпізнавання може помилятися.';
   @override

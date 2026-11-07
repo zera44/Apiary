@@ -17,6 +17,8 @@ class _FakeOcr implements ReceiptOcr {
   bool get supported => true;
   @override
   Future<String> read(String imagePath) async => text;
+  @override
+  Future<MarkedReceipt?> mark(String imagePath) async => null;
 }
 
 const _receipt = '''
@@ -1739,4 +1741,6 @@ class _NoOcr implements ReceiptOcr {
   bool get supported => false;
   @override
   Future<String> read(String imagePath) async => throw StateError('no');
+  @override
+  Future<MarkedReceipt?> mark(String imagePath) async => throw StateError('no');
 }

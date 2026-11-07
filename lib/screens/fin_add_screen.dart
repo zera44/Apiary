@@ -6,6 +6,7 @@ import '../data/repository.dart';
 import '../logic/receipt_parser.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
+import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
 import '../ui/fin_style.dart';
@@ -120,6 +121,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
   int _receiptRows = 0;
   double? _declared;
   bool _hasReceipt = false;
+
+  /// Розмічений чек (для перегляду розмітки на фото).
+  MarkedReceipt? _marked;
 
   Repository get repo => widget.repo;
   ReceiptOcr get _ocr => widget.ocr ?? ReceiptOcr.instance;
@@ -313,18 +317,39 @@ class _FinAddScreenState extends State<FinAddScreen> {
     setState(() {
       _mode = 1;
       _reading = true;
+      _marked = null;
       _receiptNote = null;
       _receiptSoft = false;
     });
     try {
-      final text = await _ocr.read(path);
-      final rows = parseReceipt(text, fillMissing: false);
+      // спершу нечітка розмітка (як у курсовій); не вийшло - розбір тексту
+      MarkedReceipt? marked;
+      try {
+        marked = await _ocr.mark(path);
+      } catch (_) {
+        marked = null;
+      }
+      final List<ReceiptRow> rows;
+      final double? declared;
+      if (marked != null && (marked.fz.rows.isNotEmpty || marked.fz.total != null)) {
+        rows = [
+          for (final r in marked.fz.rows)
+            ReceiptRow(name: r.name, qty: r.qty, unit: r.unit, price: r.price)
+        ];
+        declared = marked.fz.total;
+      } else {
+        marked = null;
+        final text = await _ocr.read(path);
+        rows = parseReceipt(text, fillMissing: false);
+        declared = receiptDeclaredTotal(text);
+      }
       if (!mounted) return;
       final cat = _cat;
       setState(() {
         _reading = false;
         _hasReceipt = true;
-        _declared = receiptDeclaredTotal(text);
+        _marked = marked;
+        _declared = declared;
         _receiptRows = rows.length;
         _receiptSoft = false;
         if (rows.isEmpty && _declared == null) {
@@ -621,10 +646,21 @@ class _FinAddScreenState extends State<FinAddScreen> {
               style: TextStyle(
                   color: _receiptSoft ? AppColors.caution : AppColors.text, fontSize: 12.5, height: 1.3)),
         ),
-        TextButton(
-          onPressed: () => _pickReceipt(camera: true),
-          child: Text(tr.reshoot, style: TextStyle(color: AppColors.create, fontSize: 12.5)),
-        ),
+        Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+          if (_marked != null)
+            TextButton(
+              key: const Key('receipt-markup'),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ReceiptMarkupScreen(marked: _marked!))),
+              child: Text(tr.receiptMarkupOpen, style: TextStyle(color: AppColors.create, fontSize: 12.5)),
+            ),
+          TextButton(
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            onPressed: () => _pickReceipt(camera: true),
+            child: Text(tr.reshoot, style: TextStyle(color: AppColors.create, fontSize: 12.5)),
+          ),
+        ]),
       ]),
     );
   }
