@@ -1,5 +1,4 @@
-// Перевірка функції feedback без Supabase й без пошти: сховище в пам'яті,
-// «Resend» - підставний fetch.
+// Перевірка функції feedback без Supabase: сховище в пам'яті.
 //
 //   node --test supabase/tests/feedback.test.ts
 import { test } from 'node:test';
@@ -15,25 +14,18 @@ const PASSWORD = 'admin-password-123';
 function setup(extraEnv: Record<string, string> = {}) {
   let now = Date.parse('2026-10-17T12:00:00Z');
   const store = new MemoryStore(() => new Date(now).toISOString());
-  const mails: any[] = [];
   const logs: string[] = [];
   const env: Record<string, string> = {
     FEEDBACK_ADMIN_PASSWORD: PASSWORD,
-    RESEND_API_KEY: 're_test',
-    FEEDBACK_NOTIFY_TO: 'dev@example.com',
     ...extraEnv,
   };
   const deps: Deps = {
     store,
     env: (n) => env[n],
-    fetch: (async (url: string, init: RequestInit) => {
-      mails.push({ url, headers: init.headers, body: JSON.parse(init.body as string) });
-      return new Response('{}', { status: 200 });
-    }) as typeof fetch,
     log: (l) => logs.push(l),
     now: () => now,
   };
-  return { store, mails, logs, deps, advance: (ms: number) => (now += ms) };
+  return { store, logs, deps, advance: (ms: number) => (now += ms) };
 }
 
 const post = (body: unknown, headers: Record<string, string> = {}) =>
@@ -41,25 +33,16 @@ const post = (body: unknown, headers: Record<string, string> = {}) =>
 const app = (extra: Record<string, unknown>) => ({ device_id: DEVICE, secret: SECRET, ...extra });
 const adm = (body: unknown, pw = PASSWORD) => post(body, { [ADMIN_HEADER]: pw });
 
-test('відгук зберігається, розробнику - лист із текстом і платформою', async () => {
-  const { deps, mails } = setup();
+test('відгук зберігається й видно в адмінці як непрочитаний', async () => {
+  const { deps, store } = setup();
   const r = await handle(post(app({ action: 'send', body: 'Привіт, є ідея', platform: 'android 14' })), deps);
   assert.equal(r.status, 200);
   assert.equal((await r.json()).message.body, 'Привіт, є ідея');
-  assert.equal(mails.length, 1);
-  assert.equal(mails[0].url, 'https://api.resend.com/emails');
-  assert.equal(mails[0].headers.Authorization, 'Bearer re_test');
-  assert.deepEqual(mails[0].body.to, ['dev@example.com']);
-  assert.match(mails[0].body.text, /Привіт, є ідея/);
-  assert.match(mails[0].body.text, /android 14/);
-});
-
-test('пошти не налаштовано - відгук усе одно збережено', async () => {
-  const { deps, store, mails } = setup({ RESEND_API_KEY: '' });
-  const r = await handle(post(app({ action: 'send', body: 'Без пошти' })), deps);
-  assert.equal(r.status, 200);
-  assert.equal(mails.length, 0);
   assert.equal(store.msgs.length, 1);
+  const list = await (await handle(adm({ action: 'admin_list' }), deps)).json();
+  assert.equal(list.threads[0].unread, true);
+  assert.equal(list.threads[0].platform, 'android 14');
+  assert.equal(list.threads[0].last.body, 'Привіт, є ідея');
 });
 
 test('відповідь розробника доходить до застосунку (poll), по порядку', async () => {
