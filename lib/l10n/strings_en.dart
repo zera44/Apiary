@@ -1355,13 +1355,13 @@ class AppStringsEn extends AppStrings {
   String receiptMismatch(String rows, String declared, String table) =>
       'Receipt recognized · $rows. The receipt total is $declared, the table has $table - check the rows.';
   @override
-  String receiptRest(String rows, String rest) =>
-      'Receipt recognized · $rows. The receipt total is counted, $rest could not be read - added as a separate row, give it a name.';
+  String receiptAdjust(String rows, String items, String receipt, String diff) =>
+      'Total doesn\'t match · $rows for $items, receipt says $receipt. The receipt total is used; the difference $diff is added as an «Adjustment» row.';
   @override
   String receiptTotalOnly(String total) =>
-      'The items could not be read, but the receipt total ($total) is counted as one row. Add a name or retake the photo.';
+      'The items could not be read · total doesn\'t match. The receipt total ($total) is used as an «Adjustment» row: add the items or retake the photo.';
   @override
-  String get receiptRestName => 'Not recognized';
+  String get receiptAdjustName => 'Adjustment';
   @override
   String receiptCheck(String rows) =>
       'Receipt recognized · $rows. Check the table: recognition can make mistakes.';

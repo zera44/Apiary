@@ -669,9 +669,9 @@ abstract class AppStrings {
   String receiptRows(int n);
   String receiptOk(String rows);
   String receiptMismatch(String rows, String declared, String table);
-  String receiptRest(String rows, String rest);
+  String receiptAdjust(String rows, String items, String receipt, String diff);
   String receiptTotalOnly(String total);
-  String get receiptRestName;
+  String get receiptAdjustName;
   String receiptCheck(String rows);
   String get receiptFailed;
   String get finChooseCategory;

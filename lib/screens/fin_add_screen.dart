@@ -45,14 +45,31 @@ class _FLine {
   final FocusNode focus = FocusNode();
   String unit;
 
-  _FLine({String name = '', double qty = 1, String unit = 'шт', double price = 0, this.toStock = false})
+  /// «Корегування»: різниця між сумою чека і сумою позицій, рахується сама.
+  /// Ціна може бути від'ємною (позицій прочитано на більшу суму, ніж на чеку).
+  final bool adjust;
+
+  _FLine(
+      {String name = '',
+      double qty = 1,
+      String unit = 'шт',
+      double price = 0,
+      this.toStock = false,
+      this.adjust = false})
       : name = TextEditingController(text: name),
         qty = TextEditingController(text: formatAmount(qty)),
         price = TextEditingController(text: price == 0 ? '' : formatMoney(price)),
         unit = unit;
 
   double? get qtyValue => parseAmount(qty.text);
-  double? get priceValue => parseAmount(price.text);
+  double? get priceValue {
+    final t = price.text.trim();
+    if (adjust && t.startsWith('-')) {
+      final v = parseAmount(t.substring(1));
+      return v == null ? null : -v;
+    }
+    return parseAmount(t);
+  }
 
   /// Порожній рядок (нічого не введено) - ігнорується.
   bool get empty => name.text.trim().isEmpty && price.text.trim().isEmpty;
@@ -93,8 +110,14 @@ class _FinAddScreenState extends State<FinAddScreen> {
   String? _receiptNote;
   bool _receiptOk = false;
 
-  /// Суму чека враховано, але частину позицій не прочитано: м'яке попередження.
+  /// Сума позицій не зійшлась із чеком: жовте попередження, різниця - у «Корегуванні».
   bool _receiptSoft = false;
+
+  /// Рядок «Корегування» перераховується сам, доки людина не виправила його вручну.
+  bool _autoAdjust = false;
+
+  /// Скільки позицій прочитано з чека (для примітки).
+  int _receiptRows = 0;
   double? _declared;
   bool _hasReceipt = false;
 
@@ -156,6 +179,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   double get _tableSum => [for (final l in _lines) if (!l.empty) l.total].fold(0.0, (a, b) => a + b);
 
   void _syncSum() {
+    _updateAdjust();
     if (_sumManual) return;
     final t = _tableSum;
     _sum.text = t > 0 ? formatMoney(t) : '';
@@ -163,6 +187,55 @@ class _FinAddScreenState extends State<FinAddScreen> {
 
   void _changed() {
     setState(_syncSum);
+  }
+
+  /// Звірка з чеком: сума позицій (без «Корегування») проти суми чека.
+  /// Зійшлась - рядка «Корегування» немає; ні - він дорівнює різниці.
+  void _updateAdjust() {
+    final d = _declared;
+    if (!_autoAdjust || d == null) return;
+    final items = [for (final l in _lines) if (!l.empty && !l.adjust) l.total].fold(0.0, (a, b) => a + b);
+    final diff = ((d - items) * 100).round() / 100;
+    final word = tr.receiptRows(_receiptRows);
+    _FLine? adj;
+    for (final l in _lines) {
+      if (l.adjust) adj = l;
+    }
+    if (diff.abs() < 0.015) {
+      if (adj != null) {
+        _lines.remove(adj);
+        adj.dispose();
+      }
+      _receiptOk = true;
+      _receiptSoft = false;
+      _receiptNote = tr.receiptOk(word);
+      return;
+    }
+    if (adj == null) {
+      adj = _FLine(name: tr.receiptAdjustName, qty: 1, unit: 'шт', adjust: true)..touched = true;
+      _lines.add(adj);
+    }
+    final text = diff < 0 ? '-${formatMoney(-diff)}' : formatMoney(diff);
+    if (adj.price.text != text) adj.price.text = text;
+    _receiptOk = false;
+    _receiptSoft = true;
+    _receiptNote = _receiptRows == 0
+        ? tr.receiptTotalOnly(uah(d))
+        : tr.receiptAdjust(word, uah(items), uah(d), '${diff < 0 ? '−' : '+'}${uah(diff)}');
+  }
+
+  /// Людина сама змінила «Корегування»: далі воно не перераховується, а
+  /// розбіжність із чеком показується як звичайно.
+  void _adjustEdited(_FLine l) {
+    if (!l.adjust || !_autoAdjust) return;
+    _autoAdjust = false;
+    final d = _declared;
+    final t = _tableSum;
+    if (d != null && (d - t).abs() >= 0.015) {
+      _receiptOk = false;
+      _receiptSoft = false;
+      _receiptNote = tr.receiptMismatch(tr.receiptRows(_receiptRows), uah(d), uah(t));
+    }
   }
 
   StockItem? _stockByName(String name) {
@@ -245,27 +318,23 @@ class _FinAddScreenState extends State<FinAddScreen> {
     });
     try {
       final text = await _ocr.read(path);
-      final rows = parseReceipt(text);
+      final rows = parseReceipt(text, fillMissing: false);
       if (!mounted) return;
       final cat = _cat;
       setState(() {
         _reading = false;
         _hasReceipt = true;
         _declared = receiptDeclaredTotal(text);
-        // що не розпізнано до суми чека - окремим рядком: нічого не губиться,
-        // а назву й ціну людина виправить
-        final read = rows.fold<double>(0, (s, r) => s + r.total);
-        final rest = _declared == null ? 0.0 : ((_declared! - read) * 100).round() / 100;
-        final addRest = rest > 0.015;
+        _receiptRows = rows.length;
         _receiptSoft = false;
-        if (rows.isEmpty && !addRest) {
+        if (rows.isEmpty && _declared == null) {
           _receiptOk = false;
           _receiptNote = tr.receiptNoRows;
           return;
         }
-        // порожні рядки замінюються розпізнаними
+        // порожні рядки й старе «Корегування» замінюються розпізнаним
         _lines.removeWhere((l) {
-          if (!l.empty) return false;
+          if (!l.empty && !l.adjust) return false;
           l.dispose();
           return true;
         });
@@ -279,32 +348,14 @@ class _FinAddScreenState extends State<FinAddScreen> {
           _applyStockUnit(l);
           _lines.add(l);
         }
-        if (addRest) {
-          _lines.add(_FLine(name: tr.receiptRestName, qty: 1, unit: 'шт', price: rest));
-        }
+        // сума позицій звіряється з чеком; різниця - окремим рядком «Корегування»,
+        // а сума операції - як на чеку
+        _autoAdjust = _declared != null;
         _sumManual = false;
         _syncSum();
-        final t = _tableSum;
-        final d = _declared;
-        final n = rows.length;
-        final word = tr.receiptRows(n);
-        if (rows.isEmpty) {
-          _receiptOk = false;
-          _receiptSoft = true;
-          _receiptNote = tr.receiptTotalOnly(uah(rest));
-        } else if (addRest) {
-          _receiptOk = false;
-          _receiptSoft = true;
-          _receiptNote = tr.receiptRest(word, uah(rest));
-        } else if (d != null && (d - t).abs() < 0.015) {
+        if (_declared == null) {
           _receiptOk = true;
-          _receiptNote = tr.receiptOk(word);
-        } else if (d != null) {
-          _receiptOk = false;
-          _receiptNote = tr.receiptMismatch(word, uah(d), uah(t));
-        } else {
-          _receiptOk = true;
-          _receiptNote = tr.receiptCheck(word);
+          _receiptNote = tr.receiptCheck(tr.receiptRows(rows.length));
         }
       });
     } catch (e) {
@@ -553,7 +604,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       decoration: BoxDecoration(
         color: AppColors.bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.create : AppColors.danger),
+        border: Border.all(color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.caution : AppColors.danger),
       ),
       child: Row(children: [
         Icon(
@@ -563,11 +614,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     ? Icons.info_outline
                     : Icons.warning_amber_rounded,
             size: 20,
-            color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.create : AppColors.danger),
+            color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.caution : AppColors.danger),
         const SizedBox(width: 8),
         Expanded(
           child: Text(_receiptNote ?? '',
-              style: TextStyle(color: AppColors.text, fontSize: 12.5, height: 1.3)),
+              style: TextStyle(
+                  color: _receiptSoft ? AppColors.caution : AppColors.text, fontSize: 12.5, height: 1.3)),
         ),
         TextButton(
           onPressed: () => _pickReceipt(camera: true),
@@ -715,11 +767,13 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 visualDensity: VisualDensity.compact,
                 icon: Icon(l.toStock ? Icons.inventory_2 : Icons.inventory_2_outlined,
                     size: 22, color: l.toStock ? AppColors.addObject : AppColors.textMuted),
-                onPressed: () => setState(() {
-                  l.toStock = !l.toStock;
-                  l.touched = true;
-                  _applyStockUnit(l);
-                }),
+                onPressed: l.adjust
+                    ? null
+                    : () => setState(() {
+                          l.toStock = !l.toStock;
+                          l.touched = true;
+                          _applyStockUnit(l);
+                        }),
               ),
             ),
           Expanded(flex: 5, child: _nameField(l, dense, style)),
@@ -760,7 +814,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
                       ),
                 suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               ),
-              onChanged: (_) => _changed(),
+              onChanged: (_) {
+                _adjustEdited(l);
+                _changed();
+              },
             ),
           ),
           const SizedBox(width: 6),
@@ -768,11 +825,14 @@ class _FinAddScreenState extends State<FinAddScreen> {
             flex: 3,
             child: TextField(
               controller: l.price,
-              style: style,
+              style: l.adjust ? style.copyWith(color: AppColors.caution, fontWeight: FontWeight.w600) : style,
               keyboardType: numKb,
               inputFormatters: thousandsInput,
               decoration: dense.copyWith(hintText: '0'),
-              onChanged: (_) => _changed(),
+              onChanged: (_) {
+                _adjustEdited(l);
+                _changed();
+              },
             ),
           ),
           SizedBox(
@@ -783,6 +843,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
               visualDensity: VisualDensity.compact,
               icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
               onPressed: () => setState(() {
+                _adjustEdited(l);
                 _lines.remove(l);
                 l.dispose();
                 if (_lines.isEmpty) _lines.add(_FLine());

@@ -20,6 +20,8 @@ class AppColors {
   static final create = _c(0.929, 0.616, 0.184);
   static final addObject = _c(0.557, 0.616, 0.239);
   static final danger = _c(0.804, 0.298, 0.157);
+  /// Жовте попередження: сума чека не зійшлась, різницю винесено в «Корегування».
+  static final caution = _c(0.976, 0.835, 0.255);
   static final rename = _c(0.694, 0.549, 0.243);
   static final text = _c(0.976, 0.937, 0.878);
   static final textMuted = _c(0.75, 0.68, 0.58);

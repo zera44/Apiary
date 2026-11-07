@@ -377,6 +377,58 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    Future<void> saveAs(WidgetTester tester, String category) async {
+      await tester.tap(find.text(category));
+      await tester.pump();
+      await tester.tap(find.text('Додати'));
+      await settle(tester);
+      await settle(tester);
+    }
+
+    testWidgets('сума не зійшлась (позицій менше): жовте «не зійшлась», рядок «Корегування» +різниця, сума з чека',
+        (tester) async {
+      await open(tester,
+          FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt.replaceFirst('331.00', '351.00'))));
+      expect(find.textContaining('Сума не зійшлась'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Корегування'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '20'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '351'), findsOneWidget); // сума операції - з чека
+
+      await saveAs(tester, 'Корми');
+      final entries =
+          (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
+      expect(entries.where((e) => !e.fromStock).single.amount, 351);
+      final items = (await tester.runAsync(() => repo.listStockItems()))!;
+      expect(items.map((i) => i.name), isNot(contains('Корегування'))); // корегування не йде на склад
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('сума не зійшлась (позицій більше): «Корегування» з мінусом, записується', (tester) async {
+      await open(tester,
+          FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt.replaceFirst('331.00', '300.00'))));
+      expect(find.textContaining('Сума не зійшлась'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '-31'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '300'), findsOneWidget);
+
+      await saveAs(tester, 'Корми');
+      final entries =
+          (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!;
+      expect(entries.where((e) => !e.fromStock).single.amount, 300);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('виправили позицію - «Корегування» перераховується і зникає, коли сума зійшлась',
+        (tester) async {
+      await open(tester,
+          FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt.replaceFirst('331.00', '351.00'))));
+      // цукор насправді 2 x 55.50 = 111 (+20): корегування більше не потрібне
+      await tester.enterText(find.widgetWithText(TextField, '45,50'), '55,50');
+      await tester.pump();
+      expect(find.widgetWithText(TextField, 'Корегування'), findsNothing);
+      expect(find.textContaining('сума збігається'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '351'), findsOneWidget);
+    });
+
     testWidgets('запис журналу: «Скасувати запис» - лише після підтвердження', (tester) async {
       final inc = (await tester.runAsync(() => repo.listFinCategories(kind: kFinIncome)))!.first;
       await tester.runAsync(() => repo.addFinOp(
