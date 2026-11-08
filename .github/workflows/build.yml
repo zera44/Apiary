@@ -305,6 +305,8 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           python3 tool/whats_new.py --md > notes.md && cat notes.md
+          # реліз latest - лише зміни цього пуша в main (повний список версії - у v<версія>)
+          python3 tool/whats_new.py --md --since "${{ github.event.before }}" > notes_latest.md && cat notes_latest.md
           cp build/app/outputs/flutter-apk/app-release.apk apiary.apk
           sha256sum apiary.apk > SHA256SUMS.txt
           cat SHA256SUMS.txt
@@ -319,7 +321,7 @@ jobs:
           gh release create latest apiary.apk SHA256SUMS.txt \
             --target "${{ github.sha }}" \
             --title "Моя пасіка — остання збірка" \
-            --notes "$(cat notes.md)
+            --notes "$(cat notes_latest.md)
 
           Автоматична збірка з коміту ${GITHUB_SHA::7}.
           - apiary.apk — для будь-якого Android-телефона (Android 7 і новіші)
