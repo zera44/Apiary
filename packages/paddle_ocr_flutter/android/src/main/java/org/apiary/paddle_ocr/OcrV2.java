@@ -708,18 +708,13 @@ final class OcrV2 {
             res.frags.addAll(toFrags(g, rows, 0, res.conf));
             return res;
         }
+        // рядки стоять боком: чек лежить на боці, тож 90 і 270 покривають обидва напрями, а поворот на 180
+        // (і ще раз 90 на 180 = 270) залишив би його боком - ці проходи не потрібні
         if (!rows.isEmpty() && tl * 2 > rows.size()) { rots.add(90); rots.add(270); }
-        rots.add(180);
+        else rots.add(180);
         for (int r : rots) {
             Gray gr = rotate(g, r);
             cands.add(new Cand(r, gr, pass(gr, rd)));
-        }
-        if (tl * 2 > rows.size()) {
-            Cand best90 = null;
-            for (Cand c : cands)
-                if ((c.rot == 90 || c.rot == 270) && (best90 == null || mconf(c.rows) > mconf(best90.rows))) best90 = c;
-            Gray gr = rotate(best90.g, 180);
-            cands.add(new Cand((best90.rot + 180) % 360, gr, pass(gr, rd)));
         }
         Cand best = cands.get(0);
         for (Cand c : cands) if (c.score() > best.score()) best = c;
