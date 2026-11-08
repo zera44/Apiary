@@ -72,6 +72,16 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+# Тести на Linux (CI) беруть системну libsqlite3, а не завантажену з GitHub:
+# хеш завантаженого файла перестав збігатися з очікуваним, і збірка падала.
+# На Android/iOS пакет sqlite3 не вкладається, тож застосунку це не стосується.
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        linux: system
+        default: sqlite3
+
 flutter:
   uses-material-design: true
   assets:
