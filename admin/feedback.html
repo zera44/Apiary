@@ -3,28 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vulyk: відгуки</title>
+<title>Vulyk: адмінка</title>
 <style>
   :root { --bg:#1d1611; --card:#2a2018; --line:#4a3a28; --text:#f9efe0; --muted:#bfae94; --honey:#ed9d2f; --dev:#3b5b3a; --user:#3a2f25; }
   * { box-sizing: border-box; }
   [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
-  header { display:flex; gap:12px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
-  header h1 { font-size:18px; margin:0; flex:1; }
+  #main { display:flex; flex-direction:column; height:100vh; height:100dvh; }
+  header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); flex:none; }
+  header h1 { font-size:18px; margin:0; flex:1; min-width:0; }
+  header .sp { flex:1; }
   button { background:var(--honey); color:#2b1a08; border:0; border-radius:10px; padding:10px 16px; font:inherit; font-weight:700; cursor:pointer; }
   button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
   button:disabled { opacity:.5; }
-  #login { max-width:380px; margin:20vh auto; padding:0 16px; }
+  #login { max-width:380px; margin:12vh auto; padding:0 16px; }
   input, textarea { width:100%; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; }
   textarea { min-height:90px; resize:vertical; }
-  .app { display:grid; grid-template-columns: 340px 1fr; height:calc(100vh - 57px); }
-  .list { overflow:auto; border-right:1px solid var(--line); }
+  .app { display:grid; grid-template-columns: 340px 1fr; flex:1; min-height:0; }
+  .list { overflow:auto; border-right:1px solid var(--line); min-height:0; }
   .item { padding:12px 16px; border-bottom:1px solid var(--line); cursor:pointer; }
   .item:hover, .item.sel { background:var(--card); }
   .item .top { display:flex; gap:8px; font-size:13px; color:var(--muted); }
   .item .snippet { margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dot { width:10px; height:10px; border-radius:50%; background:var(--honey); display:inline-block; }
-  .thread { display:flex; flex-direction:column; min-width:0; }
+  .thread { display:flex; flex-direction:column; min-width:0; min-height:0; }
   .msgs { flex:1; overflow:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
   .m { max-width:78%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; overflow-wrap:anywhere; }
   .m.user { background:var(--user); align-self:flex-start; border-bottom-left-radius:4px; }
@@ -35,7 +37,7 @@
   #err { color:#e07a5f; margin-top:10px; min-height:1.4em; }
   .tab { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; padding:8px 14px; }
   .tab.on { background:var(--honey); color:#2b1a08; border-color:var(--honey); font-weight:700; }
-  #books { padding:16px; height:calc(100vh - 57px); overflow:auto; max-width:920px; margin:0 auto; }
+  #books { padding:16px; flex:1; min-height:0; overflow:auto; width:100%; max-width:920px; margin:0 auto; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
   .card h3 { margin:0 0 10px; font-size:16px; }
   .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
@@ -55,14 +57,38 @@
   @media (max-width: 720px) {
     .row { grid-template-columns: 1fr; }
     .app { grid-template-columns: 1fr; }
+    .list { border-right:0; }
     .app.open .list { display:none; }
     .app:not(.open) .thread { display:none; }
+    /* шапка: назва на всю ширину, нижче вкладки й кнопки; зручні для пальця */
+    header { padding:8px 12px; }
+    header h1 { flex-basis:100%; order:-1; font-size:17px; }
+    #back { order:-2; }
+    header .tab, header .ghost, button { min-height:44px; }
+    header { gap:8px 6px; }
+    header .tab, header .ghost { padding:8px 10px; font-size:15px; }
+    .tab { flex:1 1 auto; }
+    .item { padding:14px 16px; }
+    .m { max-width:90%; }
+    .msgs { padding:12px; }
+    .reply { padding:10px 12px; flex-direction:column; align-items:stretch; }
+    .reply button { width:100%; }
+    #books { padding:12px; }
+    .card { padding:12px; margin-bottom:12px; }
+    /* рядок книги: назва зверху, дії нижче */
+    .book { flex-wrap:wrap; }
+    .book .meta { flex-basis:100%; }
+    .book input[type=checkbox] { width:24px !important; height:24px; }
+    #b-go, #b-search { width:100%; }
+    .row[style] { grid-template-columns:1fr !important; }
   }
+  /* 16px у полях - щоб iPhone не наближав сторінку при введенні */
+  @media (pointer: coarse) { input, textarea { font-size:16px; } }
 </style>
 </head>
 <body>
 <div id="login">
-  <h2>Відгуки Vulyk</h2>
+  <h2>Адмінка Vulyk</h2>
   <p style="color:var(--muted)">Пароль адмінки (секрет FEEDBACK_ADMIN_PASSWORD у Supabase).</p>
   <div style="position:relative">
     <input id="pw" type="password" placeholder="Пароль" autocomplete="current-password" style="padding-right:48px">
@@ -77,7 +103,7 @@
 <div id="main" hidden>
   <header>
     <button class="ghost" id="back" hidden>←</button>
-    <h1>Vulyk</h1>
+    <h1>Vulyk: адмінка <small id="ver" style="color:var(--muted);font-weight:400;font-size:12px"></small></h1>
     <button class="tab on" id="tab-fb">Відгуки</button>
     <button class="tab" id="tab-books">Книги</button>
     <button class="ghost" id="refresh">Оновити</button>
@@ -121,12 +147,14 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+const ADMIN_VERSION = '2026-11-08';
 const $ = (id) => document.getElementById(id);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
                 del: (k) => { try { localStorage.removeItem(k); } catch {} } };
 let url = store.get('fb_url') || DEFAULT_URL, pw = store.get('fb_pw') || '', current = null, timer = null;
 $('url').value = url;
+$('ver').textContent = 'версія ' + ADMIN_VERSION;
 
 const booksUrl = () => (/\/feedback\/?$/.test(url) ? url.replace(/\/feedback\/?$/, '/books') : DEFAULT_BOOKS_URL);
 async function api(body, endpoint) {
