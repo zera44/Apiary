@@ -1341,6 +1341,10 @@ class AppStringsEn extends AppStrings {
   @override
   String get finStats => 'Statistics';
   @override
+  String get finByYears => 'By years';
+  @override
+  String get finByMonths => 'By months';
+  @override
   String get finNewOperation => 'New operation';
   @override
   String get finNoOperations => 'No operations';

@@ -150,6 +150,19 @@ List<FinMonthTotal> finMonthlyTotals(Iterable<FinEntry> entries, int year) {
   return [for (var i = 0; i < 12; i++) FinMonthTotal(i + 1, inc[i], exp[i])];
 }
 
+/// Дохід і витрати за кожен рік, що є в [entries], від найранішого до
+/// найпізнішого (`month` у підсумку - це рік).
+List<FinMonthTotal> finYearlyTotals(Iterable<FinEntry> entries) {
+  final inc = <int, double>{}, exp = <int, double>{};
+  for (final e in entries) {
+    if (e.cancelled) continue;
+    final m = e.isExpense ? exp : inc;
+    m[e.date.year] = (m[e.date.year] ?? 0) + e.amount;
+  }
+  final years = {...inc.keys, ...exp.keys}.toList()..sort();
+  return [for (final y in years) FinMonthTotal(y, inc[y] ?? 0, exp[y] ?? 0)];
+}
+
 double _secs(DateTime d) => d.microsecondsSinceEpoch / 1e6;
 DateTime _dt(num secs) => DateTime.fromMicrosecondsSinceEpoch((secs * 1e6).round());
 

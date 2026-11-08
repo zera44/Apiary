@@ -18,6 +18,7 @@ class FinStatsScreen extends StatefulWidget {
 
 class _FinStatsScreenState extends State<FinStatsScreen> {
   int _year = DateTime.now().year;
+  bool _byYears = false;
   List<FinMonthTotal> _months = const [];
   bool _loaded = false;
 
@@ -28,11 +29,12 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   }
 
   Future<void> _reload() async {
-    final list = await widget.repo
-        .listFinEntries(from: DateTime(_year, 1, 1), to: DateTime(_year + 1, 1, 1));
+    final list = await widget.repo.listFinEntries(
+        from: _byYears ? DateTime(1970) : DateTime(_year, 1, 1),
+        to: DateTime(_byYears ? DateTime.now().year + 2 : _year + 1, 1, 1));
     if (!mounted) return;
     setState(() {
-      _months = finMonthlyTotals(list, _year);
+      _months = _byYears ? finYearlyTotals(list) : finMonthlyTotals(list, _year);
       _loaded = true;
     });
   }
@@ -56,6 +58,20 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(title: tr.finStats, onBack: () => Navigator.pop(context)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: FinSegment(
+                labels: [tr.finByYears, tr.finByMonths],
+                selected: _byYears ? 0 : 1,
+                onChanged: (i) {
+                  setState(() {
+                    _byYears = i == 0;
+                    _loaded = false;
+                  });
+                  _reload();
+                },
+              ),
+            ),
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
@@ -65,6 +81,8 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                         decoration: BoxDecoration(
                             color: AppColors.card, borderRadius: BorderRadius.circular(20)),
                         child: Column(children: [
+                          if (_byYears) const SizedBox(height: 12),
+                          if (!_byYears)
                           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                             IconButton(
                                 onPressed: () => _shift(-1),
@@ -99,7 +117,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                                   ]),
                                             ),
                                             const SizedBox(height: 4),
-                                            Text(tr.monthNames[m.month].substring(0, 3),
+                                            Text(_byYears ? '${m.month}' : tr.monthNames[m.month].substring(0, 3),
                                                 style: TextStyle(
                                                     color: AppColors.textMuted, fontSize: 10)),
                                           ]),
@@ -128,7 +146,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                               color: AppColors.card, borderRadius: BorderRadius.circular(16)),
                           child: Row(children: [
                             Expanded(
-                                child: Text(tr.monthNames[m.month],
+                                child: Text(_byYears ? '${m.month}' : tr.monthNames[m.month],
                                     style: TextStyle(color: AppColors.text, fontSize: 16))),
                             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                               Text('+${uah(m.income)}',

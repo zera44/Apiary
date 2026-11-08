@@ -28,4 +28,16 @@ void main() {
     expect(r[3].income, 0);
     expect(r[11].income, 0);
   });
+
+  test('finYearlyTotals групує за роками по зростанню', () {
+    final r = finYearlyTotals([
+      _e(kFinIncome, 5, DateTime(2026, 1, 1)),
+      _e(kFinExpense, 2, DateTime(2024, 6, 1)),
+      _e(kFinExpense, 3, DateTime(2026, 7, 1)),
+      _e(kFinExpense, 9, DateTime(2025, 7, 1), cancelled: true),
+    ]);
+    expect(r.map((x) => x.month), [2024, 2026]);
+    expect(r[1].income, 5);
+    expect(r[1].expense, 3);
+  });
 }
