@@ -5,6 +5,15 @@ begin;
 -- профілі з'явились і для тих, хто входив до міграції
 select tests.ok((select email from public.profiles where id = '00000000-0000-0000-0000-00000000000a') = 'olena@gmail.com',
   'профіль: пошта в нижньому регістрі');
+select tests.ok((select joined_at from public.profiles where id = '00000000-0000-0000-0000-00000000000a') = '2026-03-01 08:00+00',
+  'профіль: дата приєднання давнього користувача - з auth.users');
+insert into auth.users (id, email, created_at) values
+  ('00000000-0000-0000-0000-0000000000d1', 'new@gmail.com', '2026-11-08 10:00+00');
+update auth.users set email = 'new2@gmail.com', created_at = '2030-01-01'
+  where id = '00000000-0000-0000-0000-0000000000d1';
+select tests.ok((select joined_at from public.profiles where id = '00000000-0000-0000-0000-0000000000d1') = '2026-11-08 10:00+00',
+  'профіль: дата приєднання ставиться при першому вході й не змінюється');
+delete from auth.users where id = '00000000-0000-0000-0000-0000000000d1';
 
 -- ── Олена записує дані так, як їх шле телефон (owner_id NULL - «мій») ──
 select tests.login('00000000-0000-0000-0000-00000000000a', 'olena@gmail.com');

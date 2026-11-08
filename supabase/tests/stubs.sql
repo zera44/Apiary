@@ -14,7 +14,8 @@ create schema extensions;
 create table auth.users (
   id uuid primary key,
   email text,
-  raw_user_meta_data jsonb not null default '{}'
+  raw_user_meta_data jsonb not null default '{}',
+  created_at timestamptz default now()
 );
 
 create function auth.jwt() returns jsonb
@@ -116,7 +117,7 @@ grant execute on function tests.ok(boolean, text) to anon, authenticated, servic
 
 -- Три користувачі для всіх тестів: Олена (власниця), Петро (помічник),
 -- Іван (сторонній).
-insert into auth.users (id, email, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-00000000000a', 'Olena@Gmail.com', '{"full_name": "Олена"}'),
-  ('00000000-0000-0000-0000-00000000000b', 'petro@gmail.com', '{}'),
-  ('00000000-0000-0000-0000-00000000000c', 'ivan@gmail.com', '{}');
+insert into auth.users (id, email, raw_user_meta_data, created_at) values
+  ('00000000-0000-0000-0000-00000000000a', 'Olena@Gmail.com', '{"full_name": "Олена"}', '2026-03-01 08:00+00'),
+  ('00000000-0000-0000-0000-00000000000b', 'petro@gmail.com', '{}', now()),
+  ('00000000-0000-0000-0000-00000000000c', 'ivan@gmail.com', '{}', now());
