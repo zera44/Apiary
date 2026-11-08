@@ -513,18 +513,32 @@ Future<List<Frag>> recover(List<Frag> fr, OcrBackend b) async {
 }
 
 /// Дочитування всіх видів на фрагментах [fr] (після OcrV2.run): змінює [fr] і дописує знайдені фрагменти.
-Future<void> recoverAll(List<Frag> fr, OcrBackend b) async {
-  if (fr.isEmpty) return;
-  await reread(fr, b);
-  await reread2(fr, b);
-  await reread3(fr, b);
-  await reread4(fr, b);
+///
+/// Кроки незалежні: збій одного (наприклад, у плагіні) пропускає лише його, решта
+/// й подальша розмітка працюють. Повертає причини пропущених кроків (порожньо - усе гаразд).
+Future<List<String>> recoverAll(List<Frag> fr, OcrBackend b) async {
+  final errors = <String>[];
+  if (fr.isEmpty) return errors;
+  Future<void> step(String name, Future<void> Function() run) async {
+    try {
+      await run();
+    } catch (e) {
+      errors.add('$name: $e');
+    }
+  }
+
+  await step('reread', () => reread(fr, b));
+  await step('reread2', () => reread2(fr, b));
+  await step('reread3', () => reread3(fr, b));
+  await step('reread4', () => reread4(fr, b));
   stripQty(fr);
   for (final f in fr) {
     if (match(r'\s*-\s*-\s*\d', f.text) != null) f.text = sub(r'^\s*-\s*-', '-', f.text);
   }
-  final add = await recover(fr, b);
-  add.addAll(await b.hand(fr));
-  add.addAll(await qtyMarks(fr, b));
+  final add = <Frag>[];
+  await step('recover', () async => add.addAll(await recover(fr, b)));
+  await step('hand', () async => add.addAll(await b.hand(fr)));
+  await step('qtyMarks', () async => add.addAll(await qtyMarks(fr, b)));
   fr.addAll(add);
+  return errors;
 }

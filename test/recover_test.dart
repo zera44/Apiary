@@ -28,7 +28,25 @@ class _Fake implements OcrBackend {
   Future<List<Frag>> hand(List<Frag> fr) async => [];
 }
 
+/// Плагін, у якого падають рукописні рядки (як UNICODE_CHARACTER_CLASS на Android).
+class _HandFails extends _Fake {
+  @override
+  Future<List<Frag>> hand(List<Frag> fr) async => throw Exception('flag not supported');
+}
+
 void main() {
+  test('збій кроку дочитування не зупиняє решту й повертає причину', () async {
+    final a = f('--12,50');
+    final errors = await recoverAll([a], _HandFails());
+    expect(a.text, '-12,50');
+    expect(errors, hasLength(1));
+    expect(errors.single, startsWith('hand: '));
+  });
+
+  test('без збоїв причин немає', () async {
+    expect(await recoverAll([f('12,50')], _Fake()), isEmpty);
+  });
+
   test('stripQty: «1 х 34,00» у вузькій рамці лишає ціну', () {
     final a = f('1 х 34,00', w: 40, h: 30);
     stripQty([a]);

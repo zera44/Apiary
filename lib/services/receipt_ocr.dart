@@ -22,7 +22,10 @@ class MarkedReceipt {
   /// (x·cos - y·sin, x·sin + y·cos).
   final double angle;
 
-  const MarkedReceipt(this.fz, this.image, this.angle);
+  /// Кроки дочитування, що впали й були пропущені (розмітка все одно відпрацювала).
+  final List<String> skipped;
+
+  const MarkedReceipt(this.fz, this.image, this.angle, {this.skipped = const []});
 }
 
 
@@ -71,17 +74,19 @@ class PaddleReceiptOcr implements ReceiptOcr {
     }
     final session = await PaddleOcr.begin(imagePath);
     final List<Frag> frags;
+    final List<String> skipped;
     try {
       frags = [for (final f in session.frags) _frag(f)];
-      // правила дочитування - тут (Dart), модель і зображення - у плагіні
-      await recoverAll(frags, _PluginBackend(session));
+      // правила дочитування - тут (Dart), модель і зображення - у плагіні;
+      // збій кроку дочитування не зупиняє розмітку
+      skipped = await recoverAll(frags, _PluginBackend(session));
     } finally {
       await session.end(imagePath: image);
     }
     // розмітка - кілька тисяч нечітких висновків: в окремому ізоляті, щоб не гальмував інтерфейс
     final fz = await Isolate.run(() => markReceipt(frags));
     final ok = image != null && File(image).existsSync();
-    return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle);
+    return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle, skipped: skipped);
   }
 }
 
