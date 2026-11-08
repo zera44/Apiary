@@ -1363,7 +1363,9 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptAdjustName => 'Adjustment';
   @override
-  String get receiptMarkupOpen => 'Markup';
+  String get receiptMarkupOpen => 'Check receipt';
+  @override
+  String receiptMarkupFailed(String why) => 'Markup failed ($why): only the text was read.';
   @override
   String get receiptMarkupTitle => 'Receipt markup';
   @override

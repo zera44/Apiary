@@ -10,7 +10,7 @@ import java.util.List;
  * детектор DB з ширшими рамками (unclip 2.0 і поздовжній запас), злиття розірваних рамок рядка,
  * дрібний текст - збільшення й детекція смугами, читання з розтягненням, повороти 0/180 (і 90/270 для фото боком).
  * Результат - фрагменти з рамками у системі координат вирівняного фото (як raw*.csv курсової),
- * далі їх дочитує [OcrRecover] і розмічає fz2 у Dart.
+ * далі їх дочитує Dart (lib/logic/fz2/recover.dart) і розмічає fz2 у Dart.
  * Логіка без Android і перевіряється на ПК (tool/OcrV2Main.java).
  */
 final class OcrV2 {
@@ -97,9 +97,37 @@ final class OcrV2 {
     static final class Reader {
         final OcrPipeline.Runner run;
         final String[] chars;
-        int recCalls, detCalls;
+        final java.util.concurrent.atomic.AtomicInteger recCalls = new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicInteger detCalls = new java.util.concurrent.atomic.AtomicInteger();
 
         Reader(OcrPipeline.Runner run, String[] chars) { this.run = run; this.chars = chars; }
+
+        /** Потоки для незалежних читань: один виклик моделі слабо виграє від кількох ядер, а кілька викликів - добре. */
+        static final java.util.concurrent.ExecutorService POOL = java.util.concurrent.Executors.newFixedThreadPool(
+                Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors())), r -> {
+                    Thread t = new Thread(r, "ocr-read");
+                    t.setDaemon(true);
+                    return t;
+                });
+
+        /** Виконати незалежні читання паралельно; результати - у порядку завдань, тож відповідь та сама, що й послідовна. */
+        <T> List<T> parallel(List<java.util.concurrent.Callable<T>> jobs) throws Exception {
+            List<T> out = new ArrayList<>(jobs.size());
+            if (jobs.size() <= 1) {
+                for (java.util.concurrent.Callable<T> j : jobs) out.add(j.call());
+                return out;
+            }
+            List<java.util.concurrent.Future<T>> fs = new ArrayList<>(jobs.size());
+            for (java.util.concurrent.Callable<T> j : jobs) fs.add(POOL.submit(j));
+            try {
+                for (java.util.concurrent.Future<T> f : fs) out.add(f.get());
+            } catch (java.util.concurrent.ExecutionException e) {
+                for (java.util.concurrent.Future<T> f : fs) f.cancel(true);
+                Throwable c = e.getCause();
+                throw c instanceof Exception ? (Exception) c : e;
+            }
+            return out;
+        }
     }
 
     // ------------------------------------------------------------------ зображення
@@ -400,7 +428,7 @@ final class OcrV2 {
             float v = (x.p[i] & 255) / 127.5f - 1f;
             t[i] = v; t[plane + i] = v; t[2 * plane + i] = v;
         }
-        rd.detCalls++;
+        rd.detCalls.incrementAndGet();
         float[] prob = rd.run.det(t, rh, rw);
         byte[] mask = new byte[plane];
         for (int i = 0; i < plane; i++) mask[i] = (byte) (prob[i] > 0.3f ? 1 : 0);
@@ -517,7 +545,7 @@ final class OcrV2 {
                 t[i] = v; t[plane + i] = v; t[2 * plane + i] = v;
             }
             int[] tc = new int[2];
-            rd.recCalls++;
+            rd.recCalls.incrementAndGet();
             float[] out = rd.run.rec(t, 1, nw, tc);
             float[] cf = new float[1];
             String s = Ctc.decode(out, 0, tc[0], tc[1], rd.chars, cf).trim();
@@ -617,8 +645,13 @@ final class OcrV2 {
         }
         boxes = mergeAdjacent(boxes);
         List<Row> rows = new ArrayList<>();
-        for (Quad b : boxes) {
-            Read r = read(gg, b, rd, STRETCH);
+        final Gray gf = gg;
+        List<java.util.concurrent.Callable<Read>> jobs = new ArrayList<>();
+        for (Quad b : boxes) jobs.add(() -> read(gf, b, rd, STRETCH));
+        List<Read> reads = rd.parallel(jobs);
+        for (int i = 0; i < boxes.size(); i++) {
+            Read r = reads.get(i);
+            Quad b = boxes.get(i);
             if (!r.text.isEmpty()) rows.add(new Row(scale == 1.0 ? b : b.scaled(scale), r.text, r.conf));
         }
         return rows;
@@ -650,6 +683,13 @@ final class OcrV2 {
         }
     }
 
+    /**
+     * Пропуск перевірки поворотів: на 130 чеках правильним був поворот 0, коли оцінка першого проходу >= 0,83,
+     * а інші повороти перемагали, коли вона <= 0,69. Поріг посередині, з запасом.
+     */
+    static boolean FAST_ROT = System.getenv("NO_FASTROT") == null;
+    static final double ROT_SKIP = 0.78;
+
     /** Повне розпізнавання сірого фото [g0]: поворот, рамки, текст, фрагменти. */
     static Result run(Gray g0, Reader rd) throws Exception {
         Gray g = g0;
@@ -660,6 +700,14 @@ final class OcrV2 {
         List<Cand> cands = new ArrayList<>();
         cands.add(new Cand(0, g, rows));
         List<Integer> rots = new ArrayList<>();
+        if (FAST_ROT && cands.get(0).score() >= ROT_SKIP) { // прямий чек читається впевнено: інші повороти не потрібні
+            Result res = new Result();
+            res.rotation = 0;
+            res.g = g;
+            res.conf = mconf(rows);
+            res.frags.addAll(toFrags(g, rows, 0, res.conf));
+            return res;
+        }
         if (!rows.isEmpty() && tl * 2 > rows.size()) { rots.add(90); rots.add(270); }
         rots.add(180);
         for (int r : rots) {

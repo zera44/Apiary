@@ -20,19 +20,19 @@ final class OcrHand {
     static List<Frag> handRows(List<Frag> fr, Gray g, Reader rd) throws Exception {
         List<Frag> out = new ArrayList<>();
         Frag hd = null;
-        for (Frag f : fr) if (OcrRecover.search("(?i)сорт\\s*товар", f.text)) { hd = f; break; }
+        for (Frag f : fr) if (OcrPrim.search("(?i)сорт\\s*товар", f.text)) { hd = f; break; }
         if (hd == null) return out;
         double h = hd.h;
         double a = fr.get(0).angle;
         double ca = Math.cos(a), sa = Math.sin(a);
         double yEnd = Double.POSITIVE_INFINITY;
         for (Frag f : fr) {
-            if (f.y > hd.y && OcrRecover.search("^[РДP]азом|Сума\\s*$|ПДВ|Пдв", f.text)) yEnd = Math.min(yEnd, f.y);
+            if (f.y > hd.y && OcrPrim.search("^[РДP]азом|Сума\\s*$|ПДВ|Пдв", f.text)) yEnd = Math.min(yEnd, f.y);
         }
         yEnd = Double.isInfinite(yEnd) ? hd.y + 12 * h : yEnd - 0.6 * h;
         double xNameEnd = Double.POSITIVE_INFINITY;
         for (Frag f : fr) {
-            if (OcrRecover.search("Один", f.text) && Math.abs(f.y - hd.y) < 2 * h) xNameEnd = Math.min(xNameEnd, f.xLeft);
+            if (OcrPrim.search("Один", f.text) && Math.abs(f.y - hd.y) < 2 * h) xNameEnd = Math.min(xNameEnd, f.xLeft);
         }
         if (Double.isInfinite(xNameEnd)) xNameEnd = hd.xRight + h;
         double xSum, xEnd;
@@ -100,7 +100,7 @@ final class OcrHand {
                 double yy0 = y0 + b[0], yy1 = y0 + b[1];
                 String txt = "[рукопис]";
                 if (item) { // число в колонці «Сума» інколи читається
-                    Read rr = OcrV2.read(g, OcrRecover.quad(a, l - 10, r + 10, yy0 - 10, yy1 + 10), rd, OcrV2.STRETCH);
+                    Read rr = OcrV2.read(g, OcrPrim.quad(a, l - 10, r + 10, yy0 - 10, yy1 + 10), rd, OcrV2.STRETCH);
                     String dg = rr.text.replaceAll("\\D", "");
                     if (dg.length() >= 2) txt = dg;
                 }

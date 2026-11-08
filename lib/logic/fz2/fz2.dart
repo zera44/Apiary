@@ -34,6 +34,9 @@ class Frag {
   bool virtual;
   double? value;
 
+  /// Дочитаний фрагмент (пропущена назва, «1x»), а не рамка детектора.
+  bool recovered;
+
   Frag({
     this.receipt = '',
     this.boxId,
@@ -52,6 +55,7 @@ class Frag {
     this.hand,
     this.virtual = false,
     this.value,
+    this.recovered = false,
   });
 
   Frag copy({String? text, double? xLeft, double? xRight}) => Frag(
@@ -72,6 +76,7 @@ class Frag {
         hand: hand,
         virtual: virtual,
         value: value,
+        recovered: recovered,
       );
 
   static Frag virtualItem(String name, double value) =>

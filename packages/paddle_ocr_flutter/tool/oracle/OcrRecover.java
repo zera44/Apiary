@@ -18,6 +18,10 @@ import org.apiary.paddle_ocr.OcrV2.Read;
 import org.apiary.paddle_ocr.OcrV2.Reader;
 
 /**
+ * ЕТАЛОН для перевірки Dart-версії (lib/logic/fz2/recover.dart): колишній Java-код дочитування, який записує
+ * кожне читання рамки, зміну виродженої рамки й рукописні рядки у файл (FX), щоб Dart-версію можна було
+ * програти на тих самих відповідях моделі й порівняти результат. У застосунок не входить.
+ *
  * Дочитування після [OcrV2] (перенесення coursework/fuzzy_v2/recover.py і hand.py): перечитування невпевнених
  * і «зіпсованих» сум з іншими рамками й розтягненнями, пропущені назви ліворуч від суми, «1x» ліворуч від ціни,
  * рукописні рядки бланка «Товарний чек». Регулярні вирази - як у Python (юнікодні \d, \w, \b).
@@ -67,6 +71,33 @@ final class OcrRecover {
     }
 
     /** Рамка (x1..x2, y1..y2) у системі фрагментів, повернута на нахил фото. */
+    static final Map<Quad, double[]> QS = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+    static java.io.PrintWriter FX;
+
+    static String hx(double d) { return Long.toHexString(Double.doubleToLongBits(d)); }
+
+    static String esc(String s) { return s.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n"); }
+
+    static synchronized void fx(String line) { if (FX != null) FX.println(line); }
+
+    static void fxBegin(String path) throws Exception { FX = new java.io.PrintWriter(path, "UTF-8"); }
+
+    static void fxEnd() { if (FX != null) FX.close(); FX = null; }
+
+    static String frag(Frag f) {
+        return String.join("\t", "" + f.boxId, esc(f.text), hx(f.conf), hx(f.x), hx(f.y), hx(f.w), hx(f.h), hx(f.xLeft),
+                hx(f.xRight), hx(f.angle), "" + f.imgW, "" + f.imgH, f.recovered ? "1" : "0", f.hand == null ? "" : f.hand);
+    }
+
+    static Read tap(Gray g, Quad q, Reader rd, double[] st) throws Exception {
+        Read r = OcrV2.read(g, q, rd, st);
+        double[] k = QS.get(q);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < st.length; i++) { if (i > 0) sb.append(','); sb.append(hx(st[i])); }
+        fx("R\t" + hx(k[0]) + "\t" + hx(k[1]) + "\t" + hx(k[2]) + "\t" + hx(k[3]) + "\t" + hx(k[4]) + "\t" + sb + "\t" + hx(r.conf) + "\t" + esc(r.text));
+        return r;
+    }
+
     static Quad quad(double a, double x1, double x2, double y1, double y2) {
         double c = Math.cos(a), s = Math.sin(a);
         double[][] p = {{x1, y1}, {x2, y1}, {x2, y2}, {x1, y2}};
@@ -76,11 +107,12 @@ final class OcrRecover {
             q.x[i] = (float) (px * c - py * s);
             q.y[i] = (float) (px * s + py * c);
         }
+        QS.put(q, new double[] {a, x1, x2, y1, y2});
         return q;
     }
 
     static Read read1(Gray g, Quad q, Reader rd, double st) throws Exception {
-        return OcrV2.read(g, q, rd, new double[] {st});
+        return tap(g, q, rd, new double[] {st});
     }
 
     /** kop із recover.py: усе, крім цифр, крапок, ком і мінуса, відкидається. */
@@ -188,6 +220,7 @@ final class OcrRecover {
             if (!(f.conf < 0.9 || search(SUSP, t0) || (clean0 && f.conf < 0.93))) continue;
             double[] pxs = degen ? new double[] {0.5, 0.8, 1.0, 1.3, 1.6} : new double[] {0.0, 0.5};
             List<Cand> best = new ArrayList<>();
+            List<java.util.concurrent.Callable<Cand>> jobs = new ArrayList<>(); // незалежні читання - паралельно, порядок збережено
             boolean cut = !degen && search("\\d[.,]\\s\\d{2}(?!\\d)", t0);
             if (cut) { // рамка відрізала початок великого числа - ширше ліворуч
                 for (double L : new double[] {1.5, 2.0, 2.5, 3.0})
@@ -195,8 +228,11 @@ final class OcrRecover {
                         double x1 = f.xLeft - L * h, x2 = f.xRight, y1 = f.y - pad * h, y2 = f.y + pad * h;
                         Quad p = quad(a, x1, x2, y1, y2);
                         for (double st : new double[] {1.0, 0.8}) {
-                            Read r = read1(g, p, rd, st);
-                            best.add(new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), L, new double[] {x1, x2, y1, y2}));
+                            final double fL = L;
+                            jobs.add(() -> {
+                                Read r = read1(g, p, rd, st);
+                                return new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), fL, new double[] {x1, x2, y1, y2});
+                            });
                         }
                     }
             }
@@ -207,10 +243,14 @@ final class OcrRecover {
                     double y1 = f.y - pad * h, y2 = f.y + pad * h;
                     Quad p = quad(a, x1, x2, y1, y2);
                     for (double st : new double[] {1.5, 1.0, 0.8}) {
-                        Read r = read1(g, p, rd, st);
-                        best.add(new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), px, new double[] {x1, x2, y1, y2}));
+                        final double fpx = px;
+                        jobs.add(() -> {
+                            Read r = read1(g, p, rd, st);
+                            return new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), fpx, new double[] {x1, x2, y1, y2});
+                        });
                     }
                 }
+            best.addAll(rd.parallel(jobs));
             best.sort(DESC);
             if (cut) { // спершу прочитання, узгоджені з іншими сумами чека
                 Matcher mv = re("\\d{1,6}[.,]\\s\\d{2}").matcher(t0);
@@ -301,6 +341,12 @@ final class OcrRecover {
 
     /** Тісна рамка за чорнилом навколо центру (великий шрифт із виродженою рамкою). */
     static void degenBox(Frag f, Gray g, double a) {
+        String key = hx(f.x) + "\t" + hx(f.y) + "\t" + hx(f.h) + "\t" + hx(a);
+        degenBox0(f, g, a);
+        fx("G\t" + key + "\t" + hx(f.x) + "\t" + hx(f.y) + "\t" + hx(f.w) + "\t" + hx(f.h) + "\t" + hx(f.xLeft) + "\t" + hx(f.xRight));
+    }
+
+    static void degenBox0(Frag f, Gray g, double a) {
         double h = f.h;
         double x1 = f.x - 3 * h, x2 = f.x + 3 * h, y1 = f.y - 0.3 * h, y2 = f.y + 0.3 * h;
         int cw = (int) (x2 - x1), ch = (int) (y2 - y1);
@@ -525,7 +571,7 @@ final class OcrRecover {
                 if (q != f && alpha(q.text) > 0 && Math.abs(q.y - f.y) < 0.45 * h)
                     cover += Math.max(0, Math.min(q.xRight, f.xLeft) - Math.max(q.xLeft, X0));
             if (cover > 0.3 * (f.xLeft - X0)) continue;
-            Read r = OcrV2.read(g, quad(a, x1, x2, f.y - 0.55 * h, f.y + 0.55 * h), rd, OcrV2.STRETCH);
+            Read r = tap(g, quad(a, x1, x2, f.y - 0.55 * h, f.y + 0.55 * h), rd, OcrV2.STRETCH);
             String t = strip(r.text);
             if (alpha(t) < 4 || r.conf < 0.85 || search(MONEY + "(?!\\s*%)", t)) continue;
             Set<String> st = stems(t), near = new HashSet<>();
@@ -552,6 +598,7 @@ final class OcrRecover {
         if (!"all".equals(mode) || res.frags.isEmpty()) return res;
         List<Frag> fr = res.frags;
         Gray g = res.g;
+        for (Frag f : fr) fx("I\t" + frag(f));
         reread(fr, g, rd);
         reread2(fr, g, rd);
         reread3(fr, g, rd);
@@ -559,9 +606,12 @@ final class OcrRecover {
         stripQty(fr);
         for (Frag f : fr) if (match("\\s*-\\s*-\\s*\\d", f.text)) f.text = sub("^\\s*-\\s*-", "-", f.text);
         List<Frag> add = recover(fr, g, rd);
-        add.addAll(OcrHand.handRows(fr, g, rd));
+        List<Frag> hand = OcrHand.handRows(fr, g, rd);
+        for (Frag f : hand) fx("H\t" + frag(f));
+        add.addAll(hand);
         add.addAll(qtyMarks(fr, g, rd));
         fr.addAll(add);
+        for (Frag f : fr) fx("E\t" + frag(f));
         return res;
     }
 }
