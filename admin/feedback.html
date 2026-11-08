@@ -62,6 +62,13 @@
   .hit .src { color:var(--honey); font-size:13px; font-weight:700; }
   .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
   .bar > div { height:100%; width:0; background:var(--honey); transition:width .2s; }
+  #b-queue { margin:4px 0 12px; }
+  .q { border-top:1px solid var(--line); padding:10px 0; }
+  .q .qn { color:var(--muted); font-size:13px; overflow-wrap:anywhere; }
+  .q .qs { display:block; margin-top:2px; }
+  .q .qs.ok { color:#8fc98f; } .q .qs.err { color:#e07a5f; }
+  .q .qr { display:grid; grid-template-columns:1fr 96px; gap:8px; margin-top:6px; }
+  .q input { margin-top:6px; } .q .qr input { margin-top:0; }
   #bstatus { color:var(--muted); margin-top:8px; min-height:1.4em; white-space:pre-wrap; }
   button.danger { background:transparent; color:#e07a5f; border:1px solid #e07a5f; font-weight:400; padding:6px 10px; }
   @media (max-width: 720px) {
@@ -126,17 +133,20 @@
   <div id="books" hidden>
     <div class="card">
       <h3>Додати книгу</h3>
-      <div class="row">
-        <div><label class="f" for="b-title">Назва *</label><input id="b-title"></div>
-        <div><label class="f" for="b-author">Автор</label><input id="b-author"></div>
+      <div id="b-single">
+        <div class="row">
+          <div><label class="f" for="b-title">Назва (визначається з файла)</label><input id="b-title"></div>
+          <div><label class="f" for="b-author">Автор</label><input id="b-author"></div>
+        </div>
       </div>
-      <div class="row">
-        <div><label class="f" for="b-year">Рік</label><input id="b-year" inputmode="numeric"></div>
-        <div><label class="f" for="b-source">Звідки й на яких правах</label><input id="b-source" placeholder="власний примірник, дозвіл автора…"></div>
+      <div class="row" id="b-row2">
+        <div id="b-yearbox"><label class="f" for="b-year">Рік</label><input id="b-year" inputmode="numeric"></div>
+        <div><label class="f" for="b-source">Звідки й на яких правах (для всіх файлів)</label><input id="b-source" placeholder="власний примірник, дозвіл автора…"></div>
       </div>
       <div class="row one">
-        <div><label class="f" for="b-file">Файл: PDF (з текстом), TXT або MD</label><input id="b-file" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></div>
+        <div><label class="f" for="b-file">Файли: PDF (з текстом), TXT або MD. Можна вибрати кілька</label><input id="b-file" type="file" multiple accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></div>
       </div>
+      <div id="b-queue" hidden></div>
       <button id="b-go">Завантажити в базу</button>
       <div class="bar"><div id="b-bar"></div></div>
       <div id="bstatus"></div>
@@ -157,7 +167,7 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08-menu';
+const ADMIN_VERSION = '2026-11-08-batch';
 // установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
 // Самооновлення: перевіряємо новий sw.js при кожному відкритті; коли новий
 // скрипт перебрав керування - один раз перезавантажуємо сторінку.
@@ -264,8 +274,10 @@ const bapi = (body) => api(body, booksUrl());
 const bsay = (t) => { $('bstatus').textContent = t; };
 const progress = (x) => { $('b-bar').style.width = Math.round(Math.max(0, Math.min(1, x)) * 100) + '%'; };
 
+let knownTitles = new Set();
 async function loadBooks() {
   const { books } = await bapi({ action: 'list' });
+  knownTitles = new Set(books.map((b) => b.title.trim().toLowerCase()));
   const box = $('b-list'); box.replaceChildren();
   if (!books.length) box.append(el('div', 'empty', 'Книг ще немає. Додайте першу вище.'));
   for (const b of books) {
@@ -351,42 +363,235 @@ function chunkPages(pages) {
   return out;
 }
 
-$('b-go').onclick = async () => {
-  const title = $('b-title').value.trim(), file = $('b-file').files[0];
-  if (!title || !file) { bsay('Потрібні назва й файл.'); return; }
-  const year = parseInt($('b-year').value, 10);
-  $('b-go').disabled = true; progress(0);
-  try {
-    bsay('Читаю файл…');
-    let pages;
-    if (/\.pdf$/i.test(file.name)) {
-      pages = await readPdf(file, (i, n) => { bsay('Читаю сторінку ' + i + ' з ' + n + '…'); progress(i / n * 0.4); });
-      const chars = pages.reduce((s, p) => s + p.text.length, 0);
-      if (chars < pages.length * 40) throw new Error('У PDF майже немає тексту - схоже, це скан. Потрібен PDF з текстовим шаром (або спершу розпізнайте його).');
-    } else {
-      pages = [{ page: null, text: (await readText(file)).replace(/\r\n?/g, '\n') }];
+// -- автовизначення назви, автора й року з перших сторінок
+
+const YEAR_NOW = new Date().getFullYear();
+const CAP = '[А-ЯІЇЄҐA-Z]', LOW = "[а-яіїєґ'’a-z\\-]";
+// «Прізвище Ім'я (По батькові)», «І. І. Прізвище», «Прізвище І. І.»
+const NAME_RE = new RegExp('^(?:' + CAP + LOW + '+(?:\\s+' + CAP + LOW + '+){1,2}|' + CAP + '\\.\\s?(?:' + CAP + '\\.\\s?)?' + CAP + LOW + '+|' + CAP + LOW + '+\\s+' + CAP + '\\.\\s?(?:' + CAP + '\\.)?)$');
+const LABEL_RE = /^(назва|title|автор(?:и)?|author(?:s)?|упорядник(?:и)?|укладач(?:і)?|by|рік|year)\s*[:\-–—]\s*(.+)$/i;
+const BAD_TITLE = /^(untitled|microsoft word|без назви|document\d*|new document)|\.(docx?|pdf|indd|tex|txt|md)$|_|^[^\p{L}]*$/iu;
+
+/** Рік видання: найкращий збіг із позначкою «©», «видання», «Київ, 1985» тощо. */
+function findYear(lines) {
+  const kw = /©|\(c\)|copyright|видан|видав|вид-во|вид\.|publish|edition|press|(?<!\p{L})р\.|року|рік(?!\p{L})|київ|львів|харків|одеса|москва|ленінград|ужгород/iu;
+  let best = null;
+  lines.forEach((t, i) => {
+    for (const m of t.matchAll(/(?<!\d)(1[5-9]\d\d|20[0-3]\d)(?!\d)/g)) {
+      const y = +m[1]; if (y > YEAR_NOW) continue;
+      const score = (kw.test(t) ? 3 : 0) + (t.length < 80 ? 1 : 0);
+      if (!best || score > best.score || (score === best.score && i >= best.i)) best = { y, score, i };
     }
-    const chunks = chunkPages(pages);
-    if (!chunks.length) throw new Error('Не знайшов тексту для уривків.');
-    bsay('Створюю книгу…');
-    const { id } = await bapi({ action: 'add_book', title, author: $('b-author').value.trim(), year: Number.isFinite(year) ? year : null, source: $('b-source').value.trim() });
+  });
+  return best && best.score >= 1 ? best.y : null;
+}
+
+/** pages: [[{text, size}]] (рядки перших сторінок), meta: {title, author} з метаданих файла. */
+function guessBook({ pages, meta }) {
+  const out = { title: '', author: '', year: null };
+  const all = pages.flat().map((l) => l.text);
+  // 1) підписані рядки: «Назва: …», «Автор: …», «Рік: …»
+  for (const t of all.slice(0, 80)) {
+    const m = LABEL_RE.exec(t); if (!m) continue;
+    const k = m[1].toLowerCase(), v = m[2].trim();
+    if (/^(назва|title)$/.test(k) && !out.title) out.title = v;
+    else if (/^(рік|year)$/.test(k)) { const y = +(/\d{4}/.exec(v) || [])[0]; if (y >= 1500 && y <= YEAR_NOW && !out.year) out.year = y; }
+    else if (!out.author) out.author = v;
+  }
+  // 2) метадані PDF (якщо схожі на справжні, а не на ім'я файла)
+  const mt = (meta.title || '').trim(), ma = (meta.author || '').trim();
+  if (!out.title && mt.length >= 4 && !BAD_TITLE.test(mt)) out.title = mt;
+  if (!out.author && ma.length >= 3 && /[A-Za-zА-Яа-яІіЇїЄє]/.test(ma) && !/^(admin|user|owner|unknown)$/i.test(ma)) out.author = ma;
+  // 3) перша сторінка з текстом: назва - найбільший шрифт, автор - ім'я під нею
+  const first = pages.find((p) => p.length) || [];
+  let titleEnd = -1;
+  if (!out.title && first.length) {
+    const cand = first.filter((l) => l.text.length >= 3 && /\p{L}/u.test(l.text));
+    const max = Math.max(...cand.map((l) => l.size), 0);
+    const uniform = cand.every((l) => Math.abs(l.size - max) < 0.5);
+    let i = uniform ? first.indexOf(cand[0]) : first.indexOf(cand.find((l) => l.size >= max * 0.92));
+    const parts = [];
+    for (; i >= 0 && i < first.length; i++) {
+      const l = first[i];
+      if (!uniform && l.size < max * 0.92) break;
+      parts.push(l.text); titleEnd = i;
+      if (uniform || parts.join(' ').length > 160) break;
+    }
+    out.title = parts.join(' ').replace(/^#+\s*|\*\*/g, '').trim();
+  }
+  if (!out.author && first.length) {
+    for (const l of first.slice(titleEnd + 1, titleEnd + 9)) {
+      const t0 = l.text.trim().replace(/[,;]+$/, ''), t1 = t0.replace(/\.$/, '');
+      const t = NAME_RE.test(t0) ? t0 : NAME_RE.test(t1) ? t1 : '';
+      if (t && t !== out.title) { out.author = t; break; }
+    }
+  }
+  if (!out.year) out.year = findYear(all.slice(0, 160));
+  out.title = out.title.slice(0, 280); out.author = out.author.slice(0, 200);
+  return out;
+}
+
+/** Рядки з розмірами шрифту перших сторінок PDF + метадані. */
+async function readPdfHead(file, maxPages = 5) {
+  await loadPdfJs();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  let meta = {};
+  try { const i = (await pdf.getMetadata()).info || {}; meta = { title: i.Title || '', author: i.Author || '' }; } catch {}
+  const pages = [];
+  for (let n = 1; n <= Math.min(maxPages, pdf.numPages); n++) {
+    const tc = await (await pdf.getPage(n)).getTextContent();
+    const lines = []; let cur = null, lastY = null;
+    for (const it of tc.items) {
+      const y = it.transform[5], size = Math.abs(it.transform[3]) || it.height || 0;
+      if (cur && lastY !== null && Math.abs(y - lastY) <= 2) { cur.text += it.str; cur.size = Math.max(cur.size, size); }
+      else { if (cur) lines.push(cur); cur = { text: it.str, size }; }
+      if (it.str.trim()) lastY = y;
+    }
+    if (cur) lines.push(cur);
+    pages.push(lines.map((l) => ({ text: l.text.replace(/\s+/g, ' ').trim(), size: l.size })).filter((l) => l.text));
+  }
+  return { pages, meta };
+}
+
+/** TXT / MD: рядки без розмірів; «---» заголовок MD ігноруємо. */
+async function readTextHead(file) {
+  const txt = (await readText(file)).replace(/\r\n?/g, '\n').slice(0, 6000);
+  const lines = txt.split('\n').map((t) => t.replace(/^#+\s*/, '').trim()).filter((t) => t && !/^-{3,}$/.test(t)).map((t) => ({ text: t, size: 1 }));
+  return { pages: [lines.slice(0, 60)], meta: {} };
+}
+
+const autoFields = { 'b-title': 'title', 'b-author': 'author', 'b-year': 'year' };
+for (const id of Object.keys(autoFields)) $(id).addEventListener('input', () => { delete $(id).dataset.auto; });
+
+const fileNameTitle = (f) => f.name.replace(/\.[^.]+$/, '').replace(/_+/g, ' ').trim();
+const readHead = (file) => (/\.pdf$/i.test(file.name) ? readPdfHead(file) : readTextHead(file));
+const yearOf = (v) => { const y = parseInt(v, 10); return Number.isFinite(y) ? y : null; };
+
+// ---- черга файлів (пакетне завантаження)
+let queue = [], uploading = false, detectRun = 0;
+const isMulti = () => queue.length > 1;
+const QSTATE = { wait: '', busy: '⏳ ', done: '✓ ', err: '✗ ', skip: '– ' };
+
+function updateRow(q) {
+  if (!q.ui) return;
+  q.ui.note.textContent = (QSTATE[q.state] || '') + (q.note || '');
+  q.ui.note.className = 'qs' + (q.state === 'done' ? ' ok' : q.state === 'err' ? ' err' : '');
+  for (const i of q.ui.inputs) i.disabled = uploading || q.state === 'done';
+}
+function renderQueue() {
+  const box = $('b-queue'); box.replaceChildren(); box.hidden = !isMulti();
+  $('b-single').hidden = isMulti(); $('b-yearbox').hidden = isMulti(); $('b-row2').classList.toggle('one', isMulti());
+  if (!isMulti()) return;
+  for (const q of queue) {
+    const row = el('div', 'q'), head = el('div', 'qn'), note = el('span', 'qs');
+    head.append(el('span', '', q.file.name), note);
+    const t = el('input'), au = el('input'), yr = el('input'), line = el('div', 'qr');
+    t.placeholder = 'Назва'; au.placeholder = 'Автор'; yr.placeholder = 'Рік'; yr.inputMode = 'numeric';
+    t.value = q.title; au.value = q.author; yr.value = q.year;
+    t.oninput = () => { q.title = t.value; }; au.oninput = () => { q.author = au.value; }; yr.oninput = () => { q.year = yr.value; };
+    line.append(au, yr); row.append(head, t, line); box.append(row);
+    q.ui = { note, inputs: [t, au, yr], t, au, yr };
+    updateRow(q);
+  }
+}
+
+$('b-file').onchange = async () => {
+  const files = [...$('b-file').files], run = ++detectRun;
+  queue = files.length > 1 ? files.map((file) => ({ file, title: '', author: '', year: '', state: 'wait', note: 'читаю початок…' })) : [];
+  renderQueue();
+  if (!files.length) return;
+  if (files.length === 1) {
+    const file = files[0];
+    bsay('Читаю початок файла: назва, автор, рік…');
     try {
-      const BATCH = 40;
-      for (let i = 0; i < chunks.length; i += BATCH) {
-        await bapi({ action: 'add_chunks', book_id: id, start: i, chunks: chunks.slice(i, i + BATCH) });
-        bsay('Завантажено уривків: ' + Math.min(i + BATCH, chunks.length) + ' з ' + chunks.length);
-        progress(0.4 + 0.6 * Math.min(i + BATCH, chunks.length) / chunks.length);
+      const g = guessBook(await readHead(file)), got = [];
+      for (const [id, key] of Object.entries(autoFields)) {
+        const el_ = $(id), v = g[key] == null ? '' : String(g[key]);
+        // не затираємо те, що вписала людина; раніше автозаповнене - оновлюємо
+        if (v && (!el_.value.trim() || el_.dataset.auto)) { el_.value = v; el_.dataset.auto = '1'; got.push(key); }
       }
-      await bapi({ action: 'finish', book_id: id, pages: pages.filter((p) => p.page).length, chunks: chunks.length });
-    } catch (e) {
-      await bapi({ action: 'delete', book_id: id }).catch(() => {}); // недозавантажену книгу не лишаємо
-      throw e;
+      bsay(got.length ? 'Визначено з файла: ' + got.map((k) => ({ title: 'назва', author: 'автор', year: 'рік' }[k])).join(', ') + '. Перевірте й за потреби виправте.'
+                      : 'З початку файла не вдалося визначити назву, автора й рік - впишіть самі.');
+    } catch (e) { bsay('Не вдалося прочитати початок файла: ' + e.message); }
+    return;
+  }
+  bsay('Файлів: ' + files.length + '. Читаю початок кожного…');
+  for (const q of queue) {
+    if (run !== detectRun) return; // вибрали інші файли
+    try {
+      const g = guessBook(await readHead(q.file));
+      q.title = g.title || fileNameTitle(q.file); q.author = g.author || ''; q.year = g.year == null ? '' : String(g.year); q.note = '';
+    } catch (e) { q.title = fileNameTitle(q.file); q.note = 'початок не прочитався - перевірте дані'; }
+    if (run !== detectRun) return;
+    q.ui.t.value = q.title; q.ui.au.value = q.author; q.ui.yr.value = q.year; updateRow(q);
+  }
+  bsay('Дані визначено для ' + queue.length + ' файлів. Перевірте й натисніть «Завантажити в базу».');
+};
+
+/** Завантажує одну книгу: читає файл, ділить на уривки, шле на сервер. Повертає кількість уривків. */
+async function uploadBook(file, { title, author, year, source }, say, prog) {
+  say('Читаю файл…');
+  let pages;
+  if (/\.pdf$/i.test(file.name)) {
+    pages = await readPdf(file, (i, n) => { say('Читаю сторінку ' + i + ' з ' + n + '…'); prog(i / n * 0.4); });
+    const chars = pages.reduce((s, p) => s + p.text.length, 0);
+    if (chars < pages.length * 40) throw new Error('У PDF майже немає тексту - схоже, це скан. Потрібен PDF з текстовим шаром (або спершу розпізнайте його).');
+  } else {
+    pages = [{ page: null, text: (await readText(file)).replace(/\r\n?/g, '\n') }];
+  }
+  const chunks = chunkPages(pages);
+  if (!chunks.length) throw new Error('Не знайшов тексту для уривків.');
+  say('Створюю книгу…');
+  const { id } = await bapi({ action: 'add_book', title, author, year, source });
+  try {
+    const BATCH = 40;
+    for (let i = 0; i < chunks.length; i += BATCH) {
+      await bapi({ action: 'add_chunks', book_id: id, start: i, chunks: chunks.slice(i, i + BATCH) });
+      say('Завантажено уривків: ' + Math.min(i + BATCH, chunks.length) + ' з ' + chunks.length);
+      prog(0.4 + 0.6 * Math.min(i + BATCH, chunks.length) / chunks.length);
     }
-    bsay('Готово: ' + chunks.length + ' уривків.'); progress(1);
-    for (const f of ['b-title', 'b-author', 'b-year', 'b-source', 'b-file']) $(f).value = '';
-    await loadBooks();
+    await bapi({ action: 'finish', book_id: id, pages: pages.filter((p) => p.page).length, chunks: chunks.length });
+  } catch (e) {
+    await bapi({ action: 'delete', book_id: id }).catch(() => {}); // недозавантажену книгу не лишаємо
+    throw e;
+  }
+  return chunks.length;
+}
+
+$('b-go').onclick = async () => {
+  const files = [...$('b-file').files];
+  if (!files.length) { bsay('Потрібен файл.'); return; }
+  const source = $('b-source').value.trim();
+  $('b-go').disabled = true; uploading = true; progress(0); queue.forEach(updateRow);
+  try {
+    if (files.length === 1) {
+      const file = files[0], title = $('b-title').value.trim() || fileNameTitle(file);
+      if (knownTitles.has(title.toLowerCase()) && !confirm('Книга «' + title + '» уже є в базі. Додати ще раз?')) { bsay('Скасовано.'); return; }
+      const n = await uploadBook(file, { title, author: $('b-author').value.trim(), year: yearOf($('b-year').value), source }, bsay, progress);
+      bsay('Готово: ' + n + ' уривків.'); progress(1);
+      for (const f of ['b-title', 'b-author', 'b-year', 'b-source', 'b-file']) $(f).value = '';
+      await loadBooks();
+    } else {
+      const todo = queue.filter((q) => q.state !== 'done');
+      let ok = 0, fail = 0, skip = 0;
+      for (const [k, q] of todo.entries()) {
+        q.state = 'busy'; q.note = ''; updateRow(q);
+        const title = q.title.trim() || fileNameTitle(q.file);
+        bsay('Файл ' + (k + 1) + ' з ' + todo.length + ': ' + q.file.name);
+        if (knownTitles.has(title.toLowerCase())) { q.state = 'skip'; q.note = 'уже є в базі - пропущено'; skip++; updateRow(q); continue; }
+        try {
+          const n = await uploadBook(q.file, { title, author: q.author.trim(), year: yearOf(q.year), source },
+            (t) => { q.note = t; updateRow(q); }, (x) => progress((k + x) / todo.length));
+          q.state = 'done'; q.note = n + ' уривків'; knownTitles.add(title.toLowerCase()); ok++;
+        } catch (e) { q.state = 'err'; q.note = e.message; fail++; }
+        updateRow(q);
+      }
+      progress(1);
+      bsay('Готово: завантажено ' + ok + (skip ? ', пропущено ' + skip : '') + (fail ? ', з помилкою ' + fail + ' (виправте й натисніть ще раз: уже завантажені не повторюються)' : '') + '.');
+      await loadBooks();
+    }
   } catch (e) { bsay('Не вийшло: ' + e.message); progress(0); }
-  finally { $('b-go').disabled = false; }
+  finally { $('b-go').disabled = false; uploading = false; queue.forEach(updateRow); }
 };
 
 $('b-search').onclick = async () => {
