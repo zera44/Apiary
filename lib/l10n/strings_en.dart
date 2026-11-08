@@ -1367,6 +1367,8 @@ class AppStringsEn extends AppStrings {
   @override
   String receiptMarkupFailed(String why) => 'Markup failed ($why): only the text was read.';
   @override
+  String receiptRecoverSkipped(String why) => 'Some re-reading steps were skipped ($why); markup rules still ran.';
+  @override
   String get receiptMarkupTitle => 'Receipt markup';
   @override
   String get receiptMarkupNoImage => 'The receipt image was not kept: only the items are shown.';

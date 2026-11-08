@@ -1368,6 +1368,8 @@ class AppStringsUk extends AppStrings {
   @override
   String receiptMarkupFailed(String why) => 'Розмітка не вийшла ($why): прочитано лише текст.';
   @override
+  String receiptRecoverSkipped(String why) => 'Частину дочитування пропущено ($why), правила розмітки відпрацювали.';
+  @override
   String get receiptMarkupTitle => 'Розмітка чека';
   @override
   String get receiptMarkupNoImage => 'Зображення чека не збереглося: показано лише позиції.';

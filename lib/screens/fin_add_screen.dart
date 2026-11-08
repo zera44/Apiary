@@ -128,6 +128,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
   /// Чому розмітка не вийшла (показується в примітці).
   String? _markFail;
 
+  /// Пропущені кроки дочитування (розмітка відпрацювала без них).
+  String? _markSkip;
+
   Repository get repo => widget.repo;
   ReceiptOcr get _ocr => widget.ocr ?? ReceiptOcr.instance;
   bool get _expense => _kind == kFinExpense;
@@ -322,6 +325,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       _reading = true;
       _marked = null;
       _markFail = null;
+      _markSkip = null;
       _receiptNote = null;
       _receiptSoft = false;
     });
@@ -329,8 +333,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
       // спершу нечітка розмітка (як у курсовій); не вийшло - розбір тексту
       MarkedReceipt? marked;
       String? markFail;
+      String? markSkip;
       try {
         marked = await _ocr.mark(path);
+        if (marked != null && marked.skipped.isNotEmpty) markSkip = marked.skipped.join('; ');
       } catch (e) {
         markFail = '$e';
       }
@@ -355,6 +361,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         _hasReceipt = true;
         _marked = viewMark;
         _markFail = markFail;
+        _markSkip = markSkip;
         _declared = declared;
         _receiptRows = rows.length;
         _receiptSoft = false;
@@ -648,7 +655,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
             color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.caution : AppColors.danger),
         const SizedBox(width: 8),
         Expanded(
-          child: Text('${_receiptNote ?? ''}${_markFail == null ? '' : '\n${tr.receiptMarkupFailed(_markFail!)}'}',
+          child: Text('${_receiptNote ?? ''}${_markFail == null ? '' : '\n${tr.receiptMarkupFailed(_markFail!)}'}${_markSkip == null ? '' : '\n${tr.receiptRecoverSkipped(_markSkip!)}'}',
               style: TextStyle(
                   color: _receiptSoft ? AppColors.caution : AppColors.text, fontSize: 12.5, height: 1.3)),
         ),
