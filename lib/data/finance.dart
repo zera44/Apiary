@@ -261,7 +261,8 @@ extension RepositoryFinance on Repository {
     if (kind != kFinExpense && kind != kFinIncome) throw ArgumentError.value(kind, 'kind');
     if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
     for (final l in lines) {
-      if (l.name.trim().isEmpty || !(l.qty > 0) || l.price.isNaN || l.price < 0) {
+      // від'ємна ціна - лише в рядку поза складом («Корегування» суми чека)
+      if (l.name.trim().isEmpty || !(l.qty > 0) || l.price.isNaN || (l.price < 0 && l.toStock)) {
         throw ArgumentError('Рядок «${l.name}»: потрібні назва, кількість більше 0 і ціна');
       }
     }

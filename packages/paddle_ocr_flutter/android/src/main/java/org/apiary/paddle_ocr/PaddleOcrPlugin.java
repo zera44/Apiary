@@ -32,7 +32,11 @@ import io.flutter.plugin.common.MethodChannel;
  *
  * Канал "paddle_ocr_flutter":
  *  - ready: чи є моделі в застосунку (assets/ocr/det.onnx, rec.onnx, dict.txt);
- *  - recognize {path}: {lines: [рядки тексту зверху вниз], ms, rotation, conf}.
+ *  - recognize {path}: {lines: [рядки тексту зверху вниз], ms, rotation, conf};
+ *  - recognizeFrags {path, image?}: фрагменти з координатами для нечіткої розмітки чека (OcrV2 + OcrRecover,
+ *    як coursework/fuzzy_v2 ocr.py і recover.py): {frags: [{box_id, text, conf, x, y, w, h, x_left, x_right,
+ *    angle, img_w, img_h, recovered, hand}], ms, rotation, conf}; якщо дано image - туди записується JPEG
+ *    саме того сірого зображення, яке читалося (координати фрагментів - у його кадрі, повернутому на -angle).
  * Усю логіку (детекція рядків, вирізання, читання, збирання) див. OcrPipeline;
  * тут лише читання фото, запуск моделей і міст до Dart.
  */
@@ -96,6 +100,19 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
                 });
                 break;
             }
+            case "recognizeFrags": {
+                final String path = call.argument("path");
+                final String image = call.argument("image");
+                worker.execute(() -> {
+                    try {
+                        final Map<String, Object> r = recognizeFrags(path, image);
+                        main.post(() -> result.success(r));
+                    } catch (final Throwable e) {
+                        main.post(() -> result.error("ocr", String.valueOf(e), null));
+                    }
+                });
+                break;
+            }
             default:
                 result.notImplemented();
         }
@@ -134,7 +151,9 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     }
 
     /** Фото -> сірі пікселі з урахуванням повороту EXIF; зображення зменшується при читанні, якщо воно завелике. */
-    private Object[] readGray(String path) throws Exception {
+    private Object[] readGray(String path) throws Exception { return readGray(path, false); }
+
+    private Object[] readGray(String path, boolean py) throws Exception {
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(path, o);
@@ -148,7 +167,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         int[] px = new int[w * h];
         bmp.getPixels(px, 0, w, 0, 0, w, h);
         bmp.recycle();
-        byte[] g = Img.bestGray(px, px.length);
+        byte[] g = py ? Img.bestGrayPy(px, px.length) : Img.bestGray(px, px.length);
         int orient = ExifInterface.ORIENTATION_NORMAL;
         try { orient = new ExifInterface(path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL); } catch (Exception ignored) {}
         if (orient == ExifInterface.ORIENTATION_ROTATE_90) { g = Img.rotate90cw(g, w, h); int t = w; w = h; h = t; }
@@ -161,7 +180,65 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         long t0 = System.currentTimeMillis();
         load();
         Object[] im = readGray(path);
-        OcrPipeline.Runner runner = new OcrPipeline.Runner() {
+        OcrPipeline.Result res = OcrPipeline.run((byte[]) im[0], (Integer) im[1], (Integer) im[2], runner(), chars);
+        Map<String, Object> out = new HashMap<>();
+        out.put("lines", new ArrayList<>(res.lines));
+        out.put("rotation", res.rotation);
+        out.put("conf", (double) res.meanConf);
+        out.put("ms", (int) (System.currentTimeMillis() - t0));
+        return out;
+    }
+
+    private Map<String, Object> recognizeFrags(String path, String image) throws Exception {
+        long t0 = System.currentTimeMillis();
+        load();
+        Object[] im = readGray(path, true);
+        OcrV2.Gray g = new OcrV2.Gray((byte[]) im[0], (Integer) im[1], (Integer) im[2]);
+        OcrV2.Result res = OcrRecover.recognize(g, new OcrV2.Reader(runner(), chars), "all");
+        List<Map<String, Object>> frags = new ArrayList<>();
+        for (OcrV2.Frag f : res.frags) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("box_id", f.boxId);
+            m.put("text", f.text);
+            m.put("conf", f.conf);
+            m.put("x", f.x);
+            m.put("y", f.y);
+            m.put("w", f.w);
+            m.put("h", f.h);
+            m.put("x_left", f.xLeft);
+            m.put("x_right", f.xRight);
+            m.put("angle", f.angle);
+            m.put("img_w", f.imgW);
+            m.put("img_h", f.imgH);
+            m.put("recovered", f.recovered);
+            m.put("hand", f.hand);
+            frags.add(m);
+        }
+        if (image != null && res.g != null) saveGray(res.g, image);
+        Map<String, Object> out = new HashMap<>();
+        out.put("frags", frags);
+        out.put("rotation", res.rotation);
+        out.put("conf", res.conf);
+        out.put("ms", (int) (System.currentTimeMillis() - t0));
+        return out;
+    }
+
+    private static void saveGray(OcrV2.Gray g, String path) throws Exception {
+        int[] px = new int[g.w * g.h];
+        for (int i = 0; i < px.length; i++) {
+            int v = g.p[i] & 255;
+            px[i] = 0xff000000 | (v << 16) | (v << 8) | v;
+        }
+        Bitmap bmp = Bitmap.createBitmap(px, g.w, g.h, Bitmap.Config.ARGB_8888);
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(path)) {
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out);
+        } finally {
+            bmp.recycle();
+        }
+    }
+
+    private OcrPipeline.Runner runner() {
+        return new OcrPipeline.Runner() {
             @Override
             public float[] det(float[] chw, int h, int w) throws Exception {
                 try (OnnxTensor in = OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), new long[] {1, 3, h, w});
@@ -188,12 +265,5 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
                 }
             }
         };
-        OcrPipeline.Result res = OcrPipeline.run((byte[]) im[0], (Integer) im[1], (Integer) im[2], runner, chars);
-        Map<String, Object> out = new HashMap<>();
-        out.put("lines", new ArrayList<>(res.lines));
-        out.put("rotation", res.rotation);
-        out.put("conf", (double) res.meanConf);
-        out.put("ms", (int) (System.currentTimeMillis() - t0));
-        return out;
     }
 }

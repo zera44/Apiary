@@ -707,8 +707,9 @@ String _fixKeywords(String line) {
 /// СУМА»; якщо вона не виконується, пробуємо типові OCR-виправлення («150»
 /// замість «1.50», зниклий «*» у розмірі «35*26*51»), а якщо суми все ще не
 /// вистачає, додаємо рядок «Не розпізнано» на різницю, щоб користувач поправив
-/// його, а не втратив гроші.
-List<ReceiptRow> parseReceipt(String text) {
+/// його, а не втратив гроші. [fillMissing] = false - такого рядка не додаємо
+/// (у «Фінансах» різницю в будь-який бік показує рядок «Корегування»).
+List<ReceiptRow> parseReceipt(String text, {bool fillMissing = true}) {
   final rows = _parseOnce(text);
   final declared = _declaredTotal(text, _rowsSum(rows));
   if (declared == null || declared < 1 || _sumMatches(_rowsSum(rows), declared, text)) return rows;
@@ -717,7 +718,7 @@ List<ReceiptRow> parseReceipt(String text) {
     if (r.isNotEmpty && _sumMatches(_rowsSum(r), declared, v)) return r;
   }
   final missing = _to(declared - _rowsSum(rows), 2);
-  if (missing >= 0.5 && declared < 100000) {
+  if (fillMissing && missing >= 0.5 && declared < 100000) {
     return [
       ...rows,
       ReceiptRow(name: rows.isEmpty ? 'Покупка (без розбивки)' : 'Не розпізнано', price: missing),

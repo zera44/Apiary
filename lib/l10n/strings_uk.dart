@@ -1356,13 +1356,32 @@ class AppStringsUk extends AppStrings {
   String receiptMismatch(String rows, String declared, String table) =>
       'Чек розпізнано · $rows. Сума на чеку $declared, у таблиці $table - перевірте рядки.';
   @override
-  String receiptRest(String rows, String rest) =>
-      'Чек розпізнано · $rows. Суму чека враховано, ще $rest не прочитано - додано окремим рядком, уточніть його назву.';
+  String receiptAdjust(String rows, String items, String receipt, String diff) =>
+      'Сума не зійшлась · $rows на $items, на чеку $receipt. Поставлено суму з чека, різниця $diff - рядком «Корегування».';
   @override
   String receiptTotalOnly(String total) =>
-      'Позиції не прочитано, але суму чека ($total) враховано одним рядком. Допишіть назву або перезніміть.';
+      'Позиції не прочитано · сума не зійшлась. Поставлено суму з чека ($total) рядком «Корегування»: допишіть позиції або перезніміть.';
   @override
-  String get receiptRestName => 'Не розпізнано';
+  String get receiptAdjustName => 'Корегування';
+  @override
+  String get receiptMarkupOpen => 'Розмітка';
+  @override
+  String get receiptMarkupTitle => 'Розмітка чека';
+  @override
+  String get receiptMarkupNoImage => 'Зображення чека не збереглося: показано лише позиції.';
+  @override
+  String receiptMarkupClass(String cls) => const {
+        'NAME': 'назва',
+        'ITEM': 'сума позиції',
+        'PRICE': 'ціна за од.',
+        'QTY': 'кількість',
+        'TOTAL': 'підсумок',
+        'DISC': 'знижка',
+        'VAT': 'ПДВ',
+      }[cls] ??
+      cls;
+  @override
+  String receiptMarkupSum(String rows, String total) => 'Позиції: $rows · на чеку: $total';
   @override
   String receiptCheck(String rows) =>
       'Чек розпізнано · $rows. Перевірте таблицю: розпізнавання може помилятися.';
