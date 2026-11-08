@@ -15,6 +15,9 @@
 
   python3 tool/whats_new.py            → assets/whats_new.json (для застосунку)
   python3 tool/whats_new.py --md       → текст для опису релізу (поточна версія)
+  python3 tool/whats_new.py --md --since <sha>
+                                       → лише зміни комітів після <sha> (для релізу
+                                         «latest»: тільки останній пуш у main)
 """
 import json
 import re
@@ -63,13 +66,22 @@ def _apply_fixes(entries: list[dict]) -> list[dict]:
     return out
 
 
-def collect() -> list[dict]:
+def collect(since: str | None = None) -> list[dict]:
+    """Усі записи; з `since` - лише з комітів після нього (`since..HEAD`)."""
+    keep = None
+    if since and not set(since) <= {'0'}:
+        try:
+            keep = set(git('rev-list', f'{since}..HEAD').split())
+        except subprocess.CalledProcessError:
+            keep = None  # невідомий коміт (напр., після force-push) - без відсікання
     log = git('log', '--reverse', '--format=%H%x1f%B%x1e', 'HEAD')
     entries: list[dict] = []
     current = VERSION.search((ROOT / 'pubspec.yaml').read_text(encoding='utf-8')).group(1)
     vcache: dict = {}
     for n, rec in enumerate(r for r in log.split('\x1e') if r.strip()):
         sha, _, body = rec.strip().partition('\x1f')
+        if keep is not None and sha not in keep:
+            continue
         for i, line in enumerate(body.splitlines()):
             m = LINE.match(line)
             if not m:
@@ -92,9 +104,10 @@ def collect() -> list[dict]:
     return sorted(seen.values(), key=lambda e: (e['n'], e['i']))
 
 
-def markdown(entries: list[dict]) -> str:
+def markdown(entries: list[dict], only_new: bool = False) -> str:
     current = VERSION.search((ROOT / 'pubspec.yaml').read_text(encoding='utf-8')).group(1)
-    mine = [e for e in entries if e['v'] == current]
+    # з --since записи вже відібрані за комітами, версія не важлива
+    mine = entries if only_new else [e for e in entries if e['v'] == current]
     feats = sorted((e for e in mine if e['t'] == 'feat'), key=lambda e: (-e['w'], -e['n'], e['i']))
     fixes = [e for e in mine if e['t'] == 'fix']
     out = [f'## Що нового · {current}', '']
@@ -105,9 +118,10 @@ def markdown(entries: list[dict]) -> str:
 
 
 def main() -> None:
-    entries = collect()
+    since = sys.argv[sys.argv.index('--since') + 1] if '--since' in sys.argv else None
+    entries = collect(since)
     if '--md' in sys.argv:
-        sys.stdout.write(markdown(entries))
+        sys.stdout.write(markdown(entries, only_new=since is not None))
         return
     out = ROOT / 'assets' / 'whats_new.json'
     out.write_text(json.dumps({'entries': entries}, ensure_ascii=False, indent=1) + '\n',
