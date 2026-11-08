@@ -7,6 +7,8 @@
 /// пакет паралельно), а вибір - тими самими правилами й у тому самому порядку, що й у курсовій.
 library;
 
+import 'dart:math' as math;
+
 import 'fz2.dart';
 import 'py.dart';
 import 'receipt_rows.dart';
@@ -544,18 +546,21 @@ Future<List<String>> recoverAll(List<Frag> fr, OcrBackend b) async {
   return errors;
 }
 
-/// Звірка з підсумком: позиції не дають підсумок чека, а різниця - це загублений старший розряд однієї
-/// суми (рамка детектора відрізала «2» в «22,90», модель впевнено прочитала «2,90»). Така сума
-/// перечитується ширшою ліворуч рамкою; прочитання приймається, лише якщо воно дає рівно потрібну суму
-/// (стара сума + різниця до копійки) і є ще й старою з дописаними цифрами ліворуч. Підсумок чека - незалежна
-/// перевірка, тому хибне читання не проходить. Двозначність (кілька сум годяться) - нічого не змінюємо.
+/// Звірка з підсумком. Позиції не дають підсумок чека - значить, якась сума прочитана хибно (рамка відрізала
+/// старшу цифру: «2,90» замість «22,90», нейромережа злила подвоєну цифру: «22» -> «2», зсув від нахилу).
+/// Перечитуємо лише тоді, і по ступенях, від дешевого до дорожчого:
+///  1) сума, яка могла втратити старші цифри (нова = стара з дописаними ліворуч): розтягнення по ширині
+///     (CTC не зливає подвоєні цифри у розтягненому рядку) і ширша ліворуч рамка;
+///  2) будь-яка сума: розтягнення й легкі повороти рамки навколо її центру.
+/// Прочитання приймається, лише якщо воно дає рівно стару суму + різниця (до копійки) з упевненістю >= 0,7;
+/// підсумок чека - незалежна перевірка, тож хибне читання не проходить. Годиться кілька сум - нічого не міняємо.
 ///
-/// [fz] - розмітка [fr]; змінює фрагмент у [fr] і повертає true, коли її треба зробити заново.
+/// [fz] - розмітка [fr]; змінює фрагмент у [fr] і повертає true, коли розмітку треба зробити заново.
 Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
   final total = fz.total;
   if (total == null || fr.isEmpty) return false;
   final gap = ((total - fz.rowsSum) * 100).round();
-  if (gap <= 0) return false;
+  if (gap == 0) return false;
   final a = fr.first.angle;
   Frag? orig(Frag l) {
     for (final g in fr) {
@@ -564,24 +569,28 @@ Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
     return null;
   }
 
-  final hits = <(Frag, String, double)>[];
+  // суми позицій (ITEM) з їх значеннями в копійках, згори вниз
+  final items = <(Frag, int)>[];
   for (final l in fz.labels) {
     if (l.cls != 'ITEM' || l.f.virtual || (l.f.hand != null && l.f.hand!.isNotEmpty)) continue;
     final g = orig(l.f);
-    if (g == null) continue;
-    final v0 = moneyOf(g.text);
-    if (v0 == null || v0 <= 0) continue;
-    final k0 = (v0 * 100).round(), want = k0 + gap;
-    // нова сума - стара з дописаними цифрами ліворуч
-    final s0 = '$k0', s1 = '$want';
-    if (s1.length <= s0.length || !s1.endsWith(s0)) continue;
-    final h = g.h;
-    final reqs = <ReadReq>[
-      for (final left in const [1.5, 2.0, 2.5, 3.0])
-        for (final pad in const [0.6, 0.8, 1.0])
-          for (final st in const [1.0, 0.8]) ReadReq(g.xLeft - left * h, g.xRight, g.y - pad * h, g.y + pad * h, [st])
-    ];
-    final rs = await b.read(a, reqs);
+    final v0 = g == null ? null : moneyOf(g.text);
+    if (g == null || v0 == null || v0 <= 0 || items.any((e) => identical(e.$1, g))) continue;
+    items.add((g, (v0 * 100).round()));
+  }
+  items.sort((p, q) => p.$1.y.compareTo(q.$1.y));
+
+  /// Рамка суми [g], повернута на кут [a2] навколо її центру (кут - як в OcrBackend.read), з розтягненням [st].
+  ReadReq tilted(Frag g, double a2, double pad, double st) {
+    final cx = (g.xLeft + g.xRight) / 2, cy = g.y, hw = (g.xRight - g.xLeft) / 2;
+    final ix = cx * math.cos(a) - cy * math.sin(a), iy = cx * math.sin(a) + cy * math.cos(a);
+    final nx = ix * math.cos(a2) + iy * math.sin(a2), ny = -ix * math.sin(a2) + iy * math.cos(a2);
+    return ReadReq(nx - hw, nx + hw, ny - pad * g.h, ny + pad * g.h, [st]);
+  }
+
+  /// Читання [reqs] під кутом [angle]: найвпевненіше з тих, що дають суму [want] копійок.
+  Future<(String, double)?> tryReads(double angle, List<ReadReq> reqs, int want) async {
+    final rs = await b.read(angle, reqs);
     String? bt;
     var bc = 0.0;
     for (final r in rs) {
@@ -592,11 +601,50 @@ Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
         bc = r.conf;
       }
     }
-    if (bt != null) hits.add((g, bt, bc));
+    return bt == null ? null : (bt, bc);
   }
-  if (hits.length != 1) return false;
-  hits.single.$1
-    ..text = hits.single.$2
-    ..conf = hits.single.$3;
-  return true;
+
+  bool apply(List<(Frag, String, double)> hits) {
+    if (hits.length != 1) return false;
+    hits.single.$1
+      ..text = hits.single.$2
+      ..conf = hits.single.$3;
+    return true;
+  }
+
+  // 1) втрачені старші цифри: розтягнення й ширша ліворуч рамка
+  if (gap > 0) {
+    final hits = <(Frag, String, double)>[];
+    for (final (g, k0) in items) {
+      final want = k0 + gap;
+      final s0 = '$k0', s1 = '$want';
+      if (s1.length <= s0.length || !s1.endsWith(s0)) continue;
+      final h = g.h;
+      final reqs = <ReadReq>[
+        for (final st in const [1.5, 2.0, 3.0])
+          for (final pad in const [0.6, 0.8]) tilted(g, a, pad, st),
+        for (final left in const [1.5, 2.5])
+          for (final st in const [1.0, 1.5, 2.0]) ReadReq(g.xLeft - left * h, g.xRight, g.y - 0.8 * h, g.y + 0.8 * h, [st])
+      ];
+      final r = await tryReads(a, reqs, want);
+      if (r != null) hits.add((g, r.$1, r.$2));
+    }
+    if (hits.isNotEmpty) return apply(hits);
+  }
+
+  // 2) будь-яка сума: розтягнення й легкі повороти (найневпевненіші суми першими, не більше 10)
+  final cand = [...items]..sort((p, q) => p.$1.conf.compareTo(q.$1.conf));
+  final hits = <(Frag, String, double)>[];
+  for (final (g, k0) in cand.take(10)) {
+    final want = k0 + gap;
+    if (want <= 0) continue;
+    for (final da in const [0.0, 0.03, -0.03]) {
+      final r = await tryReads(a + da, [for (final st in const [1.5, 2.0]) tilted(g, a + da, 0.7, st)], want);
+      if (r != null) {
+        hits.add((g, r.$1, r.$2));
+        break;
+      }
+    }
+  }
+  return apply(hits);
 }
