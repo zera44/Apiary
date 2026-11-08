@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
-/** Перевірка розпізнавача для нечіткої розмітки (OcrV2 + OcrRecover) на ПК: справжній код плагіна, моделі - ONNX Runtime для Java.
+/** Перевірка розпізнавача для нечіткої розмітки (OcrV2 + еталон дочитування OcrRecover) на ПК: справжній код плагіна, моделі - ONNX Runtime для Java.
  *  Фото подаються як PPM (P6, RGB) - їх готує tool/to_ppm.py тим самим декодером, що й курсова (cv2).
  *  java -cp <classes>:onnxruntime.jar OcrV2Main det.onnx rec.onnx dict.txt out.csv фото.ppm... */
 public class OcrV2Main {
@@ -97,7 +97,11 @@ public class OcrV2Main {
         gcons.setAccessible(true);
         Constructor<?> rcons = rdc.getDeclaredConstructor(rc, String[].class);
         rcons.setAccessible(true);
-        Class<?> recov = Class.forName("org.apiary.paddle_ocr.OcrRecover");
+        Class<?> recov = Class.forName("org.apiary.paddle_ocr.OcrRecover"); // еталон: tool/oracle/OcrRecover.java
+        Method fxBegin = recov.getDeclaredMethod("fxBegin", String.class), fxEnd = recov.getDeclaredMethod("fxEnd");
+        fxBegin.setAccessible(true);
+        fxEnd.setAccessible(true);
+        String fxDir = System.getenv("FX_DIR"); // запис читань моделі для перевірки Dart-версії дочитування
         Method full = recov.getDeclaredMethod("recognize", gc, rdc, String.class);
         full.setAccessible(true);
         try (PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(a[3]), StandardCharsets.UTF_8))) {
@@ -110,7 +114,9 @@ public class OcrV2Main {
                 Object rd = rcons.newInstance(runner, chars);
                 String name = Paths.get(a[i]).getFileName().toString().replace(".ppm", "");
                 long t0 = System.currentTimeMillis();
+                if (fxDir != null) fxBegin.invoke(null, fxDir + "/" + name + ".fx");
                 Object res = full.invoke(null, gray, rd, System.getenv("NO_RECOVER") != null ? "ocr" : "all");
+                if (fxDir != null) fxEnd.invoke(null);
                 long ms = System.currentTimeMillis() - t0;
                 Field ff = res.getClass().getDeclaredField("frags");
                 ff.setAccessible(true);

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../logic/fz2/fz2.dart';
 import '../logic/fz2/receipt_rows.dart';
+import '../logic/fz2/recover.dart';
 
 /// Розмічений чек: класи фрагментів (нечітка розмітка fz2), позиції й підсумок,
 /// а також зображення, у кадрі якого задані координати фрагментів.
@@ -68,25 +69,15 @@ class PaddleReceiptOcr implements ReceiptOcr {
     } catch (_) {
       image = null;
     }
-    final r = await PaddleOcr.recognizeFrags(imagePath, imagePath: image);
-    final frags = [
-      for (final f in r.frags)
-        Frag(
-          boxId: f.boxId,
-          text: f.text,
-          conf: f.conf,
-          x: f.x,
-          y: f.y,
-          w: f.w,
-          h: f.h,
-          xLeft: f.xLeft,
-          xRight: f.xRight,
-          imgW: f.imgW.toDouble(),
-          imgH: f.imgH.toDouble(),
-          angle: f.angle,
-          hand: f.hand,
-        )
-    ];
+    final session = await PaddleOcr.begin(imagePath);
+    final List<Frag> frags;
+    try {
+      frags = [for (final f in session.frags) _frag(f)];
+      // правила дочитування - тут (Dart), модель і зображення - у плагіні
+      await recoverAll(frags, _PluginBackend(session));
+    } finally {
+      await session.end(imagePath: image);
+    }
     // розмітка - кілька тисяч нечітких висновків: в окремому ізоляті, щоб не гальмував інтерфейс
     final fz = await Isolate.run(() => markReceipt(frags));
     final ok = image != null && File(image).existsSync();
@@ -106,4 +97,66 @@ Future<String?> pickReceiptPhoto({required bool camera}) async {
     imageQuality: 92,
   );
   return x?.path;
+}
+
+Frag _frag(OcrFrag f) => Frag(
+      boxId: f.boxId,
+      text: f.text,
+      conf: f.conf,
+      x: f.x,
+      y: f.y,
+      w: f.w,
+      h: f.h,
+      xLeft: f.xLeft,
+      xRight: f.xRight,
+      imgW: f.imgW.toDouble(),
+      imgH: f.imgH.toDouble(),
+      angle: f.angle,
+      hand: f.hand,
+      recovered: f.recovered,
+    );
+
+OcrFrag _ocrFrag(Frag f) => OcrFrag(
+      boxId: f.boxId ?? 0,
+      text: f.text,
+      conf: f.conf,
+      x: f.x,
+      y: f.y,
+      w: f.w,
+      h: f.h,
+      xLeft: f.xLeft,
+      xRight: f.xRight,
+      angle: f.angle,
+      imgW: (f.imgW ?? 0).round(),
+      imgH: (f.imgH ?? 0).round(),
+      recovered: f.recovered,
+      hand: f.hand,
+    );
+
+/// Те, що дочитування бере з плагіна: читання рамок, тісна рамка виродженого фрагмента, рукописні рядки.
+class _PluginBackend implements OcrBackend {
+  final PaddleOcrSession s;
+
+  _PluginBackend(this.s);
+
+  @override
+  Future<List<ReadRes>> read(double angle, List<ReadReq> reqs) async => [
+        for (final r in await s.read(angle, [for (final q in reqs) OcrReadReq(q.x1, q.x2, q.y1, q.y2, q.st)]))
+          ReadRes(r.text, r.conf)
+      ];
+
+  @override
+  Future<void> degen(Frag f, double angle) async {
+    final r = await s.degen(angle, _ocrFrag(f));
+    f
+      ..x = r.x
+      ..y = r.y
+      ..w = r.w
+      ..h = r.h
+      ..xLeft = r.xLeft
+      ..xRight = r.xRight;
+  }
+
+  @override
+  Future<List<Frag>> hand(List<Frag> fr) async => [for (final f in await s.hand([for (final f in fr) _ocrFrag(f)])) _frag(f)];
 }

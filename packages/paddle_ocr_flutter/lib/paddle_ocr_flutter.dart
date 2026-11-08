@@ -55,6 +55,23 @@ class OcrFrag {
     this.hand,
   });
 
+  Map<String, Object?> toMap() => {
+        'box_id': boxId,
+        'text': text,
+        'conf': conf,
+        'x': x,
+        'y': y,
+        'w': w,
+        'h': h,
+        'x_left': xLeft,
+        'x_right': xRight,
+        'angle': angle,
+        'img_w': imgW,
+        'img_h': imgH,
+        'recovered': recovered,
+        'hand': hand,
+      };
+
   factory OcrFrag.fromMap(Map<Object?, Object?> m) {
     double d(String k) => (m[k] as num?)?.toDouble() ?? 0;
     return OcrFrag(
@@ -76,14 +93,65 @@ class OcrFrag {
   }
 }
 
-/// Результат розпізнавання з фрагментами.
-class PaddleOcrFrags {
+/// Запит на читання рамки (x1..x2, y1..y2 - у системі фрагментів, повернутій на нахил фото).
+class OcrReadReq {
+  final double x1, x2, y1, y2;
+
+  /// Розтягнення рядка перед читанням (див. OcrV2.read).
+  final List<double> st;
+
+  const OcrReadReq(this.x1, this.x2, this.y1, this.y2, this.st);
+
+  Map<String, Object?> toMap() => {'x1': x1, 'x2': x2, 'y1': y1, 'y2': y2, 'st': st};
+}
+
+class OcrRead {
+  final String text;
+  final double conf;
+
+  const OcrRead(this.text, this.conf);
+}
+
+/// Відкрите розпізнавання: детектор уже відпрацював, далі потрібні лише читання рамок на тому самому зображенні.
+/// Правила дочитування - у застосунку (Dart), тут лише те, що потребує моделей і зображення.
+class PaddleOcrSession {
+  final String _id;
+
+  /// Фрагменти детектора (до дочитування).
   final List<OcrFrag> frags;
   final int rotation;
   final double confidence;
   final int millis;
 
-  const PaddleOcrFrags(this.frags, this.rotation, this.confidence, this.millis);
+  PaddleOcrSession._(this._id, this.frags, this.rotation, this.confidence, this.millis);
+
+  static const _ch = PaddleOcr._channel;
+
+  /// Прочитати рамки (відповіді - у порядку запитів).
+  Future<List<OcrRead>> read(double angle, List<OcrReadReq> reqs) async {
+    if (reqs.isEmpty) return const [];
+    final r = await _ch.invokeListMethod<Map<Object?, Object?>>(
+        'ocrRead', {'session': _id, 'angle': angle, 'reqs': [for (final q in reqs) q.toMap()]});
+    return [for (final m in r ?? const []) OcrRead('${m['text'] ?? ''}', (m['conf'] as num?)?.toDouble() ?? 0)];
+  }
+
+  /// Тісна рамка за чорнилом для фрагмента з виродженою рамкою.
+  Future<OcrFrag> degen(double angle, OcrFrag f) async {
+    final m = await _ch.invokeMapMethod<Object?, Object?>('ocrDegen', {'session': _id, 'angle': angle, 'frag': f.toMap()});
+    return OcrFrag.fromMap(m ?? f.toMap());
+  }
+
+  /// Рукописні рядки бланка «Товарний чек».
+  Future<List<OcrFrag>> hand(List<OcrFrag> fr) async {
+    final r = await _ch.invokeListMethod<Map<Object?, Object?>>(
+        'ocrHand', {'session': _id, 'frags': [for (final f in fr) f.toMap()]});
+    return [for (final m in r ?? const []) OcrFrag.fromMap(m)];
+  }
+
+  /// Закрити сесію; якщо дано [imagePath], туди записується JPEG зображення, яке читалося.
+  Future<void> end({String? imagePath}) async {
+    await _ch.invokeMethod<bool>('ocrEnd', {'session': _id, if (imagePath != null) 'image': imagePath});
+  }
 }
 
 class PaddleOcr {
@@ -115,14 +183,13 @@ class PaddleOcr {
     );
   }
 
-  /// Розпізнати фото з координатами фрагментів (як курсова: кілька поворотів,
-  /// дочитування сум і назв, рукописні рядки бланка). Якщо дано [imagePath], туди
-  /// записується JPEG зображення, у кадрі якого задані координати.
-  static Future<PaddleOcrFrags> recognizeFrags(String path, {String? imagePath}) async {
-    final m = await _channel.invokeMapMethod<String, Object?>(
-        'recognizeFrags', {'path': path, if (imagePath != null) 'image': imagePath});
+  /// Відкрити розпізнавання фото з координатами фрагментів (кілька поворотів, детектор): далі дочитування
+  /// ведеться через [PaddleOcrSession.read] тощо, наприкінці - [PaddleOcrSession.end].
+  static Future<PaddleOcrSession> begin(String path) async {
+    final m = await _channel.invokeMapMethod<String, Object?>('ocrBegin', {'path': path});
     if (m == null) throw PlatformException(code: 'ocr', message: 'порожня відповідь');
-    return PaddleOcrFrags(
+    return PaddleOcrSession._(
+      '${m['session']}',
       [for (final f in (m['frags'] as List? ?? const [])) OcrFrag.fromMap(f as Map<Object?, Object?>)],
       (m['rotation'] as num?)?.toInt() ?? 0,
       (m['conf'] as num?)?.toDouble() ?? 0,
