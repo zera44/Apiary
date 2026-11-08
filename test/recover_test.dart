@@ -112,6 +112,16 @@ void main() {
       expect(fr[1].text, '37,80');
     });
 
+    test('позиція - частина фрагмента («2,90» з «2,90 А»): перечитується весь фрагмент', () async {
+      final lab = receipt('2,90', '60,70');
+      // у розмітці сума вужча (літера ПДВ відділена), а у фрагментах чека - ціла «2,90 А»
+      final whole = Frag(text: '2,90 А', conf: 0.915, x: 760, y: 200, w: 120, h: 30, xLeft: 650, xRight: 770);
+      final fr = [lab[0].f, lab[1].f, lab[2].f, whole, lab[4].f, lab[5].f];
+      final b = smart((a, q) => q.st.first >= 1.5 ? const ReadRes('22,90 А', 0.96) : const ReadRes('2,90 А', 0.9));
+      expect(await reconcileSums(fr, assemble(lab), b), isTrue);
+      expect(whole.text, '22,90 А');
+    });
+
     test('відрізана старша цифра: ширша ліворуч рамка', () async {
       final lab = receipt('2,90', '60,70');
       final fr = [for (final x in lab) x.f];

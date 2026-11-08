@@ -562,11 +562,19 @@ Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
   final gap = ((total - fz.rowsSum) * 100).round();
   if (gap == 0) return false;
   final a = fr.first.angle;
+  // фрагмент розмітки може бути частиною фрагмента з [fr] («2.90» з «2.90 А»): шукаємо за рядком і перетином
   Frag? orig(Frag l) {
+    Frag? best;
+    var bo = 0.0;
     for (final g in fr) {
-      if (g.boxId == l.boxId && (g.xRight - l.xRight).abs() < 1 && (g.y - l.y).abs() < 1) return g;
+      if (g.boxId != l.boxId || (g.y - l.y).abs() >= 1) continue;
+      final ov = math.min(g.xRight, l.xRight) - math.max(g.xLeft, l.xLeft);
+      if (ov > bo) {
+        bo = ov;
+        best = g;
+      }
     }
-    return null;
+    return best;
   }
 
   // суми позицій (ITEM) з їх значеннями в копійках, згори вниз
@@ -632,19 +640,33 @@ Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
     if (hits.isNotEmpty) return apply(hits);
   }
 
-  // 2) будь-яка сума: розтягнення й легкі повороти (найневпевненіші суми першими, не більше 10)
+  // 2) будь-яка сума: розтягнення й легкі повороти (найневпевненіші суми першими, не більше 10);
+  // на кожен кут - один пакет читань усіх сум, щоб плагін читав їх паралельно
   final cand = [...items]..sort((p, q) => p.$1.conf.compareTo(q.$1.conf));
-  final hits = <(Frag, String, double)>[];
-  for (final (g, k0) in cand.take(10)) {
-    final want = k0 + gap;
-    if (want <= 0) continue;
-    for (final da in const [0.0, 0.03, -0.03]) {
-      final r = await tryReads(a + da, [for (final st in const [1.5, 2.0]) tilted(g, a + da, 0.7, st)], want);
-      if (r != null) {
-        hits.add((g, r.$1, r.$2));
-        break;
+  final pick = [for (final e in cand.take(10)) if (e.$2 + gap > 0) e];
+  const sts = [1.5, 2.0];
+  for (final da in const [0.0, 0.03, -0.03]) {
+    final rs = await b.read(a + da, [
+      for (final (g, _) in pick)
+        for (final st in sts) tilted(g, a + da, 0.7, st)
+    ]);
+    final hits = <(Frag, String, double)>[];
+    for (var i = 0; i < pick.length; i++) {
+      final (g, k0) = pick[i];
+      String? bt;
+      var bc = 0.0;
+      for (var j = 0; j < sts.length; j++) {
+        final r = rs[i * sts.length + j];
+        final t = _fixSplit(r.text.trim());
+        if (r.conf < 0.7 || r.conf <= bc || fullmatch(_clean, t) == null) continue;
+        if (_kopLoose(match(r'\s*-?\d{1,6}[.,]\d{2}', t)!.group(0)!) == k0 + gap) {
+          bt = t;
+          bc = r.conf;
+        }
       }
+      if (bt != null) hits.add((g, bt, bc));
     }
+    if (hits.isNotEmpty) return apply(hits);
   }
-  return apply(hits);
+  return false;
 }
