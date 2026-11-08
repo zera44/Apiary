@@ -75,16 +75,24 @@ class PaddleReceiptOcr implements ReceiptOcr {
     final session = await PaddleOcr.begin(imagePath);
     final List<Frag> frags;
     final List<String> skipped;
+    FzReceipt fz;
     try {
       frags = [for (final f in session.frags) _frag(f)];
+      final backend = _PluginBackend(session);
       // правила дочитування - тут (Dart), модель і зображення - у плагіні;
       // збій кроку дочитування не зупиняє розмітку
-      skipped = await recoverAll(frags, _PluginBackend(session));
+      skipped = await recoverAll(frags, backend);
+      // розмітка - кілька тисяч нечітких висновків: в окремому ізоляті, щоб не гальмував інтерфейс
+      fz = await Isolate.run(() => markReceipt(frags));
+      // позиції не дають підсумок: загублений старший розряд суми перечитується ширшою рамкою
+      try {
+        if (await reconcileSums(frags, fz, backend)) fz = await Isolate.run(() => markReceipt(frags));
+      } catch (e) {
+        skipped.add('reconcile: $e');
+      }
     } finally {
       await session.end(imagePath: image);
     }
-    // розмітка - кілька тисяч нечітких висновків: в окремому ізоляті, щоб не гальмував інтерфейс
-    final fz = await Isolate.run(() => markReceipt(frags));
     final ok = image != null && File(image).existsSync();
     return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle, skipped: skipped);
   }
