@@ -75,6 +75,19 @@ String hiveKey(String name) => name
     .replaceAll(RegExp(r'\s+'), ' ')
     .replaceFirst(RegExp(r'^вулик\s*(№\s*)?'), '');
 
+/// Відповідь для показу в чаті: без «**», маркери «-»/«*» стають «•», а кожен
+/// пункт (уривок з книги) відокремлено порожнім рядком.
+String tidyAssistantText(String s) {
+  final out = <String>[];
+  for (final raw in s.replaceAll('**', '').split('\n')) {
+    final bullet = RegExp(r'^\s*[-*•]\s+').hasMatch(raw);
+    final line = bullet ? raw.replaceFirst(RegExp(r'^\s*[-*•]\s+'), '• ') : raw;
+    if (bullet && out.isNotEmpty && out.last.trim().isNotEmpty) out.add('');
+    out.add(line);
+  }
+  return out.join('\n').replaceAll(RegExp(r'\n{3,}'), '\n\n');
+}
+
 /// Текст без розмітки посилань (читання вголос, сповіщення).
 String plainAssistantText(String s) => [
   for (final p in parseAssistantLinks(s)) p is AssistantLink ? p.text : p as String,
@@ -120,7 +133,7 @@ class _LinkedTextState extends State<LinkedText> {
     return Text.rich(
       TextSpan(
         children: [
-          for (final p in parseAssistantLinks(widget.text))
+          for (final p in parseAssistantLinks(tidyAssistantText(widget.text)))
             if (p is AssistantLink)
               TextSpan(
                 text: p.text,
