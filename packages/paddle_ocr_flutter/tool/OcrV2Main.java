@@ -10,7 +10,7 @@ import java.util.*;
  *  Фото подаються як PPM (P6, RGB) - їх готує tool/to_ppm.py тим самим декодером, що й курсова (cv2).
  *  java -cp <classes>:onnxruntime.jar OcrV2Main det.onnx rec.onnx dict.txt out.csv фото.ppm... */
 public class OcrV2Main {
-    static long detNs, recNs;
+    static volatile long detNs, recNs;
     static int[] readPpm(String path, int[] wh) throws IOException {
         byte[] all = Files.readAllBytes(Paths.get(path));
         int pos = 0, field = 0;
@@ -49,7 +49,9 @@ public class OcrV2Main {
     public static void main(String[] a) throws Exception {
         OrtEnvironment env = OrtEnvironment.getEnvironment();
         OrtSession.SessionOptions so = new OrtSession.SessionOptions();
-        OrtSession det = env.createSession(a[0], so), rec = env.createSession(a[1], so);
+        OrtSession.SessionOptions so2 = new OrtSession.SessionOptions(); // читач: потоки ORT на виклик (THREADS), решта - паралельні виклики
+        if (System.getenv("THREADS") != null) so2.setIntraOpNumThreads(Integer.parseInt(System.getenv("THREADS")));
+        OrtSession det = env.createSession(a[0], so), rec = env.createSession(a[1], so2);
         String detIn = det.getInputNames().iterator().next(), recIn = rec.getInputNames().iterator().next();
         List<String> ch = new ArrayList<>(Files.readAllLines(Paths.get(a[2]), StandardCharsets.UTF_8));
         ch.add(0, "<blank>");

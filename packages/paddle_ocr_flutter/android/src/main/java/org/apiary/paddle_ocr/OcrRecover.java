@@ -188,6 +188,7 @@ final class OcrRecover {
             if (!(f.conf < 0.9 || search(SUSP, t0) || (clean0 && f.conf < 0.93))) continue;
             double[] pxs = degen ? new double[] {0.5, 0.8, 1.0, 1.3, 1.6} : new double[] {0.0, 0.5};
             List<Cand> best = new ArrayList<>();
+            List<java.util.concurrent.Callable<Cand>> jobs = new ArrayList<>(); // незалежні читання - паралельно, порядок збережено
             boolean cut = !degen && search("\\d[.,]\\s\\d{2}(?!\\d)", t0);
             if (cut) { // рамка відрізала початок великого числа - ширше ліворуч
                 for (double L : new double[] {1.5, 2.0, 2.5, 3.0})
@@ -195,8 +196,11 @@ final class OcrRecover {
                         double x1 = f.xLeft - L * h, x2 = f.xRight, y1 = f.y - pad * h, y2 = f.y + pad * h;
                         Quad p = quad(a, x1, x2, y1, y2);
                         for (double st : new double[] {1.0, 0.8}) {
-                            Read r = read1(g, p, rd, st);
-                            best.add(new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), L, new double[] {x1, x2, y1, y2}));
+                            final double fL = L;
+                            jobs.add(() -> {
+                                Read r = read1(g, p, rd, st);
+                                return new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), fL, new double[] {x1, x2, y1, y2});
+                            });
                         }
                     }
             }
@@ -207,10 +211,14 @@ final class OcrRecover {
                     double y1 = f.y - pad * h, y2 = f.y + pad * h;
                     Quad p = quad(a, x1, x2, y1, y2);
                     for (double st : new double[] {1.5, 1.0, 0.8}) {
-                        Read r = read1(g, p, rd, st);
-                        best.add(new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), px, new double[] {x1, x2, y1, y2}));
+                        final double fpx = px;
+                        jobs.add(() -> {
+                            Read r = read1(g, p, rd, st);
+                            return new Cand(r.conf, sub("(\\d[.,])\\s(\\d{2})", "$1$2", strip(r.text)), fpx, new double[] {x1, x2, y1, y2});
+                        });
                     }
                 }
+            best.addAll(rd.parallel(jobs));
             best.sort(DESC);
             if (cut) { // спершу прочитання, узгоджені з іншими сумами чека
                 Matcher mv = re("\\d{1,6}[.,]\\s\\d{2}").matcher(t0);

@@ -52,7 +52,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     private final Handler main = new Handler(Looper.getMainLooper());
 
     private OrtEnvironment env;
-    private OrtSession det, rec;
+    private OrtSession det, rec, recSeq;
     private String detIn, recIn;
     private String[] chars;
 
@@ -73,8 +73,10 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     private synchronized void close() {
         try { if (det != null) det.close(); } catch (Exception ignored) {}
         try { if (rec != null) rec.close(); } catch (Exception ignored) {}
+        try { if (recSeq != null) recSeq.close(); } catch (Exception ignored) {}
         det = null;
         rec = null;
+        recSeq = null;
     }
 
     @Override
@@ -134,10 +136,16 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
     private synchronized void load() throws Exception {
         if (det != null && rec != null && chars != null) return;
         env = OrtEnvironment.getEnvironment();
+        int cores = Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors()));
+        // детектор - один великий виклик: потоки на виклик; читач - багато малих викликів, які OcrV2.Reader
+        // веде паралельно, тож кожному потрібен один потік (інакше ядра воюють між собою)
         OrtSession.SessionOptions o = new OrtSession.SessionOptions();
-        o.setIntraOpNumThreads(Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors())));
+        o.setIntraOpNumThreads(cores);
+        OrtSession.SessionOptions o2 = new OrtSession.SessionOptions();
+        o2.setIntraOpNumThreads(1);
         det = env.createSession(bytes(DET), o);
-        rec = env.createSession(bytes(REC), o);
+        rec = env.createSession(bytes(REC), o2);
+        recSeq = env.createSession(bytes(REC), o); // для послідовного читання (екран складу): потоки на виклик
         detIn = det.getInputNames().iterator().next();
         recIn = rec.getInputNames().iterator().next();
         // словник: порядок символів моделі = ['blank'] + рядки dict.txt + [' ']
@@ -180,7 +188,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         long t0 = System.currentTimeMillis();
         load();
         Object[] im = readGray(path);
-        OcrPipeline.Result res = OcrPipeline.run((byte[]) im[0], (Integer) im[1], (Integer) im[2], runner(), chars);
+        OcrPipeline.Result res = OcrPipeline.run((byte[]) im[0], (Integer) im[1], (Integer) im[2], runner(recSeq), chars);
         Map<String, Object> out = new HashMap<>();
         out.put("lines", new ArrayList<>(res.lines));
         out.put("rotation", res.rotation);
@@ -194,7 +202,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         load();
         Object[] im = readGray(path, true);
         OcrV2.Gray g = new OcrV2.Gray((byte[]) im[0], (Integer) im[1], (Integer) im[2]);
-        OcrV2.Result res = OcrRecover.recognize(g, new OcrV2.Reader(runner(), chars), "all");
+        OcrV2.Result res = OcrRecover.recognize(g, new OcrV2.Reader(runner(rec), chars), "all");
         List<Map<String, Object>> frags = new ArrayList<>();
         for (OcrV2.Frag f : res.frags) {
             Map<String, Object> m = new HashMap<>();
@@ -237,7 +245,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         }
     }
 
-    private OcrPipeline.Runner runner() {
+    private OcrPipeline.Runner runner(final OrtSession recSession) {
         return new OcrPipeline.Runner() {
             @Override
             public float[] det(float[] chw, int h, int w) throws Exception {
@@ -253,7 +261,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
             @Override
             public float[] rec(float[] nchw, int n, int w, int[] outTC) throws Exception {
                 try (OnnxTensor in = OnnxTensor.createTensor(env, FloatBuffer.wrap(nchw), new long[] {n, 3, 48, w});
-                     OrtSession.Result r = rec.run(Collections.singletonMap(recIn, in))) {
+                     OrtSession.Result r = recSession.run(Collections.singletonMap(recIn, in))) {
                     OnnxTensor t = (OnnxTensor) r.get(0);
                     long[] shape = t.getInfo().getShape();
                     outTC[0] = (int) shape[1];
