@@ -130,6 +130,26 @@ class FinSummary {
   }
 }
 
+/// Підсумок за один місяць (для статистики).
+class FinMonthTotal {
+  final int month; // 1..12
+  final double income;
+  final double expense;
+  const FinMonthTotal(this.month, this.income, this.expense);
+
+  double get balance => income - expense;
+}
+
+/// Дохід і витрати за кожен місяць року [year] (скасовані не рахуються).
+List<FinMonthTotal> finMonthlyTotals(Iterable<FinEntry> entries, int year) {
+  final inc = List.filled(12, 0.0), exp = List.filled(12, 0.0);
+  for (final e in entries) {
+    if (e.cancelled || e.date.year != year) continue;
+    (e.isExpense ? exp : inc)[e.date.month - 1] += e.amount;
+  }
+  return [for (var i = 0; i < 12; i++) FinMonthTotal(i + 1, inc[i], exp[i])];
+}
+
 double _secs(DateTime d) => d.microsecondsSinceEpoch / 1e6;
 DateTime _dt(num secs) => DateTime.fromMicrosecondsSinceEpoch((secs * 1e6).round());
 

@@ -1339,6 +1339,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get finNothingInPeriod => 'Nothing in this period';
   @override
+  String get finStats => 'Statistics';
+  @override
   String get finNewOperation => 'New operation';
   @override
   String get finNoOperations => 'No operations';

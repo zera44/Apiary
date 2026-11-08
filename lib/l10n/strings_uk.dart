@@ -1341,6 +1341,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get finNothingInPeriod => 'За цей період нічого немає';
   @override
+  String get finStats => 'Статистика';
+  @override
   String get finNewOperation => 'Нова операція';
   @override
   String get finNoOperations => 'Операцій немає';

@@ -10,6 +10,7 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
+import 'fin_stats_screen.dart';
 import '../ui/thousands_input.dart';
 import '../l10n/l10n.dart';
 
@@ -633,12 +634,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
             TopBar(
               title: tr.finances,
               onBack: () => Navigator.pop(context),
-              trailing: IconButton(
-                tooltip: tr.finAllOperations,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.receipt_long_outlined, color: AppColors.text),
-                onPressed: () => _history(),
-              ),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  tooltip: tr.finStats,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.bar_chart_rounded, color: AppColors.text),
+                  onPressed: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => FinStatsScreen(repo: repo))),
+                ),
+                IconButton(
+                  tooltip: tr.finAllOperations,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.receipt_long_outlined, color: AppColors.text),
+                  onPressed: () => _history(),
+                ),
+              ]),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
