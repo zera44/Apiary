@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d1611">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Адмінка">
 <title>Vulyk: адмінка</title>
 <style>
   :root { --bg:#1d1611; --card:#2a2018; --line:#4a3a28; --text:#f9efe0; --muted:#bfae94; --honey:#ed9d2f; --dev:#3b5b3a; --user:#3a2f25; }
@@ -147,7 +154,9 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08';
+const ADMIN_VERSION = '2026-11-08-app';
+// установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 const $ = (id) => document.getElementById(id);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
