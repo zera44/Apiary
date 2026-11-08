@@ -135,13 +135,10 @@ jobs:
       - name: Не вкладати власну SQLite в Android-збірку
         run: |
           flutter pub remove sqlite3_flutter_libs
-          cat >> pubspec.yaml <<'EOF2'
-
-          hooks:
-            user_defines:
-              sqlite3:
-                source: system
-          EOF2
+          # в pubspec.yaml блок hooks уже є (на Linux - системна SQLite для
+          # тестів); для Android системну беремо й за замовчуванням
+          sed -i 's/^        default: sqlite3$/        default: system/' pubspec.yaml
+          grep -q '^        default: system$' pubspec.yaml
       # Один APK для всіх телефонів: ARM 32 і 64 біти. x86_64 не вкладаємо
       # (−8 МБ): телефонів на x86 практично немає, а Chromebook запускає ARM.
       # Ключ підпису — із секретів репозиторію, і ЛИШЕ для push у main
