@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vulyk: відгуки</title>
+<title>Vulyk: адмінка</title>
 <style>
   :root { --bg:#1d1611; --card:#2a2018; --line:#4a3a28; --text:#f9efe0; --muted:#bfae94; --honey:#ed9d2f; --dev:#3b5b3a; --user:#3a2f25; }
   * { box-sizing: border-box; }
@@ -62,7 +62,7 @@
 </head>
 <body>
 <div id="login">
-  <h2>Відгуки Vulyk</h2>
+  <h2>Адмінка Vulyk</h2>
   <p style="color:var(--muted)">Пароль адмінки (секрет FEEDBACK_ADMIN_PASSWORD у Supabase).</p>
   <div style="position:relative">
     <input id="pw" type="password" placeholder="Пароль" autocomplete="current-password" style="padding-right:48px">
@@ -77,7 +77,7 @@
 <div id="main" hidden>
   <header>
     <button class="ghost" id="back" hidden>←</button>
-    <h1>Vulyk</h1>
+    <h1>Vulyk: адмінка <small id="ver" style="color:var(--muted);font-weight:400;font-size:12px"></small></h1>
     <button class="tab on" id="tab-fb">Відгуки</button>
     <button class="tab" id="tab-books">Книги</button>
     <button class="ghost" id="refresh">Оновити</button>
@@ -121,12 +121,14 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+const ADMIN_VERSION = '2026-11-08';
 const $ = (id) => document.getElementById(id);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
                 del: (k) => { try { localStorage.removeItem(k); } catch {} } };
 let url = store.get('fb_url') || DEFAULT_URL, pw = store.get('fb_pw') || '', current = null, timer = null;
 $('url').value = url;
+$('ver').textContent = 'версія ' + ADMIN_VERSION;
 
 const booksUrl = () => (/\/feedback\/?$/.test(url) ? url.replace(/\/feedback\/?$/, '/books') : DEFAULT_BOOKS_URL);
 async function api(body, endpoint) {
