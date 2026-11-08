@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apiary/logic/fz2/fz2.dart';
+import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/fz2/recover.dart';
 
 Frag f(String t, {double x = 500, double y = 100, double h = 30, double w = 120, double conf = 0.99}) =>
@@ -82,5 +83,54 @@ void main() {
     final b = _Fake((r) => [for (final _ in r) const ReadRes('5,00', 0.97)]);
     await reread3([left, sum], b);
     expect(sum.text, '5,00');
+  });
+
+  group('reconcileSums: звірка з підсумком', () {
+    Labeled l(String cls, String text, double y, double x) =>
+        Labeled(Frag(text: text, conf: 0.99, x: x, y: y, w: 100, h: 30, xLeft: x - 50, xRight: x + 50), cls);
+
+    /// Чек з двох позицій; друга сума прочитана без старшого розряду.
+    List<Labeled> receipt(String second, String total) => [
+          l('NAME', 'Вощина', 100, 200),
+          l('ITEM', '37,80', 100, 700),
+          l('NAME', 'Мед', 200, 200),
+          l('ITEM', second, 200, 700),
+          l('TOTAL', 'СУМА', 300, 200),
+          l('TOTAL', total, 300, 700),
+        ];
+
+    test('загублена «2» у «22,90» повертається, коли читання дає рівно підсумок', () async {
+      final lab = receipt('2,90', '60,70');
+      final fr = [for (final x in lab) x.f];
+      final b = _Fake((r) => [for (final _ in r) const ReadRes('22,90', 0.95)]);
+      expect(await reconcileSums(fr, assemble(lab), b), isTrue);
+      expect(fr[3].text, '22,90');
+      expect(fr[3].conf, 0.95);
+      expect(fr[1].text, '37,80');
+    });
+
+    test('читання, що не дає підсумок, не приймається', () async {
+      final lab = receipt('2,90', '60,70');
+      final fr = [for (final x in lab) x.f];
+      final b = _Fake((r) => [for (final _ in r) const ReadRes('12,90', 0.99)]);
+      expect(await reconcileSums(fr, assemble(lab), b), isFalse);
+      expect(fr[3].text, '2,90');
+    });
+
+    test('сума збігається з підсумком - нічого не читається', () async {
+      final lab = receipt('22,90', '60,70');
+      final fr = [for (final x in lab) x.f];
+      final b = _Fake();
+      expect(await reconcileSums(fr, assemble(lab), b), isFalse);
+      expect(b.reqs, isEmpty);
+    });
+
+    test('різниця не «дописані цифри» - сума навіть не перечитується', () async {
+      final lab = receipt('2,90', '45,00');
+      final fr = [for (final x in lab) x.f];
+      final b = _Fake();
+      expect(await reconcileSums(fr, assemble(lab), b), isFalse);
+      expect(b.reqs, isEmpty);
+    });
   });
 }

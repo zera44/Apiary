@@ -9,6 +9,7 @@ library;
 
 import 'fz2.dart';
 import 'py.dart';
+import 'receipt_rows.dart';
 
 /// Запит на читання рамки (x1..x2, y1..y2 - у системі фрагментів, повернутій на нахил фото) з розтягненнями.
 class ReadReq {
@@ -541,4 +542,61 @@ Future<List<String>> recoverAll(List<Frag> fr, OcrBackend b) async {
   await step('qtyMarks', () async => add.addAll(await qtyMarks(fr, b)));
   fr.addAll(add);
   return errors;
+}
+
+/// Звірка з підсумком: позиції не дають підсумок чека, а різниця - це загублений старший розряд однієї
+/// суми (рамка детектора відрізала «2» в «22,90», модель впевнено прочитала «2,90»). Така сума
+/// перечитується ширшою ліворуч рамкою; прочитання приймається, лише якщо воно дає рівно потрібну суму
+/// (стара сума + різниця до копійки) і є ще й старою з дописаними цифрами ліворуч. Підсумок чека - незалежна
+/// перевірка, тому хибне читання не проходить. Двозначність (кілька сум годяться) - нічого не змінюємо.
+///
+/// [fz] - розмітка [fr]; змінює фрагмент у [fr] і повертає true, коли її треба зробити заново.
+Future<bool> reconcileSums(List<Frag> fr, FzReceipt fz, OcrBackend b) async {
+  final total = fz.total;
+  if (total == null || fr.isEmpty) return false;
+  final gap = ((total - fz.rowsSum) * 100).round();
+  if (gap <= 0) return false;
+  final a = fr.first.angle;
+  Frag? orig(Frag l) {
+    for (final g in fr) {
+      if (g.boxId == l.boxId && (g.xRight - l.xRight).abs() < 1 && (g.y - l.y).abs() < 1) return g;
+    }
+    return null;
+  }
+
+  final hits = <(Frag, String, double)>[];
+  for (final l in fz.labels) {
+    if (l.cls != 'ITEM' || l.f.virtual || (l.f.hand != null && l.f.hand!.isNotEmpty)) continue;
+    final g = orig(l.f);
+    if (g == null) continue;
+    final v0 = moneyOf(g.text);
+    if (v0 == null || v0 <= 0) continue;
+    final k0 = (v0 * 100).round(), want = k0 + gap;
+    // нова сума - стара з дописаними цифрами ліворуч
+    final s0 = '$k0', s1 = '$want';
+    if (s1.length <= s0.length || !s1.endsWith(s0)) continue;
+    final h = g.h;
+    final reqs = <ReadReq>[
+      for (final left in const [1.5, 2.0, 2.5, 3.0])
+        for (final pad in const [0.6, 0.8, 1.0])
+          for (final st in const [1.0, 0.8]) ReadReq(g.xLeft - left * h, g.xRight, g.y - pad * h, g.y + pad * h, [st])
+    ];
+    final rs = await b.read(a, reqs);
+    String? bt;
+    var bc = 0.0;
+    for (final r in rs) {
+      final t = _fixSplit(r.text.trim());
+      if (r.conf < 0.7 || r.conf <= bc || fullmatch(_clean, t) == null) continue;
+      if (_kopLoose(match(r'\s*-?\d{1,6}[.,]\d{2}', t)!.group(0)!) == want) {
+        bt = t;
+        bc = r.conf;
+      }
+    }
+    if (bt != null) hits.add((g, bt, bc));
+  }
+  if (hits.length != 1) return false;
+  hits.single.$1
+    ..text = hits.single.$2
+    ..conf = hits.single.$3;
+  return true;
 }
