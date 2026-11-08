@@ -167,7 +167,7 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08-batch';
+const ADMIN_VERSION = '2026-11-08-ai';
 // установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
 // Самооновлення: перевіряємо новий sw.js при кожному відкритті; коли новий
 // скрипт перебрав керування - один раз перезавантажуємо сторінку.
@@ -432,7 +432,7 @@ function guessBook({ pages, meta }) {
 }
 
 /** Рядки з розмірами шрифту перших сторінок PDF + метадані. */
-async function readPdfHead(file, maxPages = 5) {
+async function readPdfHead(file, maxPages = 5, onPage = () => {}) {
   await loadPdfJs();
   const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   let meta = {};
@@ -449,22 +449,80 @@ async function readPdfHead(file, maxPages = 5) {
     }
     if (cur) lines.push(cur);
     pages.push(lines.map((l) => ({ text: l.text.replace(/\s+/g, ' ').trim(), size: l.size })).filter((l) => l.text));
+    onPage(n, Math.min(maxPages, pdf.numPages));
   }
   return { pages, meta };
 }
 
-/** TXT / MD: рядки без розмірів; «---» заголовок MD ігноруємо. */
-async function readTextHead(file) {
-  const txt = (await readText(file)).replace(/\r\n?/g, '\n').slice(0, 6000);
-  const lines = txt.split('\n').map((t) => t.replace(/^#+\s*/, '').trim()).filter((t) => t && !/^-{3,}$/.test(t)).map((t) => ({ text: t, size: 1 }));
-  return { pages: [lines.slice(0, 60)], meta: {} };
+/** TXT / MD: рядки без розмірів; «---» заголовок MD ігноруємо. full - увесь файл, інакше лише початок. */
+async function readTextHead(file, full = false) {
+  const raw = (await readText(file)).replace(/\r\n?/g, '\n');
+  const lines = (full ? raw : raw.slice(0, 6000)).split('\n').map((t) => t.replace(/^#+\s*/, '').trim()).filter((t) => t && !/^-{3,}$/.test(t)).map((t) => ({ text: t, size: 1 }));
+  return { pages: [full ? lines : lines.slice(0, 60)], meta: {} };
+}
+
+/** Увесь файл: рядки всіх сторінок PDF (або всі рядки TXT/MD) + метадані. */
+const readBookFull = (file, onPage) => (/\.pdf$/i.test(file.name) ? readPdfHead(file, Infinity, onPage) : readTextHead(file, true));
+
+// -- стислий витяг з усієї книги для ШІ: початок, колонтитули, зміст, вихідні дані, кінець
+const IMPRINT_RE = /©|\(c\)|copyright|isbn|удк|ббк|видавництв|видав|автор|укладач|упорядник|редактор|переклад|рецензент|author|published|publisher|translated/iu;
+const TOC_RE = /^\s*(зміст|содержание|оглавлення|contents|table of contents)\s*$/iu;
+
+function buildDigest({ pages, meta }) {
+  const txt = (lines) => lines.map((l) => l.text).join('\n');
+  const cap = (t, n) => (t.length > n ? t.slice(0, n) + '…' : t);
+  const total = pages.length, out = [];
+  out.push('Сторінок у файлі: ' + total);
+  if (meta.title || meta.author) out.push('Метадані файла: назва «' + (meta.title || '') + '», автор «' + (meta.author || '') + '»');
+  out.push('--- ПОЧАТОК (перші сторінки) ---');
+  pages.slice(0, 3).forEach((p, i) => out.push('[с.' + (i + 1) + ']\n' + cap(txt(p), 1800)));
+  if (total >= 6) { // рядки, що повторюються на багатьох сторінках, - колонтитули
+    const norm = (t) => t.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+    const cnt = new Map();
+    for (const p of pages) {
+      const seen = new Set();
+      for (const l of p) {
+        const k = norm(l.text);
+        if (k.length < 4 || k.length > 120 || !/\p{L}/u.test(k) || seen.has(k)) continue;
+        seen.add(k);
+        const e = cnt.get(k) || { n: 0, sample: l.text }; e.n++; cnt.set(k, e);
+      }
+    }
+    const rep = [...cnt.values()].filter((e) => e.n >= Math.max(3, total * 0.2)).sort((a, b) => b.n - a.n).slice(0, 12);
+    if (rep.length) out.push('--- РЯДКИ, ЩО ПОВТОРЮЮТЬСЯ НА СТОРІНКАХ (колонтитули) ---\n' + rep.map((e) => e.sample + '  (на ' + e.n + ' стор.)').join('\n'));
+  }
+  for (let i = 0; i < Math.min(30, total); i++) { // зміст
+    if (pages[i].some((l) => TOC_RE.test(l.text))) { out.push('--- ЗМІСТ (с.' + (i + 1) + ') ---\n' + cap(txt(pages[i]) + '\n' + txt(pages[i + 1] || []), 2500)); break; }
+  }
+  const imprint = [], seenI = new Set(); // вихідні дані по всій книзі
+  pages.forEach((p, i) => { for (const l of p) {
+    if (imprint.length >= 40 || l.text.length < 6 || l.text.length > 220 || seenI.has(l.text) || !IMPRINT_RE.test(l.text)) continue;
+    seenI.add(l.text); imprint.push('[с.' + (i + 1) + '] ' + l.text);
+  } });
+  if (imprint.length) out.push('--- РЯДКИ З ВИХІДНИМИ ДАНИМИ (по всій книзі) ---\n' + imprint.join('\n'));
+  if (total > 5) {
+    out.push('--- КІНЕЦЬ (останні сторінки) ---');
+    pages.slice(-2).forEach((p, i, a) => out.push('[с.' + (total - a.length + i + 1) + ']\n' + cap(txt(p), 1200)));
+  }
+  return out.join('\n\n').slice(0, 30000);
+}
+
+/** Назва, автор, рік з усієї книги: ШІ за витягом; ШІ недоступний - евристика за початком. */
+async function identifyBook(file, say) {
+  const book = await readBookFull(file, (i, n) => say('Читаю файл повністю: сторінка ' + i + ' з ' + n + '…'));
+  say('Файл прочитано. ШІ визначає назву, автора й рік…');
+  try {
+    const r = await bapi({ action: 'identify', digest: buildDigest(book), filename: file.name });
+    return { title: r.title || '', author: r.author || '', year: r.year == null ? null : r.year, via: 'ai' };
+  } catch (e) {
+    return { ...guessBook({ pages: book.pages.slice(0, 5), meta: book.meta }), via: 'heuristic', why: e.message };
+  }
 }
 
 const autoFields = { 'b-title': 'title', 'b-author': 'author', 'b-year': 'year' };
 for (const id of Object.keys(autoFields)) $(id).addEventListener('input', () => { delete $(id).dataset.auto; });
 
 const fileNameTitle = (f) => f.name.replace(/\.[^.]+$/, '').replace(/_+/g, ' ').trim();
-const readHead = (file) => (/\.pdf$/i.test(file.name) ? readPdfHead(file) : readTextHead(file));
 const yearOf = (v) => { const y = parseInt(v, 10); return Number.isFinite(y) ? y : null; };
 
 // ---- черга файлів (пакетне завантаження)
@@ -502,30 +560,33 @@ $('b-file').onchange = async () => {
   if (!files.length) return;
   if (files.length === 1) {
     const file = files[0];
-    bsay('Читаю початок файла: назва, автор, рік…');
+    bsay('Читаю файл повністю: назва, автор, рік…');
     try {
-      const g = guessBook(await readHead(file)), got = [];
+      const g = await identifyBook(file, bsay), got = [];
       for (const [id, key] of Object.entries(autoFields)) {
         const el_ = $(id), v = g[key] == null ? '' : String(g[key]);
         // не затираємо те, що вписала людина; раніше автозаповнене - оновлюємо
         if (v && (!el_.value.trim() || el_.dataset.auto)) { el_.value = v; el_.dataset.auto = '1'; got.push(key); }
       }
-      bsay(got.length ? 'Визначено з файла: ' + got.map((k) => ({ title: 'назва', author: 'автор', year: 'рік' }[k])).join(', ') + '. Перевірте й за потреби виправте.'
-                      : 'З початку файла не вдалося визначити назву, автора й рік - впишіть самі.');
-    } catch (e) { bsay('Не вдалося прочитати початок файла: ' + e.message); }
+      const what = got.map((k) => ({ title: 'назва', author: 'автор', year: 'рік' }[k])).join(', ');
+      bsay((g.via === 'ai' ? 'ШІ прочитав усю книгу й визначив: ' : 'ШІ недоступний (' + g.why + '), за початком файла визначено: ') + (what || 'нічого') +
+           '. Перевірте й за потреби виправте.');
+    } catch (e) { bsay('Не вдалося прочитати файл: ' + e.message); }
     return;
   }
-  bsay('Файлів: ' + files.length + '. Читаю початок кожного…');
+  bsay('Файлів: ' + files.length + '. Читаю кожен повністю й визначаю дані…');
+  let viaAi = 0;
   for (const q of queue) {
     if (run !== detectRun) return; // вибрали інші файли
     try {
-      const g = guessBook(await readHead(q.file));
-      q.title = g.title || fileNameTitle(q.file); q.author = g.author || ''; q.year = g.year == null ? '' : String(g.year); q.note = '';
-    } catch (e) { q.title = fileNameTitle(q.file); q.note = 'початок не прочитався - перевірте дані'; }
+      const g = await identifyBook(q.file, (t) => { if (run === detectRun) { q.note = t; updateRow(q); } });
+      q.title = g.title || fileNameTitle(q.file); q.author = g.author || ''; q.year = g.year == null ? '' : String(g.year);
+      q.note = g.via === 'ai' ? '' : 'без ШІ: за початком файла - перевірте'; if (g.via === 'ai') viaAi++;
+    } catch (e) { q.title = fileNameTitle(q.file); q.note = 'файл не прочитався - перевірте дані'; }
     if (run !== detectRun) return;
     q.ui.t.value = q.title; q.ui.au.value = q.author; q.ui.yr.value = q.year; updateRow(q);
   }
-  bsay('Дані визначено для ' + queue.length + ' файлів. Перевірте й натисніть «Завантажити в базу».');
+  bsay('Дані визначено для ' + queue.length + ' файлів' + (viaAi === queue.length ? ' (ШІ прочитав кожну книгу повністю)' : ' (ШІ: ' + viaAi + ' з ' + queue.length + ')') + '. Перевірте й натисніть «Завантажити в базу».');
 };
 
 /** Завантажує одну книгу: читає файл, ділить на уривки, шле на сервер. Повертає кількість уривків. */

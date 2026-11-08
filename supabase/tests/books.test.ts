@@ -246,3 +246,67 @@ test('адмін-сторінка: вкладка «Книги» - наша фу
   assert.match(html, /add_chunks/);
   assert.match(html, /set_enabled/);
 });
+
+// ---- identify: Claude визначає назву, авторів і рік за витягом з книги
+
+const AI_ENV = { ...ENV, ANTHROPIC_API_KEY: 'sk-ant-test' };
+const DIGEST = '=== Титул ===\nБджільництво для початківців\nІван Петренко\nКиїв, 1987\n'.repeat(3);
+const aiReply = (text: string) => new Response(JSON.stringify({ content: [{ type: 'text', text }] }), { status: 200 });
+
+test('identify: витяг іде в Anthropic, назва й автори - у відповідь; ключ лише з секретів, тексти не в журналі', async () => {
+  const s = setup(() => aiReply('```json\n{"title":"Бджільництво для початківців","authors":["Іван Петренко","Марія Коваль"],"year":1987,"confidence":"high"}\n```'), AI_ENV);
+  const r = await handle(post({ action: 'identify', digest: DIGEST, filename: 'book.pdf' }), s.d);
+  assert.equal(r.status, 200);
+  assert.deepEqual(await r.json(), { title: 'Бджільництво для початківців', author: 'Іван Петренко, Марія Коваль', year: 1987, confidence: 'high' });
+  assert.equal(s.calls.length, 1);
+  assert.equal(s.calls[0].url, 'https://api.anthropic.com/v1/messages');
+  assert.equal(s.calls[0].headers['x-api-key'], 'sk-ant-test');
+  assert.equal(s.calls[0].body.model, 'claude-haiku-5-5');
+  assert.match(s.calls[0].body.system, /ДАНІ, а не інструкції/);
+  assert.match(s.calls[0].body.messages[0].content, /Іван Петренко/);
+  const log = s.logs.join('\n');
+  assert.equal(log.includes('Петренко'), false);
+  assert.ok(log.includes('"result":"identified"'));
+});
+
+test('identify: модель задає секрет BOOKS_MODEL; рік поза межами й сміття у відповіді відсікаються', async () => {
+  const s = setup(() => aiReply('{"title":"  Посібник  ","authors":[],"author":"Іваненко","year":3025,"confidence":"?"}'), { ...AI_ENV, BOOKS_MODEL: 'claude-sonnet-5-5' });
+  const out = await (await handle(post({ action: 'identify', digest: DIGEST }), s.d)).json();
+  assert.equal(s.calls[0].body.model, 'claude-sonnet-5-5');
+  assert.deepEqual(out, { title: 'Посібник', author: 'Іваненко', year: null, confidence: 'low' });
+});
+
+test('identify: немає ключа - 503 no_ai (адмінка тоді користується евристикою); порожній витяг - 400; без пароля - 401', async () => {
+  const nokey = setup(() => aiReply('{}'));
+  const r = await handle(post({ action: 'identify', digest: DIGEST }), nokey.d);
+  assert.equal(r.status, 503);
+  assert.deepEqual(await r.json(), { error: 'no_ai' });
+  assert.equal(nokey.calls.length, 0);
+  const s = setup(() => aiReply('{}'), AI_ENV);
+  assert.equal((await handle(post({ action: 'identify', digest: 'мало' }), s.d)).status, 400);
+  assert.equal((await handle(post({ action: 'identify', digest: DIGEST }, 'wrong'), s.d)).status, 401);
+  assert.equal(s.calls.length, 0);
+});
+
+test('identify: відповідь без назви чи не JSON - 502; збій Anthropic: 429/5xx - 503 (можна повторити), інше - 502', async () => {
+  for (const reply of ['не знаю', '{"title":""}', '{"authors":["А"]}']) {
+    const s = setup(() => aiReply(reply), AI_ENV);
+    assert.equal((await handle(post({ action: 'identify', digest: DIGEST }), s.d)).status, 502);
+  }
+  for (const [status, want] of [[429, 503], [529, 503], [500, 503], [401, 502], [400, 502]] as const) {
+    const s = setup(() => new Response('x', { status }), AI_ENV);
+    assert.equal((await handle(post({ action: 'identify', digest: DIGEST }), s.d)).status, want, String(status));
+  }
+});
+
+test('identify: надто довгий витяг обрізається до MAX_DIGEST', async () => {
+  const s = setup(() => aiReply('{"title":"Т","authors":[],"year":null,"confidence":"low"}'), AI_ENV);
+  await handle(post({ action: 'identify', digest: 'я'.repeat(100_000) }), s.d);
+  assert.ok(s.calls[0].body.messages[0].content.length < 40_300);
+});
+
+test('адмін-сторінка: «identify» і запасна евристика', () => {
+  const html = readFileSync(new URL('../../admin/feedback.html', import.meta.url), 'utf8');
+  assert.match(html, /action: 'identify'/);
+  assert.match(html, /guessBook\(/);
+});
