@@ -76,7 +76,7 @@ test('add_book: запис у kb_books зі службовим ключем; б�
   assert.equal(c.method, 'POST');
   assert.equal(c.headers.apikey, 'service-key');
   assert.equal(c.headers.Authorization, 'Bearer service-key');
-  assert.deepEqual(c.body, { title: 'Посібник', author: 'Іваненко', year: 2019, source: 'власний примірник' });
+  assert.deepEqual(c.body, { title: 'Посібник', author: 'Іваненко', year: 2019, source: 'власний примірник', url: '' });
 
   const s2 = setup(() => new Response(JSON.stringify([{ id: BOOK }]), { status: 201 }));
   await handle(post({ action: 'add_book', title: 'Книга', year: '2019' }), s2.d);
@@ -309,4 +309,29 @@ test('адмін-сторінка: «identify» і запасна евристи
   const html = readFileSync(new URL('../../admin/feedback.html', import.meta.url), 'utf8');
   assert.match(html, /action: 'identify'/);
   assert.match(html, /guessBook\(/);
+});
+
+test('посилання на оригінал: add_book і set_url приймають лише http(s); порожнє прибирає', async () => {
+  const s = setup(() => new Response(JSON.stringify([{ id: BOOK }]), { status: 201 }));
+  const ok = await handle(post({ action: 'add_book', title: 'Книга', url: ' https://drive.google.com/file/d/abc/view ' }), s.d);
+  assert.equal(ok.status, 200);
+  assert.equal(s.calls[0].body.url, 'https://drive.google.com/file/d/abc/view');
+
+  for (const bad of ['javascript:alert(1)', 'ftp://x/y', 'не посилання', 'https://a b.com', 'data:text/html,x', 'https://x.com/' + 'a'.repeat(1000)]) {
+    const r = await handle(post({ action: 'add_book', title: 'Книга', url: bad }), s.d);
+    assert.equal(r.status, 400, bad);
+  }
+  assert.equal(s.calls.length, 1);
+
+  const s2 = setup(() => new Response(null, { status: 204 }));
+  assert.equal((await handle(post({ action: 'set_url', book_id: BOOK, url: 'https://example.com/b.pdf' }), s2.d)).status, 200);
+  assert.deepEqual([s2.calls[0].method, s2.calls[0].url, s2.calls[0].body], ['PATCH', `https://x.supabase.co/rest/v1/kb_books?id=eq.${BOOK}`, { url: 'https://example.com/b.pdf' }]);
+  assert.equal((await handle(post({ action: 'set_url', book_id: BOOK, url: '' }), s2.d)).status, 200);
+  assert.deepEqual(s2.calls[1].body, { url: '' });
+  assert.equal((await handle(post({ action: 'set_url', book_id: BOOK, url: 'javascript:1' }), s2.d)).status, 400);
+  assert.equal((await handle(post({ action: 'set_url', book_id: 'x', url: 'https://a.com' }), s2.d)).status, 400);
+  assert.equal(s2.calls.length, 2);
+  // без пароля - не можна
+  const noPw = new Request('https://x/books', { method: 'POST', body: JSON.stringify({ action: 'set_url', book_id: BOOK, url: 'https://a.com' }) });
+  assert.equal((await handle(noPw, s2.d)).status, 401);
 });

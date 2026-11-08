@@ -4,7 +4,8 @@
 // Усі дії - POST JSON з заголовком x-feedback-admin = пароль адмінки
 // (секрет FEEDBACK_ADMIN_PASSWORD, той самий, що для відгуків):
 //   {action:'list'}                                   - усі книги
-//   {action:'add_book', title, author?, year?, source?} - нова книга -> {id}
+//   {action:'add_book', title, author?, year?, source?, url?} - нова книга -> {id}
+//   {action:'set_url', book_id, url} - посилання на оригінал (порожнє - прибрати)
 //   {action:'add_chunks', book_id, start, chunks:[{page?, chapter?, text}]}
 //                                                     - уривки (до 100 за раз)
 //   {action:'finish', book_id, pages, chunks}          - підсумок книги
@@ -70,6 +71,19 @@ function same(a: string, b: string): boolean {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/** Посилання на оригінал: лише http(s), до 1000 знаків; порожнє - без посилання; null - негодне. */
+export function cleanUrl(v: unknown): string | null {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return '';
+  if (s.length > 1000 || /\s/.test(s)) return null;
+  try {
+    const u = new URL(s);
+    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 const int = (v: unknown): number | null => (Number.isInteger(v) && (v as number) >= 0 && (v as number) < 1e7 ? (v as number) : null);
 
 /** JSON з відповіді моделі (навіть у ```-блоці) -> перевірені поля; нема назви - null. */
@@ -127,7 +141,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
   try {
     if (action === 'list') {
-      const r = await rest(deps, 'kb_books?select=id,title,author,year,source,pages,chunks,enabled,created_at&order=created_at.desc');
+      const r = await rest(deps, 'kb_books?select=id,title,author,year,source,url,pages,chunks,enabled,created_at&order=created_at.desc');
       if (!r.ok) return fail(502, 'db');
       return json({ books: await r.json() });
     }
@@ -135,7 +149,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (action === 'add_book') {
       const title = str(b.title, 300);
       if (!title) return fail(400, 'title');
-      const row = { title, author: str(b.author, 200), year: int(b.year), source: str(b.source, 500) };
+      const url = cleanUrl(b.url);
+      if (url === null) return fail(400, 'url');
+      const row = { title, author: str(b.author, 200), year: int(b.year), source: str(b.source, 500), url };
       const r = await rest(deps, 'kb_books', { method: 'POST', body: row, prefer: 'return=representation' });
       if (!r.ok) return fail(502, 'db');
       const [book] = (await r.json()) as { id: string }[];
@@ -170,6 +186,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         body: { pages: int(b.pages) ?? 0, chunks: int(b.chunks) ?? 0 },
         prefer: 'return=minimal',
       });
+      return r.ok ? json({ ok: true }) : fail(502, 'db');
+    }
+
+    if (action === 'set_url') {
+      const url = cleanUrl(b.url);
+      if (!id || url === null) return fail(400, 'url');
+      const r = await rest(deps, `kb_books?id=eq.${id}`, { method: 'PATCH', body: { url }, prefer: 'return=minimal' });
       return r.ok ? json({ ok: true }) : fail(502, 'db');
     }
 

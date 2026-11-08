@@ -1,7 +1,7 @@
 // Служебний скрипт адмінки: потрібен, щоб телефон дозволив її встановити.
 // Кешує лише саму сторінку й іконки (щоб відкривалась без мережі); запити до
 // Supabase (відгуки, книги) не кешуються ніколи.
-const CACHE = 'vulyk-admin-v6';
+const CACHE = 'vulyk-admin-v7';
 const SHELL = ['./feedback.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

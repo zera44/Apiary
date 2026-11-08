@@ -56,6 +56,7 @@
   .book { display:flex; gap:12px; align-items:center; padding:10px 0; border-top:1px solid var(--line); }
   .book:first-child { border-top:0; }
   .book .meta { flex:1; min-width:0; overflow-wrap:anywhere; }
+  .book .t a { color:inherit; text-decoration:underline; text-decoration-color:var(--line); }
   .book .sub { color:var(--muted); font-size:13px; }
   .book.off .t { opacity:.5; text-decoration:line-through; }
   .hit { padding:10px 0; border-top:1px solid var(--line); overflow-wrap:anywhere; }
@@ -138,6 +139,9 @@
           <div><label class="f" for="b-title">Назва (визначається з файла)</label><input id="b-title"></div>
           <div><label class="f" for="b-author">Автор</label><input id="b-author"></div>
         </div>
+        <div class="row one">
+          <div><label class="f" for="b-url">Посилання на оригінал (необов'язково, наприклад Google Диск)</label><input id="b-url" type="url" inputmode="url" placeholder="https://drive.google.com/…"></div>
+        </div>
       </div>
       <div class="row" id="b-row2">
         <div id="b-yearbox"><label class="f" for="b-year">Рік</label><input id="b-year" inputmode="numeric"></div>
@@ -167,7 +171,7 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08-ai';
+const ADMIN_VERSION = '2026-11-09-link';
 // установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
 // Самооновлення: перевіряємо новий sw.js при кожному відкритті; коли новий
 // скрипт перебрав керування - один раз перезавантажуємо сторінку.
@@ -283,17 +287,27 @@ async function loadBooks() {
   for (const b of books) {
     const row = el('div', 'book' + (b.enabled ? '' : ' off'));
     const meta = el('div', 'meta');
-    meta.append(el('div', 't', b.title));
+    const safe = /^https?:\/\//i.test(b.url || '');
+    const tt = el('div', 't');
+    if (safe) { const a = el('a', '', b.title); a.href = b.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = 'Відкрити оригінал'; tt.append(a); }
+    else tt.textContent = b.title;
+    meta.append(tt);
     meta.append(el('div', 'sub', [b.author, b.year, b.pages ? b.pages + ' с.' : '', b.chunks + ' уривків', b.source].filter(Boolean).join(' · ')));
     const on = el('input'); on.type = 'checkbox'; on.checked = b.enabled; on.title = 'Помічник користується цією книгою';
     on.style.width = 'auto';
     on.onchange = async () => { try { await bapi({ action: 'set_enabled', book_id: b.id, enabled: on.checked }); await loadBooks(); } catch (e) { alert(e.message); } };
+    const link = el('button', '', safe ? 'Посилання' : '+ Посилання');
+    link.onclick = async () => {
+      const v = prompt('Посилання на оригінал «' + b.title + '» (порожнє - прибрати):', b.url || '');
+      if (v === null) return;
+      try { await bapi({ action: 'set_url', book_id: b.id, url: v.trim() }); await loadBooks(); } catch (e) { alert(e.message === 'url' ? 'Це не схоже на посилання (потрібне http або https).' : e.message); }
+    };
     const del = el('button', 'danger', 'Видалити');
     del.onclick = async () => {
       if (!confirm('Видалити «' + b.title + '» разом з усіма уривками?')) return;
       try { await bapi({ action: 'delete', book_id: b.id }); await loadBooks(); } catch (e) { alert(e.message); }
     };
-    row.append(meta, el('label', 'sub', 'увімкнена'), on, del);
+    row.append(meta, el('label', 'sub', 'увімкнена'), on, link, del);
     box.append(row);
   }
 }
@@ -590,7 +604,7 @@ $('b-file').onchange = async () => {
 };
 
 /** Завантажує одну книгу: читає файл, ділить на уривки, шле на сервер. Повертає кількість уривків. */
-async function uploadBook(file, { title, author, year, source }, say, prog) {
+async function uploadBook(file, { title, author, year, source, url }, say, prog) {
   say('Читаю файл…');
   let pages;
   if (/\.pdf$/i.test(file.name)) {
@@ -603,7 +617,7 @@ async function uploadBook(file, { title, author, year, source }, say, prog) {
   const chunks = chunkPages(pages);
   if (!chunks.length) throw new Error('Не знайшов тексту для уривків.');
   say('Створюю книгу…');
-  const { id } = await bapi({ action: 'add_book', title, author, year, source });
+  const { id } = await bapi({ action: 'add_book', title, author, year, source, url });
   try {
     const BATCH = 40;
     for (let i = 0; i < chunks.length; i += BATCH) {
@@ -627,10 +641,12 @@ $('b-go').onclick = async () => {
   try {
     if (files.length === 1) {
       const file = files[0], title = $('b-title').value.trim() || fileNameTitle(file);
+      const link = $('b-url').value.trim();
+      if (link && !/^https?:\/\/\S+$/i.test(link)) { bsay('Посилання має починатися з https:// і не мати пробілів.'); return; }
       if (knownTitles.has(title.toLowerCase()) && !confirm('Книга «' + title + '» уже є в базі. Додати ще раз?')) { bsay('Скасовано.'); return; }
-      const n = await uploadBook(file, { title, author: $('b-author').value.trim(), year: yearOf($('b-year').value), source }, bsay, progress);
+      const n = await uploadBook(file, { title, author: $('b-author').value.trim(), year: yearOf($('b-year').value), source, url: $('b-url').value.trim() }, bsay, progress);
       bsay('Готово: ' + n + ' уривків.'); progress(1);
-      for (const f of ['b-title', 'b-author', 'b-year', 'b-source', 'b-file']) $(f).value = '';
+      for (const f of ['b-title', 'b-author', 'b-url', 'b-year', 'b-source', 'b-file']) $(f).value = '';
       await loadBooks();
     } else {
       const todo = queue.filter((q) => q.state !== 'done');
