@@ -127,7 +127,7 @@
     <div class="card">
       <h3>Додати книгу</h3>
       <div class="row">
-        <div><label class="f" for="b-title">Назва *</label><input id="b-title"></div>
+        <div><label class="f" for="b-title">Назва (визначається з файла)</label><input id="b-title"></div>
         <div><label class="f" for="b-author">Автор</label><input id="b-author"></div>
       </div>
       <div class="row">
@@ -157,7 +157,7 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08-icon';
+const ADMIN_VERSION = '2026-11-08-meta';
 // установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
 // Самооновлення: перевіряємо новий sw.js при кожному відкритті; коли новий
 // скрипт перебрав керування - один раз перезавантажуємо сторінку.
@@ -351,9 +351,126 @@ function chunkPages(pages) {
   return out;
 }
 
+// -- автовизначення назви, автора й року з перших сторінок
+
+const YEAR_NOW = new Date().getFullYear();
+const CAP = '[А-ЯІЇЄҐA-Z]', LOW = "[а-яіїєґ'’a-z\\-]";
+// «Прізвище Ім'я (По батькові)», «І. І. Прізвище», «Прізвище І. І.»
+const NAME_RE = new RegExp('^(?:' + CAP + LOW + '+(?:\\s+' + CAP + LOW + '+){1,2}|' + CAP + '\\.\\s?(?:' + CAP + '\\.\\s?)?' + CAP + LOW + '+|' + CAP + LOW + '+\\s+' + CAP + '\\.\\s?(?:' + CAP + '\\.)?)$');
+const LABEL_RE = /^(назва|title|автор(?:и)?|author(?:s)?|упорядник(?:и)?|укладач(?:і)?|by|рік|year)\s*[:\-–—]\s*(.+)$/i;
+const BAD_TITLE = /^(untitled|microsoft word|без назви|document\d*|new document)|\.(docx?|pdf|indd|tex|txt|md)$|_|^[^\p{L}]*$/iu;
+
+/** Рік видання: найкращий збіг із позначкою «©», «видання», «Київ, 1985» тощо. */
+function findYear(lines) {
+  const kw = /©|\(c\)|copyright|видан|видав|вид-во|вид\.|publish|edition|press|(?<!\p{L})р\.|року|рік(?!\p{L})|київ|львів|харків|одеса|москва|ленінград|ужгород/iu;
+  let best = null;
+  lines.forEach((t, i) => {
+    for (const m of t.matchAll(/(?<!\d)(1[5-9]\d\d|20[0-3]\d)(?!\d)/g)) {
+      const y = +m[1]; if (y > YEAR_NOW) continue;
+      const score = (kw.test(t) ? 3 : 0) + (t.length < 80 ? 1 : 0);
+      if (!best || score > best.score || (score === best.score && i >= best.i)) best = { y, score, i };
+    }
+  });
+  return best && best.score >= 1 ? best.y : null;
+}
+
+/** pages: [[{text, size}]] (рядки перших сторінок), meta: {title, author} з метаданих файла. */
+function guessBook({ pages, meta }) {
+  const out = { title: '', author: '', year: null };
+  const all = pages.flat().map((l) => l.text);
+  // 1) підписані рядки: «Назва: …», «Автор: …», «Рік: …»
+  for (const t of all.slice(0, 80)) {
+    const m = LABEL_RE.exec(t); if (!m) continue;
+    const k = m[1].toLowerCase(), v = m[2].trim();
+    if (/^(назва|title)$/.test(k) && !out.title) out.title = v;
+    else if (/^(рік|year)$/.test(k)) { const y = +(/\d{4}/.exec(v) || [])[0]; if (y >= 1500 && y <= YEAR_NOW && !out.year) out.year = y; }
+    else if (!out.author) out.author = v;
+  }
+  // 2) метадані PDF (якщо схожі на справжні, а не на ім'я файла)
+  const mt = (meta.title || '').trim(), ma = (meta.author || '').trim();
+  if (!out.title && mt.length >= 4 && !BAD_TITLE.test(mt)) out.title = mt;
+  if (!out.author && ma.length >= 3 && /[A-Za-zА-Яа-яІіЇїЄє]/.test(ma) && !/^(admin|user|owner|unknown)$/i.test(ma)) out.author = ma;
+  // 3) перша сторінка з текстом: назва - найбільший шрифт, автор - ім'я під нею
+  const first = pages.find((p) => p.length) || [];
+  let titleEnd = -1;
+  if (!out.title && first.length) {
+    const cand = first.filter((l) => l.text.length >= 3 && /\p{L}/u.test(l.text));
+    const max = Math.max(...cand.map((l) => l.size), 0);
+    const uniform = cand.every((l) => Math.abs(l.size - max) < 0.5);
+    let i = uniform ? first.indexOf(cand[0]) : first.indexOf(cand.find((l) => l.size >= max * 0.92));
+    const parts = [];
+    for (; i >= 0 && i < first.length; i++) {
+      const l = first[i];
+      if (!uniform && l.size < max * 0.92) break;
+      parts.push(l.text); titleEnd = i;
+      if (uniform || parts.join(' ').length > 160) break;
+    }
+    out.title = parts.join(' ').replace(/^#+\s*|\*\*/g, '').trim();
+  }
+  if (!out.author && first.length) {
+    for (const l of first.slice(titleEnd + 1, titleEnd + 9)) {
+      const t0 = l.text.trim().replace(/[,;]+$/, ''), t1 = t0.replace(/\.$/, '');
+      const t = NAME_RE.test(t0) ? t0 : NAME_RE.test(t1) ? t1 : '';
+      if (t && t !== out.title) { out.author = t; break; }
+    }
+  }
+  if (!out.year) out.year = findYear(all.slice(0, 160));
+  out.title = out.title.slice(0, 280); out.author = out.author.slice(0, 200);
+  return out;
+}
+
+/** Рядки з розмірами шрифту перших сторінок PDF + метадані. */
+async function readPdfHead(file, maxPages = 5) {
+  await loadPdfJs();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  let meta = {};
+  try { const i = (await pdf.getMetadata()).info || {}; meta = { title: i.Title || '', author: i.Author || '' }; } catch {}
+  const pages = [];
+  for (let n = 1; n <= Math.min(maxPages, pdf.numPages); n++) {
+    const tc = await (await pdf.getPage(n)).getTextContent();
+    const lines = []; let cur = null, lastY = null;
+    for (const it of tc.items) {
+      const y = it.transform[5], size = Math.abs(it.transform[3]) || it.height || 0;
+      if (cur && lastY !== null && Math.abs(y - lastY) <= 2) { cur.text += it.str; cur.size = Math.max(cur.size, size); }
+      else { if (cur) lines.push(cur); cur = { text: it.str, size }; }
+      if (it.str.trim()) lastY = y;
+    }
+    if (cur) lines.push(cur);
+    pages.push(lines.map((l) => ({ text: l.text.replace(/\s+/g, ' ').trim(), size: l.size })).filter((l) => l.text));
+  }
+  return { pages, meta };
+}
+
+/** TXT / MD: рядки без розмірів; «---» заголовок MD ігноруємо. */
+async function readTextHead(file) {
+  const txt = (await readText(file)).replace(/\r\n?/g, '\n').slice(0, 6000);
+  const lines = txt.split('\n').map((t) => t.replace(/^#+\s*/, '').trim()).filter((t) => t && !/^-{3,}$/.test(t)).map((t) => ({ text: t, size: 1 }));
+  return { pages: [lines.slice(0, 60)], meta: {} };
+}
+
+const autoFields = { 'b-title': 'title', 'b-author': 'author', 'b-year': 'year' };
+for (const id of Object.keys(autoFields)) $(id).addEventListener('input', () => { delete $(id).dataset.auto; });
+
+$('b-file').onchange = async () => {
+  const file = $('b-file').files[0]; if (!file) return;
+  bsay('Читаю початок файла: назва, автор, рік…');
+  try {
+    const head = /\.pdf$/i.test(file.name) ? await readPdfHead(file) : await readTextHead(file);
+    const g = guessBook(head), got = [];
+    for (const [id, key] of Object.entries(autoFields)) {
+      const el_ = $(id), v = g[key] == null ? '' : String(g[key]);
+      // не затираємо те, що вписала людина; раніше автозаповнене - оновлюємо
+      if (v && (!el_.value.trim() || el_.dataset.auto)) { el_.value = v; el_.dataset.auto = '1'; got.push(key); }
+    }
+    bsay(got.length ? 'Визначено з файла: ' + got.map((k) => ({ title: 'назва', author: 'автор', year: 'рік' }[k])).join(', ') + '. Перевірте й за потреби виправте.'
+                     : 'З початку файла не вдалося визначити назву, автора й рік - впишіть самі.');
+  } catch (e) { bsay('Не вдалося прочитати початок файла: ' + e.message); }
+};
+
 $('b-go').onclick = async () => {
-  const title = $('b-title').value.trim(), file = $('b-file').files[0];
-  if (!title || !file) { bsay('Потрібні назва й файл.'); return; }
+  const file = $('b-file').files[0];
+  const title = $('b-title').value.trim() || (file ? file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() : '');
+  if (!title || !file) { bsay('Потрібен файл.'); return; }
   const year = parseInt($('b-year').value, 10);
   $('b-go').disabled = true; progress(0);
   try {
