@@ -33,9 +33,9 @@ class ReceiptMarkupScreen extends StatelessWidget {
     final fz = marked.fz;
     final img = marked.image;
     final hasImg = img != null && File(img).existsSync();
-    final boxes = [
+    final shown = [
       for (final l in fz.labels)
-        if (!l.f.virtual && markupColors.containsKey(l.cls)) l
+        if (!l.f.virtual && l.cls != 'OTHER') l
     ];
     return Scaffold(
       body: SafeArea(
@@ -62,8 +62,8 @@ class ReceiptMarkupScreen extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: InteractiveViewer(
-                    maxScale: 6,
-                    child: _MarkedImage(file: File(img), boxes: boxes, angle: marked.angle),
+                    maxScale: 8,
+                    child: _MarkedImage(file: File(img), items: shown, angle: marked.angle),
                   ),
                 )
               else
@@ -101,12 +101,14 @@ class ReceiptMarkupScreen extends StatelessWidget {
   }
 }
 
+/// Ліворуч - чек (фото, яке читалося) з рамками класів, праворуч - прочитаний текст на тих самих
+/// місцях, підсвічений за класом (як у курсовій, draw.py). Обидві половини масштабуються разом.
 class _MarkedImage extends StatefulWidget {
   final File file;
-  final List<Labeled> boxes;
+  final List<Labeled> items;
   final double angle;
 
-  const _MarkedImage({required this.file, required this.boxes, required this.angle});
+  const _MarkedImage({required this.file, required this.items, required this.angle});
 
   @override
   State<_MarkedImage> createState() => _MarkedImageState();
@@ -137,48 +139,84 @@ class _MarkedImageState extends State<_MarkedImage> {
   Widget build(BuildContext context) {
     final s = _size;
     if (s == null) return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
-    return AspectRatio(
-      aspectRatio: s.width / s.height,
-      child: CustomPaint(
-        foregroundPainter: _BoxPainter(widget.boxes, widget.angle, s),
-        child: Image(image: _img, fit: BoxFit.fill),
+    final ratio = s.width / s.height;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+        child: AspectRatio(
+          aspectRatio: ratio,
+          child: CustomPaint(
+            foregroundPainter: _BoxPainter(widget.items, widget.angle, s, text: false),
+            child: Image(image: _img, fit: BoxFit.fill),
+          ),
+        ),
       ),
-    );
+      const SizedBox(width: 3),
+      Expanded(
+        child: AspectRatio(
+          aspectRatio: ratio,
+          child: CustomPaint(
+            painter: _BoxPainter(widget.items, widget.angle, s, text: true),
+            child: const ColoredBox(color: Colors.white),
+          ),
+        ),
+      ),
+    ]);
   }
 }
 
 class _BoxPainter extends CustomPainter {
-  final List<Labeled> boxes;
+  final List<Labeled> items;
   final double angle;
   final Size img;
 
-  _BoxPainter(this.boxes, this.angle, this.img);
+  /// true - білий аркуш з текстом на місцях фрагментів; false - лише рамки поверх фото.
+  final bool text;
+
+  _BoxPainter(this.items, this.angle, this.img, {required this.text});
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (text) canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
     final k = size.width / img.width;
     final c = math.cos(angle), s = math.sin(angle);
     Offset p(double x, double y) => Offset((x * c - y * s) * k, (x * s + y * c) * k);
-    for (final l in boxes) {
-      final col = markupColors[l.cls]!;
+    for (final l in items) {
+      final col = markupColors[l.cls];
       final f = l.f;
       final y0 = f.y - f.h / 2, y1 = f.y + f.h / 2;
-      final path = Path()
-        ..moveTo(p(f.xLeft, y0).dx, p(f.xLeft, y0).dy)
-        ..lineTo(p(f.xRight, y0).dx, p(f.xRight, y0).dy)
-        ..lineTo(p(f.xRight, y1).dx, p(f.xRight, y1).dy)
-        ..lineTo(p(f.xLeft, y1).dx, p(f.xLeft, y1).dy)
-        ..close();
-      canvas.drawPath(path, Paint()..color = col.withValues(alpha: 0.28));
-      canvas.drawPath(
-          path,
-          Paint()
-            ..color = col
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.6);
+      final a = p(f.xLeft, y0), b = p(f.xRight, y0), d = p(f.xRight, y1), e = p(f.xLeft, y1);
+      if (col != null) {
+        final path = Path()
+          ..moveTo(a.dx, a.dy)
+          ..lineTo(b.dx, b.dy)
+          ..lineTo(d.dx, d.dy)
+          ..lineTo(e.dx, e.dy)
+          ..close();
+        canvas.drawPath(path, Paint()..color = col.withValues(alpha: text ? 0.38 : 0.28));
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = col
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = text ? 1.2 : 1.6);
+      }
+      if (!text) continue;
+      final tp = TextPainter(
+        text: TextSpan(
+            text: f.text.trim(),
+            style: TextStyle(color: const Color(0xFF222222), fontSize: math.max(3.0, f.h * k * 0.72))),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final w = (f.xRight - f.xLeft) * k;
+      final sx = tp.width <= 0 ? 1.0 : (w / tp.width).clamp(0.3, 2.0);
+      canvas.save();
+      canvas.translate(a.dx, (a.dy + e.dy) / 2 - tp.height / 2);
+      canvas.scale(sx, 1);
+      tp.paint(canvas, Offset.zero);
+      canvas.restore();
     }
   }
 
   @override
-  bool shouldRepaint(_BoxPainter o) => o.boxes != boxes || o.angle != angle || o.img != img;
+  bool shouldRepaint(_BoxPainter o) => o.items != items || o.angle != angle || o.img != img || o.text != text;
 }

@@ -125,6 +125,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
   /// Розмічений чек (для перегляду розмітки на фото).
   MarkedReceipt? _marked;
 
+  /// Чому розмітка не вийшла (показується в примітці).
+  String? _markFail;
+
   Repository get repo => widget.repo;
   ReceiptOcr get _ocr => widget.ocr ?? ReceiptOcr.instance;
   bool get _expense => _kind == kFinExpense;
@@ -318,17 +321,20 @@ class _FinAddScreenState extends State<FinAddScreen> {
       _mode = 1;
       _reading = true;
       _marked = null;
+      _markFail = null;
       _receiptNote = null;
       _receiptSoft = false;
     });
     try {
       // спершу нечітка розмітка (як у курсовій); не вийшло - розбір тексту
       MarkedReceipt? marked;
+      String? markFail;
       try {
         marked = await _ocr.mark(path);
-      } catch (_) {
-        marked = null;
+      } catch (e) {
+        markFail = '$e';
       }
+      final viewMark = marked; // для перегляду - навіть якщо позицій не знайшлось
       final List<ReceiptRow> rows;
       final double? declared;
       if (marked != null && (marked.fz.rows.isNotEmpty || marked.fz.total != null)) {
@@ -338,7 +344,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ];
         declared = marked.fz.total;
       } else {
-        marked = null;
         final text = await _ocr.read(path);
         rows = parseReceipt(text, fillMissing: false);
         declared = receiptDeclaredTotal(text);
@@ -348,7 +353,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
       setState(() {
         _reading = false;
         _hasReceipt = true;
-        _marked = marked;
+        _marked = viewMark;
+        _markFail = markFail;
         _declared = declared;
         _receiptRows = rows.length;
         _receiptSoft = false;
@@ -642,7 +648,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
             color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.caution : AppColors.danger),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(_receiptNote ?? '',
+          child: Text('${_receiptNote ?? ''}${_markFail == null ? '' : '\n${tr.receiptMarkupFailed(_markFail!)}'}',
               style: TextStyle(
                   color: _receiptSoft ? AppColors.caution : AppColors.text, fontSize: 12.5, height: 1.3)),
         ),

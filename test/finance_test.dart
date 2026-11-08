@@ -28,13 +28,15 @@ class _FakeOcr implements ReceiptOcr {
 /// Розпізнавач із нечіткою розміткою: позиції й підсумок уже зібрано.
 class _MarkOcr implements ReceiptOcr {
   final MarkedReceipt marked;
-  _MarkOcr(this.marked);
+  final String text;
+  final bool fails;
+  _MarkOcr(this.marked, {this.text = '', this.fails = false});
   @override
   bool get supported => true;
   @override
-  Future<String> read(String imagePath) async => throw StateError('текст не потрібен');
+  Future<String> read(String imagePath) async => text;
   @override
-  Future<MarkedReceipt?> mark(String imagePath) async => marked;
+  Future<MarkedReceipt?> mark(String imagePath) async => fails ? throw StateError('boom') : marked;
 }
 
 Labeled _l(String cls, String text, double y, double x) =>
@@ -467,6 +469,15 @@ void main() {
       expect(find.text('Розмітка чека'), findsOneWidget);
       expect(find.text('600'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('розмітка не вийшла: причина в примітці, розбір тексту працює', (tester) async {
+      await open(tester,
+          FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _MarkOcr(_marked('0'), text: _receipt, fails: true)));
+      expect(find.textContaining('Розмітка не вийшла'), findsOneWidget);
+      expect(find.textContaining('boom'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Цукор білий 1кг'), findsOneWidget);
+      expect(find.byKey(const Key('receipt-markup')), findsNothing);
     });
 
     testWidgets('нечітка розмітка: сума зійшлась - без «Корегування»', (tester) async {

@@ -1364,7 +1364,9 @@ class AppStringsUk extends AppStrings {
   @override
   String get receiptAdjustName => 'Корегування';
   @override
-  String get receiptMarkupOpen => 'Розмітка';
+  String get receiptMarkupOpen => 'Перевірити чек';
+  @override
+  String receiptMarkupFailed(String why) => 'Розмітка не вийшла ($why): прочитано лише текст.';
   @override
   String get receiptMarkupTitle => 'Розмітка чека';
   @override

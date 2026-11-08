@@ -673,6 +673,7 @@ abstract class AppStrings {
   String receiptTotalOnly(String total);
   String get receiptAdjustName;
   String get receiptMarkupOpen;
+  String receiptMarkupFailed(String why);
   String get receiptMarkupTitle;
   String get receiptMarkupNoImage;
   String receiptMarkupClass(String cls);
