@@ -20,8 +20,21 @@ final class OcrPrim {
     static Pattern re(String p) {
         synchronized (CACHE) {
             Pattern r = CACHE.get(p);
-            if (r == null) { r = Pattern.compile(p, Pattern.UNICODE_CHARACTER_CLASS); CACHE.put(p, r); }
+            if (r == null) { r = compile(p); CACHE.put(p, r); }
             return r;
+        }
+    }
+
+    /**
+     * UNICODE_CHARACTER_CLASS дає юнікодні \d, \w, \b на звичайній Java (еталон у tool/oracle).
+     * Android (ICU) цей прапорець не підтримує й кидає IllegalArgumentException, але там вони
+     * юнікодні й так; UNICODE_CASE - щоб (?i) працював і для кирилиці.
+     */
+    private static Pattern compile(String p) {
+        try {
+            return Pattern.compile(p, Pattern.UNICODE_CHARACTER_CLASS);
+        } catch (IllegalArgumentException e) {
+            return Pattern.compile(p, Pattern.UNICODE_CASE);
         }
     }
 
