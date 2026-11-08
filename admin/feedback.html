@@ -17,7 +17,7 @@
   [hidden] { display:none !important; }
   body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
   #main { display:flex; flex-direction:column; height:100vh; height:100dvh; }
-  header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); flex:none; }
+  header { position:relative; display:flex; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); flex:none; }
   header h1 { font-size:18px; margin:0; flex:1; min-width:0; }
   header .sp { flex:1; }
   button { background:var(--honey); color:#2b1a08; border:0; border-radius:10px; padding:10px 16px; font:inherit; font-weight:700; cursor:pointer; }
@@ -42,8 +42,11 @@
   .reply { padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:10px; align-items:flex-end; }
   .empty { color:var(--muted); padding:24px; }
   #err { color:#e07a5f; margin-top:10px; min-height:1.4em; }
-  .tab { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; padding:8px 14px; }
-  .tab.on { background:var(--honey); color:#2b1a08; border-color:var(--honey); font-weight:700; }
+  #menu-btn { font-size:20px; line-height:1; padding:8px 14px; }
+  #menu { position:absolute; z-index:20; top:calc(100% + 4px); left:12px; min-width:250px; max-width:calc(100vw - 24px); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:6px; box-shadow:0 8px 24px rgba(0,0,0,.45); }
+  .mi { display:block; width:100%; text-align:left; background:transparent; color:var(--text); border:0; border-radius:8px; padding:12px 14px; font-weight:400; }
+  .mi:hover { background:var(--line); }
+  .mi.on { background:var(--honey); color:#2b1a08; font-weight:700; }
   #books { padding:16px; flex:1; min-height:0; overflow:auto; width:100%; max-width:920px; margin:0 auto; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:16px; }
   .card h3 { margin:0 0 10px; font-size:16px; }
@@ -68,13 +71,9 @@
     .app.open .list { display:none; }
     .app:not(.open) .thread { display:none; }
     /* шапка: назва на всю ширину, нижче вкладки й кнопки; зручні для пальця */
-    header { padding:8px 12px; }
-    header h1 { flex-basis:100%; order:-1; font-size:17px; }
-    #back { order:-2; }
-    header .tab, header .ghost, button { min-height:44px; }
-    header { gap:8px 6px; }
-    header .tab, header .ghost { padding:8px 10px; font-size:15px; }
-    .tab { flex:1 1 auto; }
+    header { padding:8px 12px; gap:8px; }
+    header h1 { font-size:17px; }
+    header .ghost, button, .mi { min-height:44px; }
     .item { padding:14px 16px; }
     .m { max-width:90%; }
     .msgs { padding:12px; }
@@ -109,12 +108,16 @@
 </div>
 <div id="main" hidden>
   <header>
-    <button class="ghost" id="back" hidden>←</button>
+    <button class="ghost" id="back" hidden aria-label="Назад">←</button>
+    <button class="ghost" id="menu-btn" aria-label="Меню" aria-expanded="false" aria-controls="menu">☰</button>
     <h1>Vulyk: адмінка <small id="ver" style="color:var(--muted);font-weight:400;font-size:12px"></small></h1>
-    <button class="tab on" id="tab-fb">Відгуки</button>
-    <button class="tab" id="tab-books">Книги</button>
-    <button class="ghost" id="refresh">Оновити</button>
-    <button class="ghost" id="out">Вийти</button>
+    <nav id="menu" hidden>
+      <button class="mi on" id="tab-fb">Відгуки</button>
+      <button class="mi" id="tab-books">Книги</button>
+      <button class="mi" id="refresh">Оновити</button>
+      <button class="mi" id="install">Встановити застосунок</button>
+      <button class="mi" id="out">Вийти</button>
+    </nav>
   </header>
   <div class="app" id="app">
     <div class="list" id="list"></div>
@@ -154,9 +157,16 @@ const DEFAULT_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/feedb
 const DEFAULT_BOOKS_URL = 'https://zfzkwkudmmpgviueiwwk.supabase.co/functions/v1/books';
 // pdf.js (читання PDF у браузері) - з cdnjs, версія зафіксована
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-const ADMIN_VERSION = '2026-11-08-app';
+const ADMIN_VERSION = '2026-11-08-menu';
 // установлення як додатка (на file:// служебний скрипт недоступний - не страшно)
-if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Самооновлення: перевіряємо новий sw.js при кожному відкритті; коли новий
+// скрипт перебрав керування - один раз перезавантажуємо сторінку.
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  const had = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
+}
 const $ = (id) => document.getElementById(id);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
                 set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
@@ -206,7 +216,7 @@ async function openThread(id) {
   th.append(box, reply); box.scrollTop = box.scrollHeight;
   loadList();
 }
-function logout(msg) { store.del('fb_pw'); pw = ''; clearInterval(timer); $('main').hidden = true; $('login').hidden = false; $('err').textContent = msg || ''; }
+function logout(msg) { setMenu(false); store.del('fb_pw'); pw = ''; clearInterval(timer); $('main').hidden = true; $('login').hidden = false; $('err').textContent = msg || ''; }
 async function enter() {
   pw = $('pw').value || pw; url = $('url').value.trim() || DEFAULT_URL;
   $('err').textContent = '';
@@ -219,6 +229,26 @@ $('eye').onclick = () => { const i = $('pw'); i.type = i.type === 'password' ? '
 $('go').onclick = enter; $('pw').onkeydown = (e) => { if (e.key === 'Enter') enter(); };
 $('refresh').onclick = () => { if (!$('books').hidden) { loadBooks(); return; } loadList(); if (current) openThread(current); };
 $('out').onclick = () => logout();
+
+// ---------------------------------------------------------------- меню (три риски)
+const menu = $('menu'), menuBtn = $('menu-btn');
+const setMenu = (open) => { menu.hidden = !open; menuBtn.setAttribute('aria-expanded', String(open)); };
+menuBtn.onclick = (e) => { e.stopPropagation(); setMenu(menu.hidden); };
+menu.onclick = () => setMenu(false); // будь-який пункт закриває меню (його дія спрацьовує раніше)
+document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+
+// «Встановити застосунок»: Chrome сам пропонує установлення подією; якщо її немає - підказка
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installEvt = null; $('install').hidden = true; });
+if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install').hidden = true;
+$('install').onclick = async () => {
+  if (installEvt) { installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; return; }
+  alert(/iphone|ipad|ipod/i.test(navigator.userAgent)
+    ? 'У Safari: «Поділитися» → «На екран «Додому»».'
+    : 'У Chrome: меню ⋮ → «Установити застосунок» (або «Додати на головний екран»).\nПотрібен Chrome і сторінка за адресою https (GitHub Pages), не відкрита з файлу.');
+};
 $('back').onclick = () => { $('app').classList.remove('open'); $('back').hidden = true; current = null; };
 
 // ---------------------------------------------------------------- книги
