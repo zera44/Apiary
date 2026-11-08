@@ -1016,6 +1016,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get shoot => 'Shoot';
   @override
+  String get shootHold => 'Hold the receipt still';
+  @override
   String get phoneCamera => 'With the phone camera';
   @override
   String get fromGallery => 'From the gallery';

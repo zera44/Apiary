@@ -1018,6 +1018,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get shoot => 'Зняти';
   @override
+  String get shootHold => 'Тримайте чек нерухомо';
+  @override
   String get phoneCamera => 'Камерою телефона';
   @override
   String get fromGallery => 'З галереї';

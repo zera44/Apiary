@@ -504,6 +504,7 @@ abstract class AppStrings {
   String get qrHint;
   String get scanReceipt;
   String get shoot;
+  String get shootHold;
   String get phoneCamera;
   String get fromGallery;
   String get qrEnterManually;

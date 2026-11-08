@@ -137,6 +137,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
   bool _analysing = false;
   bool _capturing = false;
 
+  // відлік 3-2-1 після «Зняти»: кнопки сховані, чек треба тримати нерухомо
+  int? _countdown;
+  Timer? _cdTimer;
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +151,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   void dispose() {
     _timer?.cancel();
     _toastTimer?.cancel();
+    _cdTimer?.cancel();
     unawaited(_ctrl.dispose());
     super.dispose();
   }
@@ -248,6 +253,34 @@ class _QrScanScreenState extends State<QrScanScreen> {
     } finally {
       _analysing = false;
     }
+  }
+
+  /// «Зняти»: відлік 3-2-1 (інтерфейс сховано), потім знімок. Дотик до екрана скасовує відлік.
+  void _startShoot() {
+    if (_countdown != null || _capturing || _done) return;
+    setState(() => _countdown = 3);
+    _cdTimer?.cancel();
+    _cdTimer = Timer.periodic(const Duration(seconds: 1), (t) async {
+      if (!mounted || _done || _countdown == null) {
+        t.cancel();
+        return;
+      }
+      final next = _countdown! - 1;
+      if (next > 0) {
+        setState(() => _countdown = next);
+        return;
+      }
+      t.cancel();
+      setState(() => _countdown = 0);
+      await _captureReceipt(_quad);
+      if (mounted && !_done) setState(() => _countdown = null);
+    });
+  }
+
+  void _cancelShoot() {
+    if (_countdown == null || _countdown == 0) return;
+    _cdTimer?.cancel();
+    setState(() => _countdown = null);
   }
 
   /// Зберегти чек із екрана (обрізаний по контуру) й відкрити таблицю витрати.
@@ -631,6 +664,31 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ),
               ),
             ),
+            if (_countdown != null && _countdown! > 0)
+              Positioned.fill(
+                child: GestureDetector(
+                  key: const ValueKey('shoot-cancel'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _cancelShoot,
+                  child: Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text('$_countdown',
+                          key: const ValueKey('shoot-count'),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 120,
+                              fontWeight: FontWeight.w800,
+                              shadows: [Shadow(blurRadius: 12, color: Colors.black87)])),
+                      Text(tr.shootHold,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              shadows: [Shadow(blurRadius: 8, color: Colors.black87)])),
+                    ]),
+                  ),
+                ),
+              ),
+            if (_countdown == null)
             Positioned(
               top: 0,
               left: 0,
@@ -697,6 +755,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ),
               ),
             ],
+            if (_countdown == null)
             Positioned(
               left: 16,
               right: 16,
@@ -715,7 +774,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                     bg: AppColors.accent,
                     height: 48,
                     width: double.infinity,
-                    onPressed: () => _captureReceipt(_quad),
+                    onPressed: _startShoot,
                   ),
                   const SizedBox(height: 8),
                   Row(children: [
