@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -33,16 +34,17 @@ class ReceiptMarkupScreen extends StatelessWidget {
     final fz = marked.fz;
     final img = marked.image;
     final hasImg = img != null && File(img).existsSync();
+    // усі прочитані фрагменти: праворуч видно весь текст, рамки - лише в тих, що мають клас
     final shown = [
       for (final l in fz.labels)
-        if (!l.f.virtual && l.cls != 'OTHER') l
+        if (!l.f.virtual && l.f.text.trim().isNotEmpty) l
     ];
     return Scaffold(
       body: SafeArea(
         child: ScreenColumn(children: [
           TopBar(title: tr.receiptMarkupTitle, onBack: () => Navigator.pop(context)),
           Expanded(
-            child: ListView(padding: const EdgeInsets.fromLTRB(12, 8, 12, 16), children: [
+            child: ListView(padding: const EdgeInsets.fromLTRB(8, 8, 8, 16), children: [
               Wrap(spacing: 10, runSpacing: 6, children: [
                 for (final e in markupColors.entries)
                   Row(mainAxisSize: MainAxisSize.min, children: [
@@ -101,8 +103,9 @@ class ReceiptMarkupScreen extends StatelessWidget {
   }
 }
 
-/// Ліворуч - чек (фото, яке читалося) з рамками класів, праворуч - прочитаний текст на тих самих
-/// місцях, підсвічений за класом (як у курсовій, draw.py). Обидві половини масштабуються разом.
+/// Ліворуч - чек (фото, яке читалося) з рамками класів, праворуч - увесь прочитаний текст на тих самих
+/// місцях, підсвічений за класом (як у курсовій, draw.py). Обидві половини обрізані до чека
+/// й масштабуються разом.
 class _MarkedImage extends StatefulWidget {
   final File file;
   final List<Labeled> items;
@@ -115,11 +118,14 @@ class _MarkedImage extends StatefulWidget {
 }
 
 class _MarkedImageState extends State<_MarkedImage> {
-  Size? _size;
+  ui.Image? _image;
   late final FileImage _img = FileImage(widget.file);
   ImageStream? _stream;
   late final ImageStreamListener _listener = ImageStreamListener((info, _) {
-    if (mounted) setState(() => _size = Size(info.image.width.toDouble(), info.image.height.toDouble()));
+    if (!mounted) return;
+    final old = _image;
+    setState(() => _image = info.image.clone());
+    old?.dispose();
   });
 
   @override
@@ -132,54 +138,72 @@ class _MarkedImageState extends State<_MarkedImage> {
   @override
   void dispose() {
     _stream?.removeListener(_listener);
+    _image?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final s = _size;
-    if (s == null) return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
-    final ratio = s.width / s.height;
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(
-        child: AspectRatio(
-          aspectRatio: ratio,
-          child: CustomPaint(
-            foregroundPainter: _BoxPainter(widget.items, widget.angle, s, text: false),
-            child: Image(image: _img, fit: BoxFit.fill),
+    final im = _image;
+    if (im == null) return const SizedBox(height: 200, child: Center(child: CircularProgressIndicator()));
+    final full = Size(im.width.toDouble(), im.height.toDouble());
+    final crop = markupCropRect(widget.items, widget.angle, full);
+    final ratio = crop.width / crop.height;
+    Widget half(bool text) => Expanded(
+          child: AspectRatio(
+            aspectRatio: ratio,
+            child: CustomPaint(painter: _BoxPainter(widget.items, widget.angle, im, crop, text: text)),
           ),
-        ),
-      ),
-      const SizedBox(width: 3),
-      Expanded(
-        child: AspectRatio(
-          aspectRatio: ratio,
-          child: CustomPaint(
-            painter: _BoxPainter(widget.items, widget.angle, s, text: true),
-            child: const ColoredBox(color: Colors.white),
-          ),
-        ),
-      ),
-    ]);
+        );
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [half(false), const SizedBox(width: 3), half(true)]);
   }
+}
+
+/// Прямокутник чека на зображенні (px): охоплює всі прочитані фрагменти з невеликим полем.
+/// Немає фрагментів - усе зображення.
+Rect markupCropRect(List<Labeled> items, double angle, Size img) {
+  final c = math.cos(angle), s = math.sin(angle);
+  double? x0, y0, x1, y1;
+  for (final l in items) {
+    final f = l.f;
+    for (final (x, y) in [(f.xLeft, f.y - f.h / 2), (f.xRight, f.y - f.h / 2), (f.xRight, f.y + f.h / 2), (f.xLeft, f.y + f.h / 2)]) {
+      final px = x * c - y * s, py = x * s + y * c;
+      x0 = x0 == null ? px : math.min(x0, px);
+      x1 = x1 == null ? px : math.max(x1, px);
+      y0 = y0 == null ? py : math.min(y0, py);
+      y1 = y1 == null ? py : math.max(y1, py);
+    }
+  }
+  final full = Offset.zero & img;
+  if (x0 == null || x1 == null || y0 == null || y1 == null || x1 - x0 < 10 || y1 - y0 < 10) return full;
+  final pad = math.max(12.0, 0.03 * math.max(x1 - x0, y1 - y0));
+  final r = Rect.fromLTRB(x0 - pad, y0 - pad, x1 + pad, y1 + pad).intersect(full);
+  return r.width < 10 || r.height < 10 ? full : r;
 }
 
 class _BoxPainter extends CustomPainter {
   final List<Labeled> items;
   final double angle;
-  final Size img;
+  final ui.Image img;
 
-  /// true - білий аркуш з текстом на місцях фрагментів; false - лише рамки поверх фото.
+  /// Ділянка зображення (px), що показується: чек без тла.
+  final Rect crop;
+
+  /// true - білий аркуш з текстом на місцях фрагментів; false - фото з рамками поверх.
   final bool text;
 
-  _BoxPainter(this.items, this.angle, this.img, {required this.text});
+  _BoxPainter(this.items, this.angle, this.img, this.crop, {required this.text});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (text) canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
-    final k = size.width / img.width;
+    if (text) {
+      canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    } else {
+      canvas.drawImageRect(img, crop, Offset.zero & size, Paint()..filterQuality = FilterQuality.medium);
+    }
+    final k = size.width / crop.width;
     final c = math.cos(angle), s = math.sin(angle);
-    Offset p(double x, double y) => Offset((x * c - y * s) * k, (x * s + y * c) * k);
+    Offset p(double x, double y) => Offset((x * c - y * s - crop.left) * k, (x * s + y * c - crop.top) * k);
     for (final l in items) {
       final col = markupColors[l.cls];
       final f = l.f;
@@ -218,5 +242,5 @@ class _BoxPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_BoxPainter o) => o.items != items || o.angle != angle || o.img != img || o.text != text;
+  bool shouldRepaint(_BoxPainter o) => o.items != items || o.angle != angle || o.img != img || o.crop != crop || o.text != text;
 }
