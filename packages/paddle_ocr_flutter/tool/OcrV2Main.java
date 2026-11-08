@@ -10,6 +10,7 @@ import java.util.*;
  *  Фото подаються як PPM (P6, RGB) - їх готує tool/to_ppm.py тим самим декодером, що й курсова (cv2).
  *  java -cp <classes>:onnxruntime.jar OcrV2Main det.onnx rec.onnx dict.txt out.csv фото.ppm... */
 public class OcrV2Main {
+    static long detNs, recNs;
     static int[] readPpm(String path, int[] wh) throws IOException {
         byte[] all = Files.readAllBytes(Paths.get(path));
         int pos = 0, field = 0;
@@ -57,6 +58,8 @@ public class OcrV2Main {
         Class<?> rc = Class.forName("org.apiary.paddle_ocr.OcrPipeline$Runner");
         Object runner = Proxy.newProxyInstance(rc.getClassLoader(), new Class<?>[] {rc}, (pr, m, args) -> {
             float[] t = (float[]) args[0];
+            long t0 = System.nanoTime();
+            try {
             if (m.getName().equals("det")) {
                 int h = (Integer) args[1], w = (Integer) args[2];
                 try (OnnxTensor in = OnnxTensor.createTensor(env, FloatBuffer.wrap(t), new long[] {1, 3, h, w});
@@ -80,6 +83,7 @@ public class OcrV2Main {
                 fb.get(o);
                 return o;
             }
+            } finally { if (m.getName().equals("det")) detNs += System.nanoTime() - t0; else recNs += System.nanoTime() - t0; }
         });
         Class<?> oc = Class.forName("org.apiary.paddle_ocr.OcrV2");
         Class<?> gc = Class.forName("org.apiary.paddle_ocr.OcrV2$Gray");
@@ -115,7 +119,8 @@ public class OcrV2Main {
                 Field dcF = rdc.getDeclaredField("detCalls");
                 dcF.setAccessible(true);
                 List<?> frags = (List<?>) ff.get(res);
-                System.err.println(name + " rot=" + rotF.get(res) + " frags=" + frags.size() + " det=" + dcF.get(rd) + " rec=" + rcF.get(rd) + " " + ms + "ms");
+                System.err.println(name + " rot=" + rotF.get(res) + " frags=" + frags.size() + " det=" + dcF.get(rd) + " rec=" + rcF.get(rd) + " " + ms + "ms det_ms=" + detNs / 1000000 + " rec_ms=" + recNs / 1000000);
+                detNs = 0; recNs = 0;
                 for (Object f : frags) {
                     Class<?> fc = f.getClass();
                     java.util.function.Function<String, Object> get = n -> {

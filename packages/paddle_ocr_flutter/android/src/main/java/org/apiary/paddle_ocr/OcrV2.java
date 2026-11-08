@@ -650,6 +650,13 @@ final class OcrV2 {
         }
     }
 
+    /**
+     * Пропуск перевірки поворотів: на 130 чеках правильним був поворот 0, коли оцінка першого проходу >= 0,83,
+     * а інші повороти перемагали, коли вона <= 0,69. Поріг посередині, з запасом.
+     */
+    static boolean FAST_ROT = System.getenv("NO_FASTROT") == null;
+    static final double ROT_SKIP = 0.78;
+
     /** Повне розпізнавання сірого фото [g0]: поворот, рамки, текст, фрагменти. */
     static Result run(Gray g0, Reader rd) throws Exception {
         Gray g = g0;
@@ -660,6 +667,14 @@ final class OcrV2 {
         List<Cand> cands = new ArrayList<>();
         cands.add(new Cand(0, g, rows));
         List<Integer> rots = new ArrayList<>();
+        if (FAST_ROT && cands.get(0).score() >= ROT_SKIP) { // прямий чек читається впевнено: інші повороти не потрібні
+            Result res = new Result();
+            res.rotation = 0;
+            res.g = g;
+            res.conf = mconf(rows);
+            res.frags.addAll(toFrags(g, rows, 0, res.conf));
+            return res;
+        }
         if (!rows.isEmpty() && tl * 2 > rows.size()) { rots.add(90); rots.add(270); }
         rots.add(180);
         for (int r : rots) {
