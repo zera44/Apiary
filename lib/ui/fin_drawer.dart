@@ -5,7 +5,6 @@ import '../l10n/l10n.dart';
 import '../screens/fin_categories_screen.dart';
 import '../screens/fin_stats_screen.dart';
 import '../screens/finance_screen.dart';
-import 'fin_style.dart';
 import 'theme.dart';
 
 /// Розділи блоку «Фінанси» (пункти бокового меню).
