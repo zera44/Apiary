@@ -72,8 +72,12 @@ class FinDrawer extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
-            child: Text(tr.finances,
-                style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800)),
+            child: Row(children: [
+              Icon(Icons.account_balance_wallet_outlined, color: AppColors.text, size: 32),
+              const SizedBox(width: 16),
+              Text(tr.finances,
+                  style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800)),
+            ]),
           ),
           Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
           const SizedBox(height: 8),
