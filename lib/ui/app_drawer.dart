@@ -86,7 +86,6 @@ class AppDrawer extends StatefulWidget {
         return;
       }
       // карта: торкнутися вулика - код прив'язується й одразу відкривається огляд
-      nav.popUntil((r) => r.isFirst);
       nav.push(MaterialPageRoute(
           builder: (_) => MapScreen(repo: repo, apiary: a, bindCode: code)));
       return;
@@ -94,18 +93,16 @@ class AppDrawer extends StatefulWidget {
     openHive(nav, repo, found.apiary, found.element.id, fill: true, next: NextHive.qr);
   }
 
-  /// Обхід: карта пасіки поверх головного екрана, без форми - вулики, які
+  /// Обхід: карта пасіки поверх поточного екрана («назад» повертає на нього), без форми - вулики, які
   /// пора оглянути, обведені червоним, а «Сканувати» відкриває огляд.
   static void openRound(NavigatorState nav, Repository repo, Apiary apiary) {
-    nav.popUntil((r) => r.isFirst);
     nav.push(MaterialPageRoute(builder: (_) => MapScreen(repo: repo, apiary: apiary)));
   }
 
-  /// Відкрити карту пасіки з панеллю вулика поверх головного екрана;
+  /// Відкрити карту пасіки з панеллю вулика поверх поточного екрана;
   /// [fill] — одразу форма «Оглянути».
   static void openHive(NavigatorState nav, Repository repo, Apiary apiary, String elementId,
       {bool fill = false, NextHive next = NextHive.order}) {
-    nav.popUntil((r) => r.isFirst);
     nav.push(MaterialPageRoute(
       builder: (_) => MapScreen(
           repo: repo, apiary: apiary, focusElementId: elementId, openFill: fill, next: next),
