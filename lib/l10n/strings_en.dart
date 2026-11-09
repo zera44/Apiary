@@ -1341,6 +1341,10 @@ class AppStringsEn extends AppStrings {
   @override
   String get finStats => 'Statistics';
   @override
+  String get finProfit => 'Profit';
+  @override
+  String get finLoss => 'Loss';
+  @override
   String get finHome => 'Home';
   @override
   String get finCategories => 'Categories';
