@@ -247,8 +247,17 @@ class TopBar extends StatelessWidget {
 
   /// Обгортка кнопки «назад» (урок: медовий ободок).
   final Widget Function(Widget back)? decorateBack;
+
+  /// Якщо задано - назва стає рамкою-кнопкою (меню, назва, стрілка) по центру.
+  final VoidCallback? onTitleTap;
   const TopBar(
-      {super.key, required this.title, this.onBack, this.trailing, this.onMenu, this.decorateBack});
+      {super.key,
+      required this.title,
+      this.onBack,
+      this.trailing,
+      this.onMenu,
+      this.decorateBack,
+      this.onTitleTap});
 
   @override
   Widget build(BuildContext context) =>
@@ -318,13 +327,46 @@ class TopBar extends StatelessWidget {
           else
             const SizedBox(width: 34),
           Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            child: onTitleTap != null
+                ? Center(
+                    child: Semantics(
+                      button: true,
+                      label: tr.menu,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: onTitleTap,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                              color: AppColors.roundBtn,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(color: AppColors.create, width: 1.5)),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.menu, size: 20, color: AppColors.create),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: AppColors.text,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.keyboard_arrow_down, size: 20, color: AppColors.create),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  )
+                : Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
           ),
           // без дії праворуч - назва по центру між «назад» і помічником
           trailing ?? SizedBox(width: (48 - right).clamp(0, 34).toDouble()),

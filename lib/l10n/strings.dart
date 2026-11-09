@@ -664,6 +664,10 @@ abstract class AppStrings {
   String finBalance(String v);
   String get finNothingInPeriod;
   String get finStats;
+  String get finHome;
+  String get finCategories;
+  String get finOps;
+  String get finBackToApiary;
   String get finByYears;
   String get finByMonths;
   String get finNewOperation;

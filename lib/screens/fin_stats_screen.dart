@@ -4,6 +4,7 @@ import '../data/finance.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
+import '../ui/fin_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 
@@ -17,6 +18,7 @@ class FinStatsScreen extends StatefulWidget {
 }
 
 class _FinStatsScreenState extends State<FinStatsScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _year = DateTime.now().year;
   bool _byYears = false;
   List<FinMonthTotal> _months = const [];
@@ -54,10 +56,15 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
     final maxV = _months.fold(0.0, (a, m) => [a, m.income, m.expense].reduce((x, y) => x > y ? x : y));
     final green = finColor('olive'), yellow = finColor('honey');
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: FinDrawer(repo: widget.repo, current: FinSection.stats),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: tr.finStats, onBack: () => Navigator.pop(context)),
+            TopBar(
+                title: tr.finStats,
+                onBack: () => Navigator.pop(context),
+                onTitleTap: () => _scaffoldKey.currentState?.openDrawer()),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: FinSegment(
