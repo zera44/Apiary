@@ -26,6 +26,7 @@ ModelTurn say(String t) => ModelTurn([
     ], 'end_turn');
 
 void main() {
+  tidyTests();
   late Repository repo;
   late String apiary, hive;
   late List<NavTarget> opened;
@@ -193,5 +194,15 @@ void main() {
     final v = await tester.runAsync(() => repo.latestParameterValues(EntityRef.element(hive)));
     expect(v![mark], 'Жовтий');
     await tester.runAsync(() => repo.db.close());
+  });
+}
+
+void tidyTests() {
+  test('tidyAssistantText: порожній рядок між уривками, без ** і дефісів', () {
+    expect(
+      tidyAssistantText('Вступ.\n- **А:** один.\n- **Б:** два.'),
+      'Вступ.\n\n• А: один.\n\n• Б: два.',
+    );
+    expect(tidyAssistantText('Просто текст.'), 'Просто текст.');
   });
 }
