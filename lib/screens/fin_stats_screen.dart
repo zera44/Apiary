@@ -55,6 +55,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
     final exp = _months.fold(0.0, (a, m) => a + m.expense);
     final maxV = _months.fold(0.0, (a, m) => [a, m.income, m.expense].reduce((x, y) => x > y ? x : y));
     final green = finColor('olive'), yellow = finColor('honey');
+    final profit = finColor('sky'), loss = finColor('terra');
     return Scaffold(
       key: _scaffoldKey,
       drawer: FinDrawer(repo: widget.repo, current: FinSection.stats),
@@ -121,6 +122,8 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                                   children: [
                                                     _bar(m.income, maxV, green),
                                                     _bar(m.expense, maxV, yellow),
+                                                    // третій стовпчик: прибуток, а коли витрати більші - збитки
+                                                    _bar(m.balance.abs(), maxV, m.balance >= 0 ? profit : loss),
                                                   ]),
                                             ),
                                             const SizedBox(height: 4),
@@ -132,11 +135,16 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                 ]),
                           ),
                           const SizedBox(height: 12),
-                          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            _dot(green, tr.income),
-                            const SizedBox(width: 20),
-                            _dot(yellow, tr.expenses),
-                          ]),
+                          Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 18,
+                              runSpacing: 6,
+                              children: [
+                                _dot(green, tr.income),
+                                _dot(yellow, tr.expenses),
+                                _dot(profit, tr.finProfit),
+                                _dot(loss, tr.finLoss),
+                              ]),
                         ]),
                       ),
                       const SizedBox(height: 12),

@@ -1343,6 +1343,10 @@ class AppStringsUk extends AppStrings {
   @override
   String get finStats => 'Статистика';
   @override
+  String get finProfit => 'Прибуток';
+  @override
+  String get finLoss => 'Збитки';
+  @override
   String get finHome => 'Головна';
   @override
   String get finCategories => 'Категорії';
