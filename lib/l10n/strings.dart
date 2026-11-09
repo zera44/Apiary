@@ -663,6 +663,13 @@ abstract class AppStrings {
   String get later;
   String finBalance(String v);
   String get finNothingInPeriod;
+  String get finStats;
+  String get finHome;
+  String get finCategories;
+  String get finOps;
+  String get finBackToApiary;
+  String get finByYears;
+  String get finByMonths;
   String get finNewOperation;
   String get finNoOperations;
   String get receiptOnPhoneOnly;

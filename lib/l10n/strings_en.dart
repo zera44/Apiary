@@ -1339,6 +1339,20 @@ class AppStringsEn extends AppStrings {
   @override
   String get finNothingInPeriod => 'Nothing in this period';
   @override
+  String get finStats => 'Statistics';
+  @override
+  String get finHome => 'Home';
+  @override
+  String get finCategories => 'Categories';
+  @override
+  String get finOps => 'Operations';
+  @override
+  String get finBackToApiary => 'Back to the apiary';
+  @override
+  String get finByYears => 'By years';
+  @override
+  String get finByMonths => 'By months';
+  @override
   String get finNewOperation => 'New operation';
   @override
   String get finNoOperations => 'No operations';

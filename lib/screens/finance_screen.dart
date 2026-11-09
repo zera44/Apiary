@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
+import '../ui/fin_drawer.dart';
 import '../ui/date_picker.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
@@ -309,6 +310,7 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   FinPeriod _period = FinPeriod.month;
   DateTime _anchor = DateTime.now();
   DateTime? _customFrom;
@@ -627,18 +629,15 @@ class _FinanceScreenState extends State<FinanceScreen> {
         }),
     ];
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: FinDrawer(repo: repo, current: FinSection.home),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
             TopBar(
               title: tr.finances,
               onBack: () => Navigator.pop(context),
-              trailing: IconButton(
-                tooltip: tr.finAllOperations,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.receipt_long_outlined, color: AppColors.text),
-                onPressed: () => _history(),
-              ),
+              onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -722,11 +721,23 @@ class FinHistoryScreen extends StatefulWidget {
       this.categoryId,
       this.onlyStock = false});
 
+  /// Усі операції поточного місяця (пункт меню «Операції»).
+  factory FinHistoryScreen.thisMonth({Key? key, required Repository repo}) {
+    final n = DateTime.now();
+    return FinHistoryScreen(
+        key: key,
+        repo: repo,
+        from: DateTime(n.year, n.month, 1),
+        to: DateTime(n.year, n.month + 1, 1),
+        title: finMonthTitle(n));
+  }
+
   @override
   State<FinHistoryScreen> createState() => _FinHistoryScreenState();
 }
 
 class _FinHistoryScreenState extends State<FinHistoryScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   List<FinEntry> _entries = [];
   Map<String, FinCategory> _cats = {};
   late int _filter = widget.filter;
@@ -771,10 +782,23 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
           e
     ];
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: FinDrawer(repo: repo, current: FinSection.ops),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: widget.title, onBack: () => Navigator.pop(context)),
+            TopBar(
+              title: tr.finOps,
+              onBack: () => Navigator.pop(context),
+              onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(widget.title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
+            ),
             if (!_scoped)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
