@@ -18,6 +18,7 @@ import '../ui/common.dart';
 import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
 import '../ui/orientation.dart';
+import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'splash_screen.dart';
@@ -36,6 +37,7 @@ class MainSettingsTab extends StatelessWidget {
           _LanguageSection(repo: repo),
           _TextSizeSection(repo: repo),
           _OrientationSection(repo: repo),
+          _StartScreenSection(repo: repo),
           _AssistantSection(repo: repo),
           if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
         ],
@@ -105,6 +107,95 @@ class _LanguageSection extends StatelessWidget {
                 ),
               ),
             ]),
+          ],
+        ),
+      );
+}
+
+/// «Початковий екран»: що відкривається одразу після запуску (вибір - у вікні).
+class _StartScreenSection extends StatefulWidget {
+  final Repository repo;
+  const _StartScreenSection({required this.repo});
+
+  static const icons = [
+    Icons.home_outlined,
+    Icons.qr_code_scanner,
+    Icons.map_outlined,
+    Icons.inventory_2_outlined,
+    Icons.account_balance_wallet_outlined,
+  ];
+
+  @override
+  State<_StartScreenSection> createState() => _StartScreenSectionState();
+}
+
+class _StartScreenSectionState extends State<_StartScreenSection> {
+  @override
+  void initState() {
+    super.initState();
+    AppStartScreen.load(widget.repo);
+  }
+
+  Future<void> _choose(BuildContext context) async {
+    final current = AppStartScreen.value.value;
+    final picked = await showDialog<StartScreen>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(tr.startScreenSection),
+        children: [
+          for (final s in StartScreen.values)
+            SimpleDialogOption(
+              key: ValueKey('start-screen-${s.name}'),
+              onPressed: () => Navigator.pop(ctx, s),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: Row(children: [
+                Icon(_StartScreenSection.icons[s.index], color: AppColors.text, size: 24),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(tr.startScreenLevels[s.index],
+                      style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight: s == current ? FontWeight.w700 : FontWeight.w400)),
+                ),
+                if (s == current) Icon(Icons.check, color: AppColors.create),
+              ]),
+            ),
+        ],
+      ),
+    );
+    if (picked == null || picked == current) return;
+    await AppStartScreen.set(widget.repo, picked);
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<StartScreen>(
+        valueListenable: AppStartScreen.value,
+        builder: (context, current, _) => SettingsSection(
+          title: tr.startScreenSection,
+          children: [
+            Text(tr.startScreenHint, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+            const SizedBox(height: 10),
+            Row(children: [
+              Icon(_StartScreenSection.icons[current.index], color: AppColors.create, size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(tr.startScreenLevels[current.index],
+                    key: const ValueKey('start-screen-current'),
+                    style: TextStyle(
+                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            PillButton(
+              key: const ValueKey('start-screen-change'),
+              text: tr.startScreenChange,
+              bg: AppColors.darkBtn,
+              fg: AppColors.text,
+              width: double.infinity,
+              height: 44,
+              onPressed: () => _choose(context),
+            ),
           ],
         ),
       );

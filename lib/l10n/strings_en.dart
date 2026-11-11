@@ -141,6 +141,14 @@ class AppStringsEn extends AppStrings {
   @override
   List<String> get orientationLevels => const ['Auto', 'Portrait', 'Landscape'];
   @override
+  String get startScreenSection => 'Start screen';
+  @override
+  String get startScreenHint => 'What opens right after launch. Back leads to the home page.';
+  @override
+  String get startScreenChange => 'Change start screen';
+  @override
+  List<String> get startScreenLevels => const ['Home page', 'Hive scanner', 'My apiary', 'Stock', 'Finances'];
+  @override
   String get inviteLinkButton => 'Create an invite link';
   @override
   String get inviteLinkHint =>
