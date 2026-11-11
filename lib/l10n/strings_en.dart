@@ -1353,6 +1353,46 @@ class AppStringsEn extends AppStrings {
   @override
   String get finBackToApiary => 'Back to the apiary';
   @override
+  String get finAccounts => 'Accounts';
+  @override
+  String get finAccount => 'Account';
+  @override
+  String get finAccountNew => 'New account';
+  @override
+  String get finAccountsTotal => 'Total';
+  @override
+  String get finTransferDeleteText => 'Delete the transfer? Account balances return to what they were.';
+  @override
+  String get finTransfers => 'Transfer history';
+  @override
+  String get finTransferNew => 'New transfer';
+  @override
+  String get finTransfer => 'Transfer';
+  @override
+  String get finFromAccount => 'From account';
+  @override
+  String get finToAccount => 'To account';
+  @override
+  String get finAccountBalance => 'Account balance';
+  @override
+  String get finStartBalance => 'Starting amount';
+  @override
+  String get finInTotal => 'Count in the total';
+  @override
+  String get finAccountDelete => 'Delete account';
+  @override
+  String get finAccountDeleteText => 'The account disappears from the list; its operations stay in the journal.';
+  @override
+  String get finAccountDeleteTitle => 'Delete the account?';
+  @override
+  String get enterAccountName => 'Enter the account name';
+  @override
+  String get finPickAccounts => 'Pick two different accounts';
+  @override
+  String get finNoTransfers => 'No transfers this month';
+  @override
+  String get finBalanceHint => 'Changing the amount creates an adjustment: a decrease counts as an expense, an increase as income.';
+  @override
   String get finByYears => 'By years';
   @override
   String get finByMonths => 'By months';

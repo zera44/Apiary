@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -9,6 +10,7 @@ import '../services/receipt_ocr.dart';
 import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
+import '../ui/fin_account_chips.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
@@ -95,6 +97,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
   late String _kind = widget.kind;
   List<FinCategory> _cats = [];
   String? _catId;
+  List<FinAccount> _accounts = [];
+  String? _accountId;
   final List<_FLine> _lines = [];
   final _sum = TextEditingController();
   bool _sumManual = false;
@@ -166,8 +170,16 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final stock = await repo.listStockItems();
     final prices = await repo.lastStockPrices();
     final last = await repo.getMeta(_lastCatKey);
+    final accounts = await repo.listFinAccounts();
+    final lastAccount = await repo.getMeta('fin_last_account');
     if (!mounted) return;
     setState(() {
+      _accounts = accounts;
+      if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
+        _accountId = accounts.any((a) => a.id == lastAccount)
+            ? lastAccount
+            : (accounts.isEmpty ? null : accounts.first.id);
+      }
       _cats = cats;
       _stock = stock;
       _prices = prices;
@@ -462,6 +474,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         categoryId: cat.id,
         amount: amount,
         date: when,
+        accountId: _accountId,
         lines: [
           for (final l in used)
             FinLineInput(
@@ -473,6 +486,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ],
       );
       await repo.setMeta(_lastCatKey, cat.id);
+      if (_accountId != null) await repo.setMeta('fin_last_account', _accountId!);
       if (!mounted) return;
       final toStock = used.where((l) => l.toStock).length;
       Navigator.pop(
@@ -1009,6 +1023,12 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     ),
                   ),
                   _sumBlock(),
+                  if (_accounts.length > 1)
+                    FinAccountChips(
+                      accounts: _accounts,
+                      selected: _accountId,
+                      onChanged: (id) => setState(() => _accountId = id),
+                    ),
                   _categories(),
                   _table(),
                   _dateRow(),

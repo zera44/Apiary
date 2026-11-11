@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
+import 'fin_accounts.dart';
 import 'repository.dart';
 import '../l10n/l10n.dart';
 
@@ -290,6 +291,7 @@ extension RepositoryFinance on Repository {
     required DateTime date,
     List<FinLineInput> lines = const [],
     String? comment,
+    String? accountId,
   }) async {
     if (kind != kFinExpense && kind != kFinIncome) throw ArgumentError.value(kind, 'kind');
     if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
@@ -300,6 +302,7 @@ extension RepositoryFinance on Repository {
       }
     }
     final opId = Repository.newId();
+    final account = accountId ?? await defaultFinAccountId();
     var touchedStock = false;
     await db.transaction((txn) async {
       final t = Repository.now();
@@ -307,6 +310,7 @@ extension RepositoryFinance on Repository {
         'id': opId,
         'kind': kind,
         'category_id': categoryId,
+        'account_id': account,
         'amount': amount,
         'op_date': _secs(date),
         'comment': comment,

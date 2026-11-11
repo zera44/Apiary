@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
+import '../screens/fin_accounts_screen.dart';
 import '../screens/fin_categories_screen.dart';
 import '../screens/fin_stats_screen.dart';
 import '../screens/finance_screen.dart';
 import 'theme.dart';
 
 /// Розділи блоку «Фінанси» (пункти бокового меню).
-enum FinSection { home, stats, categories, ops }
+enum FinSection { home, accounts, stats, categories, ops }
 
-/// Бокове меню блоку «Фінанси»: Головна, Статистика, Категорії, Операції та
+/// Бокове меню блоку «Фінанси»: Головна, Рахунки, Статистика, Категорії, Операції та
 /// вихід до пасіки. Головна лежить під усіма іншими розділами, а вони
 /// замінюють один одного, тож «назад» завжди йде на екран назад: з розділу
 /// на Головну фінансів, звідти до пасіки.
@@ -28,6 +29,7 @@ class FinDrawer extends StatelessWidget {
       return;
     }
     final route = MaterialPageRoute<void>(builder: (_) => switch (target) {
+          FinSection.accounts => FinAccountsScreen(repo: repo),
           FinSection.stats => FinStatsScreen(repo: repo),
           FinSection.categories => FinCategoriesScreen(repo: repo),
           _ => FinHistoryScreen.thisMonth(repo: repo),
@@ -82,6 +84,7 @@ class FinDrawer extends StatelessWidget {
           Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
           const SizedBox(height: 8),
           item(FinSection.home, Icons.donut_large_outlined, tr.finHome),
+          item(FinSection.accounts, Icons.account_balance_outlined, tr.finAccounts),
           item(FinSection.stats, Icons.bar_chart_rounded, tr.finStats),
           item(FinSection.categories, Icons.view_list_outlined, tr.finCategories),
           item(FinSection.ops, Icons.receipt_long_outlined, tr.finOps),
