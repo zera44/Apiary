@@ -75,6 +75,10 @@ abstract class AppStrings {
   String get orientationSection;
   String get orientationHint;
   List<String> get orientationLevels;
+  String get startScreenSection;
+  String get startScreenHint;
+  String get startScreenChange;
+  List<String> get startScreenLevels;
   String get inviteLinkButton;
   String get inviteLinkHint;
   String inviteLinkShare(String url);

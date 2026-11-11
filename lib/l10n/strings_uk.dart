@@ -140,6 +140,14 @@ class AppStringsUk extends AppStrings {
   @override
   List<String> get orientationLevels => const ['Авто', 'Вертикальна', 'Горизонтальна'];
   @override
+  String get startScreenSection => 'Початковий екран';
+  @override
+  String get startScreenHint => 'Що відкривається одразу після запуску. «Назад» - на початкову сторінку.';
+  @override
+  String get startScreenChange => 'Змінити початковий екран';
+  @override
+  List<String> get startScreenLevels => const ['Початкова сторінка', 'Сканер вулика', 'Моя пасіка', 'Склад', 'Фінанси'];
+  @override
   String get inviteLinkButton => 'Створити посилання-запрошення';
   @override
   String get inviteLinkHint =>

@@ -11,6 +11,7 @@ import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 import '../services/auth.dart';
 import '../services/invite_link.dart';
+import '../services/reminders.dart';
 import '../services/server.dart';
 import '../ui/first_login_dialog.dart';
 import '../services/sharing.dart';
@@ -21,6 +22,7 @@ import '../ui/icons.dart';
 import '../services/feedback_chat.dart';
 import '../ui/hive_postbox.dart';
 import '../ui/invitations_sheet.dart';
+import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'feedback_chat_screen.dart';
@@ -114,6 +116,38 @@ class _HomeScreenState extends State<HomeScreen> {
     // запрошувальне посилання: відкрили до входу, з месенджера або з фону
     InviteLink.pending.addListener(_joinPending);
     WidgetsBinding.instance.addPostFrameCallback((_) => _joinPending());
+    // початковий екран з налаштувань - поверх головної («назад» - на неї)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openStartScreen());
+  }
+
+  /// Налаштування → «Початковий екран»: один раз за запуск відкрити обраний
+  /// екран. Не заважає першому входу, запрошенню й нагадуванню про вулик -
+  /// тоді лишаємось на головній.
+  Future<void> _openStartScreen() async {
+    if (AppStartScreen.opened) return;
+    AppStartScreen.opened = true;
+    final s = await AppStartScreen.load(repo);
+    if (s == StartScreen.home || !mounted) return;
+    if (Server.choice.value != null ||
+        InviteLink.pending.value != null ||
+        ReminderService.instance.openHiveRequest.value != null ||
+        ReminderService.instance.openFeedbackRequest.value) {
+      return;
+    }
+    final nav = Navigator.of(context);
+    void push(Widget w) => nav.push(MaterialPageRoute(builder: (_) => w));
+    switch (s) {
+      case StartScreen.home:
+        break;
+      case StartScreen.scanner:
+        await AppDrawer.openHiveByQr(nav, repo);
+      case StartScreen.apiary:
+        await openStart(nav, repo);
+      case StartScreen.stock:
+        push(StockScreen(repo: repo));
+      case StartScreen.finances:
+        push(FinanceScreen(repo: repo));
+    }
   }
 
   bool _asking = false;

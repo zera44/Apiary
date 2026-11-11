@@ -24,6 +24,7 @@ import 'package:apiary/ui/first_hints.dart';
 import 'package:apiary/ui/grid_view.dart';
 import 'package:apiary/ui/common.dart';
 import 'package:apiary/ui/orientation.dart';
+import 'package:apiary/ui/start_screen.dart';
 import 'package:apiary/ui/text_scale.dart';
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
@@ -147,6 +148,46 @@ void main() {
     await tester.runAsync(() => repo.setMeta(AppOrientation.key, 'вбік'));
     await tester.runAsync(() => AppOrientation.load(repo));
     expect(AppOrientation.value.value, ScreenOrientation.auto);
+  });
+
+  testWidgets('початковий екран: вибір у «Головному», зберігається, при запуску відкривається поверх головної',
+      (tester) async {
+    AppStartScreen.value.value = StartScreen.home;
+    await tester.pumpWidget(app(SettingsScreen(repo: repo)));
+    await settle(tester);
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('start-screen-change')), 200,
+        scrollable: find.byType(Scrollable).last);
+    await settle(tester);
+    // за замовчуванням - початкова сторінка
+    expect(find.text(tr.startScreenSection), findsWidgets);
+    expect(find.text(tr.startScreenLevels[0]), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('start-screen-change')));
+    await settle(tester);
+    await tester.tap(find.byKey(const ValueKey('start-screen-stock')));
+    await settle(tester);
+    expect(AppStartScreen.value.value, StartScreen.stock);
+    expect(await tester.runAsync(() => repo.getMeta(AppStartScreen.key)), 'stock');
+    // сміття - початкова сторінка
+    expect(AppStartScreen.parse('вбік'), StartScreen.home);
+
+    // запуск: головна, а поверх неї - склад; «назад» - на головну
+    AppStartScreen.opened = false;
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(app(HomeScreen(repo: repo, auth: FakeAuth(signedIn: true))));
+    await settle(tester);
+    expect(find.byType(StockScreen), findsOneWidget);
+    final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
+    nav.pop();
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(StockScreen), findsNothing);
+    expect(find.widgetWithText(PillButton, 'Почати'), findsOneWidget);
+    // повернення на головну за цей самий запуск склад удруге не відкриває
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(app(HomeScreen(repo: repo, auth: FakeAuth(signedIn: true))));
+    await settle(tester);
+    expect(find.byType(StockScreen), findsNothing);
+    await tester.runAsync(() => AppStartScreen.set(repo, StartScreen.home));
   });
 
   testWidgets('головний на телефоні боком: «Почати» видно без прокрутки', (tester) async {
