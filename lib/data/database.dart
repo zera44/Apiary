@@ -55,8 +55,10 @@ class AppDatabase {
   ///  * 3 - спільний доступ: пасіка в кожному записі, власник довідників,
   ///    сталі ключі типових записів, групи «Конструктора» - таблицею
   ///    (див. [_sharing]);
-  ///  * 4 - журнали синхронізації (sync_deletions, sync_photos).
-  static const schemaVersion = 4;
+  ///  * 4 - журнали синхронізації (sync_deletions, sync_photos);
+  ///  * 5 - рахунки фінансів: наявні операції - на рахунок «Готівка»
+  ///    (див. [_accounts]).
+  static const schemaVersion = 5;
 
   /// Кроки міграції: версія -> як дійти до неї з попередньої. Кожен крок
   /// виконується рівно один раз для бази, і всі разом - в одній транзакції
@@ -72,7 +74,33 @@ class AppDatabase {
     2: _requeueAll,
     3: _sharing,
     4: _noop, // журнали синхронізації (sync_deletions, sync_photos) - у ensureSchema
+    5: _accounts,
   };
+
+  /// Версія 5: якщо вже є свої операції без рахунку - створюємо рахунок
+  /// «Готівка» й кладемо їх туди. На порожній базі нічого не робить.
+  static Future<void> _accounts(DatabaseExecutor db) async {
+    final rows = await db.rawQuery(
+        'SELECT 1 FROM fin_ops WHERE account_id IS NULL AND owner_id IS NULL AND deleted = 0 LIMIT 1');
+    if (rows.isEmpty) return;
+    final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    final id = Repository.newId();
+    await db.insert('fin_accounts', {
+      'id': id,
+      'name': 'Готівка',
+      'icon': 'payments',
+      'color': 'ec9b2e',
+      'start_balance': 0,
+      'in_total': 1,
+      'sort_order': 0,
+      'deleted': 0,
+      'updated_at': now,
+      'synced': 0,
+    });
+    await db.rawUpdate(
+        'UPDATE fin_ops SET account_id = ?, updated_at = ?, synced = 0 WHERE account_id IS NULL AND owner_id IS NULL',
+        [id, now]);
+  }
 
   /// Версія 3: записам, що належать пасіці через вулик, - пасіка прямо
   /// (зокрема видаленим - сервер має знати про їхнє видалення); групи
@@ -351,6 +379,35 @@ class AppDatabase {
         updated_at REAL NOT NULL,
         synced INTEGER NOT NULL DEFAULT 0
       )''');
+    // рахунки (гаманці) і перекази між ними; операція належить рахунку
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS fin_accounts (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT,
+        color TEXT,
+        start_balance REAL NOT NULL DEFAULT 0,
+        in_total INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS fin_transfers (
+        id TEXT PRIMARY KEY,
+        from_account_id TEXT NOT NULL,
+        to_account_id TEXT NOT NULL,
+        amount REAL NOT NULL,
+        op_date REAL NOT NULL,
+        comment TEXT,
+        created_at REAL NOT NULL,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at REAL NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      )''');
+    await _ensureColumn(db, 'fin_ops', 'account_id', 'TEXT');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_fo_account ON fin_ops(account_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_op ON fin_lines(op_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_move ON fin_lines(stock_move_id)');
 
@@ -474,6 +531,8 @@ class AppDatabase {
     'fin_categories',
     'fin_ops',
     'fin_lines',
+    'fin_accounts',
+    'fin_transfers',
     'param_groups',
   ];
 

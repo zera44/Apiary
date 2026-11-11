@@ -30,7 +30,9 @@ class FakeSyncServer {
   int upserts = 0;
 
   static const _apiaryTables = {'element_parameters', 'parameter_records', 'qr_codes', 'hive_notes'};
-  static const _stock = {'stock_items', 'stock_moves', 'fin_categories', 'fin_ops', 'fin_lines'};
+  static const _stock = {
+    'stock_items', 'stock_moves', 'fin_categories', 'fin_ops', 'fin_lines', 'fin_accounts', 'fin_transfers',
+  };
   static const _frozen = {
     'stock_moves': ['item_id', 'kind', 'amount', 'quantity_after', 'created_at', 'ref_id'],
     'parameter_records': ['group_id', 'element_id', 'value', 'created_at'],

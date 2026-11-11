@@ -32,7 +32,17 @@ const Map<String, Color> kFinColors = {
   'plum': Color(0xFF9B6A9E),
 };
 
-IconData finIcon(String key) => kFinIcons[key] ?? Icons.more_horiz;
+/// Значки рахунків (гаманців).
+const Map<String, IconData> kFinAccountIcons = {
+  'payments': Icons.payments_outlined,
+  'card': Icons.credit_card,
+  'bank': Icons.account_balance_outlined,
+  'savings': Icons.savings_outlined,
+  'wallet': Icons.account_balance_wallet_outlined,
+  'safe': Icons.lock_outline,
+};
+
+IconData finIcon(String key) => kFinIcons[key] ?? kFinAccountIcons[key] ?? Icons.more_horiz;
 Color finColor(String key) => kFinColors[key] ?? kFinColors['honey']!;
 
 /// Назва для запису без категорії - прихід, внесений прямо на складі.

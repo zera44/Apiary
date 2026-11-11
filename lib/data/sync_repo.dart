@@ -64,6 +64,8 @@ extension RepositorySync on Repository {
         ('stock_moves', 'item_id', 'stock_items'),
         ('fin_ops', 'category_id', 'fin_categories'),
         ('fin_lines', 'op_id', 'fin_ops'),
+        ('fin_ops', 'account_id', 'fin_accounts'),
+        ('fin_transfers', 'from_account_id', 'fin_accounts'),
       ]) {
         moved += await txn.rawUpdate(
             'UPDATE $tbl SET owner_id = (SELECT x.owner_id FROM $parent x WHERE x.id = $tbl.$ref) '
@@ -156,7 +158,7 @@ extension RepositorySync on Repository {
       if (!covers(a['owner_id']! as String, a['id']! as String)) await evictApiary(a['id']! as String);
     }
     // склад і фінанси - лише з дозволом
-    const stockTables = ['stock_moves', 'stock_items', 'fin_lines', 'fin_ops', 'fin_categories'];
+    const stockTables = ['stock_moves', 'stock_items', 'fin_lines', 'fin_ops', 'fin_categories', 'fin_accounts', 'fin_transfers'];
     final stockOwners = {for (final m in mine) if (m['stock_access'] == 1) m['owner_id']};
     var dropped = 0;
     await db.transaction((txn) async {

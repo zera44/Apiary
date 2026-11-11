@@ -49,6 +49,8 @@ const kSyncTables = [
   'fin_categories',
   'fin_ops',
   'fin_lines',
+  'fin_accounts',
+  'fin_transfers',
   'note_labels',
   'hive_notes',
   'param_groups',

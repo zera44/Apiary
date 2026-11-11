@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:apiary/data/database.dart';
+import 'package:apiary/data/fin_accounts.dart';
 import 'package:apiary/data/finance.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/data/models.dart';
@@ -301,6 +302,10 @@ void main() {
         amount: 10,
         date: DateTime.now(),
         lines: const [FinLineInput(name: 'Цукор', qty: 1, unit: 'кг', price: 10)]);
+    // рахунки: «Готівка» створила операція, перекази - між двома рахунками
+    final cash = await repo.defaultFinAccountId();
+    final card = await repo.addFinAccount('Картка');
+    await repo.addFinTransfer(fromId: cash, toId: card, amount: 5, date: DateTime.now());
     // нотатки вулика з міткою
     await repo.addInspectionNote(EntityRef.element(id), 'Матка сіє');
     // групи «Конструктора»

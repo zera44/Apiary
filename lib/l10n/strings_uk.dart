@@ -1355,6 +1355,46 @@ class AppStringsUk extends AppStrings {
   @override
   String get finBackToApiary => 'Назад до пасіки';
   @override
+  String get finAccounts => 'Рахунки';
+  @override
+  String get finAccount => 'Рахунок';
+  @override
+  String get finAccountNew => 'Новий рахунок';
+  @override
+  String get finAccountsTotal => 'Загалом';
+  @override
+  String get finTransferDeleteText => 'Видалити переказ? Залишки рахунків повернуться як були.';
+  @override
+  String get finTransfers => 'Історія переказів';
+  @override
+  String get finTransferNew => 'Новий переказ';
+  @override
+  String get finTransfer => 'Переказ';
+  @override
+  String get finFromAccount => 'З рахунку';
+  @override
+  String get finToAccount => 'На рахунок';
+  @override
+  String get finAccountBalance => 'Залишок на рахунку';
+  @override
+  String get finStartBalance => 'Початкова сума';
+  @override
+  String get finInTotal => 'Враховувати в загальній сумі';
+  @override
+  String get finAccountDelete => 'Видалити рахунок';
+  @override
+  String get finAccountDeleteText => 'Рахунок зникне зі списку, а його операції лишаться в журналі.';
+  @override
+  String get finAccountDeleteTitle => 'Видалити рахунок?';
+  @override
+  String get enterAccountName => 'Введіть назву рахунку';
+  @override
+  String get finPickAccounts => 'Оберіть два різні рахунки';
+  @override
+  String get finNoTransfers => 'Переказів за цей місяць немає';
+  @override
+  String get finBalanceHint => 'Змінивши суму, ви створите коригування: мінус піде у витрати, плюс - у доходи.';
+  @override
   String get finByYears => 'За роками';
   @override
   String get finByMonths => 'По місяцях';
