@@ -1381,7 +1381,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get finImport => 'Import from Excel';
   @override
-  String get finImportHint => 'Pick an .xlsx file with the sheets “Витрати”, “Дохід” and “Перекази”. Accounts and categories from the file are created automatically. Balances start from zero: afterwards correct an account amount if it differs.';
+  String get finImportHint => 'Pick an .xlsx file with expense, income and transfer sheets (the Ukrainian sheet names are expected). Accounts and categories from the file are created automatically. Balances start from zero: afterwards correct an account amount if it differs.';
   @override
   String get finImportPick => 'Choose file';
   @override
