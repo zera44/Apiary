@@ -46,6 +46,10 @@ enum AssistantFailure {
   /// немає інтернету чи сервер не відповів - можна в чергу й повторити
   offline,
 
+  /// з'єднання є, але сервер не встиг відповісти (довга відповідь):
+  /// повторюємо з паузою й лічимо спроби - не «немає інтернету»
+  timeout,
+
   /// сервер чи модель перевантажені - повторити згодом
   busy,
 
@@ -64,7 +68,9 @@ class AssistantException implements Exception {
   const AssistantException(this.kind);
 
   /// Чи варто повторити пізніше (черга).
-  bool get retryable => kind == AssistantFailure.offline || kind == AssistantFailure.busy;
+  bool get retryable => kind == AssistantFailure.offline ||
+      kind == AssistantFailure.busy ||
+      kind == AssistantFailure.timeout;
 
   @override
   String toString() => 'AssistantException($kind)';
@@ -112,7 +118,7 @@ class RemoteAssistantModel implements AssistantModel, BookSearch {
   /// Вибір людини (модель, глибина) - додається до кожного запиту.
   final Future<Map<String, String>> Function()? options;
   RemoteAssistantModel(this.url, this.token,
-      {this.client, this.timeout = const Duration(seconds: 60), this.options});
+      {this.client, this.timeout = const Duration(seconds: 150), this.options});
 
   static const tokenHeader = 'x-apiary-assistant-token';
 
@@ -137,7 +143,7 @@ class RemoteAssistantModel implements AssistantModel, BookSearch {
     } on http.ClientException {
       throw const AssistantException(AssistantFailure.offline);
     } on TimeoutException {
-      throw const AssistantException(AssistantFailure.offline);
+      throw const AssistantException(AssistantFailure.timeout);
     } finally {
       if (client == null) c.close();
     }
@@ -170,7 +176,7 @@ class RemoteAssistantModel implements AssistantModel, BookSearch {
     } on http.ClientException {
       throw const AssistantException(AssistantFailure.offline);
     } on TimeoutException {
-      throw const AssistantException(AssistantFailure.offline);
+      throw const AssistantException(AssistantFailure.timeout);
     } finally {
       if (client == null) c.close();
     }

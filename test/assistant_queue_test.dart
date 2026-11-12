@@ -137,6 +137,24 @@ void main() {
     expect(await statuses(), ['user:sent:Питання', 'assistant::Нарешті']);
   });
 
+  test('сервер не встиг - спроби лічаться, «не надіслано» замість вічного очікування', () async {
+    final m = FakeModel([for (var i = 0; i < 5; i++) AssistantFailure.timeout]);
+    final q = queue(m);
+    await q.submit('Знайди по всіх джерелах');
+    var it = (await store.items()).single;
+    expect(it.status, ChatStatus.queued);
+    expect(it.attempts, 1);
+    expect(it.error, 'timeout');
+    for (var i = 0; i < 4; i++) {
+      clock = clock.add(const Duration(hours: 1));
+      await q.process();
+    }
+    it = (await store.items()).single;
+    expect(it.status, ChatStatus.failed);
+    expect(it.error, 'timeout');
+    expect(m.sent.length, AssistantQueue.maxAttempts);
+  });
+
   test('неправильний тестовий код - одразу «не надіслано» (без повторів)', () async {
     final m = FakeModel([AssistantFailure.unauthorized]);
     await queue(m).submit('x');
