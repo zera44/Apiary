@@ -1375,6 +1375,34 @@ class AppStringsEn extends AppStrings {
   @override
   String get finTransferDeleteText => 'Delete the transfer? Account balances return to what they were.';
   @override
+  String get finRateNote => 'at the NBU rate';
+  @override
+  String get finCurrency => 'Currency';
+  @override
+  String finAccountAmount(String currency) => 'Amount in $currency';
+  @override
+  String finTransferTo(String currency) => 'Credited, $currency';
+  @override
+  String get finImport => 'Import from Excel';
+  @override
+  String get finImportHint => 'Pick an .xlsx file with expense, income and transfer sheets (the Ukrainian sheet names are expected). Accounts and categories from the file are created automatically. Balances start from zero: afterwards correct an account amount if it differs.';
+  @override
+  String get finImportPick => 'Choose file';
+  @override
+  String get finImportStart => 'Import';
+  @override
+  String get finImportBad => 'Could not read the file';
+  @override
+  String get finImportEmpty => 'The file has no operations';
+  @override
+  String get finImportNewAccounts => 'New accounts';
+  @override
+  String get finImportNewCategories => 'New categories';
+  @override
+  String finImportFound(int expenses, int incomes, int transfers, int skipped) => 'Expenses: $expenses\nIncome: $incomes\nTransfers: $transfers\nSkipped (blank or unclear rows): $skipped';
+  @override
+  String finImportDone(int added, int duplicates) => 'Added: $added. Already in the database: $duplicates.';
+  @override
   String get finTransfers => 'Transfer history';
   @override
   String get finTransferNew => 'New transfer';

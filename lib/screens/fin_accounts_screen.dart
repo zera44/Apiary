@@ -10,6 +10,7 @@ import '../ui/fin_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import '../ui/thousands_input.dart';
+import 'fin_import_screen.dart';
 import 'fin_transfers_screen.dart';
 
 /// Сума зі знаком із поля вводу («-120,5», «−120»); null - не число.
@@ -43,6 +44,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   List<FinAccount> _accounts = const [];
   Map<String, double> _balances = const {};
+  Map<String, double> _rates = const {kFinUah: 1};
   bool _loaded = false;
   bool _hidden = false;
 
@@ -50,6 +52,10 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
   void initState() {
     super.initState();
     _reload();
+    // курси НБУ: коли є інтернет, оновлюємо; без нього лишаються останні
+    widget.repo.refreshFinRates().then((_) {
+      if (mounted) _reload();
+    });
   }
 
   Future<void> _reload() async {
@@ -57,10 +63,12 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
     await widget.repo.defaultFinAccountId();
     final list = await widget.repo.listFinAccounts();
     final bal = await widget.repo.finAccountBalances();
+    final rates = await widget.repo.finRates();
     if (!mounted) return;
     setState(() {
       _accounts = list;
       _balances = bal;
+      _rates = rates;
       _loaded = true;
     });
   }
@@ -79,12 +87,23 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
     await _reload();
   }
 
-  String _money(double v) => _hidden ? '••••• ₴' : uah(v);
+  Future<void> _import() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => FinImportScreen(repo: widget.repo)));
+    await _reload();
+  }
 
+  String _money(double v, [String currency = kFinUah]) =>
+      _hidden ? '••••• ${currencySymbol(currency)}' : money(v, currency);
+
+  /// Загалом у гривнях: рахунки в іншій валюті - за курсом НБУ (якщо курсу ще
+  /// немає, такий рахунок у суму не входить).
   double get _total => [
         for (final a in _accounts)
-          if (a.inTotal) _balances[a.id] ?? 0
+          if (a.inTotal) (_balances[a.id] ?? 0) * (_rates[a.currency] ?? 0)
       ].fold(0.0, (x, y) => x + y);
+
+  bool get _hasForeign => _accounts.any((a) => a.inTotal && a.foreign);
 
   Widget _action(IconData icon, String text, VoidCallback onTap) => Expanded(
         child: Material(
@@ -138,6 +157,9 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                         color: AppColors.text,
                                         fontSize: 28,
                                         fontWeight: FontWeight.w700)),
+                                if (_hasForeign)
+                                  Text(tr.finRateNote,
+                                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                               ]),
                             ),
                             IconButton(
@@ -154,6 +176,8 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                           _action(Icons.history, tr.finTransfers, () => _transfers()),
                           const SizedBox(width: 12),
                           _action(Icons.swap_horiz, tr.finTransferNew, () => _transfers(create: true)),
+                          const SizedBox(width: 12),
+                          _action(Icons.upload_file, tr.finImport, _import),
                         ]),
                         const SizedBox(height: 14),
                         for (final a in _accounts)
@@ -175,13 +199,16 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: AppColors.text, fontSize: 16))),
                                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                                    Text(_money(_balances[a.id] ?? 0),
+                                    Text(_money(_balances[a.id] ?? 0, a.currency),
                                         style: TextStyle(
                                             color: (_balances[a.id] ?? 0) < 0
                                                 ? finColor('terra')
                                                 : AppColors.text,
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600)),
+                                    if (a.foreign && _rates[a.currency] != null)
+                                      Text('≈ ${_money((_balances[a.id] ?? 0) * _rates[a.currency]!)}',
+                                          style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                     if (!a.inTotal)
                                       Icon(Icons.visibility_off_outlined,
                                           size: 14, color: AppColors.textMuted),
@@ -237,6 +264,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   late String _icon = widget.account?.icon ?? 'payments';
   late String _color = widget.account?.color ?? 'honey';
   late bool _inTotal = widget.account?.inTotal ?? true;
+  late String _currency = widget.account?.currency ?? kFinUah;
   double _current = 0;
   bool _saving = false;
 
@@ -281,7 +309,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
         if ((value - _current).abs() >= 0.005) await repo.setFinAccountBalance(id, value);
       } else {
         await repo.addFinAccount(name,
-            icon: _icon, color: _color, startBalance: value, inTotal: _inTotal);
+            icon: _icon, color: _color, startBalance: value, inTotal: _inTotal, currency: _currency);
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -347,12 +375,26 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           style: TextStyle(color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w700),
                           decoration: InputDecoration(
                             hintText: '0',
-                            suffixText: '₴',
+                            suffixText: currencySymbol(_currency),
                             suffixStyle: TextStyle(color: AppColors.create, fontSize: 28),
                             filled: false,
                           ),
                         ),
                       ),
+                      if (!_editing) ...[
+                        _label(tr.finCurrency),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Wrap(spacing: 8, children: [
+                            for (final c in kFinCurrencies)
+                              ChoiceChip(
+                                label: Text(c),
+                                selected: c == _currency,
+                                onSelected: (_) => setState(() => _currency = c),
+                              ),
+                          ]),
+                        ),
+                      ],
                       if (_editing)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),

@@ -292,6 +292,7 @@ extension RepositoryFinance on Repository {
     List<FinLineInput> lines = const [],
     String? comment,
     String? accountId,
+    double? accountAmount,
   }) async {
     if (kind != kFinExpense && kind != kFinIncome) throw ArgumentError.value(kind, 'kind');
     if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
@@ -311,6 +312,7 @@ extension RepositoryFinance on Repository {
         'kind': kind,
         'category_id': categoryId,
         'account_id': account,
+        'account_amount': accountAmount,
         'amount': amount,
         'op_date': _secs(date),
         'comment': comment,

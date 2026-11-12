@@ -62,6 +62,18 @@ String uah(double v) {
   return '$sign$buf${parts.length > 1 ? ',${parts[1]}' : ''} ₴';
 }
 
+/// Знак валюти: ₴, $, €; інші - кодом.
+String currencySymbol(String code) => switch (code) {
+      'UAH' => '₴',
+      'USD' => '\$',
+      'EUR' => '€',
+      _ => code,
+    };
+
+/// Сума в валюті [currency]: «1 250,50 \$».
+String money(double v, String currency) =>
+    uah(v).replaceFirst(RegExp(r' ₴$'), ' ${currencySymbol(currency)}');
+
 String finMonthTitle(DateTime d) => '${tr.monthNames[d.month]} ${d.year}';
 
 String finDay(DateTime d) =>
