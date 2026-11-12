@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../services/nbu_rates.dart';
 import 'finance.dart';
 import 'repository.dart';
 
@@ -5,6 +10,12 @@ import 'repository.dart';
 /// операцій рахунку + перекази на нього - перекази з нього. Зміна залишку
 /// вручну записується звичайною операцією «Коригування рахунку»: мінус - це
 /// витрата, плюс - дохід, тож різниця видна в статистиці.
+
+/// Гривня: валюта за замовчуванням; суми операцій і статистика - в ній.
+const kFinUah = 'UAH';
+
+/// Валюти, які можна обрати рахунку.
+const kFinCurrencies = ['UAH', 'USD', 'EUR'];
 
 /// Назва категорії, на яку йдуть коригування залишку.
 const kFinAdjustName = 'Коригування рахунку';
@@ -20,6 +31,9 @@ class FinAccount {
 
   /// Чи входить залишок у «Загалом».
   final bool inTotal;
+
+  /// Код валюти рахунку (UAH, USD, EUR…).
+  final String currency;
   const FinAccount({
     required this.id,
     required this.name,
@@ -27,7 +41,10 @@ class FinAccount {
     required this.color,
     required this.startBalance,
     required this.inTotal,
+    this.currency = kFinUah,
   });
+
+  bool get foreign => currency != kFinUah;
 
   factory FinAccount.fromRow(Map<String, Object?> r) => FinAccount(
         id: r['id'] as String,
@@ -36,6 +53,7 @@ class FinAccount {
         color: (r['color'] as String?) ?? 'honey',
         startBalance: (r['start_balance'] as num?)?.toDouble() ?? 0,
         inTotal: (r['in_total'] as int? ?? 1) == 1,
+        currency: (r['currency'] as String?) ?? kFinUah,
       );
 }
 
@@ -43,7 +61,11 @@ class FinTransfer {
   final String id;
   final String fromId;
   final String toId;
+  /// Списано з рахунку [fromId] (у його валюті).
   final double amount;
+
+  /// Зараховано на [toId] (у його валюті); порожньо - стільки ж, скільки списано.
+  final double? toAmount;
   final DateTime date;
   final String? comment;
   const FinTransfer({
@@ -51,6 +73,7 @@ class FinTransfer {
     required this.fromId,
     required this.toId,
     required this.amount,
+    this.toAmount,
     required this.date,
     this.comment,
   });
@@ -60,6 +83,45 @@ double _secs(DateTime d) => d.microsecondsSinceEpoch / 1e6;
 DateTime _dt(num secs) => DateTime.fromMicrosecondsSinceEpoch((secs * 1e6).round());
 
 extension RepositoryFinAccounts on Repository {
+  // ------------------------------------------------------------------ курси
+
+  /// Останні відомі курси НБУ (з пам'яті телефона): код -> гривень за одиницю.
+  /// Гривня завжди 1.
+  Future<Map<String, double>> finRates() async {
+    final out = <String, double>{kFinUah: 1};
+    final raw = await getMeta('fin_rates');
+    if (raw == null) return out;
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      for (final e in (m['rates'] as Map<String, dynamic>).entries) {
+        final v = e.value;
+        if (v is num && v > 0) out[e.key] = v.toDouble();
+      }
+    } catch (_) {}
+    return out;
+  }
+
+  /// Оновлює курси з НБУ, якщо є зв'язок і збережені старші за [maxAge].
+  /// Без зв'язку лишаються останні збережені.
+  Future<void> refreshFinRates(
+      {http.Client? client, Duration maxAge = const Duration(hours: 6)}) async {
+    final raw = await getMeta('fin_rates');
+    if (raw != null) {
+      try {
+        final at = (jsonDecode(raw) as Map<String, dynamic>)['at'] as num;
+        final age = DateTime.now().millisecondsSinceEpoch - at.toInt();
+        if (age >= 0 && age < maxAge.inMilliseconds) return;
+      } catch (_) {}
+    }
+    final rates = await fetchNbuRates(client: client);
+    if (rates == null) return;
+    await setMeta('fin_rates',
+        jsonEncode({'at': DateTime.now().millisecondsSinceEpoch, 'rates': rates}));
+  }
+
+  /// Скільки гривень за одиницю [currency] (за збереженими курсами); null - курсу немає.
+  Future<double?> finRate(String currency) async => (await finRates())[currency];
+
   Future<List<FinAccount>> listFinAccounts() async {
     final rows = await db.query('fin_accounts',
         where: 'deleted = 0', orderBy: 'sort_order, name COLLATE NOCASE');
@@ -83,7 +145,8 @@ extension RepositoryFinAccounts on Repository {
       {String icon = 'payments',
       String color = 'honey',
       double startBalance = 0,
-      bool inTotal = true}) async {
+      bool inTotal = true,
+      String currency = kFinUah}) async {
     final clean = name.trim();
     if (clean.isEmpty) throw ArgumentError.value(name, 'name', 'порожня назва');
     final id = Repository.newId();
@@ -96,6 +159,7 @@ extension RepositoryFinAccounts on Repository {
       'color': color,
       'start_balance': startBalance,
       'in_total': inTotal ? 1 : 0,
+      'currency': currency,
       'sort_order': order,
       'updated_at': Repository.now(),
       'synced': 0,
@@ -129,7 +193,7 @@ extension RepositoryFinAccounts on Repository {
       out[a['id'] as String] = (a['start_balance'] as num?)?.toDouble() ?? 0;
     }
     final ops = await db.rawQuery('''
-      SELECT account_id AS a, kind AS k, SUM(amount) AS s FROM fin_ops
+      SELECT account_id AS a, kind AS k, SUM(COALESCE(account_amount, amount)) AS s FROM fin_ops
       WHERE deleted = 0 AND cancelled = 0 AND account_id IS NOT NULL
       GROUP BY account_id, kind''');
     for (final r in ops) {
@@ -138,14 +202,16 @@ extension RepositoryFinAccounts on Repository {
       final s = (r['s'] as num?)?.toDouble() ?? 0;
       out[id] = out[id]! + (r['k'] == kFinIncome ? s : -s);
     }
-    final tr = await db.rawQuery('''
-      SELECT from_account_id AS f, to_account_id AS t, SUM(amount) AS s FROM fin_transfers
+    final moves = await db.rawQuery('''
+      SELECT from_account_id AS f, to_account_id AS t, SUM(amount) AS s,
+             SUM(COALESCE(to_amount, amount)) AS g FROM fin_transfers
       WHERE deleted = 0 GROUP BY from_account_id, to_account_id''');
-    for (final r in tr) {
+    for (final r in moves) {
       final s = (r['s'] as num?)?.toDouble() ?? 0;
+      final g = (r['g'] as num?)?.toDouble() ?? 0;
       final f = r['f'] as String, t = r['t'] as String;
       if (out.containsKey(f)) out[f] = out[f]! - s;
-      if (out.containsKey(t)) out[t] = out[t]! + s;
+      if (out.containsKey(t)) out[t] = out[t]! + g;
     }
     return out;
   }
@@ -158,16 +224,19 @@ extension RepositoryFinAccounts on Repository {
     final diff = double.parse((target - current).toStringAsFixed(2));
     if (diff == 0) return 0;
     final kind = diff < 0 ? kFinExpense : kFinIncome;
+    final acc = (await finAccountMap())[id];
+    final rate = acc == null || !acc.foreign ? 1.0 : (await finRate(acc.currency)) ?? 0.0;
     final cats = await listFinCategories(kind: kind);
     var catId = cats.where((c) => c.name == kFinAdjustName).map((c) => c.id).firstOrNull;
     catId ??= await addFinCategory(kFinAdjustName, kind, icon: 'scale', color: 'nut');
     await addFinOp(
         kind: kind,
         categoryId: catId,
-        amount: diff.abs(),
+        amount: double.parse((diff.abs() * rate).toStringAsFixed(2)),
         date: DateTime.now(),
         comment: kFinAdjustName,
-        accountId: id);
+        accountId: id,
+        accountAmount: acc != null && acc.foreign ? diff.abs() : null);
     return diff;
   }
 
@@ -175,6 +244,7 @@ extension RepositoryFinAccounts on Repository {
     required String fromId,
     required String toId,
     required double amount,
+    double? toAmount,
     required DateTime date,
     String? comment,
   }) async {
@@ -187,6 +257,7 @@ extension RepositoryFinAccounts on Repository {
       'from_account_id': fromId,
       'to_account_id': toId,
       'amount': amount,
+      'to_amount': toAmount,
       'op_date': _secs(date),
       'comment': comment,
       'created_at': t,
@@ -209,6 +280,7 @@ extension RepositoryFinAccounts on Repository {
           fromId: r['from_account_id'] as String,
           toId: r['to_account_id'] as String,
           amount: (r['amount'] as num).toDouble(),
+          toAmount: (r['to_amount'] as num?)?.toDouble(),
           date: _dt(r['op_date'] as num),
           comment: r['comment'] as String?,
         )

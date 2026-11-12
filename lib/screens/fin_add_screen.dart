@@ -99,6 +99,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
   String? _catId;
   List<FinAccount> _accounts = [];
   String? _accountId;
+  Map<String, double> _rates = const {kFinUah: 1};
+  final _accAmt = TextEditingController();
   final List<_FLine> _lines = [];
   final _sum = TextEditingController();
   bool _sumManual = false;
@@ -139,6 +141,42 @@ class _FinAddScreenState extends State<FinAddScreen> {
   ReceiptOcr get _ocr => widget.ocr ?? ReceiptOcr.instance;
   bool get _expense => _kind == kFinExpense;
 
+  FinAccount? get _account {
+    for (final a in _accounts) {
+      if (a.id == _accountId) return a;
+    }
+    return null;
+  }
+
+  /// Рахунок в іншій валюті: сума в ній + еквівалент у гривнях (для статистики).
+  Widget _foreignAmount() {
+    final a = _account;
+    if (a == null || !a.foreign) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: TextField(
+        key: const ValueKey('fin-account-amount'),
+        controller: _accAmt,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: thousandsInput,
+        style: TextStyle(color: AppColors.text, fontSize: 20),
+        decoration: InputDecoration(
+          labelText: tr.finAccountAmount(a.currency),
+          suffixText: currencySymbol(a.currency),
+        ),
+        onChanged: (v) {
+          final x = parseAmount(v), r = _rates[a.currency];
+          if (x != null && r != null) {
+            setState(() {
+              _sum.text = formatMoney(x * r);
+              _sumManual = true;
+            });
+          }
+        },
+      ),
+    );
+  }
+
   FinCategory? get _cat {
     for (final c in _cats) {
       if (c.id == _catId) return c;
@@ -162,6 +200,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       l.dispose();
     }
     _sum.dispose();
+    _accAmt.dispose();
     super.dispose();
   }
 
@@ -172,8 +211,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final last = await repo.getMeta(_lastCatKey);
     final accounts = await repo.listFinAccounts();
     final lastAccount = await repo.getMeta('fin_last_account');
+    final rates = await repo.finRates();
     if (!mounted) return;
     setState(() {
+      _rates = rates;
       _accounts = accounts;
       if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
         _accountId = accounts.any((a) => a.id == lastAccount)
@@ -465,11 +506,18 @@ class _FinAddScreenState extends State<FinAddScreen> {
           danger: false);
       if (!ok || !mounted) return;
     }
+    final acc = _account;
+    final accAmount = acc != null && acc.foreign ? parseAmount(_accAmt.text) : null;
+    if (acc != null && acc.foreign && !(accAmount != null && accAmount > 0)) {
+      await showInfo(context, tr.finEnterSum);
+      return;
+    }
     setState(() => _saving = true);
     try {
       final now = DateTime.now();
       final when = _sameDay(_date, now) ? now : DateTime(_date.year, _date.month, _date.day, 12);
       await repo.addFinOp(
+        accountAmount: accAmount,
         kind: _kind,
         categoryId: cat.id,
         amount: amount,
@@ -1023,6 +1071,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     ),
                   ),
                   _sumBlock(),
+                  _foreignAmount(),
                   if (_accounts.length > 1)
                     FinAccountChips(
                       accounts: _accounts,

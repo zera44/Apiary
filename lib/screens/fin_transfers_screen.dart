@@ -116,11 +116,16 @@ class _FinTransfersScreenState extends State<FinTransfersScreen> {
                                           style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                                     ]),
                                   ),
-                                  Text(uah(t.amount),
-                                      style: TextStyle(
-                                          color: AppColors.text,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600)),
+                                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                                    Text(money(t.amount, _accounts[t.fromId]?.currency ?? kFinUah),
+                                        style: TextStyle(
+                                            color: AppColors.text,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600)),
+                                    if (t.toAmount != null)
+                                      Text('→ ${money(t.toAmount!, _accounts[t.toId]?.currency ?? kFinUah)}',
+                                          style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  ]),
                                   IconButton(
                                       onPressed: () => _delete(t),
                                       icon: Icon(Icons.delete_outline, color: AppColors.textMuted)),
@@ -169,7 +174,12 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
   String? _from;
   String? _to;
   final _sum = TextEditingController();
+  final _toSum = TextEditingController();
   final _comment = TextEditingController();
+  Map<String, double> _rates = const {kFinUah: 1};
+
+  /// Сума зарахування виправлена вручну - більше не рахується за курсом.
+  bool _toManual = false;
   DateTime _date = DateTime.now();
   bool _saving = false;
 
@@ -182,17 +192,50 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
   Future<void> _load() async {
     await widget.repo.defaultFinAccountId();
     final list = await widget.repo.listFinAccounts();
+    final rates = await widget.repo.finRates();
     if (!mounted) return;
     setState(() {
       _accounts = list;
+      _rates = rates;
       if (list.isNotEmpty) _from = list.first.id;
       if (list.length > 1) _to = list[1].id;
     });
+    // свіжі курси НБУ, якщо є інтернет
+    await widget.repo.refreshFinRates();
+    final fresh = await widget.repo.finRates();
+    if (mounted) setState(() => _rates = fresh);
+  }
+
+  FinAccount? _acc(String? id) {
+    for (final a in _accounts) {
+      if (a.id == id) return a;
+    }
+    return null;
+  }
+
+  /// Рахунки в різних валютах - потрібна ще й сума зарахування.
+  bool get _cross {
+    final f = _acc(_from), t = _acc(_to);
+    return f != null && t != null && f.currency != t.currency;
+  }
+
+  /// Сума зарахування за курсом НБУ, поки її не виправили вручну.
+  void _autoTo() {
+    if (!_cross || _toManual) return;
+    final f = _acc(_from)!, t = _acc(_to)!;
+    final a = parseAmount(_sum.text);
+    final rf = _rates[f.currency], rt = _rates[t.currency];
+    if (a == null || rf == null || rt == null) {
+      _toSum.text = '';
+      return;
+    }
+    _toSum.text = formatMoney(a * rf / rt);
   }
 
   @override
   void dispose() {
     _sum.dispose();
+    _toSum.dispose();
     _comment.dispose();
     super.dispose();
   }
@@ -217,6 +260,11 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
       await showInfo(context, tr.finEnterSum);
       return;
     }
+    final toAmount = _cross ? parseAmount(_toSum.text) : null;
+    if (_cross && !(toAmount != null && toAmount > 0)) {
+      await showInfo(context, tr.finEnterSum);
+      return;
+    }
     setState(() => _saving = true);
     try {
       final now = DateTime.now();
@@ -226,6 +274,7 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
           fromId: from,
           toId: to,
           amount: amount,
+          toAmount: toAmount,
           date: when,
           comment: note.isEmpty ? null : note);
       if (mounted) Navigator.pop(context);
@@ -289,10 +338,11 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
                                 color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w700),
                             decoration: InputDecoration(
                               hintText: '0',
-                              suffixText: '₴',
+                              suffixText: currencySymbol(_acc(_from)?.currency ?? kFinUah),
                               suffixStyle: TextStyle(color: AppColors.create, fontSize: 28),
                               filled: false,
                             ),
+                            onChanged: (_) => setState(_autoTo),
                           ),
                         ]),
                       ),
@@ -300,14 +350,36 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
                         label: tr.finFromAccount,
                         accounts: _accounts,
                         selected: _from,
-                        onChanged: (id) => setState(() => _from = id),
+                        onChanged: (id) => setState(() {
+                          _from = id;
+                          _autoTo();
+                        }),
                       ),
                       FinAccountChips(
                         label: tr.finToAccount,
                         accounts: _accounts,
                         selected: _to,
-                        onChanged: (id) => setState(() => _to = id),
+                        onChanged: (id) => setState(() {
+                          _to = id;
+                          _autoTo();
+                        }),
                       ),
+                      if (_cross)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: TextField(
+                            key: const ValueKey('fin-transfer-to-sum'),
+                            controller: _toSum,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: thousandsInput,
+                            style: TextStyle(color: AppColors.text, fontSize: 20),
+                            decoration: InputDecoration(
+                              labelText: tr.finTransferTo(_acc(_to)!.currency),
+                              suffixText: currencySymbol(_acc(_to)!.currency),
+                            ),
+                            onChanged: (_) => _toManual = true,
+                          ),
+                        ),
                       _dateRow(),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

@@ -27,6 +27,8 @@ Uint8List _book() {
     TextCellValue(''), TextCellValue(''), TextCellValue('хліб')]);
   e.appendRow([d(10), TextCellValue('Їжа'), TextCellValue('Готівка'), IntCellValue(100)]);
   e.appendRow([d(9), TextCellValue('Їжа'), TextCellValue('Готівка'), IntCellValue(0)]); // нульова - пропуск
+  e.appendRow([d(5), TextCellValue('Їжа'), TextCellValue('Долари'), IntCellValue(410),
+    TextCellValue('UAH'), IntCellValue(10), TextCellValue('USD')]);
   final i = x['Дохід'];
   i.appendRow([TextCellValue('список дохід')]);
   i.appendRow([for (final h in head) TextCellValue(h)]);
@@ -41,7 +43,7 @@ Uint8List _book() {
   t.appendRow([d(8), TextCellValue('Головний'), TextCellValue('Готівка'), DoubleCellValue(300),
     TextCellValue('UAH'), TextCellValue(''), TextCellValue(''), TextCellValue('')]);
   t.appendRow([d(7), TextCellValue('Головний'), TextCellValue('Долари'), DoubleCellValue(50),
-    TextCellValue('UAH'), DoubleCellValue(1.2), TextCellValue('USD'), TextCellValue('')]); // інша валюта
+    TextCellValue('UAH'), DoubleCellValue(1.2), TextCellValue('USD'), TextCellValue('')]); // з гривні в долари
   return Uint8List.fromList(x.encode()!);
 }
 
@@ -59,10 +61,14 @@ void main() {
 
   test('файл читається: витрати, доходи, перекази, пропущені рядки', () {
     final d = parseFinWorkbook(_book());
-    expect(d.expenses, 2);
+    expect(d.expenses, 3);
     expect(d.incomes, 1);
-    expect(d.transfers.length, 1);
-    expect(d.skipped, 2); // нульова сума й переказ між валютами
+    expect(d.transfers.length, 2);
+    expect(d.skipped, 1); // нульова сума
+    expect(d.currencies['Долари'], 'USD');
+    expect(d.currencies['Головний'], 'UAH');
+    expect(d.transfers.last.toAmount, 1.2);
+    expect(d.ops.firstWhere((o) => o.account == 'Долари').accountAmount, 10);
     expect(d.ops.first.comment, 'хліб');
     expect(d.ops.first.amount, 194.97);
     expect(d.ops.first.date, DateTime(2026, 11, 11));
@@ -77,20 +83,25 @@ void main() {
   test('імпорт створює рахунки й категорії, рахує залишки, повторно дублів не дає', () async {
     final data = parseFinWorkbook(_book());
     final plan = await repo.planFinImport(data);
-    expect(plan.newAccounts.toSet(), {'Головний', 'Готівка'});
+    expect(plan.newAccounts.toSet(), {'Головний', 'Готівка', 'Долари (USD)'});
     final r = await repo.importFinData(data);
-    expect(r.added, 4);
+    expect(r.added, 6);
     expect(r.duplicates, 0);
     final accounts = {for (final a in await repo.listFinAccounts()) a.name: a.id};
     final bal = await repo.finAccountBalances();
-    expect(bal[accounts['Головний']], closeTo(1000 - 194.97 - 300, 0.001));
+    expect(bal[accounts['Головний']], closeTo(1000 - 194.97 - 300 - 50, 0.001));
     expect(bal[accounts['Готівка']], closeTo(-100 + 300, 0.001));
+    // долларовий рахунок: у своїй валюті (переказ +1,2, витрата -10)
+    expect(bal[accounts['Долари']], closeTo(1.2 - 10, 0.001));
+    final usd = (await repo.listFinAccounts()).firstWhere((a) => a.name == 'Долари');
+    expect(usd.currency, 'USD');
     final again = await repo.importFinData(data);
     expect(again.added, 0);
-    expect(again.duplicates, 4);
+    expect(again.duplicates, 6);
     final entries = await repo.listFinEntries(from: DateTime(2000), to: DateTime(2100));
-    expect(entries.length, 3);
+    expect(entries.length, 4);
+    // у статистиці - гривневі суми
     expect(entries.where((e) => e.isExpense).fold<double>(0, (s, e) => s + e.amount),
-        closeTo(294.97, 0.001));
+        closeTo(194.97 + 100 + 410, 0.001));
   });
 }

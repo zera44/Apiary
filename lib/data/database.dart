@@ -407,6 +407,12 @@ class AppDatabase {
         synced INTEGER NOT NULL DEFAULT 0
       )''');
     await _ensureColumn(db, 'fin_ops', 'account_id', 'TEXT');
+    // валюти: рахунок має свою (порожньо - гривня); сума операції в валюті
+    // рахунку (порожньо - та сама, що в гривнях); сума, що надійшла на
+    // рахунок переказу (порожньо - та сама, що списана)
+    await _ensureColumn(db, 'fin_accounts', 'currency', 'TEXT');
+    await _ensureColumn(db, 'fin_ops', 'account_amount', 'REAL');
+    await _ensureColumn(db, 'fin_transfers', 'to_amount', 'REAL');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fo_account ON fin_ops(account_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_op ON fin_lines(op_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_move ON fin_lines(stock_move_id)');

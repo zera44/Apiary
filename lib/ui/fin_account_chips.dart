@@ -40,7 +40,7 @@ class FinAccountChips extends StatelessWidget {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     FinBadge(icon: a.icon, color: a.color, size: 28),
                     const SizedBox(width: 8),
-                    Text(a.name, style: TextStyle(color: AppColors.text, fontSize: 14)),
+                    Text(a.foreign ? '${a.name} · ${a.currency}' : a.name, style: TextStyle(color: AppColors.text, fontSize: 14)),
                   ]),
                 ),
               ),

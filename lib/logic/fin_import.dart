@@ -17,7 +17,11 @@ class ImpOp {
 
   /// Стабільний ключ рядка (для повторного імпорту без дублів).
   final String key;
-  const ImpOp(this.expense, this.category, this.account, this.amount, this.date, this.comment, this.key);
+
+  /// Сума у валюті рахунку, якщо вона не гривня.
+  final double? accountAmount;
+  const ImpOp(this.expense, this.category, this.account, this.amount, this.date, this.comment, this.key,
+      {this.accountAmount});
 }
 
 class ImpTransfer {
@@ -27,16 +31,23 @@ class ImpTransfer {
   final DateTime date;
   final String comment;
   final String key;
-  const ImpTransfer(this.from, this.to, this.amount, this.date, this.comment, this.key);
+
+  /// Зараховано на рахунок надходження, якщо його валюта інша.
+  final double? toAmount;
+  const ImpTransfer(this.from, this.to, this.amount, this.date, this.comment, this.key,
+      {this.toAmount});
 }
 
 class FinImportData {
   final List<ImpOp> ops;
   final List<ImpTransfer> transfers;
 
-  /// Рядки, які не вдалося взяти: порожня дата чи сума, переказ між валютами.
+  /// Рядки, які не вдалося взяти: порожня дата чи сума, незнайома валюта за замовчуванням.
   final int skipped;
-  const FinImportData(this.ops, this.transfers, this.skipped);
+
+  /// Валюта рахунків, як у файлі: назва рахунку -> код (UAH, USD…).
+  final Map<String, String> currencies;
+  const FinImportData(this.ops, this.transfers, this.skipped, [this.currencies = const {}]);
 
   int get expenses => ops.where((o) => o.expense).length;
   int get incomes => ops.length - expenses;
@@ -56,6 +67,7 @@ FinImportData parseFinWorkbook(Uint8List bytes) {
   final transfers = <ImpTransfer>[];
   var skipped = 0;
   var found = false;
+  final currencies = <String, String>{};
   for (final name in book.tables.keys) {
     final low = name.trim().toLowerCase();
     final kind = switch (low) {
@@ -80,6 +92,7 @@ FinImportData parseFinWorkbook(Uint8List bytes) {
           cTo = col('Вхідні'),
           cOut = col('Сума у вихідній валюті'),
           cOutCur = col('Вихідна валюта'),
+          cIn = col('Сума у валюті надходження'),
           cInCur = col('Вхідна валюта');
       for (var i = h + 1; i < rows.length; i++) {
         final r = rows[i];
@@ -87,21 +100,29 @@ FinImportData parseFinWorkbook(Uint8List bytes) {
         final date = _date(r.isEmpty ? null : r[cDate < 0 ? 0 : cDate]);
         final amount = cOut < 0 || cOut >= r.length ? null : _number(r[cOut]);
         final from = cell(r, cFrom), to = cell(r, cTo);
-        final outCur = cell(r, cOutCur), inCur = cell(r, cInCur);
-        final crossCurrency = inCur.isNotEmpty && outCur.isNotEmpty && inCur != outCur;
+        final outCur = _code(cell(r, cOutCur));
+        final inCur = cell(r, cInCur).isEmpty ? outCur : _code(cell(r, cInCur));
+        final inAmount = cIn < 0 || cIn >= r.length ? null : _number(r[cIn]);
+        final cross = inCur != outCur;
         if (date == null || amount == null || !(amount > 0) || from.isEmpty || to.isEmpty ||
-            from == to || crossCurrency) {
+            from == to || (cross && !(inAmount != null && inAmount > 0))) {
           skipped++;
           continue;
         }
+        currencies.putIfAbsent(from, () => outCur);
+        currencies.putIfAbsent(to, () => inCur);
         final note = cell(r, cComment);
         transfers.add(ImpTransfer(from, to, amount, date, note,
-            'T|${i - h}|${_day(date)}|$amount|$from|$to|$note'));
+            'T|${i - h}|${_day(date)}|$amount|$from|$to|$note',
+            toAmount: cross ? inAmount : null));
       }
     } else {
       final cCat = col('Категорія'),
           cAcc = col('Рахунок'),
-          cSum = col('Сума у валюті за замовчуванням');
+          cSum = col('Сума у валюті за замовчуванням'),
+          cDefCur = col('Валюта за замовчуванням'),
+          cAccSum = col('Сума у валюті рахунку'),
+          cAccCur = col('Валюта рахунку');
       for (var i = h + 1; i < rows.length; i++) {
         final r = rows[i];
         if (r.every((c) => _text(c).isEmpty)) continue;
@@ -109,20 +130,29 @@ FinImportData parseFinWorkbook(Uint8List bytes) {
         final amount = cSum < 0 || cSum >= r.length ? null : _number(r[cSum]);
         final account = cell(r, cAcc);
         var category = cell(r, cCat);
-        if (date == null || amount == null || !(amount > 0) || account.isEmpty) {
+        final defCur = _code(cell(r, cDefCur));
+        // суми статистики - у гривнях; інша валюта за замовчуванням не підтримується
+        if (date == null || amount == null || !(amount > 0) || account.isEmpty || defCur != 'UAH') {
           skipped++;
           continue;
         }
         if (category.isEmpty) category = 'Інше';
+        final accCur = _code(cell(r, cAccCur));
+        currencies.putIfAbsent(account, () => accCur);
+        final accSum = cAccSum < 0 || cAccSum >= r.length ? null : _number(r[cAccSum]);
         final note = cell(r, cComment);
         ops.add(ImpOp(kind == 0, category, account, amount, date, note,
-            '${kind == 0 ? 'E' : 'I'}|${i - h}|${_day(date)}|$amount|$category|$account|$note'));
+            '${kind == 0 ? 'E' : 'I'}|${i - h}|${_day(date)}|$amount|$category|$account|$note',
+            accountAmount: accCur != 'UAH' && accSum != null && accSum > 0 ? accSum : null));
       }
     }
   }
   if (!found) throw const FormatException('немає аркушів «Витрати», «Дохід», «Перекази»');
-  return FinImportData(ops, transfers, skipped);
+  return FinImportData(ops, transfers, skipped, currencies);
 }
+
+/// Код валюти з клітинки; порожньо - гривня.
+String _code(String s) => s.trim().isEmpty ? 'UAH' : s.trim().toUpperCase();
 
 String _day(DateTime d) => '${d.year}-${d.month}-${d.day}';
 

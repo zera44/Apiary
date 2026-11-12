@@ -36,7 +36,10 @@ extension RepositoryFinImport on Repository {
     };
     final newAcc = <String>{}, newCat = <String>{};
     void account(String n) {
-      if (!accounts.contains(_norm(n))) newAcc.add(n.trim());
+      if (!accounts.contains(_norm(n))) {
+        final c = data.currencies[n] ?? kFinUah;
+        newAcc.add(c == kFinUah ? n.trim() : '${n.trim()} ($c)');
+      }
     }
 
     for (final o in data.ops) {
@@ -69,6 +72,7 @@ extension RepositoryFinImport on Repository {
       if (found != null) return found;
       final n = accounts.length;
       return accounts[k] = await addFinAccount(name,
+          currency: data.currencies[name] ?? kFinUah,
           icon: _accountIcons[n % _accountIcons.length], color: _colors[n % _colors.length]);
     }
 
@@ -109,6 +113,7 @@ extension RepositoryFinImport on Repository {
         'category_id': await category(o.category, o.expense),
         'account_id': await account(o.account),
         'amount': o.amount,
+        'account_amount': o.accountAmount,
         'op_date': secs(o.date),
         'comment': o.comment.isEmpty ? null : o.comment,
         'created_at': t,
@@ -127,6 +132,7 @@ extension RepositoryFinImport on Repository {
         'from_account_id': await account(x.from),
         'to_account_id': await account(x.to),
         'amount': x.amount,
+        'to_amount': x.toAmount,
         'op_date': secs(x.date),
         'comment': x.comment.isEmpty ? null : x.comment,
         'created_at': t,

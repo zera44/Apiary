@@ -1371,6 +1371,14 @@ class AppStringsEn extends AppStrings {
   @override
   String get finTransferDeleteText => 'Delete the transfer? Account balances return to what they were.';
   @override
+  String get finRateNote => 'at the NBU rate';
+  @override
+  String get finCurrency => 'Currency';
+  @override
+  String finAccountAmount(String currency) => 'Amount in $currency';
+  @override
+  String finTransferTo(String currency) => 'Credited, $currency';
+  @override
   String get finImport => 'Import from Excel';
   @override
   String get finImportHint => 'Pick an .xlsx file with the sheets “Витрати”, “Дохід” and “Перекази”. Accounts and categories from the file are created automatically. Balances start from zero: afterwards correct an account amount if it differs.';
@@ -1387,7 +1395,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get finImportNewCategories => 'New categories';
   @override
-  String finImportFound(int expenses, int incomes, int transfers, int skipped) => 'Expenses: $expenses\nIncome: $incomes\nTransfers: $transfers\nSkipped (blank rows or other currency): $skipped';
+  String finImportFound(int expenses, int incomes, int transfers, int skipped) => 'Expenses: $expenses\nIncome: $incomes\nTransfers: $transfers\nSkipped (blank or unclear rows): $skipped';
   @override
   String finImportDone(int added, int duplicates) => 'Added: $added. Already in the database: $duplicates.';
   @override

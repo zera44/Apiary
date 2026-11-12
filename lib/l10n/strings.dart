@@ -679,6 +679,10 @@ abstract class AppStrings {
   String get finAccountNew;
   String get finAccountsTotal;
   String get finTransferDeleteText;
+  String get finRateNote;
+  String get finCurrency;
+  String finAccountAmount(String currency);
+  String finTransferTo(String currency);
   String get finImport;
   String get finImportHint;
   String get finImportPick;
