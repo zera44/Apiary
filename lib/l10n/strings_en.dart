@@ -441,6 +441,10 @@ class AppStringsEn extends AppStrings {
   @override
   String get assistantServerError => 'The assistant server did not respond properly';
   @override
+  String get assistantTimedOut => 'The server took too long to answer';
+  @override
+  String get assistantRetrying => 'server too slow, will retry';
+  @override
   String get assistantDemo => 'Demo mode: the assistant server is not connected';
   @override
   String assistantMail(int n) => 'The beekeeper replied: $n new';

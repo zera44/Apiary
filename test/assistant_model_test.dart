@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:apiary/assistant/assistant_model.dart';
@@ -83,6 +84,16 @@ void main() {
       expect(await failure((_) async => http.Response('', 500)), AssistantFailure.server);
       expect(await failure((_) async => throw http.ClientException('no net')),
           AssistantFailure.offline);
+      // сервер не встиг - це не «немає інтернету»
+      final slow = RemoteAssistantModel(url, 'c',
+          timeout: const Duration(milliseconds: 20),
+          client: MockClient((_) => Completer<http.Response>().future));
+      await expectLater(
+          slow.send([
+            {'role': 'user', 'content': 'x'}
+          ]),
+          throwsA(isA<AssistantException>().having((e) => e.kind, 'kind', AssistantFailure.timeout)));
+      expect(const AssistantException(AssistantFailure.timeout).retryable, isTrue);
     });
 
     test('повторювати можна лише зв\'язок і перевантаження', () {

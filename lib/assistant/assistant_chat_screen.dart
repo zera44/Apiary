@@ -848,6 +848,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final error = switch (it.error) {
       'unauthorized' => tr.assistantUnauthorized,
       'server' => tr.assistantServerError,
+      'timeout' => tr.assistantTimedOut,
       _ => null,
     };
     return Padding(
@@ -891,7 +892,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   failed
                       ? [tr.assistantFailed, ?error].join(': ')
                       : waiting
-                      ? tr.assistantWaiting
+                      ? (it.error == 'timeout' ? tr.assistantRetrying : tr.assistantWaiting)
                       : tr.assistantSending,
                   style: failed ? muted.copyWith(color: AppColors.danger) : muted,
                 ),

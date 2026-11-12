@@ -442,6 +442,10 @@ class AppStringsUk extends AppStrings {
   @override
   String get assistantServerError => 'Сервер помічника не відповів як слід';
   @override
+  String get assistantTimedOut => 'Сервер не встиг відповісти';
+  @override
+  String get assistantRetrying => 'сервер не встиг, повторю';
+  @override
   String get assistantDemo => 'Демо-режим: сервер помічника не підключено';
   @override
   String assistantMail(int n) =>

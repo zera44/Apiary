@@ -221,6 +221,8 @@ abstract class AppStrings {
   String assistantOpenTarget(String what);
   String get assistantUnauthorized;
   String get assistantServerError;
+  String get assistantTimedOut;
+  String get assistantRetrying;
   String get assistantDemo;
   String assistantMail(int n);
   String get assistantBear;
