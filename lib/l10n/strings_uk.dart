@@ -1373,6 +1373,26 @@ class AppStringsUk extends AppStrings {
   @override
   String get finTransferDeleteText => 'Видалити переказ? Залишки рахунків повернуться як були.';
   @override
+  String get finImport => 'Імпорт з Excel';
+  @override
+  String get finImportHint => 'Оберіть файл .xlsx з аркушами «Витрати», «Дохід» і «Перекази». Рахунки й категорії з файла додадуться самі. Залишки рахунків рахуються з нуля: після імпорту виправте суму рахунку, якщо вона інша.';
+  @override
+  String get finImportPick => 'Обрати файл';
+  @override
+  String get finImportStart => 'Імпортувати';
+  @override
+  String get finImportBad => 'Не вдалося прочитати файл';
+  @override
+  String get finImportEmpty => 'У файлі немає операцій';
+  @override
+  String get finImportNewAccounts => 'Нові рахунки';
+  @override
+  String get finImportNewCategories => 'Нові категорії';
+  @override
+  String finImportFound(int expenses, int incomes, int transfers, int skipped) => 'Витрат: $expenses\nДоходів: $incomes\nПереказів: $transfers\nПропущено (порожні рядки чи інша валюта): $skipped';
+  @override
+  String finImportDone(int added, int duplicates) => 'Додано: $added. Уже були в базі: $duplicates.';
+  @override
   String get finTransfers => 'Історія переказів';
   @override
   String get finTransferNew => 'Новий переказ';

@@ -679,6 +679,16 @@ abstract class AppStrings {
   String get finAccountNew;
   String get finAccountsTotal;
   String get finTransferDeleteText;
+  String get finImport;
+  String get finImportHint;
+  String get finImportPick;
+  String get finImportStart;
+  String get finImportBad;
+  String get finImportEmpty;
+  String get finImportNewAccounts;
+  String get finImportNewCategories;
+  String finImportFound(int expenses, int incomes, int transfers, int skipped);
+  String finImportDone(int added, int duplicates);
   String get finTransfers;
   String get finTransferNew;
   String get finTransfer;

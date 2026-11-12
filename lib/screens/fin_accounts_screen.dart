@@ -10,6 +10,7 @@ import '../ui/fin_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import '../ui/thousands_input.dart';
+import 'fin_import_screen.dart';
 import 'fin_transfers_screen.dart';
 
 /// Сума зі знаком із поля вводу («-120,5», «−120»); null - не число.
@@ -76,6 +77,12 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
         builder: (_) => create
             ? FinTransferScreen(repo: widget.repo)
             : FinTransfersScreen(repo: widget.repo)));
+    await _reload();
+  }
+
+  Future<void> _import() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => FinImportScreen(repo: widget.repo)));
     await _reload();
   }
 
@@ -154,6 +161,8 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                           _action(Icons.history, tr.finTransfers, () => _transfers()),
                           const SizedBox(width: 12),
                           _action(Icons.swap_horiz, tr.finTransferNew, () => _transfers(create: true)),
+                          const SizedBox(width: 12),
+                          _action(Icons.upload_file, tr.finImport, _import),
                         ]),
                         const SizedBox(height: 14),
                         for (final a in _accounts)
