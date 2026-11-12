@@ -28,13 +28,13 @@ class _FinImportScreenState extends State<FinImportScreen> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      final res = await FilePicker.pickFiles(
-          type: FileType.custom, allowedExtensions: const ['xlsx'], withData: true);
-      final bytes = res?.files.single.bytes;
-      if (bytes == null) {
+      final file =
+          await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['xlsx']);
+      if (file == null) {
         if (mounted) setState(() => _busy = false);
         return;
       }
+      final bytes = await file.readAsBytes();
       final data = parseFinWorkbook(bytes);
       if (data.isEmpty) {
         if (mounted) {
@@ -117,7 +117,7 @@ class _FinImportScreenState extends State<FinImportScreen> {
                     decoration:
                         BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
                     child: Text(
-                        tr.finImportFound(data.expenses, data.incomes, data.transfers, data.skipped),
+                        tr.finImportFound(data.expenses, data.incomes, data.transfers.length, data.skipped),
                         style: TextStyle(color: AppColors.text, fontSize: 16, height: 1.5)),
                   ),
                   if (plan != null && plan.newAccounts.isNotEmpty)
