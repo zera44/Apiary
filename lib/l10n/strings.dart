@@ -703,6 +703,7 @@ abstract class AppStrings {
   String get finAccountBalance;
   String get finStartBalance;
   String get finInTotal;
+  String get finAdjustInStats;
   String get finAccountDelete;
   String get finAccountDeleteText;
   String get finAccountDeleteTitle;

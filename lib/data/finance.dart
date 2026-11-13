@@ -97,12 +97,16 @@ class FinEntry {
     required this.cancelled,
     required this.fromStock,
     this.comment,
+    this.noStats = false,
   });
+
+  /// Не йде в підсумки й статистику (коригування рахунку з вимкненим «Врахувати в статистиці»).
+  final bool noStats;
 
   bool get isExpense => kind == kFinExpense;
 }
 
-/// Підсумок за період (скасовані записи не рахуються).
+/// Підсумок за період (скасовані й виключені зі статистики записи не рахуються).
 class FinSummary {
   final double income;
   final double expense;
@@ -118,7 +122,7 @@ class FinSummary {
     var inc = 0.0, exp = 0.0;
     final eb = <String?, double>{}, ib = <String?, double>{};
     for (final e in entries) {
-      if (e.cancelled) continue;
+      if (e.cancelled || e.noStats) continue;
       if (e.isExpense) {
         exp += e.amount;
         eb[e.categoryId] = (eb[e.categoryId] ?? 0) + e.amount;
@@ -145,7 +149,7 @@ class FinMonthTotal {
 List<FinMonthTotal> finMonthlyTotals(Iterable<FinEntry> entries, int year) {
   final inc = List.filled(12, 0.0), exp = List.filled(12, 0.0);
   for (final e in entries) {
-    if (e.cancelled || e.date.year != year) continue;
+    if (e.cancelled || e.noStats || e.date.year != year) continue;
     (e.isExpense ? exp : inc)[e.date.month - 1] += e.amount;
   }
   return [for (var i = 0; i < 12; i++) FinMonthTotal(i + 1, inc[i], exp[i])];
@@ -156,7 +160,7 @@ List<FinMonthTotal> finMonthlyTotals(Iterable<FinEntry> entries, int year) {
 List<FinMonthTotal> finYearlyTotals(Iterable<FinEntry> entries) {
   final inc = <int, double>{}, exp = <int, double>{};
   for (final e in entries) {
-    if (e.cancelled) continue;
+    if (e.cancelled || e.noStats) continue;
     final m = e.isExpense ? exp : inc;
     m[e.date.year] = (m[e.date.year] ?? 0) + e.amount;
   }
@@ -293,6 +297,7 @@ extension RepositoryFinance on Repository {
     String? comment,
     String? accountId,
     double? accountAmount,
+    bool noStats = false,
   }) async {
     if (kind != kFinExpense && kind != kFinIncome) throw ArgumentError.value(kind, 'kind');
     if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
@@ -313,6 +318,7 @@ extension RepositoryFinance on Repository {
         'category_id': categoryId,
         'account_id': account,
         'account_amount': accountAmount,
+        'no_stats': noStats ? 1 : null,
         'amount': amount,
         'op_date': _secs(date),
         'comment': comment,
@@ -589,6 +595,7 @@ extension RepositoryFinance on Repository {
         comment: o['comment'] as String?,
         cancelled: (o['cancelled'] as int? ?? 0) == 1,
         fromStock: false,
+        noStats: (o['no_stats'] as int? ?? 0) == 1,
       ));
     }
 

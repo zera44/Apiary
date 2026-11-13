@@ -413,6 +413,8 @@ class AppDatabase {
     await _ensureColumn(db, 'fin_accounts', 'currency', 'TEXT');
     await _ensureColumn(db, 'fin_ops', 'account_amount', 'REAL');
     await _ensureColumn(db, 'fin_transfers', 'to_amount', 'REAL');
+    // коригування рахунку, яке не йде в статистику (1)
+    await _ensureColumn(db, 'fin_ops', 'no_stats', 'INTEGER');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fo_account ON fin_ops(account_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_op ON fin_lines(op_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fl_move ON fin_lines(stock_move_id)');

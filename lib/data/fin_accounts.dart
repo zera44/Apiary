@@ -218,8 +218,9 @@ extension RepositoryFinAccounts on Repository {
 
   /// Нова сума рахунку вручну: різниця йде звичайною операцією (мінус -
   /// витрата, плюс - дохід) на категорію «Коригування рахунку».
+  /// [inStats] false: коригування лишається в журналі, але не йде в підсумки й статистику.
   /// Повертає, на скільки змінився залишок (0 - нічого не змінено).
-  Future<double> setFinAccountBalance(String id, double target) async {
+  Future<double> setFinAccountBalance(String id, double target, {bool inStats = true}) async {
     final current = (await finAccountBalances())[id] ?? 0;
     final diff = double.parse((target - current).toStringAsFixed(2));
     if (diff == 0) return 0;
@@ -236,7 +237,8 @@ extension RepositoryFinAccounts on Repository {
         date: DateTime.now(),
         comment: kFinAdjustName,
         accountId: id,
-        accountAmount: acc != null && acc.foreign ? diff.abs() : null);
+        accountAmount: acc != null && acc.foreign ? diff.abs() : null,
+        noStats: !inStats);
     return diff;
   }
 

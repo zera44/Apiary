@@ -64,6 +64,23 @@ void main() {
     expect(cats[inc.categoryId]!.kind, kFinIncome);
   });
 
+  test('коригування без «Врахувати в статистиці»: баланс змінюється, статистика - ні', () async {
+    final a = await repo.addFinAccount('Готівка', startBalance: 100);
+    expect(await repo.setFinAccountBalance(a, 60, inStats: false), -40);
+    expect(await repo.setFinAccountBalance(a, 260), 200);
+    expect((await repo.finAccountBalances())[a], 260);
+    final entries = await repo.listFinEntries(from: DateTime(2000), to: DateTime(2100));
+    expect(entries.length, 2); // в журналі лишаються обидва
+    expect(entries.firstWhere((e) => e.isExpense).noStats, isTrue);
+    expect(entries.firstWhere((e) => !e.isExpense).noStats, isFalse);
+    final s = FinSummary.of(entries);
+    expect(s.expense, 0);
+    expect(s.income, 200);
+    final year = DateTime.now().year;
+    expect(finMonthlyTotals(entries, year).fold<double>(0, (x, m) => x + m.expense), 0);
+    expect(finYearlyTotals(entries).fold<double>(0, (x, m) => x + m.expense), 0);
+  });
+
   test('видалений рахунок не рахується, а операції лишаються', () async {
     final a = await repo.addFinAccount('Готівка');
     final b = await repo.addFinAccount('Картка');
