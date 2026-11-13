@@ -1419,6 +1419,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get finInTotal => 'Count in the total';
   @override
+  String get finAdjustInStats => 'Count the change in statistics';
+  @override
   String get finAccountDelete => 'Delete account';
   @override
   String get finAccountDeleteText => 'The account disappears from the list; its operations stay in the journal.';

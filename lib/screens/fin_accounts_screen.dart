@@ -264,11 +264,19 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   late String _icon = widget.account?.icon ?? 'payments';
   late String _color = widget.account?.color ?? 'honey';
   late bool _inTotal = widget.account?.inTotal ?? true;
+  bool _adjustInStats = true;
   late String _currency = widget.account?.currency ?? kFinUah;
   double _current = 0;
   bool _saving = false;
 
   bool get _editing => widget.account != null;
+
+  /// Суму змінено: з'явиться коригування, і можна вирішити, чи йде воно в статистику.
+  bool get _balanceChanged {
+    if (!_editing) return false;
+    final value = _sum.text.trim().isEmpty ? 0.0 : (parseSignedAmount(_sum.text) ?? 0.0);
+    return (value - _current).abs() >= 0.005;
+  }
 
   @override
   void initState() {
@@ -306,7 +314,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
       if (_editing) {
         final id = widget.account!.id;
         await repo.updateFinAccount(id, name: name, icon: _icon, color: _color, inTotal: _inTotal);
-        if ((value - _current).abs() >= 0.005) await repo.setFinAccountBalance(id, value);
+        if ((value - _current).abs() >= 0.005) await repo.setFinAccountBalance(id, value, inStats: _adjustInStats);
       } else {
         await repo.addFinAccount(name,
             icon: _icon, color: _color, startBalance: value, inTotal: _inTotal, currency: _currency);
@@ -367,6 +375,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                         child: TextField(
                           key: const ValueKey('fin-account-sum'),
                           controller: _sum,
+                          onChanged: (_) => setState(() {}),
                           textAlign: TextAlign.center,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                           inputFormatters: [
@@ -401,6 +410,27 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           child: Text(tr.finBalanceHint,
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        ),
+                      if (_balanceChanged)
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: _adjustInStats ? AppColors.create : AppColors.darkBtn),
+                          ),
+                          child: Row(children: [
+                            Icon(Icons.bar_chart, color: AppColors.create),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: Text(tr.finAdjustInStats,
+                                    style: TextStyle(color: AppColors.text, fontSize: 15))),
+                            Switch(
+                                key: const ValueKey('fin-adjust-in-stats'),
+                                value: _adjustInStats,
+                                onChanged: (v) => setState(() => _adjustInStats = v)),
+                          ]),
                         ),
                       Container(
                         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),

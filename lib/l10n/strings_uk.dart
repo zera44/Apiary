@@ -1421,6 +1421,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get finInTotal => 'Враховувати в загальній сумі';
   @override
+  String get finAdjustInStats => 'Врахувати зміну в статистиці';
+  @override
   String get finAccountDelete => 'Видалити рахунок';
   @override
   String get finAccountDeleteText => 'Рахунок зникне зі списку, а його операції лишаться в журналі.';
