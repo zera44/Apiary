@@ -438,7 +438,9 @@ class AppStringsUk extends AppStrings {
   @override
   String assistantOpenTarget(String what) => 'Відкрити: $what';
   @override
-  String get assistantUnauthorized => 'Помічник недоступний: сервер не прийняв код доступу';
+  String get assistantUnauthorized => 'Увійдіть через Google у Налаштуваннях, щоб користуватися помічником';
+  @override
+  String get assistantLimit => 'Денний ліміт запитів до помічника вичерпано. Спробуйте завтра';
   @override
   String get assistantServerError => 'Сервер помічника не відповів як слід';
   @override

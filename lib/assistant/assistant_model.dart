@@ -4,7 +4,10 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../data/sync_api.dart' show SyncOffline, SyncSignedOut;
 import '../services/app_config.dart';
+import '../services/server.dart';
+import '../services/supabase_api.dart';
 import '../l10n/l10n.dart';
 
 /// Помічник «Пасічник»: обмін із посередником (supabase/functions/assistant).
@@ -53,8 +56,11 @@ enum AssistantFailure {
   /// сервер чи модель перевантажені - повторити згодом
   busy,
 
-  /// сервер не пустив (неправильний тестовий код)
+  /// сервер не пустив: немає входу Google чи вхід відкликано
   unauthorized,
+
+  /// денний ліміт запитів на людину вичерпано (до завтра)
+  limit,
 
   /// забагато кроків на одне повідомлення
   stepLimit,
@@ -95,115 +101,135 @@ abstract class AssistantModel {
     String url = assistantUrl,
     http.Client? client,
     Future<Map<String, String>> Function()? options,
+    AssistantTokenSource? tokenSource,
   }) {
     final base = url.trim().isEmpty ? null : AppConfig.secureBase(url);
     if (base == null) return DemoAssistantModel();
-    return RemoteAssistantModel(base, assistantTestToken, client: client, options: options);
+    return RemoteAssistantModel(base, tokenSource ?? serverTokenSource(),
+        client: client, options: options);
   }
 
   /// --dart-define=APIARY_ASSISTANT_URL=https://<проєкт>.supabase.co/functions/v1/assistant
   static const assistantUrl = String.fromEnvironment('APIARY_ASSISTANT_URL');
 
-  /// Тестовий код доступу (поки немає входу).
-  static const assistantTestToken = String.fromEnvironment('APIARY_ASSISTANT_TEST_TOKEN');
+  /// Токен входу на сервер для помічника: живий вхід застосунку, а коли його
+  /// ще немає (запуск, фонове завдання) - збережений на телефоні. Без
+  /// інтернету дійсний токен береться з телефона, мережа не потрібна.
+  static AssistantTokenSource serverTokenSource() {
+    SupabaseApi? restored;
+    return ({bool force = false}) async {
+      final api = Server.api ??
+          (restored ??= await SupabaseApi.restore(AppConfig.current, await Server.sessionStore()));
+      return api?.accessToken(force: force);
+    };
+  }
 }
+
+/// Дає токен входу (null - не увійшли). [force] - оновити, навіть якщо ще
+/// дійсний (сервер відмовив).
+typedef AssistantTokenSource = Future<String?> Function({bool force});
 
 /// Справжня модель через посередника.
 class RemoteAssistantModel implements AssistantModel, BookSearch {
   final Uri url;
-  final String token;
+  final AssistantTokenSource tokenSource;
   final http.Client? client;
   final Duration timeout;
 
   /// Вибір людини (модель, глибина) - додається до кожного запиту.
   final Future<Map<String, String>> Function()? options;
-  RemoteAssistantModel(this.url, this.token,
+  RemoteAssistantModel(this.url, this.tokenSource,
       {this.client, this.timeout = const Duration(seconds: 150), this.options});
 
-  static const tokenHeader = 'x-apiary-assistant-token';
+  /// Токен входу. Не вийшло дістати: без зв'язку - [AssistantFailure.offline]
+  /// (повідомлення чекає в черзі), вхід відкликано чи його немає -
+  /// [AssistantFailure.unauthorized].
+  Future<String> _token({bool force = false}) async {
+    final String? t;
+    try {
+      t = await tokenSource(force: force);
+    } on SyncOffline {
+      throw const AssistantException(AssistantFailure.offline);
+    } on SyncSignedOut {
+      throw const AssistantException(AssistantFailure.unauthorized);
+    } on AssistantException {
+      rethrow;
+    } catch (_) {
+      throw const AssistantException(AssistantFailure.server);
+    }
+    if (t == null || t.isEmpty) throw const AssistantException(AssistantFailure.unauthorized);
+    return t;
+  }
+
+  /// POST до посередника з токеном входу. Відмова 401 - токен міг
+  /// прострочитись: один раз беремо свіжий і повторюємо.
+  Future<http.Response> _post(Object body, Duration limit) async {
+    final c = client ?? http.Client();
+    try {
+      for (var attempt = 0;; attempt++) {
+        final token = await _token(force: attempt > 0);
+        final r = await c
+            .post(url,
+                headers: {
+                  'Content-Type': 'application/json; charset=utf-8',
+                  'Authorization': 'Bearer $token',
+                },
+                body: jsonEncode(body))
+            .timeout(limit);
+        if (r.statusCode == 401 && attempt == 0) continue;
+        return r;
+      }
+    } on SocketException {
+      throw const AssistantException(AssistantFailure.offline);
+    } on http.ClientException {
+      throw const AssistantException(AssistantFailure.offline);
+    } on TimeoutException {
+      throw const AssistantException(AssistantFailure.timeout);
+    } finally {
+      if (client == null) c.close();
+    }
+  }
 
   @override
   bool get isRemote => true;
 
   @override
   Future<Map<String, dynamic>> searchBooks(String query, {int limit = 5}) async {
-    final c = client ?? http.Client();
-    http.Response r;
-    try {
-      r = await c
-          .post(url,
-              headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-                tokenHeader: token,
-              },
-              body: jsonEncode({'action': 'search_books', 'query': query, 'limit': limit}))
-          .timeout(const Duration(seconds: 20));
-    } on SocketException {
-      throw const AssistantException(AssistantFailure.offline);
-    } on http.ClientException {
-      throw const AssistantException(AssistantFailure.offline);
-    } on TimeoutException {
-      throw const AssistantException(AssistantFailure.timeout);
-    } finally {
-      if (client == null) c.close();
-    }
+    final r = await _post({'action': 'search_books', 'query': query, 'limit': limit},
+        const Duration(seconds: 20));
     if (r.statusCode == 200) {
       return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     }
-    throw AssistantException(r.statusCode == 401 || r.statusCode == 403
-        ? AssistantFailure.unauthorized
-        : r.statusCode == 429 || r.statusCode == 503
-            ? AssistantFailure.busy
-            : AssistantFailure.server);
+    throw AssistantException(_failureFor(r.statusCode));
   }
+
+  /// Що означає відповідь сервера з помилкою.
+  static AssistantFailure _failureFor(int status) => switch (status) {
+        401 || 403 => AssistantFailure.unauthorized,
+        422 => AssistantFailure.stepLimit,
+        // 429 від посередника - лише денний ліміт (ліміт Anthropic він
+        // віддає як 503)
+        429 => AssistantFailure.limit,
+        503 => AssistantFailure.busy,
+        _ => AssistantFailure.server,
+      };
 
   @override
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
     final extra = await options?.call() ?? const <String, String>{};
-    final c = client ?? http.Client();
-    http.Response r;
-    try {
-      r = await c
-          .post(url,
-              headers: {
-                'Content-Type': 'application/json; charset=utf-8',
-                tokenHeader: token,
-              },
-              body: jsonEncode({'messages': messages, ...extra}))
-          .timeout(timeout);
-    } on SocketException {
-      throw const AssistantException(AssistantFailure.offline);
-    } on http.ClientException {
-      throw const AssistantException(AssistantFailure.offline);
-    } on TimeoutException {
-      throw const AssistantException(AssistantFailure.timeout);
-    } finally {
-      if (client == null) c.close();
-    }
-    switch (r.statusCode) {
-      case 200:
-        final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
-        return ModelTurn(
-          [
-            for (final b in (j['content'] as List? ?? const []))
-              Map<String, dynamic>.from(b as Map)
-          ],
-          j['stop_reason'] as String? ?? 'end_turn',
-          model: j['model'] as String?,
-          routedFrom: j['routed_from'] as String?,
-          escalatedFrom: j['escalated_from'] as String?,
-        );
-      case 401:
-      case 403:
-        throw const AssistantException(AssistantFailure.unauthorized);
-      case 422:
-        throw const AssistantException(AssistantFailure.stepLimit);
-      case 429:
-      case 503:
-        throw const AssistantException(AssistantFailure.busy);
-      default:
-        throw const AssistantException(AssistantFailure.server);
-    }
+    final r = await _post({'messages': messages, ...extra}, timeout);
+    if (r.statusCode != 200) throw AssistantException(_failureFor(r.statusCode));
+    final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return ModelTurn(
+      [
+        for (final b in (j['content'] as List? ?? const []))
+          Map<String, dynamic>.from(b as Map)
+      ],
+      j['stop_reason'] as String? ?? 'end_turn',
+      model: j['model'] as String?,
+      routedFrom: j['routed_from'] as String?,
+      escalatedFrom: j['escalated_from'] as String?,
+    );
   }
 }
 

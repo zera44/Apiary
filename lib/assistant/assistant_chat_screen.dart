@@ -847,6 +847,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final waiting = it.status == ChatStatus.queued;
     final error = switch (it.error) {
       'unauthorized' => tr.assistantUnauthorized,
+      'limit' => tr.assistantLimit,
       'server' => tr.assistantServerError,
       'timeout' => tr.assistantTimedOut,
       _ => null,

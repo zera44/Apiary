@@ -15,8 +15,8 @@
 //
 // Журнал: лише кількість кроків і токенів - без тексту розмов.
 //
-// Публічна для шлюзу Supabase (розгортати з --no-verify-jwt): перевірку
-// робить access.ts. Без залежностей: той самий файл перевіряє тест на Node
+// Публічна для шлюзу Supabase (розгортати з --no-verify-jwt): вхід і ліміт
+// на людину перевіряє access.ts. Без залежностей: той самий файл перевіряє тест на Node
 // (tests/assistant.test.ts).
 
 import {
@@ -42,7 +42,7 @@ import {
   usesFallback,
 } from './config.ts';
 import { searchBooks } from './kb.ts';
-import { type AccessCheck, checkAccess } from './access.ts';
+import { type AccessCheck, checkAccess, checkUsage, type UsageCheck } from './access.ts';
 import { systemPromptFor } from './prompt.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 
@@ -59,6 +59,7 @@ export type Deps = {
   fetch: typeof fetch;
   log: (line: string) => void;
   access: AccessCheck;
+  usage: UsageCheck;
   system?: string;
   tools?: ToolDef[];
 };
@@ -192,7 +193,7 @@ async function errorInfo(res: Response): Promise<{ error_type?: string; error_me
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method !== 'POST') return fail(405, 'method');
 
-  const access = await deps.access(req, deps.env);
+  const access = await deps.access(req, deps.env, deps.fetch);
   if (!access.ok) return fail(access.status, access.error);
 
   const key = deps.env('ANTHROPIC_API_KEY')?.trim();
@@ -212,6 +213,16 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     body = JSON.parse(text);
   } catch {
     return reject(400, 'json');
+  }
+  // денний ліміт на людину: кожен запит (крок моделі чи пошук у книгах)
+  const used = await deps.usage(access.subject, deps.env, deps.fetch);
+  if (used === 'limit') {
+    deps.log(JSON.stringify({ fn: 'assistant', result: 'daily_limit' }));
+    return fail(429, 'daily_limit');
+  }
+  if (used === 'error') {
+    deps.log(JSON.stringify({ fn: 'assistant', result: 'usage_unavailable' }));
+    return json({ error: 'busy', retry: true }, 503);
   }
   // пошук у книгах (інструмент search_books; виконує застосунок через нас)
   if (body?.action === 'search_books') {
@@ -363,6 +374,7 @@ if (typeof Deno !== 'undefined') {
       fetch,
       log: (l) => console.log(l),
       access: checkAccess,
+      usage: checkUsage,
     }),
   );
 }

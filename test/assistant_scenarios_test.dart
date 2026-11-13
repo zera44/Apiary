@@ -22,6 +22,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'support/assistant_token.dart';
+
 const goodCode = 'test-code-0123456789';
 
 /// Підставний сервер: перевіряє тестовий код, рахує кроки (як index.ts) і
@@ -34,7 +36,7 @@ class FakeServer {
 
   http.Client get client => MockClient((req) async {
         if (down) throw http.ClientException('no network');
-        if (req.headers[RemoteAssistantModel.tokenHeader] != goodCode) {
+        if (req.headers['Authorization'] != 'Bearer $goodCode') {
           return http.Response('{"error":"unauthorized"}', 401);
         }
         final messages = (jsonDecode(req.body) as Map)['messages'] as List;
@@ -83,7 +85,7 @@ void main() {
     final q = AssistantQueue(
       repo,
       store,
-      RemoteAssistantModel(Uri.parse('https://x.supabase.co/functions/v1/assistant'), code,
+      RemoteAssistantModel(Uri.parse('https://x.supabase.co/functions/v1/assistant'), fixedToken(code),
           client: server.client),
       isOnline: () async => online,
       onlineChanges: const Stream.empty(),

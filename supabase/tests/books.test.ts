@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 
 import { ADMIN_HEADER, type Deps, handle } from '../functions/books/index.ts';
 import { handle as assistantHandle, type Deps as AssistantDeps } from '../functions/assistant/index.ts';
-import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
+import type { AccessCheck, UsageCheck } from '../functions/assistant/access.ts';
 import { searchBooks } from '../functions/assistant/kb.ts';
 
 const PW = 'admin-password-123';
@@ -162,7 +162,12 @@ test('журнал: лише лічильники - без назв і текс�
 // ---- пошук помічника (функція assistant, дія search_books)
 
 const TOKEN = 'test-token-0123456789abcdef';
-const A_ENV: Record<string, string> = { ...ENV, ANTHROPIC_API_KEY: 'sk-ant-test', APIARY_ASSISTANT_TEST_TOKEN: TOKEN };
+const A_ENV: Record<string, string> = { ...ENV, ANTHROPIC_API_KEY: 'sk-ant-test' };
+const fakeAccess: AccessCheck = async (req) =>
+  req.headers.get('Authorization') === `Bearer ${TOKEN}`
+    ? { ok: true, subject: '11111111-1111-4111-8111-111111111111' }
+    : { ok: false, status: 401, error: 'unauthorized' };
+const unlimited: UsageCheck = async () => 'ok';
 
 function assistant(reply: (c: Call) => Response, env = A_ENV) {
   const calls: Call[] = [];
@@ -175,7 +180,8 @@ function assistant(reply: (c: Call) => Response, env = A_ENV) {
       return reply(c);
     }) as typeof fetch,
     log: (l) => logs.push(l),
-    access: testTokenAccess,
+    access: fakeAccess,
+    usage: unlimited,
     tools: [],
   };
   return { d, calls, logs };
@@ -183,7 +189,7 @@ function assistant(reply: (c: Call) => Response, env = A_ENV) {
 const ask = (body: unknown, token: string | null = TOKEN) =>
   new Request('https://x/functions/v1/assistant', {
     method: 'POST',
-    headers: token == null ? {} : { [TEST_TOKEN_HEADER]: token },
+    headers: token == null ? {} : { Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
 
