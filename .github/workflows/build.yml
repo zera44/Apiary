@@ -15,6 +15,13 @@ on:
 permissions:
   contents: read
 
+# Новіший пуш у ту саму гілку скасовує старішу збірку: інакше дві збірки, що
+# йдуть одночасно, публікують latest у довільному порядку, і старіша може
+# перезаписати новішу (так 12.11 зник імпорт з Excel і валюти).
+concurrency:
+  group: build-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Перевірка й тести
@@ -301,8 +308,23 @@ jobs:
       # щоб їх можна було скачати за прямим посиланням (і з телефона).
       # Публікується прямо з цієї збірки (без артефактів: їхня квота сховища
       # буває вичерпана, і тоді реліз не оновлювався).
-      - name: Підготувати файли релізу
+      # Запобіжник на випадок, коли скасування не спрацювало (або перезапуск
+      # старої збірки): публікуємо лише з коміту, який зараз є вершиною main.
+      - name: Чи це найновіший коміт main
+        id: fresh
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$head" = "$GITHUB_SHA" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=РЕЛІЗ::Збірка з ${GITHUB_SHA::7}, а main уже на ${head::7} - реліз не оновлюю, щоб не перезаписати новішу збірку"
+          fi
+      - name: Підготувати файли релізу
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.fresh.outputs.ok == 'true'
         run: |
           python3 tool/whats_new.py --md > notes.md && cat notes.md
           # реліз latest - лише зміни цього пуша в main (повний список версії - у v<версія>)
@@ -312,7 +334,7 @@ jobs:
           cat SHA256SUMS.txt
           ls -la apiary.apk
       - name: Оновити реліз latest
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.fresh.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -329,7 +351,7 @@ jobs:
       # окремий постійний реліз для кожної версії з pubspec (v0.3.5 тощо):
       # створюється один раз, коли версія вперше потрапила в main
       - name: Реліз версії
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.fresh.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
