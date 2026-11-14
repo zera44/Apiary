@@ -1542,6 +1542,18 @@ class AppStringsUk extends AppStrings {
   @override
   String get photoFromGallery => 'Обрати фото з галереї';
   @override
+  String get orFromGallery => 'або обрати з галереї';
+  @override
+  String get dayBeforeYesterday => 'Позавчора';
+  @override
+  String get moreCategories => 'Більше';
+  @override
+  String get searchHint => 'Пошук';
+  @override
+  String get newCategoryBtn => '+ Нова категорія';
+  @override
+  String get chooseAccount => 'Рахунок';
+  @override
   String get reshoot => 'Перезняти';
   @override
   String get toStock => 'На склад';

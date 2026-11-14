@@ -10,10 +10,10 @@ import '../services/receipt_ocr.dart';
 import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
-import '../ui/fin_account_chips.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
+import 'fin_pick_category_screen.dart';
 import '../ui/thousands_input.dart';
 import '../l10n/l10n.dart';
 
@@ -100,11 +100,11 @@ class _FinAddScreenState extends State<FinAddScreen> {
   List<FinAccount> _accounts = [];
   String? _accountId;
   Map<String, double> _rates = const {kFinUah: 1};
+  Map<String, double> _balances = {};
   final _accAmt = TextEditingController();
   final List<_FLine> _lines = [];
   final _sum = TextEditingController();
   bool _sumManual = false;
-  int _mode = 0; // 0 - вручну, 1 - з чека
   DateTime _date = DateTime.now();
   bool _saving = false;
 
@@ -188,7 +188,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
   void initState() {
     super.initState();
     _lines.add(_FLine());
-    if (widget.imagePath != null) _mode = 1;
     _load().then((_) {
       if (widget.imagePath != null) _recognize(widget.imagePath!);
     });
@@ -212,9 +211,11 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final accounts = await repo.listFinAccounts();
     final lastAccount = await repo.getMeta('fin_last_account');
     final rates = await repo.finRates();
+    final balances = await repo.finAccountBalances();
     if (!mounted) return;
     setState(() {
       _rates = rates;
+      _balances = balances;
       _accounts = accounts;
       if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
         _accountId = accounts.any((a) => a.id == lastAccount)
@@ -366,7 +367,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
   Future<void> _recognize(String path) async {
     if (!_ocr.supported) {
       setState(() {
-        _mode = 1;
         _hasReceipt = true;
         _receiptOk = false;
         _receiptNote = tr.receiptOnPhoneOnly;
@@ -374,7 +374,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
       return;
     }
     setState(() {
-      _mode = 1;
       _reading = true;
       _marked = null;
       _markFail = null;
@@ -608,52 +607,289 @@ class _FinAddScreenState extends State<FinAddScreen> {
     );
   }
 
+  /// Перші п'ять категорій; обрана з-за межі п'яти підміняє останню.
+  List<FinCategory> get _shownCats {
+    if (_cats.length <= 6) return _cats;
+    final top = _cats.take(5).toList();
+    final c = _cat;
+    if (c != null && !top.any((x) => x.id == c.id)) top[4] = c;
+    return top;
+  }
+
+  Widget _catCircle(
+      {required Widget badge,
+      required String label,
+      required VoidCallback onTap,
+      VoidCallback? onLongPress,
+      bool selected = false,
+      Color? labelColor}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: selected ? AppColors.create : Colors.transparent, width: 3),
+          ),
+          child: badge,
+        ),
+        const SizedBox(height: 4),
+        Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: labelColor ?? AppColors.text,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600)),
+      ]),
+    );
+  }
+
   Widget _categories() {
+    final more = _cats.length > 6;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(tr.category, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         const SizedBox(height: 8),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final c in _cats)
-            GestureDetector(
-              onTap: () => _pickCategory(c),
-              onLongPress: () async {
-                await Navigator.of(context).push(MaterialPageRoute<String>(
-                    builder: (_) => FinCategoryScreen(repo: repo, category: c)));
-                await _load();
-              },
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
-                decoration: BoxDecoration(
-                  color: c.id == _catId ? AppColors.darkBtn : AppColors.card,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                      color: c.id == _catId ? AppColors.create : AppColors.darkBtn, width: 1.5),
+        LayoutBuilder(builder: (context, box) {
+          final w = (box.maxWidth - 16) / 3;
+          return Wrap(spacing: 8, runSpacing: 12, children: [
+            for (final c in _shownCats)
+              SizedBox(
+                width: w,
+                child: _catCircle(
+                  badge: FinBadge(icon: c.icon, color: c.color, size: 56),
+                  label: c.name,
+                  selected: c.id == _catId,
+                  onTap: () => _pickCategory(c),
+                  onLongPress: () async {
+                    await Navigator.of(context).push(MaterialPageRoute<String>(
+                        builder: (_) => FinCategoryScreen(repo: repo, category: c)));
+                    await _load();
+                  },
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  FinBadge(icon: c.icon, color: c.color, size: 30),
-                  const SizedBox(width: 8),
-                  Text(c.name, style: TextStyle(color: AppColors.text, fontSize: 14)),
-                  if (c.toStock) ...[
-                    const SizedBox(width: 6),
-                    Icon(Icons.inventory_2_outlined, size: 14, color: AppColors.addObject),
-                  ],
+              ),
+            SizedBox(
+              width: w,
+              child: _catCircle(
+                badge: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(color: AppColors.darkBtn, shape: BoxShape.circle),
+                  child: Icon(more ? Icons.more_horiz : Icons.add, color: AppColors.text, size: 28),
+                ),
+                label: more ? tr.moreCategories : tr.newCategoryShort,
+                labelColor: AppColors.create,
+                onTap: more ? _allCategories : _newCategory,
+              ),
+            ),
+          ]);
+        }),
+      ]),
+    );
+  }
+
+  Future<void> _allCategories() async {
+    final id = await Navigator.of(context).push<String>(MaterialPageRoute(
+        builder: (_) => FinPickCategoryScreen(categories: _cats, selected: _catId)));
+    if (id == null || !mounted) return;
+    if (id == kPickNewCategory) {
+      await _newCategory();
+      return;
+    }
+    for (final c in _cats) {
+      if (c.id == id) _pickCategory(c);
+    }
+  }
+
+  // --------------------------------------------------------------- рахунок
+
+  Widget _tile({
+    required Widget badge,
+    String? caption,
+    required String text,
+    required VoidCallback onTap,
+    EdgeInsets margin = const EdgeInsets.fromLTRB(16, 12, 16, 0),
+  }) {
+    return Container(
+      margin: margin,
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.darkBtn)),
+            child: Row(children: [
+              badge,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (caption != null)
+                    Text(caption, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w600)),
                 ]),
               ),
-            ),
-          GestureDetector(
-            onTap: _newCategory,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppColors.create, width: 1.5),
+              Icon(Icons.chevron_right, color: AppColors.textMuted),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAccount() async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.75),
+        child: SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 12),
+            Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                    color: AppColors.darkBtn, borderRadius: BorderRadius.circular(3))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(tr.chooseAccount,
+                    style: TextStyle(
+                        color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
               ),
-              child: Text(tr.newCategoryShort, style: TextStyle(color: AppColors.create, fontSize: 14)),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                children: [
+                  for (final a in _accounts)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => Navigator.pop(ctx, a.id),
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 60),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: a.id == _accountId ? AppColors.create : Colors.transparent,
+                              width: 1.5),
+                        ),
+                        child: Row(children: [
+                          FinBadge(icon: a.icon, color: a.color, size: 36),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Text(a.name,
+                                  style: TextStyle(color: AppColors.text, fontSize: 16))),
+                          const SizedBox(width: 8),
+                          Text(money(_balances[a.id] ?? a.startBalance, a.currency),
+                              style: TextStyle(
+                                  color: (_balances[a.id] ?? 0) < 0
+                                      ? AppColors.danger
+                                      : AppColors.textMuted,
+                                  fontSize: 15)),
+                        ]),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (id != null && mounted) setState(() => _accountId = id);
+  }
+
+  Widget _accountTile({EdgeInsets? margin}) {
+    final a = _account!;
+    return _tile(
+      badge: FinBadge(icon: a.icon, color: a.color, size: 36),
+      caption: tr.finAccount,
+      text: a.foreign ? '${a.name} · ${a.currency}' : a.name,
+      onTap: _pickAccount,
+      margin: margin ?? const EdgeInsets.fromLTRB(16, 12, 16, 0),
+    );
+  }
+
+  /// Після розпізнавання чека: рахунок і категорія - двома компактними рядками.
+  Widget _compactPickers() {
+    final c = _cat;
+    return Column(children: [
+      if (_accounts.length > 1 && _account != null) _accountTile(),
+      if (c != null)
+        _tile(
+          badge: FinBadge(icon: c.icon, color: c.color, size: 36),
+          caption: tr.category,
+          text: c.name,
+          onTap: _allCategories,
+        )
+      else
+        _categories(),
+    ]);
+  }
+
+  // ------------------------------------------------------------ сканування
+
+  Widget _scanHero() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(children: [
+        Material(
+          color: AppColors.create,
+          borderRadius: BorderRadius.circular(22),
+          child: InkWell(
+            key: const Key('fin-scan-receipt'),
+            borderRadius: BorderRadius.circular(22),
+            onTap: () => _pickReceipt(camera: true),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 84),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: const BoxDecoration(color: Color(0xFF1D1611), shape: BoxShape.circle),
+                  child: Icon(Icons.photo_camera_outlined, size: 30, color: AppColors.create),
+                ),
+                const SizedBox(width: 14),
+                Flexible(
+                  child: Text(tr.receiptPhoto,
+                      maxLines: 2,
+                      style: const TextStyle(
+                          color: Color(0xFF1D1611), fontSize: 19, fontWeight: FontWeight.w800)),
+                ),
+              ]),
             ),
           ),
-        ]),
+        ),
+        TextButton(
+          key: const Key('fin-scan-gallery'),
+          style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+          onPressed: () => _pickReceipt(camera: false),
+          child: Text(tr.orFromGallery, style: TextStyle(color: AppColors.create, fontSize: 14)),
+        ),
       ]),
     );
   }
@@ -661,7 +897,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   Widget _receiptPanel() {
     if (_reading) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5)),
           const SizedBox(width: 12),
@@ -669,37 +905,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ]),
       );
     }
-    if (!_hasReceipt) {
-      return Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Column(children: [
-          Text(
-              tr.receiptPhotoHint,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.3)),
-          const SizedBox(height: 10),
-          PillButton(
-            text: tr.receiptPhoto,
-            bg: AppColors.accent,
-            height: 46,
-            radius: 16,
-            width: double.infinity,
-            onPressed: () => _pickReceipt(camera: true),
-          ),
-          const SizedBox(height: 8),
-          PillButton(
-            text: tr.photoFromGallery,
-            bg: AppColors.darkBtn,
-            fg: AppColors.text,
-            height: 42,
-            width: double.infinity,
-            onPressed: () => _pickReceipt(camera: false),
-          ),
-        ]),
-      );
-    }
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
       decoration: BoxDecoration(
         color: AppColors.bg,
@@ -743,7 +950,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   Widget _tableHeader() {
     final s = TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
       child: Row(children: [
         SizedBox(width: 34, child: Tooltip(message: _expense ? tr.toStock : tr.fromStock, child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
         Expanded(flex: 5, child: Text(tr.goods, style: s)),
@@ -976,12 +1183,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final t = _tableSum;
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        FinSegment(
-          labels: [tr.byHand, tr.fromReceipt],
-          selected: _mode,
-          onChanged: (i) => setState(() => _mode = i),
-        ),
-        if (_mode == 1) _receiptPanel(),
         _tableHeader(),
         for (final l in _lines) _row(l),
         Row(children: [
@@ -1001,27 +1202,58 @@ class _FinAddScreenState extends State<FinAddScreen> {
 
   Widget _dateRow() {
     final now = DateTime.now();
-    final today = _sameDay(_date, now);
-    final yesterday = _sameDay(_date, now.subtract(const Duration(days: 1)));
-    Widget chip(String text, bool on, VoidCallback tap) => GestureDetector(
-          onTap: tap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: on ? AppColors.darkBtn : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: on ? AppColors.create : AppColors.darkBtn, width: 1.5),
+    final days = [for (var i = 0; i < 3; i++) now.subtract(Duration(days: i))];
+    final words = [tr.today, tr.yesterday, tr.dayBeforeYesterday];
+    final custom = !days.any((d) => _sameDay(_date, d));
+    Widget chip(Widget child, bool on, VoidCallback tap) => Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 54),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              decoration: BoxDecoration(
+                color: on ? AppColors.card : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: on ? AppColors.create : AppColors.darkBtn, width: on ? 1.5 : 1),
+              ),
+              child: child,
             ),
-            child: Text(text, style: TextStyle(color: AppColors.text, fontSize: 14)),
           ),
         );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Wrap(spacing: 8, runSpacing: 8, children: [
-        chip(tr.today, today, () => setState(() => _date = DateTime.now())),
-        chip(tr.yesterday, yesterday,
-            () => setState(() => _date = DateTime.now().subtract(const Duration(days: 1)))),
-        chip(today || yesterday ? tr.otherDate : formatDdMmYyyy(_date), !today && !yesterday, _pickDate),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (var i = 0; i < 3; i++) ...[
+          chip(
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text(finDay(days[i]),
+                    style: TextStyle(
+                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
+                Text(words[i], style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+              ]),
+            ),
+            _sameDay(_date, days[i]),
+            () => setState(() => _date = i == 0 ? DateTime.now() : days[i]),
+          ),
+          const SizedBox(width: 8),
+        ],
+        chip(
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.calendar_month_outlined, size: 24, color: AppColors.create),
+              if (custom)
+                Text(formatDdMmYyyy(_date),
+                    style: TextStyle(color: AppColors.text, fontSize: 11.5)),
+            ]),
+          ),
+          custom,
+          _pickDate,
+        ),
       ]),
     );
   }
@@ -1070,17 +1302,19 @@ class _FinAddScreenState extends State<FinAddScreen> {
                       onChanged: (i) => _setKind(i == 0 ? kFinExpense : kFinIncome),
                     ),
                   ),
+                  if (_hasReceipt || _reading) _receiptPanel(),
                   _sumBlock(),
                   _foreignAmount(),
-                  if (_accounts.length > 1)
-                    FinAccountChips(
-                      accounts: _accounts,
-                      selected: _accountId,
-                      onChanged: (id) => setState(() => _accountId = id),
-                    ),
-                  _categories(),
+                  if (_hasReceipt || _reading) ...[
+                    _compactPickers(),
+                    _dateRow(),
+                  ] else ...[
+                    if (_accounts.length > 1 && _account != null) _accountTile(),
+                    _categories(),
+                    _dateRow(),
+                    _scanHero(),
+                  ],
                   _table(),
-                  _dateRow(),
                 ],
               ),
             ),

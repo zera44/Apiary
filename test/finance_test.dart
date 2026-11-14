@@ -647,5 +647,25 @@ void main() {
           find.descendant(of: find.byKey(const ValueKey('fin-sum')), matching: find.byType(EditableText)));
       expect(f.focusNode.hasFocus, isFalse);
     });
+
+    testWidgets('вручну: велика кнопка «Сфотографувати чек»; після чека її немає', (tester) async {
+      await open(tester, FinAddScreen(repo: repo));
+      expect(find.byKey(const Key('fin-scan-receipt')), findsOneWidget);
+      expect(find.text('або обрати з галереї'), findsOneWidget);
+      expect(find.text('Позавчора'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      expect(find.byKey(const Key('fin-scan-receipt')), findsNothing);
+      expect(find.textContaining('сума збігається'), findsOneWidget);
+    });
+
+    testWidgets('категорія обрана - у чеку вона стає компактним рядком', (tester) async {
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      await tester.tap(find.text('Корми'));
+      await tester.pump();
+      expect(find.text('Корми'), findsOneWidget);
+      expect(find.text('Категорія'), findsOneWidget);
+      expect(find.text('Дорога'), findsNothing);
+    });
   });
 }

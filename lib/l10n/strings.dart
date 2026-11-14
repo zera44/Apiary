@@ -754,6 +754,12 @@ abstract class AppStrings {
   String get receiptPhotoHint;
   String get receiptPhoto;
   String get photoFromGallery;
+  String get orFromGallery;
+  String get dayBeforeYesterday;
+  String get moreCategories;
+  String get searchHint;
+  String get newCategoryBtn;
+  String get chooseAccount;
   String get reshoot;
   String get toStock;
   String get fromStock;

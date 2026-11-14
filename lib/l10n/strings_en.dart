@@ -1542,6 +1542,18 @@ class AppStringsEn extends AppStrings {
   @override
   String get photoFromGallery => 'Choose a photo from the gallery';
   @override
+  String get orFromGallery => 'or choose from the gallery';
+  @override
+  String get dayBeforeYesterday => 'Day before';
+  @override
+  String get moreCategories => 'More';
+  @override
+  String get searchHint => 'Search';
+  @override
+  String get newCategoryBtn => '+ New category';
+  @override
+  String get chooseAccount => 'Account';
+  @override
   String get reshoot => 'Retake';
   @override
   String get toStock => 'To stock';
