@@ -36,12 +36,12 @@ class MainSettingsTab extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           _LanguageSection(repo: repo),
-          _NotificationsSection(repo: repo),
           _TextSizeSection(repo: repo),
           _OrientationSection(repo: repo),
           _StartScreenSection(repo: repo),
           _AssistantSection(repo: repo),
           if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
+          _NotificationsSection(repo: repo),
         ],
       );
 }
