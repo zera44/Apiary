@@ -1571,6 +1571,14 @@ class AppStringsEn extends AppStrings {
   @override
   String get notifOff => 'Off';
   @override
+  String get finBalanceDetails => 'Balance details';
+  @override
+  String get finBalanceAll => 'Summary (all accounts)';
+  @override
+  String get finBalanceIncluded => 'Included in the total';
+  @override
+  String get finBalanceExcluded => 'Not included in the total';
+  @override
   String get swapAccounts => 'Swap accounts';
   @override
   String get notifTitle => 'Notifications';

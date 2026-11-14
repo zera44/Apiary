@@ -1571,6 +1571,14 @@ class AppStringsUk extends AppStrings {
   @override
   String get notifOff => 'Вимкнено';
   @override
+  String get finBalanceDetails => 'Деталі балансу';
+  @override
+  String get finBalanceAll => 'Зведення (усі рахунки)';
+  @override
+  String get finBalanceIncluded => 'Включено до загальної суми';
+  @override
+  String get finBalanceExcluded => 'Не включено до загальної суми';
+  @override
   String get swapAccounts => 'Поміняти рахунки місцями';
   @override
   String get notifTitle => 'Сповіщення';

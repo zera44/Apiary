@@ -768,6 +768,10 @@ abstract class AppStrings {
   String get finCurrencyNoRate;
   String finCurrencyChangeText(String before, String after, String rate);
   String get notifOff;
+  String get finBalanceDetails;
+  String get finBalanceAll;
+  String get finBalanceIncluded;
+  String get finBalanceExcluded;
   String get swapAccounts;
   String get notifTitle;
   String get notifSummary;
