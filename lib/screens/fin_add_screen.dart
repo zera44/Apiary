@@ -4,7 +4,6 @@ import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../logic/receipt_parser.dart';
 import '../logic/receipt_pick.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
