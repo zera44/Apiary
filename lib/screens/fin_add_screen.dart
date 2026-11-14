@@ -1242,12 +1242,18 @@ class _FinAddScreenState extends State<FinAddScreen> {
                       onChanged: (i) => _setKind(i == 0 ? kFinExpense : kFinIncome),
                     ),
                   ),
-                  if (_hasReceipt || _reading) _receiptPanel(),
                   _sumBlock(),
                   _foreignAmount(),
+                  // тонка лінія відділяє суму від рахунку й категорії
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
+                    child: Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.35)),
+                  ),
                   if (_hasReceipt || _reading) ...[
                     _compactPickers(),
                     FinDateRow(date: _date, onChanged: (d) => setState(() => _date = d), onPickCalendar: _pickDate),
+                    // розпізнаний чек - між датою й таблицею товарів
+                    _receiptPanel(),
                   ] else ...[
                     if (_accounts.length > 1 && _account != null) _accountTile(),
                     _categories(),
