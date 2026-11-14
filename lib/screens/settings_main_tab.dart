@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_host.dart';
 import '../assistant/assistant_voice.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -249,6 +250,19 @@ class _AssistantSectionState extends State<_AssistantSection> {
   Widget build(BuildContext context) => SettingsSection(
         title: tr.assistantSection,
         children: [
+          ValueListenableBuilder<bool>(
+            valueListenable: AssistantHost.showBubble,
+            builder: (_, on, _) => SwitchListTile(
+              key: const ValueKey('assistant-bubble'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(tr.assistantBubbleSetting,
+                  style: TextStyle(color: AppColors.text, fontSize: 14)),
+              subtitle: Text(tr.assistantBubbleHint,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              value: on,
+              onChanged: (v) => AssistantHost.setShowBubble(widget.repo, v),
+            ),
+          ),
           SwitchListTile(
             key: const ValueKey('assistant-speak'),
             contentPadding: EdgeInsets.zero,

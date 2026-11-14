@@ -757,6 +757,12 @@ abstract class AppStrings {
   String get orFromGallery;
   String get transferFromAccount;
   String get transferToAccount;
+  String get aiAssistant;
+  String get assistantBubbleSetting;
+  String get assistantBubbleHint;
+  String get qrScanHint;
+  String get qrGenerateHint;
+  String get qrBindRowHint;
   String get swapAccounts;
   String get notifTitle;
   String get notifSummary;

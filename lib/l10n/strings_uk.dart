@@ -1548,6 +1548,18 @@ class AppStringsUk extends AppStrings {
   @override
   String get transferToAccount => 'Переказати на рахунок';
   @override
+  String get aiAssistant => 'ШІ-помічник';
+  @override
+  String get assistantBubbleSetting => 'Показувати плашку помічника';
+  @override
+  String get assistantBubbleHint => 'Плашку можна перетягнути в зручне місце. Якщо вимкнути - помічник відкривається з меню «ШІ-помічник»';
+  @override
+  String get qrScanHint => 'Навести камеру на наліпку - відкриється огляд вулика';
+  @override
+  String get qrGenerateHint => 'Створити наліпки з кодами для вуликів';
+  @override
+  String get qrBindRowHint => 'Прив\'язувати наліпки до вуликів по черзі';
+  @override
   String get swapAccounts => 'Поміняти рахунки місцями';
   @override
   String get notifTitle => 'Сповіщення';

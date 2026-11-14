@@ -11,6 +11,7 @@ import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/first_hints.dart';
 import '../ui/date_picker.dart';
 import '../ui/icons.dart';
@@ -290,10 +291,11 @@ class _StockScreenState extends State<StockScreen> {
       StockOp.inventory => tr.stocktake,
     };
     return Scaffold(
+      drawer: NavDrawer(repo: widget.repo, current: NavSection.stock),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: title, onBack: () => Navigator.pop(context)),
+            NavTopBar(title: title),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [

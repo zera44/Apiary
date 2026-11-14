@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_chat_screen.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
@@ -7,7 +10,7 @@ import '../screens/feedback_chat_screen.dart';
 import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
-import '../screens/qr_generate_screen.dart';
+import '../screens/qr_section_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/stock_screen.dart';
@@ -266,20 +269,15 @@ class _AppDrawerState extends State<AppDrawer> {
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _t(3, _item(context, 'history', tr.history,
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
-          // QR — одним пунктом; натиснули — розкрились дії
-          _t(4, _group(context, AppIcon('qr', color: AppColors.text, size: 30), tr.qrCode, [
-            _item(context, 'qr', tr.scan, () {
-              nav.pop();
-              AppDrawer.openHiveByQr(nav, repo);
-            }),
-            _item(context, 'qr', tr.generate,
-                () => _open(nav, QrGenerateScreen(repo: repo, apiary: currentApiary))),
-            if (onBindQrRow != null)
-              _item(context, 'qr', tr.qrBindRow, () {
-                nav.pop(); // закрити меню
-                onBindQrRow!();
-              }),
-          ])),
+          // QR-код - окремий розділ зі своїм меню (як Фінанси)
+          _t(4, _item(context, 'qr', tr.qrCode,
+              widget.tour ? () {} : () => _open(nav, QrSectionScreen(repo: repo)))),
+          // ШІ-помічник: відкрити розмову (поза екскурсією)
+          if (!widget.tour && widget.hint == null)
+            _item(context, '', tr.aiAssistant, () {
+              nav.pop(); // закрити меню
+              unawaited(AssistantChatScreen.open(nav, repo));
+            }, iconData: Icons.smart_toy_outlined),
           _t(5, _item(context, '', tr.tutorial,
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: Icons.school_outlined)),
@@ -296,20 +294,6 @@ class _AppDrawerState extends State<AppDrawer> {
       ),
     );
   }
-
-  /// Пункт, що розгортається (QR-код).
-  Widget _group(BuildContext context, Widget leading, String title, List<Widget> children) =>
-      Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          leading: leading,
-          title: Text(title, style: TextStyle(color: AppColors.text, fontSize: 16)),
-          iconColor: AppColors.text,
-          collapsedIconColor: AppColors.textMuted,
-          childrenPadding: const EdgeInsets.only(left: 40),
-          children: children,
-        ),
-      );
 
   Widget _item(BuildContext context, String icon, String text, VoidCallback onTap,
       {IconData? iconData}) {

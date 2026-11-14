@@ -1548,6 +1548,18 @@ class AppStringsEn extends AppStrings {
   @override
   String get transferToAccount => 'Transfer to account';
   @override
+  String get aiAssistant => 'AI assistant';
+  @override
+  String get assistantBubbleSetting => 'Show the assistant bubble';
+  @override
+  String get assistantBubbleHint => 'Drag the bubble anywhere. When off, open the assistant from the "AI assistant" menu item';
+  @override
+  String get qrScanHint => 'Point the camera at a sticker to open the hive inspection';
+  @override
+  String get qrGenerateHint => 'Create stickers with codes for hives';
+  @override
+  String get qrBindRowHint => 'Link stickers to hives one after another';
+  @override
   String get swapAccounts => 'Swap accounts';
   @override
   String get notifTitle => 'Notifications';

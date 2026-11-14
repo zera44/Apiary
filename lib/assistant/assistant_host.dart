@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -34,6 +35,16 @@ class AssistantHost extends StatefulWidget {
   static const defaultDockFrom = 840.0;
   static const dockWidth = 400.0;
 
+  /// Показувати плашку помічника (налаштування; вимкнули - помічник у меню).
+  static final showBubble = ValueNotifier<bool>(true);
+  static const bubbleKey = 'assistant_bubble';
+  static const bubblePosKey = 'assistant_bubble_pos';
+
+  static Future<void> setShowBubble(Repository repo, bool v) async {
+    showBubble.value = v;
+    await repo.setMeta(bubbleKey, v ? '1' : '0');
+  }
+
   /// Чат збоку відкрито (лише на широкому екрані).
   static final dockOpen = ValueNotifier<bool>(false);
 
@@ -47,6 +58,38 @@ class AssistantHost extends StatefulWidget {
 }
 
 class _AssistantHostState extends State<AssistantHost> {
+  /// Де плашку залишили: true - біля правого краю; [_yFrac] - висота (0..1).
+  /// Немає - стандартне місце в куті шапки.
+  bool _right = true;
+  double _yFrac = 0;
+  bool _moved = false;
+
+  /// Положення пальця, поки плашку тягнуть (лівий верхній кут).
+  Offset? _drag;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPrefs());
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final on = await widget.repo.getMeta(AssistantHost.bubbleKey);
+      final pos = await widget.repo.getMeta(AssistantHost.bubblePosKey);
+      if (!mounted) return;
+      AssistantHost.showBubble.value = on != '0';
+      final m = RegExp(r'^([LR]):([0-9.]+)$').firstMatch(pos ?? '');
+      if (m != null) {
+        setState(() {
+          _moved = true;
+          _right = m.group(1) == 'R';
+          _yFrac = (double.tryParse(m.group(2)!) ?? 0).clamp(0.0, 1.0);
+        });
+      }
+    } catch (_) {}
+  }
+
   void _toggleOrOpen(bool wide) {
     if (wide) {
       AssistantHost.dockOpen.value = !AssistantHost.dockOpen.value;
@@ -66,6 +109,7 @@ class _AssistantHostState extends State<AssistantHost> {
             AssistantContext.current,
             AssistantContext.chatOnTop,
             AssistantHost.dockOpen,
+            AssistantHost.showBubble,
           ]),
           builder: (context, _) {
             final q = AssistantQueue.current;
@@ -76,10 +120,13 @@ class _AssistantHostState extends State<AssistantHost> {
             // місце в шапці лишається й під вікном (щоб шапка не стрибала)
             final slot =
                 q != null && !docked && !AssistantHost.hiddenOn.contains(ctx?.screen);
-            final showFab = slot && !AssistantContext.chatOnTop.value;
-            if (AssistantSlot.shown.value != slot) {
+            final bubbleOn = AssistantHost.showBubble.value;
+            final showFab = slot && bubbleOn && !AssistantContext.chatOnTop.value;
+            // місце в шапці потрібне, лише поки плашка стоїть у куті
+            final reserve = slot && bubbleOn && !_moved && _drag == null;
+            if (AssistantSlot.shown.value != reserve) {
               WidgetsBinding.instance
-                  .addPostFrameCallback((_) => AssistantSlot.shown.value = slot);
+                  .addPostFrameCallback((_) => AssistantSlot.shown.value = reserve);
             }
             return Stack(
               children: [
@@ -106,7 +153,7 @@ class _AssistantHostState extends State<AssistantHost> {
                       ),
                   ],
                 ),
-                if (showFab) _fab(mq, wide),
+                if (showFab) _fab(mq, box, wide),
               ],
             );
           },
@@ -115,16 +162,59 @@ class _AssistantHostState extends State<AssistantHost> {
     );
   }
 
-  /// Місце іконки однакове на всіх екранах і не переміщується.
-  Widget _fab(MediaQueryData mq, bool wide) {
-    return Positioned(
-      right: mq.padding.right + AssistantSlot.right,
-      top: mq.padding.top + AssistantSlot.top,
-      child: Material(
-        key: const ValueKey('assistant-fab'),
-        type: MaterialType.transparency,
-        child: AssistantButton(
-            repo: widget.repo, size: AssistantSlot.size, onTap: () => _toggleOrOpen(wide)),
+  /// Плашку можна перетягнути (як у Telegram): відпустили - прилипає до
+  /// лівого чи правого краю; куток шапки (стандартне місце) вільний, поки вона там.
+  Widget _fab(MediaQueryData mq, BoxConstraints box, bool wide) {
+    const s = AssistantSlot.size;
+    const gap = 8.0;
+    final topMin = mq.padding.top + AssistantSlot.top;
+    final topMax = math.max(topMin, box.maxHeight - mq.padding.bottom - s - gap);
+    final leftEdge = mq.padding.left + gap;
+    final rightEdge = box.maxWidth - mq.padding.right - AssistantSlot.right - s;
+    double left, top;
+    if (_drag != null) {
+      left = _drag!.dx;
+      top = _drag!.dy;
+    } else if (_moved) {
+      left = _right ? rightEdge : leftEdge;
+      top = topMin + (topMax - topMin) * _yFrac;
+    } else {
+      left = rightEdge;
+      top = topMin;
+    }
+    return AnimatedPositioned(
+      duration: _drag != null ? Duration.zero : const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      left: left,
+      top: top,
+      child: GestureDetector(
+        onPanStart: (_) => setState(() => _drag = Offset(left, top)),
+        onPanUpdate: (d) => setState(() {
+          final p = (_drag ?? Offset(left, top)) + d.delta;
+          _drag = Offset(p.dx.clamp(0.0, box.maxWidth - s), p.dy.clamp(topMin, topMax));
+        }),
+        onPanEnd: (_) {
+          final p = _drag;
+          if (p == null) return;
+          final right = p.dx + s / 2 > box.maxWidth / 2;
+          final home = right && p.dy <= topMin + 14;
+          setState(() {
+            _drag = null;
+            _right = right;
+            _yFrac = topMax <= topMin ? 0 : ((p.dy - topMin) / (topMax - topMin)).clamp(0.0, 1.0);
+            _moved = !home;
+          });
+          unawaited(widget.repo
+              .setMeta(AssistantHost.bubblePosKey,
+                  home ? '' : '${right ? 'R' : 'L'}:${_yFrac.toStringAsFixed(3)}')
+              .catchError((Object _) {}));
+        },
+        onPanCancel: () => setState(() => _drag = null),
+        child: Material(
+          key: const ValueKey('assistant-fab'),
+          type: MaterialType.transparency,
+          child: AssistantButton(repo: widget.repo, size: s, onTap: () => _toggleOrOpen(wide)),
+        ),
       ),
     );
   }

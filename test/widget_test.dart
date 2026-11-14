@@ -23,6 +23,7 @@ import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
 import 'package:apiary/screens/qr_generate_screen.dart';
+import 'package:apiary/screens/qr_section_screen.dart';
 import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
@@ -102,8 +103,8 @@ void main() {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    // лише в меню: «Сканувати» є ще й кнопкою на карті
-    final item = find.descendant(of: find.byType(Drawer), matching: find.text(action));
+    // «QR-код» - окремий розділ: дії - плитками на його екрані
+    final item = find.descendant(of: find.byType(QrSectionScreen), matching: find.text(action));
     await tester.ensureVisible(item);
     await settle(tester);
     await tester.tap(item);
@@ -304,9 +305,7 @@ void main() {
     await listViaMenu(tester);
     expect(find.text('Мої пасіки'), findsOneWidget);
     // «назад» із моїх пасік — на головний екран
-    await tester.tap(find
-        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
-        .first);
+    await tester.binding.handlePopRoute(); // «назад» - системною кнопкою
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
@@ -316,9 +315,7 @@ void main() {
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(StockScreen), findsOneWidget);
-    await tester.tap(find
-        .descendant(of: find.byType(StockScreen), matching: find.byType(CircleIconButton))
-        .first);
+    await tester.binding.handlePopRoute(); // «назад» - системною кнопкою
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
@@ -437,9 +434,7 @@ void main() {
     // сканування — на головному екрані, у списку пасік його немає
     expect(find.descendant(of: find.byType(ApiaryListScreen), matching: find.text('Сканувати QR-код')),
         findsNothing);
-    await tester.tap(find
-        .descendant(of: find.byType(ApiaryListScreen), matching: find.byType(CircleIconButton))
-        .first);
+    await tester.binding.handlePopRoute(); // «назад» - системною кнопкою
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     // пізніше — вхід через Google; дані лишаються
@@ -831,9 +826,7 @@ void main() {
     expect(find.descendant(of: find.byType(TutorialScreen), matching: find.text('Навчання')),
         findsOneWidget);
     expect(find.text('Базові поняття'), findsOneWidget);
-    await tester.tap(find
-        .descendant(of: find.byType(TutorialScreen), matching: find.byType(CircleIconButton))
-        .first); // «назад»
+    await tester.binding.handlePopRoute(); // «назад» - системною кнопкою
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
