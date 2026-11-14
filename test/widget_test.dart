@@ -2257,6 +2257,9 @@ class FakeAuth implements AuthService {
   Future<void> continueAsGuest() async => _guest = true;
 
   @override
+  Future<AppUser> signInExternal(AppUser user) async => _user = user;
+
+  @override
   Future<String?> idToken() async => null;
 
   @override

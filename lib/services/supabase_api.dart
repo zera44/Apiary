@@ -128,6 +128,15 @@ class SupabaseApi implements SyncApi, SharingApi {
   @override
   String get myEmail => _session.email;
 
+  /// Вхід, який уже видав сервер (вхід через Telegram): запам'ятати й працювати.
+  static Future<SupabaseApi> fromSession(AppConfig config, SessionStore store, SupabaseSession session,
+      {http.Client? client}) async {
+    final base = config.supabaseBase;
+    if (base == null || !config.syncConfigured) throw StateError(tr.errServerNotConfigured);
+    await store.write(session);
+    return SupabaseApi._(base, config.supabaseAnonKey.trim(), store, session, client ?? http.Client());
+  }
+
   /// Відновити збережений вхід (null - не входили або сервер не налаштовано).
   static Future<SupabaseApi?> restore(AppConfig config, SessionStore store, {http.Client? client}) async {
     final base = config.supabaseBase;
