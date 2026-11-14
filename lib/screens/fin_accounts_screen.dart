@@ -470,14 +470,18 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                                               color: c == _currency ? AppColors.create : AppColors.text,
                                               fontWeight: c == _currency ? FontWeight.w700 : FontWeight.w400))),
                               ],
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(currencySymbol(_currency),
-                                      style: TextStyle(color: AppColors.create, fontSize: 28)),
-                                  Icon(Icons.arrow_drop_down, color: AppColors.create),
-                                ]),
+                              // символ лишається на місці, але в рамці - видно, що його можна торкнутися
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.create, width: 1.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(currencySymbol(_currency),
+                                    style: TextStyle(color: AppColors.create, fontSize: 26)),
                               ),
+                            ),
                             ),
                             filled: false,
                           ),
