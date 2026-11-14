@@ -393,6 +393,144 @@ List<ReceiptRow> _barcodeBlocks(List<String> lines) {
   return rows;
 }
 
+/// «ШТРИХ-КОД 2087375320948» ПІСЛЯ назви (Фудком та подібні каси): позицію
+/// закриває штрихкод. Лише повне слово - «ШК» і голі 13 цифр тут не рахуються.
+final _barcodeAfterLine = RegExp('^$_barcodeWord(?![а-яіїєґa-z])', caseSensitive: false);
+
+/// «- 33% -43,57 А» - знижка до позиції вище.
+final _pctDiscount = RegExp(r'^-\s*\d+\s*%');
+
+/// Чеки, де позицію закриває «ШТРИХ-КОД …» після назви: усе між двома
+/// штрихкодами - одна позиція («кількість x ціна», назва в 1-2 рядках, сума
+/// з літерою податку); знижка стоїть одразу після штрихкоду. Порядок рядків
+/// усередині блоку не важливий: фото з нахилом ставить суму вище за назву.
+///
+/// Той самий штрихкод у чеках АТБ стоїть ПЕРЕД назвою ([_barcodeBlocks]), тож
+/// формат «після» береться лише тоді, коли це видно з країв: перед першим
+/// штрихкодом уже є товар із сумою, а після останнього до «СУМА» товарів немає.
+/// Порожній список - такого формату в чеку немає.
+List<ReceiptRow> _barcodeAfter(List<String> lines) {
+  final marks = <int>[
+    for (var i = 0; i < lines.length; i++)
+      if (_barcodeAfterLine.hasMatch(lines[i])) i
+  ];
+  if (marks.length < 2) return [];
+
+  bool isDiscount(String l) => _discountOnly.hasMatch(l.toLowerCase()) || _pctDiscount.hasMatch(l);
+
+  // хвіст: після останнього штрихкоду до кінця переліку - лише знижки й службове;
+  // сума чи «кількість x ціна» там - це остання позиція формату «штрихкод перед назвою»
+  for (var i = marks.last + 1; i < lines.length; i++) {
+    final l = lines[i], low = l.toLowerCase();
+    if (_end.hasMatch(low)) break;
+    if (isDiscount(l) || _skip.hasMatch(low)) continue;
+    if (_moneyEnd.hasMatch(l) || _qtyInfo(l) != null) return [];
+  }
+
+  // перша позиція починається після останнього службового рядка шапки
+  var firstItem = -1;
+  for (var i = 0; i < marks.first; i++) {
+    final l = lines[i];
+    if (_skip.hasMatch(l.toLowerCase())) continue;
+    if (_moneyEnd.hasMatch(l) || _qtyInfo(l) != null) {
+      firstItem = i;
+      break;
+    }
+  }
+  // перед першим штрихкодом немає ні суми, ні «кількість x ціна» - це штрихкод ПЕРЕД назвою
+  if (firstItem < 0) return [];
+  var from = 0;
+  for (var i = 0; i < firstItem; i++) {
+    if (_skip.hasMatch(lines[i].toLowerCase())) from = i + 1;
+  }
+  // і в першої позиції є назва, а не лише «1X 12,00» перед штрихкодом
+  if (!lines.sublist(from, marks.first).any((l) => _hasWord(_cleanName(l)))) return [];
+
+  final rows = <ReceiptRow>[];
+  for (final m in marks) {
+    if (from < m) _afterSegment(lines.sublist(from, m), rows, isDiscount);
+    from = m + 1;
+  }
+  // штрихкодів багато, а позицій майже немає - формат не той
+  if (rows.length * 2 < marks.length) return [];
+  return rows;
+}
+
+void _afterSegment(List<String> seg, List<ReceiptRow> rows, bool Function(String) isDiscount) {
+  bool isQty(String l) {
+    final q = _qtyInfo(l);
+    return q != null && !_hasWord(_cleanName(q.m.namedGroup('name') ?? ''));
+  }
+
+  bool isService(String l) => isDiscount(l) || _skip.hasMatch(l.toLowerCase()) || _end.hasMatch(l.toLowerCase());
+
+  var lastSum = -1;
+  for (var i = 0; i < seg.length; i++) {
+    if (!isQty(seg[i]) && !isService(seg[i]) && _moneyEnd.hasMatch(seg[i])) lastSum = i;
+  }
+
+  final parts = <String>[];
+  double? qty, qprice, sum;
+  String? unit;
+  var added = false;
+
+  void close() {
+    final s = sum;
+    final title = parts.join(' ').trim();
+    if (s != null && _hasWord(title)) {
+      var q = 1.0, p = s;
+      final cq = qty, cp = qprice;
+      if (cq != null && cq > 0 && cp != null) {
+        final r = _reconcile(cq, cp, s);
+        q = r.$1;
+        p = r.$2;
+      }
+      rows.add(ReceiptRow(name: title, qty: q, unit: _guessUnit(unit, q), price: _to(p, 2)));
+      added = true;
+    }
+    parts.clear();
+    qty = qprice = sum = null;
+    unit = null;
+  }
+
+  for (var i = 0; i < seg.length; i++) {
+    final l = seg[i];
+    if (isDiscount(l)) {
+      final d = _lastMoney(l);
+      if (d != null && rows.isNotEmpty && rows.last.qty > 0) {
+        final r = rows.last;
+        r.price = _to((r.qty * r.price - d) / r.qty, 2);
+      }
+      continue;
+    }
+    if (isQty(l)) {
+      final q = _qtyInfo(l)!;
+      qty = q.qty;
+      qprice = q.price;
+      unit = q.m.namedGroup('unit');
+      sum = _num(q.m.namedGroup('sum')) ?? sum;
+      continue;
+    }
+    if (isService(l)) continue;
+    final m = _moneyEnd.firstMatch(l);
+    if (m != null) {
+      final n = _cleanName(m.namedGroup('name')!.replaceFirst(_articlePrefix, ''));
+      if (_hasWord(n) && !_nameNoise.hasMatch(n)) parts.add(n);
+      sum = _num(m.namedGroup('sum')!.replaceAll(' ', ''));
+      if (i != lastSum) close();
+      continue;
+    }
+    // «т», «г» - хвіст назви, що не вмістився в рядок
+    if (added && parts.isEmpty && qty == null && RegExp('^[$_letters]{1,2}\\.?\$').hasMatch(l)) {
+      rows.last.name = '${rows.last.name} ${l.toLowerCase()}';
+      continue;
+    }
+    final n = _cleanName(l.replaceFirst(_articlePrefix, ''));
+    if (_hasWord(n)) parts.add(n);
+  }
+  close();
+}
+
 /// Одна позиція без ціни + відомий підсумок чека: ціна = підсумок мінус решта.
 List<ReceiptRow> _fillUnknownPrice(List<ReceiptRow> rows, double? declared) {
   final unknown = rows.where((r) => r.price == 0).toList();
@@ -559,6 +697,10 @@ List<ReceiptRow> _parseOnce(String text) {
     if (w.length >= 2) return w;
   }
   final norm = _normalizeLines(lines);
+  // «ШТРИХ-КОД» після назви (Фудком) - раніше за [_barcodeBlocks]: та читає
+  // штрихкод як початок позиції й зсунула б усі назви на одну
+  final after = _barcodeAfter(norm);
+  if (after.isNotEmpty) return _fillUnknownPrice(after, _declaredTotal(text));
   final blocks = _barcodeBlocks(norm);
   if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, _declaredTotal(text));
   final qtyFirst = _qtyFirst(lines);
