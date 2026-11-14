@@ -1224,7 +1224,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      child: Row(children: [
         for (var i = 0; i < 3; i++) ...[
           chip(
             FittedBox(
