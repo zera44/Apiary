@@ -14,9 +14,13 @@
 -- security definer: читають apiary_members/apiaries в обхід правил (інакше
 -- правило посилалося б саме на себе); search_path - фіксований.
 
+-- Пошта того, хто увійшов. Технічна пошта акаунта Telegram
+-- (@tg.vulyk.invalid) - не пошта: для таких акаунтів порожньо, а порожня
+-- пошта ніколи не збігається із запрошенням (див. політики нижче).
 create or replace function public.my_email() returns text
 language sql stable as $$
-  select lower(trim(coalesce(auth.jwt() ->> 'email', '')))
+  select case when e like '%@tg.vulyk.invalid' then '' else e end
+  from (select lower(trim(coalesce(auth.jwt() ->> 'email', ''))) as e) x
 $$;
 
 -- Я - помічник власника [owner] з доступом до пасіки [apiary]
@@ -311,12 +315,13 @@ revoke insert, update on public.apiary_members from authenticated;
 
 -- запрошення: бачать той, хто запросив, і той, кого запросили
 create policy read on public.invitations for select to authenticated
-  using (from_user_id = auth.uid() or to_email = public.my_email());
+  using (from_user_id = auth.uid() or (to_email = public.my_email() and public.my_email() <> ''));
 -- надіслати можна лише від свого імені і лише до своїх пасік
 create policy add on public.invitations for insert to authenticated
   with check (
     from_user_id = auth.uid() and status = 'pending' and deleted = 0
     and to_email <> public.my_email()
+    and to_email like '%_@_%' and to_email not like '%@tg.vulyk.invalid'
     and (apiary_ids is null or not exists (
       select 1 from unnest(apiary_ids) a(id)
       where not exists (
