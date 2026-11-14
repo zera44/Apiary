@@ -97,7 +97,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       return;
     }
     try {
-      final text = await _ocr.read(path);
+      final text = await readReceiptText(_ocr, path);
       final rows = parseReceipt(text);
       final blurry = await _isBlurry(path);
       unawaited(_shareForTraining(path));

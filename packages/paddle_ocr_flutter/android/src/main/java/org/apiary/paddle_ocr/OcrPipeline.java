@@ -29,6 +29,8 @@ final class OcrPipeline {
 
     static final class Result {
         final List<String> lines = new ArrayList<>();
+        /** Ті самі рамки, зібрані в рядки іншими способами ([toLinesAnchored], [toLinesDeskewed]): запасні варіанти для розбору чека. */
+        final List<List<String>> altLines = new ArrayList<>();
         final List<Row> rows = new ArrayList<>();
         int rotation; // 0, 90, 180, 270 за годинниковою
         float meanConf;
@@ -125,6 +127,8 @@ final class OcrPipeline {
         res.meanConf = meanConf(rows);
         res.rows.addAll(rows);
         res.lines.addAll(toLines(rows));
+        res.altLines.add(toLinesAnchored(rows));
+        res.altLines.add(toLinesDeskewed(rows));
         return res;
     }
 
@@ -182,5 +186,189 @@ final class OcrPipeline {
             out.add(sb.toString());
         }
         return out;
+    }
+
+    // ---- Запасні способи збирання рядків -------------------------------------------------------------------------
+    // [toLines] зливає в один рядок усе, що перекривається по висоті: на фото під кутом чи з вигнутим папером сусідні
+    // рядки чека склеюються. Два способи нижче їх розділяють; розбір чека бере їхній текст лише тоді, коли з ним
+    // сума позицій дорівнює сумі чека, а з основним - ні (див. pickReceiptText у застосунку).
+
+    /** Геометрія рамок після зняття загального нахилу фото. */
+    private static final class Geo {
+        final int n;
+        final double a; // загальний нахил (медіана по довгих рамках)
+        final double[] x, y, hh, ww;
+
+        Geo(List<Row> rows) {
+            List<Double> ang = new ArrayList<>();
+            for (Row r : rows) if (r.box.width() > 3 * r.box.height()) ang.add(r.box.angle());
+            double m = 0;
+            if (!ang.isEmpty()) { Collections.sort(ang); m = ang.get(ang.size() / 2); }
+            a = m;
+            final double cos = Math.cos(-a), sin = Math.sin(-a);
+            n = rows.size();
+            x = new double[n]; y = new double[n]; hh = new double[n]; ww = new double[n];
+            for (int i = 0; i < n; i++) {
+                DbPost.Box b = rows.get(i).box;
+                x[i] = b.centerX() * cos - b.centerY() * sin;
+                y[i] = b.centerX() * sin + b.centerY() * cos;
+                hh[i] = b.height();
+                ww[i] = b.width();
+            }
+        }
+
+        /** Опорна вертикаль: медіана центрів рамок. */
+        double xref() {
+            if (n == 0) return 0;
+            double[] xs = x.clone();
+            Arrays.sort(xs);
+            return xs[n / 2];
+        }
+
+        /** Рамка [i] стоїть НАД/ПІД однією з рамок рядка (їхні проміжки по горизонталі перекриваються): це різні рядки. */
+        boolean stacked(List<Integer> line, int i) {
+            for (int j : line) {
+                double ov = Math.min(x[i] + ww[i] / 2, x[j] + ww[j] / 2) - Math.max(x[i] - ww[i] / 2, x[j] - ww[j] / 2);
+                if (ov > 0.3 * Math.min(ww[i], ww[j])) return true;
+            }
+            return false;
+        }
+
+        /** Відстань по висоті від рамки [i] до найближчої по горизонталі рамки рядка; -1 - рамка рядку не належить. */
+        double fit(List<Integer> line, int i, double[] yy) {
+            if (stacked(line, i)) return -1;
+            int near = line.get(0);
+            for (int j : line) if (Math.abs(x[j] - x[i]) < Math.abs(x[near] - x[i])) near = j;
+            double d = Math.abs(yy[i] - yy[near]);
+            double lim = (hh[i] + hh[near]) / 2 - 0.5 * Math.min(hh[i], hh[near]);
+            return d <= lim ? d : -1;
+        }
+
+        List<String> render(List<List<Integer>> lines, List<Row> rows) {
+            List<String> out = new ArrayList<>();
+            for (List<Integer> l : lines) {
+                Collections.sort(l, (p, q) -> Double.compare(x[p], x[q]));
+                StringBuilder sb = new StringBuilder();
+                for (int m = 0; m < l.size(); m++) {
+                    int i = l.get(m);
+                    if (m > 0) {
+                        int pi = l.get(m - 1);
+                        double gap = (x[i] - ww[i] / 2) - (x[pi] + ww[pi] / 2);
+                        sb.append(gap > 4 * hh[i] ? "   " : " ");
+                    }
+                    sb.append(rows.get(i).text);
+                }
+                out.add(sb.toString());
+            }
+            return out;
+        }
+    }
+
+    /** Спершу довгі рамки (назви) - вони задають рядки; коротші (ціни) пристають до найближчого по висоті рядка. */
+    private static List<List<Integer>> anchored(final Geo g, final double[] yy) {
+        Integer[] idx = new Integer[g.n];
+        for (int i = 0; i < g.n; i++) idx[i] = i;
+        Arrays.sort(idx, (p, q) -> g.ww[p] != g.ww[q] ? Double.compare(g.ww[q], g.ww[p]) : Double.compare(yy[p], yy[q]));
+        List<List<Integer>> lines = new ArrayList<>();
+        for (int k = 0; k < g.n; k++) {
+            int i = idx[k];
+            int best = -1;
+            double bestD = Double.MAX_VALUE;
+            for (int li = 0; li < lines.size(); li++) {
+                double d = g.fit(lines.get(li), i, yy);
+                if (d >= 0 && d < bestD) { best = li; bestD = d; }
+            }
+            if (best >= 0) { lines.get(best).add(i); continue; }
+            List<Integer> l = new ArrayList<>();
+            l.add(i);
+            lines.add(l);
+        }
+        // згори донизу - за найширшою рамкою рядка (вона в списку перша)
+        Collections.sort(lines, (p, q) -> Double.compare(yy[p.get(0)], yy[q.get(0)]));
+        return lines;
+    }
+
+    /** Запасний спосіб 1. Рядки задають назви ([anchored]); далі з уже зібраних рядків береться місцевий нахил
+     *  (права рамка рядка відносно лівої, медіана по 5 сусідніх рядках), рамки зсуваються вздовж нього до опорної
+     *  вертикалі, і рядки збираються ще раз. */
+    static List<String> toLinesAnchored(List<Row> rows) {
+        final Geo g = new Geo(rows);
+        List<List<Integer>> lines = anchored(g, g.y);
+        List<double[]> sl = new ArrayList<>(); // висота, нахил
+        for (List<Integer> l : lines) {
+            int lo = l.get(0), hi = l.get(0);
+            for (int j : l) { if (g.x[j] < g.x[lo]) lo = j; if (g.x[j] > g.x[hi]) hi = j; }
+            if (lo == hi || g.x[hi] - g.x[lo] < 2 * (g.ww[lo] + g.ww[hi]) / 2 + 1) continue;
+            sl.add(new double[] {(g.y[lo] + g.y[hi]) / 2, (g.y[hi] - g.y[lo]) / (g.x[hi] - g.x[lo])});
+        }
+        if (sl.size() >= 4) {
+            final double xref = g.xref();
+            double[] yy = new double[g.n];
+            for (int i = 0; i < g.n; i++) {
+                final double yi = g.y[i];
+                List<double[]> near = new ArrayList<>(sl);
+                Collections.sort(near, (p, q) -> Double.compare(Math.abs(p[0] - yi), Math.abs(q[0] - yi)));
+                int k = Math.min(5, near.size());
+                double[] v = new double[k];
+                for (int m = 0; m < k; m++) v[m] = near.get(m)[1];
+                Arrays.sort(v);
+                yy[i] = g.y[i] - v[k / 2] * (g.x[i] - xref);
+            }
+            lines = anchored(g, yy);
+        }
+        return g.render(lines, rows);
+    }
+
+    /** Запасний спосіб 2. Залишковий нахил довгих рамок наближається прямою від висоти (фото під кутом - рядки вгорі й
+     *  унизу нахилені по-різному; двічі з відкиданням викидів), рамки зсуваються вздовж нього до опорної вертикалі.
+     *  Далі рамки йдуть згори донизу, і кожна пристає до найближчого по висоті з чотирьох останніх рядків. */
+    static List<String> toLinesDeskewed(List<Row> rows) {
+        final Geo g = new Geo(rows);
+        final double[] yy = g.y.clone();
+        List<double[]> pts = new ArrayList<>(); // висота, нахил, вага
+        for (int i = 0; i < g.n; i++) {
+            if (g.ww[i] < 5 * g.hh[i]) continue;
+            double d = rows.get(i).box.angle() - g.a;
+            while (d > Math.PI / 2) d -= Math.PI;
+            while (d < -Math.PI / 2) d += Math.PI;
+            if (Math.abs(d) > 0.3) continue;
+            pts.add(new double[] {g.y[i], d, g.ww[i]});
+        }
+        if (pts.size() >= 6) {
+            double c0 = 0, c1 = 0;
+            for (int it = 0; it < 3; it++) {
+                double sw = 0, sy = 0, st = 0, syy = 0, syt = 0;
+                for (double[] p : pts) { sw += p[2]; sy += p[2] * p[0]; st += p[2] * p[1]; syy += p[2] * p[0] * p[0]; syt += p[2] * p[0] * p[1]; }
+                double den = sw * syy - sy * sy;
+                if (Math.abs(den) < 1e-9) { c1 = 0; c0 = st / sw; } else { c1 = (sw * syt - sy * st) / den; c0 = (st - c1 * sy) / sw; }
+                double ss = 0;
+                for (double[] p : pts) { double r = p[1] - c0 - c1 * p[0]; ss += r * r; }
+                double sd = Math.sqrt(ss / pts.size());
+                List<double[]> keep = new ArrayList<>();
+                for (double[] p : pts) if (Math.abs(p[1] - c0 - c1 * p[0]) <= 2 * sd + 1e-6) keep.add(p);
+                if (keep.size() < 6 || keep.size() == pts.size()) break;
+                pts = keep;
+            }
+            final double xref = g.xref();
+            for (int i = 0; i < g.n; i++) yy[i] -= Math.tan(c0 + c1 * yy[i]) * (g.x[i] - xref);
+        }
+        Integer[] idx = new Integer[g.n];
+        for (int i = 0; i < g.n; i++) idx[i] = i;
+        Arrays.sort(idx, (p, q) -> Double.compare(yy[p], yy[q]));
+        List<List<Integer>> lines = new ArrayList<>();
+        for (int k = 0; k < g.n; k++) {
+            int i = idx[k];
+            int best = -1;
+            double bestD = Double.MAX_VALUE;
+            for (int li = lines.size() - 1; li >= 0 && li >= lines.size() - 4; li--) {
+                double d = g.fit(lines.get(li), i, yy);
+                if (d >= 0 && d < bestD) { best = li; bestD = d; }
+            }
+            if (best >= 0) { lines.get(best).add(i); continue; }
+            List<Integer> l = new ArrayList<>();
+            l.add(i);
+            lines.add(l);
+        }
+        return g.render(lines, rows);
     }
 }

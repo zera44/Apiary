@@ -19,9 +19,23 @@ class PaddleOcrResult {
   /// Скільки тривало розпізнавання, мс.
   final int millis;
 
-  const PaddleOcrResult(this.lines, this.rotation, this.confidence, this.millis);
+  /// Ті самі фрагменти, зібрані в рядки іншими способами (розділяють сусідні рядки на
+  /// фото під кутом чи з вигнутим папером). Запасні варіанти для розбору чека.
+  final List<List<String>> altLines;
+
+  const PaddleOcrResult(this.lines, this.rotation, this.confidence, this.millis, {this.altLines = const []});
 
   String get text => lines.join('\n');
+
+  /// Тексти з [altLines], без повторів і без такого самого, як [text].
+  List<String> get altTexts {
+    final out = <String>[];
+    for (final l in altLines) {
+      final t = l.join('\n');
+      if (t.isNotEmpty && t != text && !out.contains(t)) out.add(t);
+    }
+    return out;
+  }
 }
 
 /// Фрагмент тексту з координатами (для нечіткої розмітки чека). Координати - у
@@ -30,6 +44,9 @@ class OcrFrag {
   final int boxId;
   final String text;
   final double conf, x, y, w, h, xLeft, xRight, angle;
+
+  /// Нахил самої рамки відносно загального ([angle]), радіани; NaN - невідомий (дочитаний фрагмент).
+  final double skew;
   final int imgW, imgH;
 
   /// Дочитаний фрагмент (пропущена назва, «1x» тощо), а не рамка детектора.
@@ -51,6 +68,7 @@ class OcrFrag {
     required this.angle,
     required this.imgW,
     required this.imgH,
+    this.skew = double.nan,
     this.recovered = false,
     this.hand,
   });
@@ -66,6 +84,7 @@ class OcrFrag {
         'x_left': xLeft,
         'x_right': xRight,
         'angle': angle,
+        'skew': skew,
         'img_w': imgW,
         'img_h': imgH,
         'recovered': recovered,
@@ -85,6 +104,7 @@ class OcrFrag {
       xLeft: d('x_left'),
       xRight: d('x_right'),
       angle: d('angle'),
+      skew: (m['skew'] as num?)?.toDouble() ?? double.nan,
       imgW: (m['img_w'] as num?)?.toInt() ?? 0,
       imgH: (m['img_h'] as num?)?.toInt() ?? 0,
       recovered: m['recovered'] == true,
@@ -180,6 +200,9 @@ class PaddleOcr {
       (m['rotation'] as num?)?.toInt() ?? 0,
       (m['conf'] as num?)?.toDouble() ?? 0,
       (m['ms'] as num?)?.toInt() ?? 0,
+      altLines: [
+        for (final v in (m['altLines'] as List? ?? const [])) [for (final l in (v as List? ?? const [])) '$l'],
+      ],
     );
   }
 

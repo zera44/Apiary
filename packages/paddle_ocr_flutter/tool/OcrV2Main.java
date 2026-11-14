@@ -105,7 +105,7 @@ public class OcrV2Main {
         Method full = recov.getDeclaredMethod("recognize", gc, rdc, String.class);
         full.setAccessible(true);
         try (PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(a[3]), StandardCharsets.UTF_8))) {
-            out.println("receipt,box_id,line_id,text,conf,x,y,w,h,x_left,x_right,img_w,img_h,rotation,receipt_conf,angle,recovered,hand");
+            out.println("receipt,box_id,line_id,text,conf,x,y,w,h,x_left,x_right,img_w,img_h,rotation,receipt_conf,angle,recovered,hand,skew");
             for (int i = 4; i < a.length; i++) {
                 int[] wh = new int[2];
                 int[] px = readPpm(a[i], wh);
@@ -139,7 +139,7 @@ public class OcrV2Main {
                             "" + get.apply("conf"), "" + get.apply("x"), "" + get.apply("y"), "" + get.apply("w"), "" + get.apply("h"),
                             "" + get.apply("xLeft"), "" + get.apply("xRight"), "" + get.apply("imgW"), "" + get.apply("imgH"),
                             "" + get.apply("rotation"), "" + get.apply("receiptConf"), "" + get.apply("angle"),
-                            ((Boolean) get.apply("recovered")) ? "1" : "", hand == null ? "" : (String) hand));
+                            ((Boolean) get.apply("recovered")) ? "1" : "", hand == null ? "" : (String) hand, "" + get.apply("skew")));
                 }
                 out.flush();
             }
