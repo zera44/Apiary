@@ -1569,6 +1569,8 @@ class AppStringsUk extends AppStrings {
   String finCurrencyChangeText(String before, String after, String rate) =>
       'Суми рахунку, операції й перекази буде перераховано за курсом НБУ ($rate): $before → $after';
   @override
+  String get notifOff => 'Вимкнено';
+  @override
   String get swapAccounts => 'Поміняти рахунки місцями';
   @override
   String get notifTitle => 'Сповіщення';

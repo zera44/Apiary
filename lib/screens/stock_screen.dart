@@ -295,7 +295,7 @@ class _StockScreenState extends State<StockScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            NavTopBar(title: title),
+            NavTopBar(title: tr.stock),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [

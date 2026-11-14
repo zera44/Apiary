@@ -1569,6 +1569,8 @@ class AppStringsEn extends AppStrings {
   String finCurrencyChangeText(String before, String after, String rate) =>
       'The balance, operations and transfers will be converted at the NBU rate ($rate): $before → $after';
   @override
+  String get notifOff => 'Off';
+  @override
   String get swapAccounts => 'Swap accounts';
   @override
   String get notifTitle => 'Notifications';

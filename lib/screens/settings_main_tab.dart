@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../assistant/assistant_host.dart';
+import '../logic/notify_schedule.dart';
 import '../assistant/assistant_voice.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -48,22 +49,70 @@ class MainSettingsTab extends StatelessWidget {
 }
 
 /// «Сповіщення»: кнопка в екран з часом нагадувань і графіком днів.
-class _NotificationsSection extends StatelessWidget {
+class _NotificationsSection extends StatefulWidget {
   final Repository repo;
   const _NotificationsSection({required this.repo});
+
+  @override
+  State<_NotificationsSection> createState() => _NotificationsSectionState();
+}
+
+class _NotificationsSectionState extends State<_NotificationsSection> {
+  NotifySchedule? _s;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final s = await NotifySchedule.load(widget.repo);
+      if (mounted) setState(() => _s = s);
+    } catch (_) {}
+  }
+
+  String _hhmm(int m) =>
+      '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+
+  /// Поточний режим: «Щодня · 09:00 і 14:00», «5/2 · …», «Вимкнено».
+  String? get _mode {
+    final s = _s;
+    if (s == null) return null;
+    if (!s.enabled) return tr.notifOff;
+    final name = switch (s.mode) {
+      NotifyMode.daily => tr.notifDaily,
+      NotifyMode.w52 => '5/2',
+      NotifyMode.w22 => '2/2',
+      NotifyMode.custom => tr.notifCustom,
+    };
+    return '$name · ${_hhmm(s.morning)} / ${_hhmm(s.repeat)}';
+  }
 
   @override
   Widget build(BuildContext context) => SettingsSection(
         title: tr.notifTitle,
         children: [
+          if (_mode != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(_mode!,
+                  key: const ValueKey('notifications-mode'),
+                  style: TextStyle(
+                      color: AppColors.create, fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
           PillButton(
             key: const ValueKey('notifications-open'),
             text: tr.notifSummary,
             bg: AppColors.darkBtn,
             fg: AppColors.text,
             height: 44,
-            onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: repo))),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: widget.repo)));
+              if (mounted) await _load();
+            },
           ),
         ],
       );
