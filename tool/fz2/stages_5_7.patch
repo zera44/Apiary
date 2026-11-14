@@ -1,0 +1,38 @@
+--- a/fz2.py
++++ b/fz2.py
+@@ -381,6 +381,7 @@
+         t['role'] = max(CLASSES, key=lambda c: t['mu'][c])
+         t['dz'] = dz
+         if t['trunc']: t['role'] = 'ITEM' if ((qerr <= 3 or t['tax']) and dz < -0.5) else 'SERV'   # «18,0 А» – сума позиції з літерою податку
++        t['role0'] = t['role']
+ 
+     # «96,00 × 1 =» без окремої суми праворуч: ціна при кількості 1 і є сумою позиції (кафе, АЗС)
+     for t in toks:
+@@ -498,14 +499,14 @@
+             if (others and abs(others - T_) <= 2) or near_pay or (others > 0 and lowest and cw(t['f']) >= 1.4 * cw_med): t['role'] = 'TOTAL'
+     # текстові частини: назва чи службове
+     # опори блоків позицій: суми позицій, а також рядки «кількість × ціна» (сума буває нечитаною, 035)
+-    item_y = sorted(t['f']['y'] for t in toks if t['role'] == 'ITEM' or (t['role'] == 'PRICE' and t['dz'] < -0.5))
++    item_y = sorted(t['f']['y'] for t in toks if t['role0'] == 'ITEM' or (t['role0'] == 'PRICE' and t['dz'] < -0.5))
+     item_y += [f['y'] for f in frags if re.fullmatch(r'\s*\d{1,3}\s*', str(f['text'])) and (f['x_right'] - x0) / max(1.0, x1 - x0) > 0.8
+                and (f['y'] - y_tot) / hmed < -0.5 and any(abs(g['y'] - f['y']) < 0.5 * pitch and sum(ch.isalpha() for ch in str(g['text'])) >= 6 for g in frags)]
+     item_y.sort()
+     line_roles = {}
+     for t in toks: line_roles.setdefault(t['line'], set()).add(t['role'])
+ 
+-    price_y = [t['f']['y'] for t in toks if t['role'] == 'PRICE' and t['dz'] < -0.5]
++    price_y = [t['f']['y'] for t in toks if t['role0'] == 'PRICE' and t['dz'] < -0.5]
+     all_y = sorted(ly.values())
+     gmed = float(np.median(np.diff(all_y))) if len(all_y) > 2 else hmed
+ 
+@@ -514,8 +515,8 @@
+         return all(b - a <= max(1.7 * gmed, 1.5 * hmed0) for a, b in zip(ys_, ys_[1:]))
+ 
+     # зона підсумку для тексту: не нижче першого підсумку під позиціями (056: «СУМА» прочитано як «СЗЛНА»)
+-    last_item = max([t['f']['y'] for t in toks if t['role'] == 'ITEM'] or [-1e9])
+-    y_tot2 = min([y_tot] + [t['f']['y'] for t in toks if t['role'] == 'TOTAL' and t['f']['y'] > last_item])
++    last_item = max([t['f']['y'] for t in toks if t['role0'] == 'ITEM'] or [-1e9])
++    y_tot2 = min([y_tot] + [t['f']['y'] for t in toks if t['role0'] == 'TOTAL' and t['f']['y'] > last_item])
+ 
+     # ПІБ стовпчиком (прізвище, ім'я, по батькові – три рядки по одному слову без чисел, 116) – не назва позиції
+     fio = set()

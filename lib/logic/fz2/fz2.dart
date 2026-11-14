@@ -5,6 +5,9 @@
 /// SERV (службове), OTHER (інший чек у кадрі). Висновок Мамдані: І = min,
 /// агрегування = max, імплікація - відсікання, дефазифікація - центроїд.
 ///
+/// Розмітка робиться у два етапи: 1) нечіткий висновок Мамдані для чисел і для тексту (бази А і Б);
+/// 2) чіткі правила корекції чисел і тексту (К1-К33).
+///
 /// Код навмисно повторює Python рядок за рядком (порядок обходу, округлення,
 /// підсумовування numpy): тест test/fz2_test.dart вимагає, щоб розмітка
 /// збігалася з Python на кожному фрагменті розмічених чеків. Змінюючи правила,
@@ -355,6 +358,10 @@ class _Tok {
   final bool trunc, neg, tax, factor;
   Map<String, double> mu = const {};
   String role = '';
+
+  /// Клас після нечіткого висновку для чисел, до чітких правил К1-К18: від нього залежить
+  /// нечіткий висновок для тексту (етап 1), тож чіткі правила (етап 2) його не змінюють.
+  String role0 = '';
   double dz = 0;
   bool zoneVat = false;
   _Tok(this.f, this.a, this.b, this.v, this.line, this.left, this.trunc, this.letter, this.neg, this.tax, this.factor);
@@ -735,6 +742,7 @@ List<Labeled> _labelMain(List<Frag> frags0) {
     t.role = maxBy(classes, (c) => t.mu[c]!);
     t.dz = dz;
     if (t.trunc) t.role = ((qerr <= 3 || t.tax) && dz < -0.5) ? 'ITEM' : 'SERV';
+    t.role0 = t.role;
   }
 
   // «96,00 × 1 =» без окремої суми праворуч: ціна при кількості 1 і є сумою позиції
@@ -922,8 +930,9 @@ List<Labeled> _labelMain(List<Frag> frags0) {
       }
     }
   }
-  // текстові частини: назва чи службове
-  final itemY = [for (final t in toks) if (t.role == 'ITEM' || (t.role == 'PRICE' && t.dz < -0.5)) t.f.y]..sort();
+  // текстові частини: назва чи службове. Нечіткий висновок для тексту (база Б) бере числа з role0, тобто
+  // виконується разом із висновком для чисел (етап 1), а чіткі правила К1-К33 (етап 2) йдуть після нього.
+  final itemY = [for (final t in toks) if (t.role0 == 'ITEM' || (t.role0 == 'PRICE' && t.dz < -0.5)) t.f.y]..sort();
   itemY.addAll([
     for (final f in frags)
       if (fullmatch(r'\s*\d{1,3}\s*', f.text) != null &&
@@ -937,7 +946,7 @@ List<Labeled> _labelMain(List<Frag> frags0) {
   for (final t in toks) {
     lineRoles.putIfAbsent(t.line, () => {}).add(t.role);
   }
-  final priceY = [for (final t in toks) if (t.role == 'PRICE' && t.dz < -0.5) t.f.y];
+  final priceY = [for (final t in toks) if (t.role0 == 'PRICE' && t.dz < -0.5) t.f.y];
   final allY = ly.values.toList()..sort();
   final gmed = allY.length > 2 ? npMedian([for (var i = 0; i + 1 < allY.length; i++) allY[i + 1] - allY[i]]) : hmed;
   bool contiguous(double ya, double yb) {
@@ -948,9 +957,9 @@ List<Labeled> _labelMain(List<Frag> frags0) {
     return true;
   }
 
-  final itemYs = [for (final t in toks) if (t.role == 'ITEM') t.f.y];
+  final itemYs = [for (final t in toks) if (t.role0 == 'ITEM') t.f.y];
   final lastItem = itemYs.isNotEmpty ? pyMax(itemYs).toDouble() : -1e9;
-  final yTot2 = pyMin([yTot, for (final t in toks) if (t.role == 'TOTAL' && t.f.y > lastItem) t.f.y]).toDouble();
+  final yTot2 = pyMin([yTot, for (final t in toks) if (t.role0 == 'TOTAL' && t.f.y > lastItem) t.f.y]).toDouble();
 
   final fio = <int>{};
   final ls = sortedBy(lines.keys, (k) => ly[k]!);
