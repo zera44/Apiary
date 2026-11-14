@@ -63,8 +63,11 @@ class ReceiptMarkupScreen extends StatelessWidget {
               if (hasImg)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: InteractiveViewer(
-                    maxScale: 8,
+                  child: GestureDetector(
+                    key: const Key('receipt-fullscreen'),
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                        builder: (_) => _FullScreenReceipt(
+                            child: _MarkedImage(file: File(img), items: shown, angle: marked.angle)))),
                     child: _MarkedImage(file: File(img), items: shown, angle: marked.angle),
                   ),
                 )
@@ -101,6 +104,36 @@ class ReceiptMarkupScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Фото чека на весь екран: стрілка «назад» зліва вгорі, масштабування щипком.
+class _FullScreenReceipt extends StatelessWidget {
+  final Widget child;
+  const _FullScreenReceipt({required this.child});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(children: [
+            Positioned.fill(
+              child: Center(child: InteractiveViewer(maxScale: 8, child: child)),
+            ),
+            Positioned(
+              left: 8,
+              top: 8,
+              child: IconButton(
+                key: const Key('receipt-fullscreen-back'),
+                tooltip: tr.back,
+                style: IconButton.styleFrom(
+                    backgroundColor: Colors.black54, minimumSize: const Size(48, 48)),
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ]),
+        ),
+      );
 }
 
 /// Ліворуч - чек (фото, яке читалося) з рамками класів, праворуч - увесь прочитаний текст на тих самих
