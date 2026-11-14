@@ -211,7 +211,18 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                   FinBadge(icon: a.icon, color: a.color, size: 44),
                                   const SizedBox(width: 14),
                                   Expanded(
-                                      child: Text(a.name,
+                                      child: Text.rich(
+                                          TextSpan(children: [
+                                            TextSpan(text: a.name),
+                                            // не враховується в загальній сумі
+                                            if (!a.inTotal)
+                                              WidgetSpan(
+                                                  alignment: PlaceholderAlignment.middle,
+                                                  child: Padding(
+                                                      padding: const EdgeInsets.only(left: 6),
+                                                      child: Icon(Icons.visibility_off_outlined,
+                                                          size: 18, color: AppColors.textMuted))),
+                                          ]),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: AppColors.text, fontSize: 16))),
@@ -226,9 +237,6 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                     if (a.foreign && _rates[a.currency] != null)
                                       Text('≈ ${_money((_balances[a.id] ?? 0) * _rates[a.currency]!)}',
                                           style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                                    if (!a.inTotal)
-                                      Icon(Icons.visibility_off_outlined,
-                                          size: 14, color: AppColors.textMuted),
                                   ]),
                                 ]),
                               ),
