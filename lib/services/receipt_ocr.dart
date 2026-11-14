@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../logic/fz2/fz2.dart';
 import '../logic/fz2/receipt_rows.dart';
 import '../logic/fz2/recover.dart';
+import '../logic/receipt_parser.dart';
 
 /// Розмічений чек: класи фрагментів (нечітка розмітка fz2), позиції й підсумок,
 /// а також зображення, у кадрі якого задані координати фрагментів.
@@ -96,6 +97,18 @@ class PaddleReceiptOcr implements ReceiptOcr {
     final ok = image != null && File(image).existsSync();
     return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle, skipped: skipped);
   }
+}
+
+/// Текст чека для розбору. Рядки з фото збираються кількома способами: основний і
+/// запасні, що розділяють сусідні рядки на фото під кутом. [pickReceiptText] бере
+/// запасний лише тоді, коли з ним сума позицій дорівнює сумі чека, а з основним ні.
+Future<String> readReceiptText(ReceiptOcr ocr, String imagePath) async {
+  if (ocr is! PaddleReceiptOcr) return ocr.read(imagePath);
+  if (!ocr.supported || !await PaddleOcr.ready()) {
+    throw StateError('PaddleOCR недоступний на цьому пристрої');
+  }
+  final r = await PaddleOcr.recognize(imagePath);
+  return pickReceiptText([r.text, ...r.altTexts]);
 }
 
 /// Фото чека: [camera] - знімок камерою, інакше - з галереї (на комп'ютері - файл).

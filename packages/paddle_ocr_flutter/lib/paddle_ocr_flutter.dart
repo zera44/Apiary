@@ -19,9 +19,23 @@ class PaddleOcrResult {
   /// Скільки тривало розпізнавання, мс.
   final int millis;
 
-  const PaddleOcrResult(this.lines, this.rotation, this.confidence, this.millis);
+  /// Ті самі фрагменти, зібрані в рядки іншими способами (розділяють сусідні рядки на
+  /// фото під кутом чи з вигнутим папером). Запасні варіанти для розбору чека.
+  final List<List<String>> altLines;
+
+  const PaddleOcrResult(this.lines, this.rotation, this.confidence, this.millis, {this.altLines = const []});
 
   String get text => lines.join('\n');
+
+  /// Тексти з [altLines], без повторів і без такого самого, як [text].
+  List<String> get altTexts {
+    final out = <String>[];
+    for (final l in altLines) {
+      final t = l.join('\n');
+      if (t.isNotEmpty && t != text && !out.contains(t)) out.add(t);
+    }
+    return out;
+  }
 }
 
 /// Фрагмент тексту з координатами (для нечіткої розмітки чека). Координати - у
@@ -180,6 +194,9 @@ class PaddleOcr {
       (m['rotation'] as num?)?.toInt() ?? 0,
       (m['conf'] as num?)?.toDouble() ?? 0,
       (m['ms'] as num?)?.toInt() ?? 0,
+      altLines: [
+        for (final v in (m['altLines'] as List? ?? const [])) [for (final l in (v as List? ?? const [])) '$l'],
+      ],
     );
   }
 

@@ -403,7 +403,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         ];
         declared = marked.fz.total;
       } else {
-        final text = await _ocr.read(path);
+        final text = await readReceiptText(_ocr, path);
         rows = parseReceipt(text, fillMissing: false);
         declared = receiptDeclaredTotal(text);
       }

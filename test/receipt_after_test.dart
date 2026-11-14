@@ -105,6 +105,7 @@ const _n217 = '''
 СУМА 1944.00''';
 
 void main() {
+  group('вибір тексту за сумою чека', pickTests);
   test('Фудком N304 (фото з нахилом): 5 позицій, суми й кількості', () {
     final rows = parseReceipt(_n304);
     expect(rows.length, 5, reason: rows.toString());
@@ -136,5 +137,58 @@ void main() {
     expect(cheese.qty * cheese.price, closeTo(132.02 - 43.57, 0.5));
     final total = rows.fold<double>(0, (s, r) => s + r.qty * r.price);
     expect(total, closeTo(1944.00, 2.5));
+  });
+}
+
+// Той самий чек, зібраний у рядки двома способами: основний текст і запасний.
+const _good = '''
+Хліб білий 25.00 А
+Молоко 2,5% 40.00 А
+СУМА 65.00
+''';
+const _broken = '''
+Хліб білий
+Молоко 2,5% 25.00 А
+СУМА 65.00
+''';
+
+void pickTests() {
+  test('чек підтверджує себе, коли сума позицій дорівнює сумі чека', () {
+    expect(receiptSelfVerified(_good), isTrue);
+    expect(receiptSelfVerified(_broken), isFalse);
+    expect(receiptSelfVerified('Хліб білий 25.00 А'), isFalse, reason: 'суми чека немає');
+  });
+
+  test('ціна, виведена з підсумку, - не підтвердження', () {
+    // ціну «Кефіру» OCR не прочитав: розбір заповнює її з підсумку, і рівність виконується завжди
+    const text = '''
+ШК 4820000000017
+Хліб білий 25.00 А
+ШК 4820000000024
+Кефір 2,5% 8140 А
+СУМА 106.40
+КАРТКА 106.40
+''';
+    expect(parseReceipt(text).fold<double>(0, (s, r) => s + r.total), closeTo(106.40, 0.01));
+    expect(receiptSelfVerified(text), isFalse);
+  });
+
+  test('основний текст підтверджено - береться він', () {
+    expect(pickReceiptText([_good, _broken]), _good);
+  });
+
+  test('основний не підтверджено, запасний підтверджено - береться запасний', () {
+    expect(pickReceiptText([_broken, _good]), _good);
+    expect(pickReceiptText([_broken, 'Хліб 1.00 А', _good]), _good);
+  });
+
+  test('жоден не підтверджено - лишається основний', () {
+    expect(pickReceiptText([_broken, 'Хліб білий 25.00 А\nМолоко 41.00 А\nСУМА 65.00']), _broken);
+    expect(pickReceiptText(['Хліб білий 25.00 А', 'Хліб 25.00 А\nМолоко 40.00 А']), 'Хліб білий 25.00 А');
+  });
+
+  test('один варіант або жодного', () {
+    expect(pickReceiptText([_broken]), _broken);
+    expect(pickReceiptText([]), '');
   });
 }

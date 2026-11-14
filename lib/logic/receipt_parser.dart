@@ -675,7 +675,7 @@ List<ReceiptRow> _fuelRows(List<String> lines, String text) {
 }
 
 /// Розібрати текст чека на позиції. Порожній список - нічого не впізнано.
-List<ReceiptRow> _parseOnce(String text) {
+List<ReceiptRow> _parseOnce(String text, {bool fill = true}) {
   final fuel = _fuelRows(
       text.split(RegExp(r'[\r\n]+')).map((l) => _fixDigits(l.trim())).where((l) => l.isNotEmpty).toList(),
       text);
@@ -700,9 +700,9 @@ List<ReceiptRow> _parseOnce(String text) {
   // «ШТРИХ-КОД» після назви (Фудком) - раніше за [_barcodeBlocks]: та читає
   // штрихкод як початок позиції й зсунула б усі назви на одну
   final after = _barcodeAfter(norm);
-  if (after.isNotEmpty) return _fillUnknownPrice(after, _declaredTotal(text));
+  if (after.isNotEmpty) return fill ? _fillUnknownPrice(after, _declaredTotal(text)) : after;
   final blocks = _barcodeBlocks(norm);
-  if (blocks.isNotEmpty) return _fillUnknownPrice(blocks, _declaredTotal(text));
+  if (blocks.isNotEmpty) return fill ? _fillUnknownPrice(blocks, _declaredTotal(text)) : blocks;
   final qtyFirst = _qtyFirst(lines);
 
   void add(String name, double qty, String? unit, double price) {
@@ -867,6 +867,31 @@ List<ReceiptRow> parseReceipt(String text, {bool fillMissing = true}) {
     ];
   }
   return rows;
+}
+
+/// Чек підтверджує сам себе: сума прочитаних позицій дорівнює сумі, надрукованій на
+/// чеку. Перевірка сувора - без жодної підгонки: ціну позиції не можна вивести з
+/// підсумку, а підсумок - із суми позицій (інакше рівність виконується завжди).
+bool receiptSelfVerified(String text) {
+  if (_novaPoshtaTotal(text) != null) return false; // одна позиція на всю суму - звіряти нема з чим
+  final rows = _parseOnce(text, fill: false);
+  if (rows.isEmpty || rows.any((r) => r.price <= 0)) return false;
+  final declared = _declaredTotal(text);
+  if (declared == null || declared < 1) return false;
+  return (_rowsSum(rows) - declared).abs() <= 0.02;
+}
+
+/// Той самий чек, прочитаний кількома способами ([variants]: перший - основний).
+/// Береться основний текст; інший - лише коли він підтверджує сам себе
+/// ([receiptSelfVerified]), а основний - ні. Тож заміна можлива тільки на варіант,
+/// правильність якого засвідчує сам чек.
+String pickReceiptText(List<String> variants) {
+  if (variants.isEmpty) return '';
+  if (variants.length < 2 || receiptSelfVerified(variants.first)) return variants.first;
+  for (final v in variants.skip(1)) {
+    if (receiptSelfVerified(v)) return v;
+  }
+  return variants.first;
 }
 
 double _rowsSum(List<ReceiptRow> rows) => _to(rows.fold<double>(0, (a, r) => a + r.total), 2);

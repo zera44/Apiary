@@ -197,6 +197,9 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         OcrPipeline.Result res = OcrPipeline.run((byte[]) im[0], (Integer) im[1], (Integer) im[2], runner(recSeq), chars);
         Map<String, Object> out = new HashMap<>();
         out.put("lines", new ArrayList<>(res.lines));
+        List<List<String>> alt = new ArrayList<>();
+        for (List<String> l : res.altLines) alt.add(new ArrayList<>(l));
+        out.put("altLines", alt);
         out.put("rotation", res.rotation);
         out.put("conf", (double) res.meanConf);
         out.put("ms", (int) (System.currentTimeMillis() - t0));
