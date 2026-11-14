@@ -1,4 +1,5 @@
 import '../l10n/l10n.dart';
+import 'notify_schedule.dart';
 
 /// Планування нагадувань про обхід вуликів. Чиста логіка без плагінів —
 /// щоб її можна було перевіряти тестами; самі повідомлення показує
@@ -122,7 +123,11 @@ List<PlannedReminder> planReminders(
   Iterable<VisitTarget> targets, {
   required DateTime now,
   int limit = 200,
+  NotifySchedule? schedule,
 }) {
+  if (schedule != null && !schedule.enabled) return const [];
+  final morningMin = schedule?.morning ?? kReminderMorning * 60;
+  final repeatMin = schedule?.repeat ?? kReminderAfternoon * 60;
   // пасіка -> її вулики з першим моментом, коли настав термін обходу (без
   // нового огляду), і дні, коли комусь із них пора
   final due = <String, List<(VisitTarget, DateTime)>>{};
@@ -152,11 +157,20 @@ List<PlannedReminder> planReminders(
   final out = <PlannedReminder>[];
   for (final MapEntry(key: apiary, value: hives) in due.entries) {
     final title = _apiaryTitle(hives.first.$1.apiaryName);
-    for (final day in days[apiary] ?? const <DateTime>{}) {
+    // графік днів: день, що випав на «тишу», зсувається на найближчий дозволений
+    final planDays = <DateTime>{};
+    for (final d in days[apiary] ?? const <DateTime>{}) {
+      if (schedule == null || schedule.allows(d)) {
+        planDays.add(d);
+      } else if (schedule.nextAllowed(d) case final n?) {
+        planDays.add(n);
+      }
+    }
+    for (final day in planDays) {
       List<(VisitTarget, DateTime)> dueAt(DateTime m) =>
           [for (final d in hives) if (!d.$2.isAfter(m)) d]..sort((a, b) => a.$2.compareTo(b.$2));
-      final morning = DateTime(day.year, day.month, day.day, kReminderMorning);
-      final afternoon = DateTime(day.year, day.month, day.day, kReminderAfternoon);
+      final morning = DateTime(day.year, day.month, day.day, morningMin ~/ 60, morningMin % 60);
+      final afternoon = DateTime(day.year, day.month, day.day, repeatMin ~/ 60, repeatMin % 60);
       final first = dueAt(morning);
       if (first.isNotEmpty && morning.isAfter(now)) {
         final n = first.length;

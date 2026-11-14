@@ -1544,6 +1544,54 @@ class AppStringsUk extends AppStrings {
   @override
   String get orFromGallery => 'або обрати з галереї';
   @override
+  String get notifTitle => 'Сповіщення';
+  @override
+  String get notifSummary => 'Нагадування про обхід: час і дні';
+  @override
+  String get notifEnabled => 'Сповіщення про обхід';
+  @override
+  String get notifWhen => 'Коли нагадувати';
+  @override
+  String get notifRound => 'Нагадування про обхід';
+  @override
+  String get notifRoundHint => 'вранці, коли вулик пора оглянути';
+  @override
+  String get notifRepeatName => 'Повторне нагадування';
+  @override
+  String get notifRepeatHint => 'якщо обхід ще не відмічено';
+  @override
+  String get notifDays => 'У які дні';
+  @override
+  String get notifDaily => 'Щодня';
+  @override
+  String get notifCustom => 'Довільно';
+  @override
+  String get notifStartFrom => 'Почати з';
+  @override
+  String get notifHintDaily => 'Нагадування приходитимуть щодня, коли є вулики, яких пора оглянути.';
+  @override
+  String get notifHint52 => '5 днів нагадування, потім 2 дні тиші, і так по колу.';
+  @override
+  String get notifHint22 => '2 дні нагадування, потім 2 дні тиші. Дні з нагадуваннями підсвічено.';
+  @override
+  String get notifHintCustom => 'Торкніться днів, коли потрібні нагадування. Торкніться ще раз, щоб прибрати.';
+  @override
+  String get notifCustomTitle => 'Довільний графік';
+  @override
+  String get notifCustomEdit => 'Обрати дні';
+  @override
+  String get notifDaysChosen => 'Обрано днів:';
+  @override
+  String get notifSave => 'Зберегти';
+  @override
+  String get notifConfirm => 'Підтвердити';
+  @override
+  String get notifOffNote => 'Сповіщення вимкнено.';
+  @override
+  String get notifEndedTitle => 'Графік дійшов до кінця';
+  @override
+  String get notifEndedText => 'Заповніть його наново, щоб нагадування не зникли.';
+  @override
   String get dayBeforeYesterday => 'Позавчора';
   @override
   String get moreCategories => 'Більше';

@@ -15,6 +15,7 @@ import 'icons/app_icons.dart';
 import 'l10n/l10n.dart';
 import 'screens/feedback_chat_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/notify_settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth.dart';
 import 'services/background.dart';
@@ -138,6 +139,7 @@ class _ApiaryAppState extends State<ApiaryApp> {
     super.initState();
     _reminders.addListener(_openFromReminder);
     ReminderService.instance.openFeedbackRequest.addListener(_openFeedbackFromNotification);
+    ReminderService.instance.openNotifySettingsRequest.addListener(_openNotifyFromNotification);
     // застосунок могли запустити натисканням на нагадування
     WidgetsBinding.instance.addPostFrameCallback((_) => _openFromReminder());
     _listenLinks();
@@ -153,6 +155,16 @@ class _ApiaryAppState extends State<ApiaryApp> {
     }
 
     (context as Element).visitChildren(mark);
+  }
+
+  /// Натиснули «Графік дійшов до кінця» - відкрити налаштування сповіщень.
+  void _openNotifyFromNotification() {
+    final r = ReminderService.instance.openNotifySettingsRequest;
+    if (!r.value) return;
+    final nav = _nav.currentState;
+    if (nav == null || !canUseApp(widget.auth)) return;
+    r.value = false;
+    nav.push(MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: widget.repo)));
   }
 
   /// Натиснули «Розробник відповів» - відкрити розмову.

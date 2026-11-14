@@ -1544,6 +1544,54 @@ class AppStringsEn extends AppStrings {
   @override
   String get orFromGallery => 'or choose from the gallery';
   @override
+  String get notifTitle => 'Notifications';
+  @override
+  String get notifSummary => 'Round reminders: time and days';
+  @override
+  String get notifEnabled => 'Round notifications';
+  @override
+  String get notifWhen => 'When to remind';
+  @override
+  String get notifRound => 'Round reminder';
+  @override
+  String get notifRoundHint => 'in the morning, when a hive is due';
+  @override
+  String get notifRepeatName => 'Second reminder';
+  @override
+  String get notifRepeatHint => 'if the round is not marked yet';
+  @override
+  String get notifDays => 'On which days';
+  @override
+  String get notifDaily => 'Every day';
+  @override
+  String get notifCustom => 'Custom';
+  @override
+  String get notifStartFrom => 'Start from';
+  @override
+  String get notifHintDaily => 'Reminders come every day when some hives are due.';
+  @override
+  String get notifHint52 => '5 days of reminders, then 2 quiet days, repeating.';
+  @override
+  String get notifHint22 => '2 days of reminders, then 2 quiet days. Reminder days are highlighted.';
+  @override
+  String get notifHintCustom => 'Tap the days you want reminders. Tap again to remove.';
+  @override
+  String get notifCustomTitle => 'Custom schedule';
+  @override
+  String get notifCustomEdit => 'Choose days';
+  @override
+  String get notifDaysChosen => 'Days chosen:';
+  @override
+  String get notifSave => 'Save';
+  @override
+  String get notifConfirm => 'Confirm';
+  @override
+  String get notifOffNote => 'Notifications are off.';
+  @override
+  String get notifEndedTitle => 'Your schedule has ended';
+  @override
+  String get notifEndedText => 'Fill it in again so reminders do not stop.';
+  @override
   String get dayBeforeYesterday => 'Day before';
   @override
   String get moreCategories => 'More';

@@ -21,6 +21,7 @@ import '../ui/orientation.dart';
 import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
+import 'notify_settings_screen.dart';
 import 'splash_screen.dart';
 
 /// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
@@ -35,11 +36,34 @@ class MainSettingsTab extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           _LanguageSection(repo: repo),
+          _NotificationsSection(repo: repo),
           _TextSizeSection(repo: repo),
           _OrientationSection(repo: repo),
           _StartScreenSection(repo: repo),
           _AssistantSection(repo: repo),
           if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
+        ],
+      );
+}
+
+/// «Сповіщення»: кнопка в екран з часом нагадувань і графіком днів.
+class _NotificationsSection extends StatelessWidget {
+  final Repository repo;
+  const _NotificationsSection({required this.repo});
+
+  @override
+  Widget build(BuildContext context) => SettingsSection(
+        title: tr.notifTitle,
+        children: [
+          PillButton(
+            key: const ValueKey('notifications-open'),
+            text: tr.notifSummary,
+            bg: AppColors.darkBtn,
+            fg: AppColors.text,
+            height: 44,
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: repo))),
+          ),
         ],
       );
 }
