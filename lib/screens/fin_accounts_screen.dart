@@ -482,7 +482,6 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                                     style: TextStyle(color: AppColors.create, fontSize: 26)),
                               ),
                             ),
-                            ),
                             filled: false,
                           ),
                         ),
