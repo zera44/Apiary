@@ -250,6 +250,17 @@ class _AssistantSectionState extends State<_AssistantSection> {
   Widget build(BuildContext context) => SettingsSection(
         title: tr.assistantSection,
         children: [
+          SwitchListTile(
+            key: const ValueKey('assistant-speak'),
+            contentPadding: EdgeInsets.zero,
+            title: Text(tr.assistantSpeakSetting,
+                style: TextStyle(color: AppColors.text, fontSize: 14)),
+            value: _speak,
+            onChanged: (v) async {
+              setState(() => _speak = v);
+              await AssistantVoiceSettings.setSpeak(widget.repo, v);
+            },
+          ),
           ValueListenableBuilder<bool>(
             valueListenable: AssistantHost.showBubble,
             builder: (_, on, _) => SwitchListTile(
@@ -262,17 +273,6 @@ class _AssistantSectionState extends State<_AssistantSection> {
               value: on,
               onChanged: (v) => AssistantHost.setShowBubble(widget.repo, v),
             ),
-          ),
-          SwitchListTile(
-            key: const ValueKey('assistant-speak'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(tr.assistantSpeakSetting,
-                style: TextStyle(color: AppColors.text, fontSize: 14)),
-            value: _speak,
-            onChanged: (v) async {
-              setState(() => _speak = v);
-              await AssistantVoiceSettings.setSpeak(widget.repo, v);
-            },
           ),
         ],
       );
