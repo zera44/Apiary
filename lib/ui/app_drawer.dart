@@ -286,7 +286,7 @@ class _AppDrawerState extends State<AppDrawer> {
               iconData: Icons.settings)),
           _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
-            openFeedback(nav);
+            openFeedback(nav, repo);
           })),
           ])),
           if (widget.tour || widget.hint != null) _tourFooter(),

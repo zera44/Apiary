@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/repository.dart';
 import '../services/feedback.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/theme.dart';
 import '../l10n/l10n.dart';
 
@@ -11,7 +13,9 @@ import '../l10n/l10n.dart';
 class FeedbackScreen extends StatefulWidget {
   /// Відправник — підміняється в тестах.
   final Future<FeedbackResult> Function(String message) send;
-  const FeedbackScreen({super.key, this.send = FeedbackService.send});
+  /// Для меню навігації (немає - у шапці стрілка «назад»).
+  final Repository? repo;
+  const FeedbackScreen({super.key, this.send = FeedbackService.send, this.repo});
 
   static String get intro => tr.feedbackIntro;
 
@@ -104,11 +108,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final repo = widget.repo;
     return Scaffold(
+      drawer: repo == null ? null : NavDrawer(repo: repo, current: NavSection.feedback),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context)),
+            widget.repo == null
+                ? TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context))
+                : NavTopBar(title: tr.feedbackTitle),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Text(

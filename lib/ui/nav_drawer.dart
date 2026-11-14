@@ -59,7 +59,7 @@ class NavDrawer extends StatelessWidget {
       case NavSection.settings:
         nav.push(MaterialPageRoute<void>(builder: (_) => SettingsScreen(repo: repo)));
       case NavSection.feedback:
-        unawaited(openFeedback(nav));
+        unawaited(openFeedback(nav, repo));
       case NavSection.assistant:
         break;
     }
