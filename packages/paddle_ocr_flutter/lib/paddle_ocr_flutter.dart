@@ -44,6 +44,9 @@ class OcrFrag {
   final int boxId;
   final String text;
   final double conf, x, y, w, h, xLeft, xRight, angle;
+
+  /// Нахил самої рамки відносно загального ([angle]), радіани; NaN - невідомий (дочитаний фрагмент).
+  final double skew;
   final int imgW, imgH;
 
   /// Дочитаний фрагмент (пропущена назва, «1x» тощо), а не рамка детектора.
@@ -65,6 +68,7 @@ class OcrFrag {
     required this.angle,
     required this.imgW,
     required this.imgH,
+    this.skew = double.nan,
     this.recovered = false,
     this.hand,
   });
@@ -80,6 +84,7 @@ class OcrFrag {
         'x_left': xLeft,
         'x_right': xRight,
         'angle': angle,
+        'skew': skew,
         'img_w': imgW,
         'img_h': imgH,
         'recovered': recovered,
@@ -99,6 +104,7 @@ class OcrFrag {
       xLeft: d('x_left'),
       xRight: d('x_right'),
       angle: d('angle'),
+      skew: (m['skew'] as num?)?.toDouble() ?? double.nan,
       imgW: (m['img_w'] as num?)?.toInt() ?? 0,
       imgH: (m['img_h'] as num?)?.toInt() ?? 0,
       recovered: m['recovered'] == true,

@@ -309,6 +309,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         m.put("x_left", f.xLeft);
         m.put("x_right", f.xRight);
         m.put("angle", f.angle);
+        m.put("skew", f.skew);
         m.put("img_w", f.imgW);
         m.put("img_h", f.imgH);
         m.put("recovered", f.recovered);
@@ -328,6 +329,7 @@ public class PaddleOcrPlugin implements FlutterPlugin, MethodChannel.MethodCallH
         f.xLeft = num(m, "x_left");
         f.xRight = num(m, "x_right");
         f.angle = num(m, "angle");
+        f.skew = m.get("skew") instanceof Number ? ((Number) m.get("skew")).doubleValue() : Double.NaN;
         f.imgW = ((Number) m.get("img_w")).intValue();
         f.imgH = ((Number) m.get("img_h")).intValue();
         f.recovered = Boolean.TRUE.equals(m.get("recovered"));

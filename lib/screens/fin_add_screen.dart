@@ -5,6 +5,7 @@ import '../data/finance.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/receipt_parser.dart';
+import '../logic/receipt_pick.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
 import 'receipt_markup_screen.dart';
@@ -394,19 +395,16 @@ class _FinAddScreenState extends State<FinAddScreen> {
         markFail = '$e';
       }
       final viewMark = marked; // для перегляду - навіть якщо позицій не знайшлось
-      final List<ReceiptRow> rows;
-      final double? declared;
-      if (marked != null && (marked.fz.rows.isNotEmpty || marked.fz.total != null)) {
-        rows = [
-          for (final r in marked.fz.rows)
-            ReceiptRow(name: r.name, qty: r.qty, unit: r.unit, price: r.price)
-        ];
-        declared = marked.fz.total;
+      final ReceiptReading reading;
+      if (marked != null && (marked.fz.rows.isNotEmpty || marked.fz.total != null || marked.frags.isNotEmpty)) {
+        // розмітка основна; текст зі вже прочитаних фрагментів рятує, коли сума розмітки не зійшлась із чеком
+        reading = pickReading(marked.fz, marked.texts);
       } else {
         final text = await readReceiptText(_ocr, path);
-        rows = parseReceipt(text, fillMissing: false);
-        declared = receiptDeclaredTotal(text);
+        reading = pickReading(null, [text]);
       }
+      final rows = reading.rows;
+      final declared = reading.declared;
       if (!mounted) return;
       final cat = _cat;
       setState(() {
