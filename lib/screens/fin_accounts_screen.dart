@@ -294,6 +294,10 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   bool _adjustInStats = true;
   late String _currency = widget.account?.currency ?? kFinUah;
   double _current = 0;
+
+  /// Залишок у вибраній валюті (після зміни валюти - перерахований за курсом).
+  double _expected = 0;
+  Map<String, double> _rates = const {};
   bool _saving = false;
 
   bool get _editing => widget.account != null;
@@ -302,7 +306,19 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   bool get _balanceChanged {
     if (!_editing) return false;
     final value = _sum.text.trim().isEmpty ? 0.0 : (parseSignedAmount(_sum.text) ?? 0.0);
-    return (value - _current).abs() >= 0.005;
+    return (value - _expected).abs() >= 0.005;
+  }
+
+  /// Інша валюта: у полі одразу видно перерахований залишок.
+  void _pickCurrency(String c) {
+    setState(() {
+      _currency = c;
+      if (!_editing) return;
+      final r0 = _rates[widget.account!.currency], r1 = _rates[c];
+      if (r0 == null || r1 == null || r1 <= 0) return;
+      _expected = double.parse((_current * r0 / r1).toStringAsFixed(2));
+      _sum.text = amountFieldText(_expected);
+    });
   }
 
   @override
@@ -313,9 +329,12 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
 
   Future<void> _loadBalance() async {
     final b = (await widget.repo.finAccountBalances())[widget.account!.id] ?? 0;
+    final rates = await widget.repo.finRates();
     if (!mounted) return;
     setState(() {
+      _rates = rates;
       _current = b;
+      _expected = b;
       _sum.text = amountFieldText(b);
     });
   }
@@ -340,8 +359,33 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
       final value = _sum.text.trim().isEmpty ? 0.0 : (parseSignedAmount(_sum.text) ?? 0.0);
       if (_editing) {
         final id = widget.account!.id;
+        final old = widget.account!.currency;
+        if (_currency != old) {
+          final r0 = _rates[old], r1 = _rates[_currency];
+          if (r0 == null || r1 == null) {
+            await showInfo(context, tr.finCurrencyNoRate);
+            setState(() => _saving = false);
+            return;
+          }
+          final ok = await showConfirm(context,
+              title: tr.finCurrencyChangeTitle,
+              text: tr.finCurrencyChangeText(money(_current, old), money(_expected, _currency),
+                  '1 ${currencySymbol(_currency)} = ${(r1 / r0).toStringAsFixed(2)} ${currencySymbol(old)}'),
+              confirmText: tr.finCurrencyChangeBtn,
+              cancelText: tr.cancel,
+              danger: false);
+          if (!ok || !mounted) {
+            if (mounted) setState(() => _saving = false);
+            return;
+          }
+          if (!await repo.changeFinAccountCurrency(id, _currency)) {
+            if (mounted) await showInfo(context, tr.finCurrencyNoRate);
+            setState(() => _saving = false);
+            return;
+          }
+        }
         await repo.updateFinAccount(id, name: name, icon: _icon, color: _color, inTotal: _inTotal);
-        if ((value - _current).abs() >= 0.005) await repo.setFinAccountBalance(id, value, inStats: _adjustInStats);
+        if ((value - _expected).abs() >= 0.005) await repo.setFinAccountBalance(id, value, inStats: _adjustInStats);
       } else {
         await repo.addFinAccount(name,
             icon: _icon, color: _color, startBalance: value, inTotal: _inTotal, currency: _currency);
@@ -411,26 +455,34 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           style: TextStyle(color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w700),
                           decoration: InputDecoration(
                             hintText: '0',
-                            suffixText: currencySymbol(_currency),
-                            suffixStyle: TextStyle(color: AppColors.create, fontSize: 28),
+                            // валюта: дотик по символу відкриває вибір (₴ / $ / €)
+                            suffixIcon: PopupMenuButton<String>(
+                              key: const ValueKey('fin-account-currency'),
+                              tooltip: tr.finCurrency,
+                              onSelected: _pickCurrency,
+                              color: AppColors.card,
+                              itemBuilder: (_) => [
+                                for (final c in kFinCurrencies)
+                                  PopupMenuItem<String>(
+                                      value: c,
+                                      child: Text('${currencySymbol(c)}  $c',
+                                          style: TextStyle(
+                                              color: c == _currency ? AppColors.create : AppColors.text,
+                                              fontWeight: c == _currency ? FontWeight.w700 : FontWeight.w400))),
+                              ],
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(currencySymbol(_currency),
+                                      style: TextStyle(color: AppColors.create, fontSize: 28)),
+                                  Icon(Icons.arrow_drop_down, color: AppColors.create),
+                                ]),
+                              ),
+                            ),
                             filled: false,
                           ),
                         ),
                       ),
-                      if (!_editing) ...[
-                        _label(tr.finCurrency),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Wrap(spacing: 8, children: [
-                            for (final c in kFinCurrencies)
-                              ChoiceChip(
-                                label: Text(c),
-                                selected: c == _currency,
-                                onSelected: (_) => setState(() => _currency = c),
-                              ),
-                          ]),
-                        ),
-                      ],
                       if (_editing)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),

@@ -93,6 +93,24 @@ void main() {
     expect(names, [c, a, b]);
   });
 
+  test('зміна валюти рахунку перераховує залишок, операції й перекази за курсом', () async {
+    await repo.setMeta('fin_rates', '{"at": ${DateTime.now().millisecondsSinceEpoch}, "rates": {"USD": 40.0, "EUR": 50.0}}');
+    final uah = await repo.addFinAccount('Гривня', startBalance: 4000);
+    final other = await repo.addFinAccount('Інший', startBalance: 100);
+    await repo.addFinTransfer(fromId: uah, toId: other, amount: 400, date: DateTime(2026, 1, 5));
+    expect((await repo.finAccountBalances())[uah], 3600);
+    expect(await repo.changeFinAccountCurrency(uah, 'USD'), isTrue);
+    final bal = await repo.finAccountBalances();
+    expect(bal[uah], 90); // 3600 / 40
+    expect(bal[other], 500); // інша сторона переказу не змінилась
+    expect((await repo.listFinAccounts()).firstWhere((a) => a.id == uah).currency, 'USD');
+    // USD -> EUR: 90 * 40 / 50
+    expect(await repo.changeFinAccountCurrency(uah, 'EUR'), isTrue);
+    expect((await repo.finAccountBalances())[uah], 72);
+    // курсу немає - нічого не змінюється
+    expect(await repo.changeFinAccountCurrency(uah, 'PLN'), isFalse);
+  });
+
   test('початкові категорії створюються один раз, «Корми» йдуть на склад', () async {
     await repo.init();
     final all = await repo.listFinCategories();

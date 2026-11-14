@@ -763,6 +763,10 @@ abstract class AppStrings {
   String get qrScanHint;
   String get qrGenerateHint;
   String get qrBindRowHint;
+  String get finCurrencyChangeTitle;
+  String get finCurrencyChangeBtn;
+  String get finCurrencyNoRate;
+  String finCurrencyChangeText(String before, String after, String rate);
   String get swapAccounts;
   String get notifTitle;
   String get notifSummary;

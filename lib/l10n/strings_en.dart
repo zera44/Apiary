@@ -1560,6 +1560,15 @@ class AppStringsEn extends AppStrings {
   @override
   String get qrBindRowHint => 'Link stickers to hives one after another';
   @override
+  String get finCurrencyChangeTitle => 'Change the account currency?';
+  @override
+  String get finCurrencyChangeBtn => 'Convert';
+  @override
+  String get finCurrencyNoRate => 'No exchange rate for this currency. Try again when you are online';
+  @override
+  String finCurrencyChangeText(String before, String after, String rate) =>
+      'The balance, operations and transfers will be converted at the NBU rate ($rate): $before → $after';
+  @override
   String get swapAccounts => 'Swap accounts';
   @override
   String get notifTitle => 'Notifications';

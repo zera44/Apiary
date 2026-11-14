@@ -192,6 +192,54 @@ extension RepositoryFinAccounts on Repository {
   }
 
   /// М'яке видалення рахунку: його операції й перекази лишаються в журналі.
+  /// Змінити валюту рахунку з перерахунком за збереженими курсами НБУ: залишок,
+  /// усі операції й перекази рахунку множаться на курс; гривневі суми операцій
+  /// (статистика) не змінюються. false - курсу якоїсь із валют немає, нічого не змінено.
+  Future<bool> changeFinAccountCurrency(String id, String newCurrency) async {
+    final rows = await db.query('fin_accounts', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return false;
+    final old = (rows.first['currency'] as String?) ?? kFinUah;
+    if (old == newCurrency) return true;
+    final rates = await finRates();
+    final r0 = rates[old], r1 = rates[newCurrency];
+    if (r0 == null || r1 == null || r0 <= 0 || r1 <= 0) return false;
+    final k = r0 / r1;
+    double conv(num v) => double.parse((v * k).toStringAsFixed(2));
+    final now = Repository.now();
+    await db.transaction((tx) async {
+      final start = (rows.first['start_balance'] as num?)?.toDouble() ?? 0;
+      await tx.update(
+          'fin_accounts',
+          {
+            'currency': newCurrency == kFinUah ? null : newCurrency,
+            'start_balance': conv(start),
+            'updated_at': now,
+            'synced': 0,
+          },
+          where: 'id = ?',
+          whereArgs: [id]);
+      for (final o in await tx.query('fin_ops', where: 'account_id = ?', whereArgs: [id])) {
+        final base = ((o['account_amount'] as num?) ?? (o['amount'] as num)).toDouble();
+        await tx.update('fin_ops', {'account_amount': conv(base), 'updated_at': now, 'synced': 0},
+            where: 'id = ?', whereArgs: [o['id']]);
+      }
+      for (final t in await tx.query('fin_transfers',
+          where: 'from_account_id = ? OR to_account_id = ?', whereArgs: [id, id])) {
+        final amount = (t['amount'] as num).toDouble();
+        final toAmount = (t['to_amount'] as num?)?.toDouble();
+        final upd = <String, Object?>{'updated_at': now, 'synced': 0};
+        if (t['from_account_id'] == id) {
+          upd['amount'] = conv(amount);
+          upd['to_amount'] = toAmount ?? amount; // інша сторона лишається як була
+        } else {
+          upd['to_amount'] = conv(toAmount ?? amount);
+        }
+        await tx.update('fin_transfers', upd, where: 'id = ?', whereArgs: [t['id']]);
+      }
+    });
+    return true;
+  }
+
   Future<void> deleteFinAccount(String id) async {
     await db.update('fin_accounts', {'deleted': 1, 'updated_at': Repository.now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);

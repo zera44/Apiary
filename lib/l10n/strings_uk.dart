@@ -1560,6 +1560,15 @@ class AppStringsUk extends AppStrings {
   @override
   String get qrBindRowHint => 'Прив\'язувати наліпки до вуликів по черзі';
   @override
+  String get finCurrencyChangeTitle => 'Змінити валюту рахунку?';
+  @override
+  String get finCurrencyChangeBtn => 'Перерахувати';
+  @override
+  String get finCurrencyNoRate => 'Немає курсу НБУ для цієї валюти. Спробуйте, коли буде інтернет';
+  @override
+  String finCurrencyChangeText(String before, String after, String rate) =>
+      'Суми рахунку, операції й перекази буде перераховано за курсом НБУ ($rate): $before → $after';
+  @override
   String get swapAccounts => 'Поміняти рахунки місцями';
   @override
   String get notifTitle => 'Сповіщення';
