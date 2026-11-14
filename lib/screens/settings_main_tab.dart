@@ -24,6 +24,7 @@ import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'notify_settings_screen.dart';
+import 'home_screen.dart';
 import 'splash_screen.dart';
 
 /// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
@@ -625,8 +626,20 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                   width: double.infinity,
                   onPressed: _busy ? null : _signOut,
                 ),
-              ] else
+              ] else ...[
                 Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+                if (Server.auth != null) ...[
+                  const SizedBox(height: 12),
+                  PillButton(
+                    key: const ValueKey('account-sign-in'),
+                    text: _busy ? tr.signingIn : tr.signInGoogle,
+                    bg: AppColors.accent,
+                    height: 44,
+                    width: double.infinity,
+                    onPressed: _busy ? null : _signInHere,
+                  ),
+                ],
+              ],
             ],
           ),
           SettingsSection(
@@ -695,6 +708,26 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
 
   /// «Вийти»: з підтвердженням; дані лишаються на телефоні, далі - екран
   /// входу.
+  /// Гість входить через Google просто з налаштувань, без повернення на заставку.
+  Future<void> _signInHere() async {
+    final auth = Server.auth;
+    if (auth == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await auth.signIn();
+      HomeScreen.signedInMail = auth.user?.email;
+      await Server.connect(widget.repo, auth);
+    } on SignInCancelled {
+      // передумали - лишаємось як є
+    } on StateError catch (e) {
+      if (mounted) _say(e.message);
+    } catch (_) {
+      if (mounted) _say(tr.signInFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _signOut() async {
     final auth = Server.auth;
     if (auth == null) return;
