@@ -72,6 +72,8 @@ final class OcrV2 {
         int boxId;
         String text;
         double conf, x, y, w, h, xLeft, xRight, angle;
+        /** Нахил самої рамки відносно загального ([angle]), радіани, у (-pi/2; pi/2]; NaN - невідомий (дочитаний фрагмент). */
+        double skew = Double.NaN;
         int imgW, imgH, rotation;
         double receiptConf;
         boolean recovered;
@@ -80,7 +82,7 @@ final class OcrV2 {
         Frag copy() {
             Frag f = new Frag();
             f.boxId = boxId; f.text = text; f.conf = conf; f.x = x; f.y = y; f.w = w; f.h = h;
-            f.xLeft = xLeft; f.xRight = xRight; f.angle = angle; f.imgW = imgW; f.imgH = imgH;
+            f.xLeft = xLeft; f.xRight = xRight; f.angle = angle; f.skew = skew; f.imgW = imgW; f.imgH = imgH;
             f.rotation = rotation; f.receiptConf = receiptConf; f.recovered = recovered; f.hand = hand;
             return f;
         }
@@ -763,6 +765,10 @@ final class OcrV2 {
             f.rotation = rot;
             f.receiptConf = conf;
             f.angle = a;
+            double sk = ang[i] - a;
+            while (sk > Math.PI / 2) sk -= Math.PI;
+            while (sk < -Math.PI / 2) sk += Math.PI;
+            f.skew = sk;
             out.add(f);
         }
         return out;

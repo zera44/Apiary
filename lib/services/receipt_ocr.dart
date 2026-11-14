@@ -6,9 +6,11 @@ import 'package:image_picker/image_picker.dart';
 import 'package:paddle_ocr_flutter/paddle_ocr_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../logic/fz2/frag_text.dart';
 import '../logic/fz2/fz2.dart';
 import '../logic/fz2/receipt_rows.dart';
 import '../logic/fz2/recover.dart';
+import '../logic/receipt_parser.dart';
 
 /// Розмічений чек: класи фрагментів (нечітка розмітка fz2), позиції й підсумок,
 /// а також зображення, у кадрі якого задані координати фрагментів.
@@ -25,7 +27,21 @@ class MarkedReceipt {
   /// Кроки дочитування, що впали й були пропущені (розмітка все одно відпрацювала).
   final List<String> skipped;
 
-  const MarkedReceipt(this.fz, this.image, this.angle, {this.skipped = const []});
+  /// Фрагменти, з яких зібрано розмітку (після дочитування): з них же збирається текст для розбору, без
+  /// повторного розпізнавання фото.
+  final List<Frag> frags;
+
+  const MarkedReceipt(this.fz, this.image, this.angle, {this.skipped = const [], this.frags = const []});
+
+  /// Текст чека зі [frags], зібраний трьома способами ([fragLines] - основний), без порожніх і повторів.
+  List<String> get texts {
+    final out = <String>[];
+    for (final lines in [fragLines(frags), fragLinesAnchored(frags), fragLinesDeskewed(frags)]) {
+      final t = lines.join('\n');
+      if (t.isNotEmpty && !out.contains(t)) out.add(t);
+    }
+    return out;
+  }
 }
 
 
@@ -94,8 +110,20 @@ class PaddleReceiptOcr implements ReceiptOcr {
       await session.end(imagePath: image);
     }
     final ok = image != null && File(image).existsSync();
-    return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle, skipped: skipped);
+    return MarkedReceipt(fz, ok ? image : null, frags.isEmpty ? 0 : frags.first.angle, skipped: skipped, frags: frags);
   }
+}
+
+/// Текст чека для розбору. Рядки з фото збираються кількома способами: основний і
+/// запасні, що розділяють сусідні рядки на фото під кутом. [pickReceiptText] бере
+/// запасний лише тоді, коли з ним сума позицій дорівнює сумі чека, а з основним ні.
+Future<String> readReceiptText(ReceiptOcr ocr, String imagePath) async {
+  if (ocr is! PaddleReceiptOcr) return ocr.read(imagePath);
+  if (!ocr.supported || !await PaddleOcr.ready()) {
+    throw StateError('PaddleOCR недоступний на цьому пристрої');
+  }
+  final r = await PaddleOcr.recognize(imagePath);
+  return pickReceiptText([r.text, ...r.altTexts]);
 }
 
 /// Фото чека: [camera] - знімок камерою, інакше - з галереї (на комп'ютері - файл).
@@ -125,6 +153,7 @@ Frag _frag(OcrFrag f) => Frag(
       imgW: f.imgW.toDouble(),
       imgH: f.imgH.toDouble(),
       angle: f.angle,
+      skew: f.skew,
       hand: f.hand,
       recovered: f.recovered,
     );
@@ -140,6 +169,7 @@ OcrFrag _ocrFrag(Frag f) => OcrFrag(
       xLeft: f.xLeft,
       xRight: f.xRight,
       angle: f.angle,
+      skew: f.skew,
       imgW: (f.imgW ?? 0).round(),
       imgH: (f.imgH ?? 0).round(),
       recovered: f.recovered,

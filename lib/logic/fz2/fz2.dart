@@ -30,6 +30,9 @@ class Frag {
   double? imgW, imgH;
   double angle;
 
+  /// Нахил самої рамки відносно загального ([angle]), радіани; NaN - невідомий.
+  double skew;
+
   /// Рукописний рядок бланка (hand.py): клас уже відомий (NAME чи ITEM).
   String? hand;
 
@@ -55,6 +58,7 @@ class Frag {
     this.imgW,
     this.imgH,
     this.angle = 0,
+    this.skew = double.nan,
     this.hand,
     this.virtual = false,
     this.value,
@@ -76,6 +80,7 @@ class Frag {
         imgW: imgW,
         imgH: imgH,
         angle: angle,
+        skew: skew,
         hand: hand,
         virtual: virtual,
         value: value,
