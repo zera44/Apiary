@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -65,9 +67,12 @@ abstract class SessionStore {
   Future<SupabaseSession?> read();
   Future<void> write(SupabaseSession? s);
 
-  /// Файл у теці застосунку (його бачить і фонове завдання).
-  static Future<SessionStore> forApp() async =>
-      FileSessionStore(File(p.join((await getApplicationSupportDirectory()).path, 'supabase_session.json')));
+  /// Захищене сховище Android (Keystore), яке бачить і фонове завдання. Старий
+  /// відкритий файл із попередніх версій переноситься туди й стирається.
+  static Future<SessionStore> forApp() async => SecureSessionStore(
+        const FlutterSecureStorage(),
+        FileSessionStore(File(p.join((await getApplicationSupportDirectory()).path, 'supabase_session.json'))),
+      );
 }
 
 class FileSessionStore implements SessionStore {
@@ -93,6 +98,61 @@ class FileSessionStore implements SessionStore {
     final tmp = File('${file.path}.tmp');
     await tmp.writeAsString(jsonEncode(s.toJson()), flush: true);
     await tmp.rename(file.path);
+  }
+}
+
+/// Токен оновлення - це ключ до акаунта, тож лежить зашифрованим у Keystore
+/// Android, а не у відкритому файлі. Якщо Keystore не працює (рідкісні
+/// прошивки), вхід усе ж зберігається у файлі, щоб синхронізація не
+/// переривалась, і при першій нагоді переноситься в сховище.
+class SecureSessionStore implements SessionStore {
+  static const key = 'supabase_session';
+  final FlutterSecureStorage vault;
+  final FileSessionStore legacy;
+  SecureSessionStore(this.vault, this.legacy);
+
+  @override
+  Future<SupabaseSession?> read() async {
+    try {
+      final raw = await vault.read(key: key);
+      if (raw != null) {
+        final s = SupabaseSession.fromJson(jsonDecode(raw));
+        if (s != null) return s;
+      }
+    } catch (e) {
+      // не розшифрувати (скинуто Keystore) або сховище недоступне - далі файл
+      debugPrint('Сховище входу: $e');
+    }
+    final old = await legacy.read();
+    if (old != null) {
+      try {
+        await vault.write(key: key, value: jsonEncode(old.toJson()));
+        await legacy.write(null);
+      } catch (e) {
+        debugPrint('Перенесення входу в сховище: $e');
+      }
+    }
+    return old;
+  }
+
+  @override
+  Future<void> write(SupabaseSession? s) async {
+    if (s == null) {
+      try {
+        await vault.delete(key: key);
+      } catch (e) {
+        debugPrint('Сховище входу (стирання): $e');
+      }
+      await legacy.write(null);
+      return;
+    }
+    try {
+      await vault.write(key: key, value: jsonEncode(s.toJson()));
+      await legacy.write(null); // відкритої копії не лишаємо
+    } catch (e) {
+      debugPrint('Сховище входу (запис): $e');
+      await legacy.write(s);
+    }
   }
 }
 

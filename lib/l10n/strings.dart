@@ -989,6 +989,29 @@ abstract class AppStrings {
   String get lessonBasics;
   String get soon;
 
+  // ---- Захист входу (налаштування) ----
+  String get secTitle;
+  String secTelegramLinked(String phone);
+  String get secTelegramNone;
+  String get secLinkTelegram;
+  String get secLinkedOk;
+  String get secPinOn;
+  String get secPinOff;
+  String get secPinEnable;
+  String get secPinChange;
+  String get secPinDisable;
+  String get secPinCurrent;
+  String get secPinDisableWarn;
+  String secPinScheduled(String when);
+  String get secPinDisabledNow;
+  String get secPinChanged;
+  String get secPinEnabled;
+  String get secPinLocked;
+  String get secSignOutAll;
+  String get secSignOutAllText;
+  String get secLoadFailed;
+  String get secSave;
+
   // ---- Вхід через Telegram і PIN ----
   String get signInTelegram;
   String get tgTitle;

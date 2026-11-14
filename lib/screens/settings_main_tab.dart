@@ -16,6 +16,7 @@ import '../services/receipt_photo_share.dart';
 import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
+import '../ui/security_controls.dart';
 import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
 import '../ui/orientation.dart';
@@ -586,6 +587,11 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                 Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
             ],
           ),
+          // Telegram, PIN, «вийти всюди» - лише для того, хто ввійшов на сервер
+          if (Server.api != null)
+            SettingsSection(
+                title: tr.secTitle,
+                children: [SecurityControls(afterSignOutEverywhere: _afterSignOutEverywhere)]),
           SettingsSection(
             title: tr.syncSection,
             children: [
@@ -649,6 +655,19 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
           ),
         ],
       );
+
+  /// Сервер вивів усі пристрої: виходимо й тут (дані на телефоні лишаються).
+  Future<void> _afterSignOutEverywhere() async {
+    final auth = Server.auth;
+    if (auth == null) return;
+    final nav = Navigator.of(context);
+    await Server.signOut(widget.repo);
+    await auth.signOut();
+    nav.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => SplashScreen(repo: widget.repo, auth: auth)),
+      (_) => false,
+    );
+  }
 
   /// «Вийти»: з підтвердженням; дані лишаються на телефоні, далі - екран
   /// входу.

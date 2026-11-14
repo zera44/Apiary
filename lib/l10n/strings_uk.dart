@@ -2022,6 +2022,50 @@ class AppStringsUk extends AppStrings {
   @override
   String get soon => 'скоро';
 
+  // ---- Захист входу (налаштування) ----
+  @override
+  String get secTitle => 'Захист входу';
+  @override
+  String secTelegramLinked(String phone) => 'Telegram прив\'язано: $phone';
+  @override
+  String get secTelegramNone => 'Telegram не прив\'язано. З ним можна входити без Google.';
+  @override
+  String get secLinkTelegram => 'Прив\'язати Telegram';
+  @override
+  String get secLinkedOk => 'Telegram прив\'язано';
+  @override
+  String get secPinOn => 'PIN увімкнено';
+  @override
+  String get secPinOff => 'PIN вимкнено. З PIN акаунт захищений, навіть якщо хтось отримає доступ до вашого Telegram.';
+  @override
+  String get secPinEnable => 'Увімкнути PIN';
+  @override
+  String get secPinChange => 'Змінити PIN';
+  @override
+  String get secPinDisable => 'Вимкнути PIN';
+  @override
+  String get secPinCurrent => 'Поточний PIN';
+  @override
+  String get secPinDisableWarn => 'Без PIN захист входу слабший. Підтвердьте поточним PIN.';
+  @override
+  String secPinScheduled(String when) => 'PIN буде вимкнено $when. Якщо це були не ви, натисніть «Це не я» у повідомленні від бота.';
+  @override
+  String get secPinDisabledNow => 'PIN вимкнено';
+  @override
+  String get secPinChanged => 'PIN змінено';
+  @override
+  String get secPinEnabled => 'PIN увімкнено';
+  @override
+  String get secPinLocked => 'Забагато невдалих спроб. Спробуйте пізніше.';
+  @override
+  String get secSignOutAll => 'Вийти на всіх пристроях';
+  @override
+  String get secSignOutAllText => 'Усі пристрої, де ви ввійшли, вийдуть з акаунта. Дані лишаються на пристроях і на сервері.';
+  @override
+  String get secLoadFailed => 'Не вдалося отримати стан захисту. Перевірте інтернет.';
+  @override
+  String get secSave => 'Зберегти';
+
   // ---- Вхід через Telegram і PIN ----
   @override
   String get signInTelegram => 'Увійти через Telegram';

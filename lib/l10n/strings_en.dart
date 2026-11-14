@@ -2023,6 +2023,50 @@ class AppStringsEn extends AppStrings {
   @override
   String get soon => 'soon';
 
+  // ---- Захист входу (налаштування) ----
+  @override
+  String get secTitle => 'Sign-in protection';
+  @override
+  String secTelegramLinked(String phone) => 'Telegram linked: $phone';
+  @override
+  String get secTelegramNone => 'Telegram is not linked. With it you can sign in without Google.';
+  @override
+  String get secLinkTelegram => 'Link Telegram';
+  @override
+  String get secLinkedOk => 'Telegram linked';
+  @override
+  String get secPinOn => 'PIN is on';
+  @override
+  String get secPinOff => 'PIN is off. A PIN protects the account even if someone gets into your Telegram.';
+  @override
+  String get secPinEnable => 'Turn on PIN';
+  @override
+  String get secPinChange => 'Change PIN';
+  @override
+  String get secPinDisable => 'Turn off PIN';
+  @override
+  String get secPinCurrent => 'Current PIN';
+  @override
+  String get secPinDisableWarn => 'Without a PIN sign-in protection is weaker. Confirm with the current PIN.';
+  @override
+  String secPinScheduled(String when) => 'The PIN will be turned off $when. If it was not you, tap “Not me” in the bot message.';
+  @override
+  String get secPinDisabledNow => 'PIN turned off';
+  @override
+  String get secPinChanged => 'PIN changed';
+  @override
+  String get secPinEnabled => 'PIN turned on';
+  @override
+  String get secPinLocked => 'Too many failed attempts. Try later.';
+  @override
+  String get secSignOutAll => 'Sign out everywhere';
+  @override
+  String get secSignOutAllText => 'All devices you are signed in on will be signed out. Data stays on the devices and on the server.';
+  @override
+  String get secLoadFailed => 'Could not get the protection status. Check the internet.';
+  @override
+  String get secSave => 'Save';
+
   // ---- Вхід через Telegram і PIN ----
   @override
   String get signInTelegram => 'Sign in with Telegram';
