@@ -755,6 +755,9 @@ abstract class AppStrings {
   String get receiptPhoto;
   String get photoFromGallery;
   String get orFromGallery;
+  String get transferFromAccount;
+  String get transferToAccount;
+  String get swapAccounts;
   String get notifTitle;
   String get notifSummary;
   String get notifEnabled;

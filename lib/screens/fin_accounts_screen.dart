@@ -411,27 +411,6 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                         ),
-                      if (_balanceChanged)
-                        Container(
-                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _adjustInStats ? AppColors.create : AppColors.darkBtn),
-                          ),
-                          child: Row(children: [
-                            Icon(Icons.bar_chart, color: AppColors.create),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: Text(tr.finAdjustInStats,
-                                    style: TextStyle(color: AppColors.text, fontSize: 15))),
-                            Switch(
-                                key: const ValueKey('fin-adjust-in-stats'),
-                                value: _adjustInStats,
-                                onChanged: (v) => setState(() => _adjustInStats = v)),
-                          ]),
-                        ),
                       Container(
                         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                         padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
@@ -449,6 +428,29 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           Switch(value: _inTotal, onChanged: (v) => setState(() => _inTotal = v)),
                         ]),
                       ),
+                      if (_balanceChanged)
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: _adjustInStats ? AppColors.addObject : AppColors.darkBtn),
+                          ),
+                          child: Row(children: [
+                            Icon(Icons.bar_chart, color: AppColors.addObject),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: Text(tr.finAdjustInStats,
+                                    style: TextStyle(color: AppColors.text, fontSize: 15))),
+                            Switch(
+                                key: const ValueKey('fin-adjust-in-stats'),
+                                activeThumbColor: AppColors.addObject,
+                                activeTrackColor: AppColors.addObject.withValues(alpha: 0.45),
+                                value: _adjustInStats,
+                                onChanged: (v) => setState(() => _adjustInStats = v)),
+                          ]),
+                        ),
                       _label(tr.icon),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),

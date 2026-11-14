@@ -1544,6 +1544,12 @@ class AppStringsEn extends AppStrings {
   @override
   String get orFromGallery => 'or choose from the gallery';
   @override
+  String get transferFromAccount => 'Transfer from account';
+  @override
+  String get transferToAccount => 'Transfer to account';
+  @override
+  String get swapAccounts => 'Swap accounts';
+  @override
   String get notifTitle => 'Notifications';
   @override
   String get notifSummary => 'Round reminders: time and days';

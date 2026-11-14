@@ -1544,6 +1544,12 @@ class AppStringsUk extends AppStrings {
   @override
   String get orFromGallery => 'або обрати з галереї';
   @override
+  String get transferFromAccount => 'Переказати з рахунку';
+  @override
+  String get transferToAccount => 'Переказати на рахунок';
+  @override
+  String get swapAccounts => 'Поміняти рахунки місцями';
+  @override
   String get notifTitle => 'Сповіщення';
   @override
   String get notifSummary => 'Нагадування про обхід: час і дні';

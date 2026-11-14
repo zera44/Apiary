@@ -10,6 +10,7 @@ import '../services/receipt_ocr.dart';
 import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
+import '../ui/fin_date_row.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
@@ -1200,64 +1201,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
     );
   }
 
-  Widget _dateRow() {
-    final now = DateTime.now();
-    final days = [for (var i = 0; i < 3; i++) now.subtract(Duration(days: i))];
-    final words = [tr.today, tr.yesterday, tr.dayBeforeYesterday];
-    final custom = !days.any((d) => _sameDay(_date, d));
-    Widget chip(Widget child, bool on, VoidCallback tap) => Expanded(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: tap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 54),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              decoration: BoxDecoration(
-                color: on ? AppColors.card : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: on ? AppColors.create : AppColors.darkBtn, width: on ? 1.5 : 1),
-              ),
-              child: child,
-            ),
-          ),
-        );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(children: [
-        for (var i = 0; i < 3; i++) ...[
-          chip(
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(finDay(days[i]),
-                    style: TextStyle(
-                        color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-                Text(words[i], style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
-              ]),
-            ),
-            _sameDay(_date, days[i]),
-            () => setState(() => _date = i == 0 ? DateTime.now() : days[i]),
-          ),
-          const SizedBox(width: 8),
-        ],
-        chip(
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.calendar_month_outlined, size: 24, color: AppColors.create),
-              if (custom)
-                Text(formatDdMmYyyy(_date),
-                    style: TextStyle(color: AppColors.text, fontSize: 11.5)),
-            ]),
-          ),
-          custom,
-          _pickDate,
-        ),
-      ]),
-    );
-  }
-
   /// Щось уже введено (сума, рядки таблиці чи розпізнаний чек).
   bool get _dirty =>
       (parseAmount(_sum.text) ?? 0) != 0 || _hasReceipt || _lines.any((l) => !l.empty);
@@ -1307,11 +1250,11 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   _foreignAmount(),
                   if (_hasReceipt || _reading) ...[
                     _compactPickers(),
-                    _dateRow(),
+                    FinDateRow(date: _date, onChanged: (d) => setState(() => _date = d), onPickCalendar: _pickDate),
                   ] else ...[
                     if (_accounts.length > 1 && _account != null) _accountTile(),
                     _categories(),
-                    _dateRow(),
+                    FinDateRow(date: _date, onChanged: (d) => setState(() => _date = d), onPickCalendar: _pickDate),
                     _scanHero(),
                   ],
                   _table(),
