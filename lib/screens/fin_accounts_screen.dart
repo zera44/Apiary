@@ -479,7 +479,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(currencySymbol(_currency),
-                                    style: TextStyle(color: AppColors.create, fontSize: 26)),
+                                    style: TextStyle(color: AppColors.create, fontSize: 28)),
                               ),
                             ),
                             filled: false,
