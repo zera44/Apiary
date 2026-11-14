@@ -1,4 +1,5 @@
 import 'package:apiary/data/database.dart';
+import 'package:apiary/data/fin_accounts.dart';
 import 'package:apiary/data/finance.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/logic/fz2/fz2.dart';
@@ -82,6 +83,33 @@ void main() {
 
   Future<FinCategory> cat(String name) async =>
       (await repo.listFinCategories()).firstWhere((c) => c.name == name);
+
+  test('порядок рахунків зберігається після перетягування', () async {
+    final a = await repo.addFinAccount('Аа');
+    final b = await repo.addFinAccount('Бб');
+    final c = await repo.addFinAccount('Вв');
+    await repo.reorderFinAccounts([c, a, b]);
+    final names = [for (final x in await repo.listFinAccounts().then((l) => l.where((x) => [a, b, c].contains(x.id)))) x.id];
+    expect(names, [c, a, b]);
+  });
+
+  test('зміна валюти рахунку перераховує залишок, операції й перекази за курсом', () async {
+    await repo.setMeta('fin_rates', '{"at": ${DateTime.now().millisecondsSinceEpoch}, "rates": {"USD": 40.0, "EUR": 50.0}}');
+    final uah = await repo.addFinAccount('Гривня', startBalance: 4000);
+    final other = await repo.addFinAccount('Інший', startBalance: 100);
+    await repo.addFinTransfer(fromId: uah, toId: other, amount: 400, date: DateTime(2026, 1, 5));
+    expect((await repo.finAccountBalances())[uah], 3600);
+    expect(await repo.changeFinAccountCurrency(uah, 'USD'), isTrue);
+    final bal = await repo.finAccountBalances();
+    expect(bal[uah], 90); // 3600 / 40
+    expect(bal[other], 500); // інша сторона переказу не змінилась
+    expect((await repo.listFinAccounts()).firstWhere((a) => a.id == uah).currency, 'USD');
+    // USD -> EUR: 90 * 40 / 50
+    expect(await repo.changeFinAccountCurrency(uah, 'EUR'), isTrue);
+    expect((await repo.finAccountBalances())[uah], 72);
+    // курсу немає - нічого не змінюється
+    expect(await repo.changeFinAccountCurrency(uah, 'PLN'), isFalse);
+  });
 
   test('початкові категорії створюються один раз, «Корми» йдуть на склад', () async {
     await repo.init();
@@ -646,6 +674,26 @@ void main() {
       final f = tester.widget<EditableText>(
           find.descendant(of: find.byKey(const ValueKey('fin-sum')), matching: find.byType(EditableText)));
       expect(f.focusNode.hasFocus, isFalse);
+    });
+
+    testWidgets('вручну: велика кнопка «Сфотографувати чек»; після чека її немає', (tester) async {
+      await open(tester, FinAddScreen(repo: repo));
+      expect(find.byKey(const Key('fin-scan-receipt')), findsOneWidget);
+      expect(find.text('або обрати з галереї'), findsOneWidget);
+      expect(find.text('Позавчора'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      expect(find.byKey(const Key('fin-scan-receipt')), findsNothing);
+      expect(find.textContaining('сума збігається'), findsOneWidget);
+    });
+
+    testWidgets('категорія обрана - у чеку вона стає компактним рядком', (tester) async {
+      await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      await tester.tap(find.text('Корми'));
+      await tester.pump();
+      expect(find.text('Корми'), findsOneWidget);
+      expect(find.text('Категорія'), findsOneWidget);
+      expect(find.text('Дорога'), findsNothing);
     });
   });
 }

@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../logic/merge_layout.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/grid_view.dart';
 import '../ui/guide_bubble.dart';
 import '../ui/theme.dart';
@@ -139,12 +140,14 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     return PopScope(
       canPop: !widget.tutorial,
       child: Scaffold(
+      drawer: widget.tutorial ? null : NavDrawer(repo: widget.repo, current: NavSection.apiaries),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(
+            Builder(builder: (bc) => TopBar(
               title: tr.myApiaries,
-              onBack: () => Navigator.of(context).pop(),
+              onBack: widget.tutorial ? () => Navigator.of(context).pop() : null,
+              onTitleTap: widget.tutorial ? null : () => Scaffold.of(bc).openDrawer(),
               // помічники: запросити, хто вже має доступ (в уроці - ні)
               trailing: widget.tutorial
                   ? null
@@ -162,7 +165,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                         ),
                       ),
                     ),
-            ),
+            )),
             Expanded(
               child: list == null
                   ? const Center(child: CircularProgressIndicator())

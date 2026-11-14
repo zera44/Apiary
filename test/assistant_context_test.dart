@@ -232,6 +232,39 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('плашку можна перетягнути: прилипає до краю, місце в шапці звільняється; вимкнена - зникає',
+      (tester) async {
+    await setup(tester);
+    await tester.runAsync(() => q.start());
+    final nav = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: nav,
+      navigatorObservers: [AssistantContext.observer],
+      builder: (context, child) =>
+          AssistantHost(repo: repo, navigator: nav, child: child ?? const SizedBox()),
+      home: const Scaffold(body: Center(child: Text('головний'))),
+    ));
+    await settle(tester);
+    final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
+    final fab = find.byKey(const ValueKey('assistant-fab'));
+    expect(AssistantSlot.shown.value, isTrue);
+    // тягнемо ліворуч і вниз - прилипає до лівого краю
+    await tester.drag(fab, Offset(-screen.width, 300));
+    await tester.pumpAndSettle();
+    final r = tester.getRect(fab);
+    expect(r.left, lessThan(screen.width / 4));
+    expect(r.top, greaterThan(200));
+    expect(AssistantSlot.shown.value, isFalse); // куток шапки вільний
+    // вимкнули в налаштуваннях - плашки немає
+    AssistantHost.showBubble.value = false;
+    await tester.pumpAndSettle();
+    expect(fab, findsNothing);
+    AssistantHost.showBubble.value = true;
+    await tester.pumpAndSettle();
+    expect(fab, findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('планшет: чат збоку від вкладки; говорить про ту вкладку, що на екрані', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;

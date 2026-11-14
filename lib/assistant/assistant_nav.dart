@@ -59,8 +59,8 @@ Future<Widget?> assistantScreen(Repository repo, NavTarget t) async {
       return TutorialScreen(realRepo: repo);
     case 'feedback':
       return FeedbackChat.current?.available == true
-          ? FeedbackChatScreen(chat: FeedbackChat.current!)
-          : const FeedbackScreen();
+          ? FeedbackChatScreen(chat: FeedbackChat.current!, repo: repo)
+          : FeedbackScreen(repo: repo);
   }
   return null;
 }

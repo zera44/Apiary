@@ -126,6 +126,13 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
         ),
       );
 
+  Future<void> _reorder(int from, int to) async {
+    if (to > from) to--;
+    if (from == to) return;
+    setState(() => _accounts.insert(to, _accounts.removeAt(from)));
+    await widget.repo.reorderFinAccounts([for (final a in _accounts) a.id]);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         key: _scaffoldKey,
@@ -180,8 +187,18 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                           _action(Icons.upload_file, tr.finImport, _import),
                         ]),
                         const SizedBox(height: 14),
-                        for (final a in _accounts)
-                          Container(
+                        // довге натискання - перетягнути рахунок на нове місце
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: true,
+                          onReorder: _reorder,
+                          proxyDecorator: (child, _, _) => Material(
+                              color: Colors.transparent, elevation: 6, child: child),
+                          children: [
+                            for (final a in _accounts)
+                            Container(
+                            key: ValueKey(a.id),
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
                                 color: AppColors.card, borderRadius: BorderRadius.circular(16)),
@@ -194,7 +211,18 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                   FinBadge(icon: a.icon, color: a.color, size: 44),
                                   const SizedBox(width: 14),
                                   Expanded(
-                                      child: Text(a.name,
+                                      child: Text.rich(
+                                          TextSpan(children: [
+                                            TextSpan(text: a.name),
+                                            // не враховується в загальній сумі
+                                            if (!a.inTotal)
+                                              WidgetSpan(
+                                                  alignment: PlaceholderAlignment.middle,
+                                                  child: Padding(
+                                                      padding: const EdgeInsets.only(left: 6),
+                                                      child: Icon(Icons.visibility_off_outlined,
+                                                          size: 18, color: AppColors.textMuted))),
+                                          ]),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: AppColors.text, fontSize: 16))),
@@ -209,14 +237,13 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                     if (a.foreign && _rates[a.currency] != null)
                                       Text('≈ ${_money((_balances[a.id] ?? 0) * _rates[a.currency]!)}',
                                           style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                                    if (!a.inTotal)
-                                      Icon(Icons.visibility_off_outlined,
-                                          size: 14, color: AppColors.textMuted),
                                   ]),
                                 ]),
                               ),
                             ),
                           ),
+                          ],
+                        ),
                       ]),
               ),
             ]),
@@ -267,6 +294,10 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   bool _adjustInStats = true;
   late String _currency = widget.account?.currency ?? kFinUah;
   double _current = 0;
+
+  /// Залишок у вибраній валюті (після зміни валюти - перерахований за курсом).
+  double _expected = 0;
+  Map<String, double> _rates = const {};
   bool _saving = false;
 
   bool get _editing => widget.account != null;
@@ -275,7 +306,19 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
   bool get _balanceChanged {
     if (!_editing) return false;
     final value = _sum.text.trim().isEmpty ? 0.0 : (parseSignedAmount(_sum.text) ?? 0.0);
-    return (value - _current).abs() >= 0.005;
+    return (value - _expected).abs() >= 0.005;
+  }
+
+  /// Інша валюта: у полі одразу видно перерахований залишок.
+  void _pickCurrency(String c) {
+    setState(() {
+      _currency = c;
+      if (!_editing) return;
+      final r0 = _rates[widget.account!.currency], r1 = _rates[c];
+      if (r0 == null || r1 == null || r1 <= 0) return;
+      _expected = double.parse((_current * r0 / r1).toStringAsFixed(2));
+      _sum.text = amountFieldText(_expected);
+    });
   }
 
   @override
@@ -286,9 +329,12 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
 
   Future<void> _loadBalance() async {
     final b = (await widget.repo.finAccountBalances())[widget.account!.id] ?? 0;
+    final rates = await widget.repo.finRates();
     if (!mounted) return;
     setState(() {
+      _rates = rates;
       _current = b;
+      _expected = b;
       _sum.text = amountFieldText(b);
     });
   }
@@ -313,8 +359,33 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
       final value = _sum.text.trim().isEmpty ? 0.0 : (parseSignedAmount(_sum.text) ?? 0.0);
       if (_editing) {
         final id = widget.account!.id;
+        final old = widget.account!.currency;
+        if (_currency != old) {
+          final r0 = _rates[old], r1 = _rates[_currency];
+          if (r0 == null || r1 == null) {
+            await showInfo(context, tr.finCurrencyNoRate);
+            setState(() => _saving = false);
+            return;
+          }
+          final ok = await showConfirm(context,
+              title: tr.finCurrencyChangeTitle,
+              text: tr.finCurrencyChangeText(money(_current, old), money(_expected, _currency),
+                  '1 ${currencySymbol(_currency)} = ${(r1 / r0).toStringAsFixed(2)} ${currencySymbol(old)}'),
+              confirmText: tr.finCurrencyChangeBtn,
+              cancelText: tr.cancel,
+              danger: false);
+          if (!ok || !mounted) {
+            if (mounted) setState(() => _saving = false);
+            return;
+          }
+          if (!await repo.changeFinAccountCurrency(id, _currency)) {
+            if (mounted) await showInfo(context, tr.finCurrencyNoRate);
+            setState(() => _saving = false);
+            return;
+          }
+        }
         await repo.updateFinAccount(id, name: name, icon: _icon, color: _color, inTotal: _inTotal);
-        if ((value - _current).abs() >= 0.005) await repo.setFinAccountBalance(id, value, inStats: _adjustInStats);
+        if ((value - _expected).abs() >= 0.005) await repo.setFinAccountBalance(id, value, inStats: _adjustInStats);
       } else {
         await repo.addFinAccount(name,
             icon: _icon, color: _color, startBalance: value, inTotal: _inTotal, currency: _currency);
@@ -384,53 +455,43 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           style: TextStyle(color: AppColors.text, fontSize: 34, fontWeight: FontWeight.w700),
                           decoration: InputDecoration(
                             hintText: '0',
-                            suffixText: currencySymbol(_currency),
-                            suffixStyle: TextStyle(color: AppColors.create, fontSize: 28),
+                            // валюта: дотик по символу відкриває вибір (₴ / $ / €)
+                            suffixIcon: PopupMenuButton<String>(
+                              key: const ValueKey('fin-account-currency'),
+                              tooltip: tr.finCurrency,
+                              onSelected: _pickCurrency,
+                              color: AppColors.card,
+                              itemBuilder: (_) => [
+                                for (final c in kFinCurrencies)
+                                  PopupMenuItem<String>(
+                                      value: c,
+                                      child: Text('${currencySymbol(c)}  $c',
+                                          style: TextStyle(
+                                              color: c == _currency ? AppColors.create : AppColors.text,
+                                              fontWeight: c == _currency ? FontWeight.w700 : FontWeight.w400))),
+                              ],
+                              // символ лишається на місці, але в рамці - видно, що його можна торкнутися
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.create, width: 1.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(currencySymbol(_currency),
+                                    style: TextStyle(color: AppColors.create, fontSize: 28)),
+                              ),
+                            ),
                             filled: false,
                           ),
                         ),
                       ),
-                      if (!_editing) ...[
-                        _label(tr.finCurrency),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Wrap(spacing: 8, children: [
-                            for (final c in kFinCurrencies)
-                              ChoiceChip(
-                                label: Text(c),
-                                selected: c == _currency,
-                                onSelected: (_) => setState(() => _currency = c),
-                              ),
-                          ]),
-                        ),
-                      ],
                       if (_editing)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                           child: Text(tr.finBalanceHint,
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        ),
-                      if (_balanceChanged)
-                        Container(
-                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: _adjustInStats ? AppColors.create : AppColors.darkBtn),
-                          ),
-                          child: Row(children: [
-                            Icon(Icons.bar_chart, color: AppColors.create),
-                            const SizedBox(width: 12),
-                            Expanded(
-                                child: Text(tr.finAdjustInStats,
-                                    style: TextStyle(color: AppColors.text, fontSize: 15))),
-                            Switch(
-                                key: const ValueKey('fin-adjust-in-stats'),
-                                value: _adjustInStats,
-                                onChanged: (v) => setState(() => _adjustInStats = v)),
-                          ]),
                         ),
                       Container(
                         margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -449,6 +510,29 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           Switch(value: _inTotal, onChanged: (v) => setState(() => _inTotal = v)),
                         ]),
                       ),
+                      if (_balanceChanged)
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: _adjustInStats ? AppColors.addObject : AppColors.darkBtn),
+                          ),
+                          child: Row(children: [
+                            Icon(Icons.bar_chart, color: AppColors.addObject),
+                            const SizedBox(width: 12),
+                            Expanded(
+                                child: Text(tr.finAdjustInStats,
+                                    style: TextStyle(color: AppColors.text, fontSize: 15))),
+                            Switch(
+                                key: const ValueKey('fin-adjust-in-stats'),
+                                activeThumbColor: AppColors.addObject,
+                                activeTrackColor: AppColors.addObject.withValues(alpha: 0.45),
+                                value: _adjustInStats,
+                                onChanged: (v) => setState(() => _adjustInStats = v)),
+                          ]),
+                        ),
                       _label(tr.icon),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),

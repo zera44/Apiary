@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../assistant/assistant_host.dart';
 import '../assistant/assistant_voice.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -21,6 +22,7 @@ import '../ui/orientation.dart';
 import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
+import 'notify_settings_screen.dart';
 import 'splash_screen.dart';
 
 /// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
@@ -40,6 +42,29 @@ class MainSettingsTab extends StatelessWidget {
           _StartScreenSection(repo: repo),
           _AssistantSection(repo: repo),
           if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
+          _NotificationsSection(repo: repo),
+        ],
+      );
+}
+
+/// «Сповіщення»: кнопка в екран з часом нагадувань і графіком днів.
+class _NotificationsSection extends StatelessWidget {
+  final Repository repo;
+  const _NotificationsSection({required this.repo});
+
+  @override
+  Widget build(BuildContext context) => SettingsSection(
+        title: tr.notifTitle,
+        children: [
+          PillButton(
+            key: const ValueKey('notifications-open'),
+            text: tr.notifSummary,
+            bg: AppColors.darkBtn,
+            fg: AppColors.text,
+            height: 44,
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: repo))),
+          ),
         ],
       );
 }
@@ -235,6 +260,19 @@ class _AssistantSectionState extends State<_AssistantSection> {
               setState(() => _speak = v);
               await AssistantVoiceSettings.setSpeak(widget.repo, v);
             },
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: AssistantHost.showBubble,
+            builder: (_, on, _) => SwitchListTile(
+              key: const ValueKey('assistant-bubble'),
+              contentPadding: EdgeInsets.zero,
+              title: Text(tr.assistantBubbleSetting,
+                  style: TextStyle(color: AppColors.text, fontSize: 14)),
+              subtitle: Text(tr.assistantBubbleHint,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              value: on,
+              onChanged: (v) => AssistantHost.setShowBubble(widget.repo, v),
+            ),
           ),
         ],
       );

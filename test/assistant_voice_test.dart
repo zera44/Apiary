@@ -252,6 +252,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: MainSettingsTab(repo: repo))));
     await settle(tester);
     await tester.scrollUntilVisible(find.byKey(const ValueKey('assistant-speak')), 200);
+    await tester.ensureVisible(find.byKey(const ValueKey('assistant-speak')));
+    await settle(tester);
     expect(find.text(tr.assistantSpeakSetting), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('assistant-speak')));
     await settle(tester);

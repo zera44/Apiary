@@ -6,7 +6,8 @@ import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
-import '../ui/fin_account_chips.dart';
+import '../ui/fin_account_field.dart';
+import '../ui/fin_date_row.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import '../ui/thousands_input.dart';
@@ -177,6 +178,7 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
   final _toSum = TextEditingController();
   final _comment = TextEditingController();
   Map<String, double> _rates = const {kFinUah: 1};
+  Map<String, double> _balances = {};
 
   /// Сума зарахування виправлена вручну - більше не рахується за курсом.
   bool _toManual = false;
@@ -193,9 +195,11 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
     await widget.repo.defaultFinAccountId();
     final list = await widget.repo.listFinAccounts();
     final rates = await widget.repo.finRates();
+    final balances = await widget.repo.finAccountBalances();
     if (!mounted) return;
     setState(() {
       _accounts = list;
+      _balances = balances;
       _rates = rates;
       if (list.isNotEmpty) _from = list.first.id;
       if (list.length > 1) _to = list[1].id;
@@ -286,33 +290,6 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
     }
   }
 
-  Widget _dateRow() {
-    final now = DateTime.now();
-    final today = _sameDay(_date, now);
-    final yesterday = _sameDay(_date, now.subtract(const Duration(days: 1)));
-    Widget chip(String text, bool on, VoidCallback tap) => GestureDetector(
-          onTap: tap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: on ? AppColors.darkBtn : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: on ? AppColors.create : AppColors.darkBtn, width: 1.5),
-            ),
-            child: Text(text, style: TextStyle(color: AppColors.text, fontSize: 14)),
-          ),
-        );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Wrap(spacing: 8, runSpacing: 8, children: [
-        chip(tr.today, today, () => setState(() => _date = DateTime.now())),
-        chip(tr.yesterday, yesterday,
-            () => setState(() => _date = DateTime.now().subtract(const Duration(days: 1)))),
-        chip(today || yesterday ? tr.otherDate : formatDdMmYyyy(_date), !today && !yesterday, _pickDate),
-      ]),
-    );
-  }
-
   @override
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
@@ -346,23 +323,57 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
                           ),
                         ]),
                       ),
-                      FinAccountChips(
-                        label: tr.finFromAccount,
-                        accounts: _accounts,
-                        selected: _from,
-                        onChanged: (id) => setState(() {
-                          _from = id;
-                          _autoTo();
-                        }),
+                      FinAccountField(
+                        key: const ValueKey('fin-transfer-from'),
+                        label: tr.transferFromAccount,
+                        account: _acc(_from),
+                        balance: _balances[_from],
+                        onTap: () async {
+                          final id = await pickFinAccount(context,
+                              accounts: _accounts,
+                              balances: _balances,
+                              selected: _from,
+                              title: tr.transferFromAccount);
+                          if (id != null && mounted) {
+                            setState(() {
+                              _from = id;
+                              _autoTo();
+                            });
+                          }
+                        },
                       ),
-                      FinAccountChips(
-                        label: tr.finToAccount,
-                        accounts: _accounts,
-                        selected: _to,
-                        onChanged: (id) => setState(() {
-                          _to = id;
-                          _autoTo();
-                        }),
+                      Center(
+                        child: IconButton(
+                          key: const ValueKey('fin-transfer-swap'),
+                          tooltip: tr.swapAccounts,
+                          icon: Icon(Icons.swap_vert, color: AppColors.create),
+                          onPressed: () => setState(() {
+                            final x = _from;
+                            _from = _to;
+                            _to = x;
+                            _toManual = false;
+                            _autoTo();
+                          }),
+                        ),
+                      ),
+                      FinAccountField(
+                        key: const ValueKey('fin-transfer-to-account'),
+                        label: tr.transferToAccount,
+                        account: _acc(_to),
+                        balance: _balances[_to],
+                        onTap: () async {
+                          final id = await pickFinAccount(context,
+                              accounts: _accounts,
+                              balances: _balances,
+                              selected: _to,
+                              title: tr.transferToAccount);
+                          if (id != null && mounted) {
+                            setState(() {
+                              _to = id;
+                              _autoTo();
+                            });
+                          }
+                        },
                       ),
                       if (_cross)
                         Padding(
@@ -380,7 +391,10 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
                             onChanged: (_) => _toManual = true,
                           ),
                         ),
-                      _dateRow(),
+                      FinDateRow(
+                          date: _date,
+                          onChanged: (d) => setState(() => _date = d),
+                          onPickCalendar: _pickDate),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                         child: TextField(

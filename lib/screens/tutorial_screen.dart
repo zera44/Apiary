@@ -7,6 +7,7 @@ import '../data/repository.dart';
 import '../tutorial/lesson.dart';
 import '../tutorial/lessons.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/theme.dart';
 import 'apiary_list_screen.dart';
 import 'map_screen.dart';
@@ -250,10 +251,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
       );
     }
     return Scaffold(
+      drawer: widget.realRepo == null
+          ? null
+          : NavDrawer(repo: widget.realRepo!, current: NavSection.tutorial),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: tr.tutorial, onBack: () => Navigator.of(context).pop()),
+            widget.realRepo == null
+                ? TopBar(title: tr.tutorial, onBack: () => Navigator.of(context).pop())
+                : NavTopBar(title: tr.tutorial),
             Expanded(
               child: GridView.count(
                 padding: const EdgeInsets.all(16),

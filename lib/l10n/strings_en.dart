@@ -1542,6 +1542,93 @@ class AppStringsEn extends AppStrings {
   @override
   String get photoFromGallery => 'Choose a photo from the gallery';
   @override
+  String get orFromGallery => 'or choose from the gallery';
+  @override
+  String get transferFromAccount => 'Transfer from account';
+  @override
+  String get transferToAccount => 'Transfer to account';
+  @override
+  String get aiAssistant => 'AI assistant';
+  @override
+  String get assistantBubbleSetting => 'Show the assistant bubble';
+  @override
+  String get assistantBubbleHint => 'Drag the bubble anywhere. When off, open the assistant from the "AI assistant" menu item';
+  @override
+  String get qrScanHint => 'Point the camera at a sticker to open the hive inspection';
+  @override
+  String get qrGenerateHint => 'Create stickers with codes for hives';
+  @override
+  String get qrBindRowHint => 'Link stickers to hives one after another';
+  @override
+  String get finCurrencyChangeTitle => 'Change the account currency?';
+  @override
+  String get finCurrencyChangeBtn => 'Convert';
+  @override
+  String get finCurrencyNoRate => 'No exchange rate for this currency. Try again when you are online';
+  @override
+  String finCurrencyChangeText(String before, String after, String rate) =>
+      'The balance, operations and transfers will be converted at the NBU rate ($rate): $before → $after';
+  @override
+  String get swapAccounts => 'Swap accounts';
+  @override
+  String get notifTitle => 'Notifications';
+  @override
+  String get notifSummary => 'Round reminders: time and days';
+  @override
+  String get notifEnabled => 'Round notifications';
+  @override
+  String get notifWhen => 'When to remind';
+  @override
+  String get notifRound => 'Round reminder';
+  @override
+  String get notifRoundHint => 'in the morning, when a hive is due';
+  @override
+  String get notifRepeatName => 'Second reminder';
+  @override
+  String get notifRepeatHint => 'if the round is not marked yet';
+  @override
+  String get notifDays => 'On which days';
+  @override
+  String get notifDaily => 'Every day';
+  @override
+  String get notifCustom => 'Custom';
+  @override
+  String get notifStartFrom => 'Start from';
+  @override
+  String get notifHintDaily => 'Reminders come every day when some hives are due.';
+  @override
+  String get notifHint52 => '5 days of reminders, then 2 quiet days, repeating.';
+  @override
+  String get notifHint22 => '2 days of reminders, then 2 quiet days. Reminder days are highlighted.';
+  @override
+  String get notifHintCustom => 'Tap the days you want reminders. Tap again to remove.';
+  @override
+  String get notifCustomTitle => 'Custom schedule';
+  @override
+  String get notifCustomEdit => 'Choose days';
+  @override
+  String get notifDaysChosen => 'Days chosen:';
+  @override
+  String get notifSave => 'Save';
+  @override
+  String get notifConfirm => 'Confirm';
+  @override
+  String get notifOffNote => 'Notifications are off.';
+  @override
+  String get notifEndedTitle => 'Your schedule has ended';
+  @override
+  String get notifEndedText => 'Fill it in again so reminders do not stop.';
+  @override
+  String get dayBeforeYesterday => 'Day before';
+  @override
+  String get moreCategories => 'More';
+  @override
+  String get searchHint => 'Search';
+  @override
+  String get newCategoryBtn => '+ New category';
+  @override
+  String get chooseAccount => 'Account';
+  @override
   String get reshoot => 'Retake';
   @override
   String get toStock => 'To stock';

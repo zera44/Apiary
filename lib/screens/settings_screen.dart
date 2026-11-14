@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
 import 'settings_main_tab.dart';
@@ -110,10 +111,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (!didPop) _back();
       },
       child: Scaffold(
+        drawer: l == null ? NavDrawer(repo: widget.repo, current: NavSection.settings) : null,
         body: SafeArea(
           child: Stack(children: [
             ScreenColumn(children: [
-              TopBar(title: tr.settingsTitle, onBack: _back),
+              l == null
+                  ? NavTopBar(title: tr.settingsTitle)
+                  : TopBar(title: tr.settingsTitle, onBack: _back),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                 child: Row(children: [

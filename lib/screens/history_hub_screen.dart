@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import '../logic/stock_format.dart';
 import '../ui/apiary_report.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/date_picker.dart';
 import '../ui/theme.dart';
 import 'history_screen.dart';
@@ -69,10 +70,11 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: NavDrawer(repo: widget.repo, current: NavSection.history),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: tr.history, onBack: () => Navigator.pop(context)),
+            NavTopBar(title: tr.history),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [

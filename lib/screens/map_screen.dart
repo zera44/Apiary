@@ -76,6 +76,9 @@ class MapScreen extends StatefulWidget {
   /// вулика — код прив'язується, і одразу відкривається огляд.
   final String? bindCode;
 
+  /// Одразу почати «Прив'язати підряд» (з розділу «QR-код»).
+  final bool bindRowOnOpen;
+
   /// Куди веде «Зберегти й далі».
   final NextHive next;
 
@@ -110,6 +113,7 @@ class MapScreen extends StatefulWidget {
       this.focusElementId,
       this.openFill = false,
       this.bindCode,
+      this.bindRowOnOpen = false,
       this.next = NextHive.order,
       this.tutorial = false,
       this.menuTour = false,
@@ -536,6 +540,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (widget.lesson != null) {
       if (mounted) setState(() {});
       WidgetsBinding.instance.addPostFrameCallback((_) => _resumeLesson());
+      return;
+    }
+    if (widget.bindRowOnOpen && mounted) {
+      await _bindQrInRow();
       return;
     }
     final focusId = widget.focusElementId;

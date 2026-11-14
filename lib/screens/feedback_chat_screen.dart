@@ -2,20 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../data/repository.dart';
 import '../services/feedback_chat.dart';
 import '../ui/common.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/theme.dart';
 import 'feedback_screen.dart';
 import '../l10n/l10n.dart';
 
 /// Куди ведуть кнопки «Відгук»: розмова з розробником (є сервер у збірці) або
 /// старий екран з листом через форму.
-Future<void> openFeedback(NavigatorState nav) {
+Future<void> openFeedback(NavigatorState nav, [Repository? repo]) {
   final chat = FeedbackChat.current;
   return nav.push(MaterialPageRoute(
       builder: (_) => chat != null && chat.available
-          ? FeedbackChatScreen(chat: chat)
-          : const FeedbackScreen()));
+          ? FeedbackChatScreen(chat: chat, repo: repo)
+          : FeedbackScreen(repo: repo)));
 }
 
 /// «Відгук» як розмова: те, що людина написала, і відповіді розробника
@@ -23,7 +25,9 @@ Future<void> openFeedback(NavigatorState nav) {
 /// на вулику-поштоматі й сповіщення).
 class FeedbackChatScreen extends StatefulWidget {
   final FeedbackChat chat;
-  const FeedbackChatScreen({super.key, required this.chat});
+  /// Для меню навігації (немає - у шапці стрілка «назад»).
+  final Repository? repo;
+  const FeedbackChatScreen({super.key, required this.chat, this.repo});
 
   @override
   State<FeedbackChatScreen> createState() => _FeedbackChatScreenState();
@@ -94,10 +98,14 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final repo = widget.repo;
     return Scaffold(
+      drawer: repo == null ? null : NavDrawer(repo: repo, current: NavSection.feedback),
       body: SafeArea(
         child: Column(children: [
-          TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context)),
+          repo == null
+              ? TopBar(title: tr.feedbackTitle, onBack: () => Navigator.pop(context))
+              : NavTopBar(title: tr.feedbackTitle),
           Expanded(
             child: ListView(
               controller: _scroll,

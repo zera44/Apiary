@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../data/repository.dart';
 import '../data/user_reminders.dart';
+import '../logic/notify_schedule.dart';
 import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
 
@@ -54,12 +55,18 @@ class ReminderService {
   /// Натиснули на сповіщення «Розробник відповів»: відкрити розмову.
   final ValueNotifier<bool> openFeedbackRequest = ValueNotifier<bool>(false);
 
+  /// Натиснули «Графік дійшов до кінця»: відкрити налаштування сповіщень.
+  final ValueNotifier<bool> openNotifySettingsRequest = ValueNotifier<bool>(false);
+
   static const feedbackPayload = 'feedback';
+  static const notifySettingsPayload = 'notify-settings';
 
   void _onTapped(NotificationResponse r) {
     final id = r.payload;
     if (id == feedbackPayload) {
       openFeedbackRequest.value = true;
+    } else if (id == notifySettingsPayload) {
+      openNotifySettingsRequest.value = true;
     } else if (id != null && id.isNotEmpty) {
       openHiveRequest.value = id;
     }
@@ -185,6 +192,7 @@ class ReminderService {
   Future<void> _run(Repository repo) async {
     if (!await _init()) return;
     final targets = await repo.visitTargets();
+    final schedule = await NotifySchedule.load(repo);
     // iOS дозволяє лише 64 відкладені сповіщення
     final limit = Platform.isIOS ? 60 : 300;
     // разові нагадування («нагадай 5 травня…»): натискання відкриває вулик,
@@ -201,7 +209,17 @@ class ReminderService {
                 r.due),
         ];
     List<PlannedReminder> plan(DateTime now, List<PlannedReminder> extra) {
-      final all = [...planReminders(targets, now: now, limit: limit), ...extra]
+      // довільний графік скінчився (чи скінчиться): одне сповіщення «заповніть наново»
+      final endDay = schedule.endNoticeDay;
+      final end = endDay == null || !schedule.enabled
+          ? null
+          : DateTime(endDay.year, endDay.month, endDay.day, schedule.morning ~/ 60, schedule.morning % 60);
+      final all = [
+        ...planReminders(targets, now: now, limit: limit, schedule: schedule),
+        ...extra,
+        if (end != null && end.isAfter(now))
+          PlannedReminder(notifySettingsPayload, tr.notifEndedTitle, tr.notifEndedText, end),
+      ]
         ..sort((a, b) => a.when.compareTo(b.when));
       return all.length > limit ? all.sublist(0, limit) : all;
     }
