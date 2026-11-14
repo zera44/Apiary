@@ -6,17 +6,20 @@
 | Файл | Що в ньому |
 |---|---|
 | `index.ts` | прийом запиту, перевірки, виклик моделі, журнал (лише числа) |
-| `access.ts` | хто може звертатися (зараз — тестовий код; потім — вхід і ліміти) |
+| `access.ts` | хто може звертатися (вхід Supabase) і денний ліміт запитів на людину |
 | `config.ts` | модель, ліміт 6 кроків, розміри |
 | `prompt.ts` | характер, межі порад, опис застосунку й екранів (системний промпт) |
 | `tools.ts` | опис інструментів для моделі (виконує їх телефон) |
 
-Перевірка без Supabase: `node --test supabase/tests/assistant.test.ts`
+Перевірка без Supabase: `node --test supabase/tests/assistant*.test.ts`
 (у GitHub — процес «Supabase»).
 
-## Як підключити (один раз)
+## Як підключити (для кожного проєкту окремо)
 
-Робимо в **тестовому** проєкті `vulyk-test` (тестові збірки гілок ходять туди).
+Функція пускає лише людину, яка увійшла в застосунок (токен входу Supabase
+**цього ж проєкту**). Тому її розгортають у **кожному** проєкті: у
+`vulyk-test` — для тестових збірок гілок, у `vulyk-prod` — для релізу. Кроки
+однакові.
 
 ### 1. Ключ Anthropic
 
@@ -24,26 +27,24 @@
 2. **Settings → Limits**: поставити ліміт витрат (на тест — $5 на місяць).
 3. **API Keys → Create Key** → скопіювати ключ (`sk-ant-…`, показується один раз).
 
-### 2. Тестовий код доступу
+### 2. Міграція ліміту
 
-Будь-який довгий випадковий рядок (не менше 16 символів), наприклад у
-PowerShell:
-
-```powershell
--join ((48..57)+(97..102) | Get-Random -Count 40 | % {[char]$_})
-```
-
-Його треба покласти у **два** місця (кроки 3 і 5) — однаковий.
+Supabase → **SQL Editor** → вставити вміст
+`supabase/migrations/20261113000200_assistant_usage.sql` → **Run**. Це
+таблиця й функція `assistant_hit` (лічильник запитів на людину за добу).
+**Застосувати до розгортання функції** (інакше вона відповідатиме «зайнято»).
 
 ### 3. Секрети Supabase
 
-https://supabase.com/dashboard → проєкт `vulyk-test` → **Edge Functions →
-Secrets** → **Add new secret**:
+https://supabase.com/dashboard → проєкт → **Edge Functions → Secrets** →
+**Add new secret** (`SUPABASE_URL`, `SUPABASE_ANON_KEY` і
+`SUPABASE_SERVICE_ROLE_KEY` Supabase додає функціям сам):
 
 | Name | Value |
 |---|---|
 | `ANTHROPIC_API_KEY` | ключ із кроку 1 |
-| `APIARY_ASSISTANT_TEST_TOKEN` | код із кроку 2 |
+| `ASSISTANT_DAILY_LIMIT` | не обов'язково: запитів на людину за добу (типово `200`; 1…10000) |
+| `ASSISTANT_CLIENT_CHOICE` | не обов'язково: `off` — застосунок не вибирає модель |
 | `ASSISTANT_MODEL` | не обов'язково: `haiku` (типово) або `sonnet` |
 | `ASSISTANT_EFFORT` | не обов'язково: `low`, `medium` (типово), `high`, `xhigh`, `max` |
 
@@ -53,7 +54,7 @@ Secrets** → **Add new secret**:
 назва `assistant` → додати п'ять файлів із цієї папки (`index.ts`,
 `access.ts`, `config.ts`, `prompt.ts`, `tools.ts`) з тим самим вмістом →
 **Deploy**. Потім у налаштуваннях функції (**Details**) вимкнути
-**Enforce JWT Verification** — доступ перевіряє сама функція (тестовий код).
+**Enforce JWT Verification** — вхід і ліміт перевіряє сама функція (`access.ts`).
 
 **Або командою** (якщо встановлено Supabase CLI):
 
@@ -65,33 +66,49 @@ supabase functions deploy assistant --no-verify-jwt --project-ref <ref проє�
 
 Після кожної зміни файлів цієї папки функцію треба розгорнути знову.
 
-### 5. Секрети GitHub (для тестових APK)
+### 5. Секрети GitHub
 
 https://github.com/zera44/Apiary → **Settings → Secrets and variables →
 Actions → New repository secret**:
 
 | Name | Value |
 |---|---|
-| `APIARY_ASSISTANT_URL` | адреса функції з кроку 4 |
-| `APIARY_ASSISTANT_TEST_TOKEN` | код із кроку 2 |
+| `APIARY_ASSISTANT_URL` | адреса функції в `vulyk-test` (для тестових збірок гілок) |
+| `APIARY_ASSISTANT_URL_PROD` | адреса функції в `vulyk-prod` (для релізу з `main`) |
 
-Тестова збірка гілки (Actions → Run workflow) вкладе їх у APK. Реліз із
-`main` — теж, але **тимчасово** (`ASSISTANT_IN_RELEASE: 'true'` у
-`.github/workflows/build.yml`, поки в Anthropic ліміт $5): перед
-публікацією в Google Play поставити `'false'` (docs/REMINDERS.md, розділ 4,
-п. 6).
+Ключів доступу в APK немає: застосунок надсилає токен входу людини.
+Реліз із `main` — теж з помічником, але **тимчасово**
+(`ASSISTANT_IN_RELEASE: 'true'` у `.github/workflows/build.yml`, поки в
+Anthropic ліміт $5): перед публікацією в Google Play поставити `'false'`
+(docs/REMINDERS.md, розділ 4, п. 6).
 
-Без адреси застосунок працює з demo-моделлю (заготовлені відповіді, без
-сервера).
+Без адреси (для релізу — без `APIARY_ASSISTANT_URL_PROD`) застосунок
+працює з demo-моделлю (заготовлені відповіді, без сервера).
 
 ### Перевірка
 
+Потрібен токен входу (його має лише застосунок після входу Google). Без
+нього або з чужим:
+
 ```bash
-curl -s https://<ref>.supabase.co/functions/v1/assistant -H "x-apiary-assistant-token: <код>" -H "content-type: application/json" -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Привіт\"}]}"
+curl -s https://<ref>.supabase.co/functions/v1/assistant -H "content-type: application/json" -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Привіт\"}]}"
 ```
 
-Має повернути `{"content":[…],"stop_reason":"end_turn",…}`. Без коду чи з
-неправильним — `{"error":"unauthorized"}`.
+Має повернути `{"error":"unauthorized"}`. З дійсним
+`-H "Authorization: Bearer <токен входу>"` — `{"content":[…],"stop_reason":"end_turn",…}`.
+
+## Ліміт на людину
+
+Кожен запит (крок моделі чи пошук у книгах) зараховується людині в таблиці
+`assistant_usage`; понад `ASSISTANT_DAILY_LIMIT` за добу (UTC) функція
+відповідає `429 {"error":"daily_limit"}`, застосунок показує «Денний ліміт
+вичерпано». Лічильник — лише на сервері: обійти його з телефона не можна.
+Не вдалося перевірити (база недоступна) — `503`, застосунок повторить
+пізніше. Анонімні входи Supabase не пускаються.
+
+Без інтернету застосунок працює як раніше; повідомлення помічнику
+чекає в черзі й відправляється, коли зв'язок повернеться (токен входу
+зберігається на телефоні).
 
 ## Модель і глибина міркувань — перемикач без коду
 
@@ -122,7 +139,8 @@ Supabase → Edge Functions → `assistant` → **Logs**: рядки на кшт
 | Код | Тіло | Що робить застосунок |
 |---|---|---|
 | 200 | `content`, `stop_reason`, `steps_left` | показує відповідь або виконує інструменти |
-| 401 | `unauthorized` | «помічник недоступний» |
+| 401 | `unauthorized` | «Увійдіть через Google» (токен свіжий беруть один раз і повторюють) |
+| 429 | `daily_limit` | «Денний ліміт вичерпано», без повторів |
 | 400 / 413 | причина | помилка застосунку (не повторювати) |
 | 422 | `step_limit` | «спитайте простіше» |
 | 503 | `busy`, `retry: true` | черга, повтор пізніше |

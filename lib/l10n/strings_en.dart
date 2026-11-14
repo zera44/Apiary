@@ -437,7 +437,9 @@ class AppStringsEn extends AppStrings {
   @override
   String assistantOpenTarget(String what) => 'Open: $what';
   @override
-  String get assistantUnauthorized => 'The assistant is unavailable: the server did not accept the access code';
+  String get assistantUnauthorized => 'Sign in with Google in Settings to use the assistant';
+  @override
+  String get assistantLimit => 'Daily assistant limit reached. Try again tomorrow';
   @override
   String get assistantServerError => 'The assistant server did not respond properly';
   @override

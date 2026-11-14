@@ -14,6 +14,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'support/assistant_token.dart';
+
 Future<void> settle(WidgetTester tester) async {
   for (var i = 0; i < 25; i++) {
     await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 20)));
@@ -77,7 +79,7 @@ void main() {
     q = AssistantQueue(
       repo,
       AssistantStore(repo.db),
-      RemoteAssistantModel(Uri.parse('https://x/functions/v1/assistant'), 'code',
+      RemoteAssistantModel(Uri.parse('https://x/functions/v1/assistant'), fixedToken('code'),
           client: server.client, options: () => AssistantPrefs.requestOptions(repo)),
       isOnline: () async => true,
       onlineChanges: const Stream.empty(),

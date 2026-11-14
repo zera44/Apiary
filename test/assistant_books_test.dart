@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'support/assistant_token.dart';
+
 ModelTurn say(String t) => ModelTurn([
       {'type': 'text', 'text': t}
     ], 'end_turn');
@@ -128,9 +130,9 @@ void main() {
 
   group('RemoteAssistantModel.searchBooks', () {
     RemoteAssistantModel remote(http.Client c) =>
-        RemoteAssistantModel(Uri.parse('https://x/functions/v1/assistant'), 'code', client: c);
+        RemoteAssistantModel(Uri.parse('https://x/functions/v1/assistant'), fixedToken('code'), client: c);
 
-    test('POST {action: search_books} з кодом доступу; відповідь розбирається', () async {
+    test('POST {action: search_books} з токеном входу; відповідь розбирається', () async {
       late http.Request seen;
       final m = remote(MockClient((r) async {
         seen = r;
@@ -144,7 +146,7 @@ void main() {
             200);
       }));
       final r = await m.searchBooks('вощина', limit: 3);
-      expect(seen.headers[RemoteAssistantModel.tokenHeader], 'code');
+      expect(seen.headers['Authorization'], 'Bearer code');
       expect(jsonDecode(seen.body), {'action': 'search_books', 'query': 'вощина', 'limit': 3});
       expect((r['results'] as List).length, 1);
     });

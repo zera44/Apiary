@@ -202,6 +202,15 @@ class SupabaseApi implements SyncApi, SharingApi {
     await store.write(s);
   }
 
+  /// Токен входу для функцій сервера (помічник). Дійсний - береться з
+  /// телефона без мережі; скоро закінчиться (або [force] після відмови) -
+  /// оновлюється. Без зв'язку - [SyncOffline], вхід відкликано -
+  /// [SyncSignedOut]; сам цей виклик нікого не виходить із акаунта.
+  Future<String> accessToken({bool force = false}) async {
+    await _fresh(force: force);
+    return _session.accessToken;
+  }
+
   /// Запит із повтором після оновлення входу (раптом токен відкликали).
   Future<http.Response> _send(Future<http.Response> Function(Map<String, String> h) f,
       {Map<String, String> headers = const {}}) async {

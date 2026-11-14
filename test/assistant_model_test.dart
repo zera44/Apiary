@@ -3,9 +3,12 @@ import 'dart:convert';
 
 import 'package:apiary/assistant/assistant_model.dart';
 import 'package:apiary/assistant/assistant_session.dart';
+import 'package:apiary/data/sync_api.dart' show SyncOffline, SyncSignedOut;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+
+import 'support/assistant_token.dart';
 
 ModelTurn text(String t) => ModelTurn([
       {'type': 'text', 'text': t}
@@ -39,9 +42,9 @@ void main() {
   group('посередник', () {
     final url = Uri.parse('https://x.supabase.co/functions/v1/assistant');
 
-    test('надсилає розмову й тестовий код; розбирає відповідь', () async {
+    test('надсилає розмову й токен входу; розбирає відповідь', () async {
       late http.Request seen;
-      final m = RemoteAssistantModel(url, 'code-123', client: MockClient((r) async {
+      final m = RemoteAssistantModel(url, fixedToken('code-123'), client: MockClient((r) async {
         seen = r;
         return http.Response.bytes(
             utf8.encode(jsonEncode({
@@ -57,7 +60,7 @@ void main() {
       ]);
       expect(t.text, 'Добрий день!');
       expect(t.stopReason, 'end_turn');
-      expect(seen.headers[RemoteAssistantModel.tokenHeader], 'code-123');
+      expect(seen.headers['Authorization'], 'Bearer code-123');
       expect(jsonDecode(seen.body), {
         'messages': [
           {'role': 'user', 'content': 'Привіт'}
@@ -66,7 +69,7 @@ void main() {
     });
 
     Future<AssistantFailure> failure(Future<http.Response> Function(http.Request) h) async {
-      final m = RemoteAssistantModel(url, 'c', client: MockClient(h));
+      final m = RemoteAssistantModel(url, fixedToken('c'), client: MockClient(h));
       try {
         await m.send([
           {'role': 'user', 'content': 'x'}
@@ -81,11 +84,13 @@ void main() {
       expect(await failure((_) async => http.Response('', 401)), AssistantFailure.unauthorized);
       expect(await failure((_) async => http.Response('', 422)), AssistantFailure.stepLimit);
       expect(await failure((_) async => http.Response('', 503)), AssistantFailure.busy);
+      // 429 від посередника - денний ліміт, а не «зайнято»
+      expect(await failure((_) async => http.Response('', 429)), AssistantFailure.limit);
       expect(await failure((_) async => http.Response('', 500)), AssistantFailure.server);
       expect(await failure((_) async => throw http.ClientException('no net')),
           AssistantFailure.offline);
       // сервер не встиг - це не «немає інтернету»
-      final slow = RemoteAssistantModel(url, 'c',
+      final slow = RemoteAssistantModel(url, fixedToken('c'),
           timeout: const Duration(milliseconds: 20),
           client: MockClient((_) => Completer<http.Response>().future));
       await expectLater(
@@ -100,6 +105,91 @@ void main() {
       expect(const AssistantException(AssistantFailure.offline).retryable, isTrue);
       expect(const AssistantException(AssistantFailure.busy).retryable, isTrue);
       expect(const AssistantException(AssistantFailure.unauthorized).retryable, isFalse);
+      expect(const AssistantException(AssistantFailure.limit).retryable, isFalse);
+    });
+  });
+
+  group('токен входу й робота без інтернету', () {
+    final url = Uri.parse('https://x.supabase.co/functions/v1/assistant');
+    final ask = [
+      {'role': 'user', 'content': 'x'}
+    ];
+    final ok = http.Response.bytes(
+        utf8.encode(jsonEncode({
+          'content': [
+            {'type': 'text', 'text': 'Так'}
+          ],
+          'stop_reason': 'end_turn',
+        })),
+        200);
+
+    Future<AssistantFailure> failWith(AssistantTokenSource source, {int? status, List<int>? hits}) async {
+      final m = RemoteAssistantModel(url, source, client: MockClient((_) async {
+        hits?.add(1);
+        return http.Response('', status ?? 200);
+      }));
+      try {
+        await m.send(ask);
+      } on AssistantException catch (e) {
+        return e.kind;
+      }
+      fail('мала бути помилка');
+    }
+
+    test('немає входу Google - unauthorized, запиту на сервер немає', () async {
+      final hits = <int>[];
+      expect(await failWith(({bool force = false}) async => null, hits: hits), AssistantFailure.unauthorized);
+      expect(await failWith(({bool force = false}) async => '', hits: hits), AssistantFailure.unauthorized);
+      expect(hits, isEmpty);
+    });
+
+    test('токен прострочився, а інтернету немає - offline (у чергу), не помилка', () async {
+      final hits = <int>[];
+      final kind = await failWith(({bool force = false}) async => throw SyncOffline('немає зв\'язку'), hits: hits);
+      expect(kind, AssistantFailure.offline);
+      expect(kind, isNot(AssistantFailure.unauthorized));
+      expect(const AssistantException(AssistantFailure.offline).retryable, isTrue);
+      expect(hits, isEmpty);
+    });
+
+    test('вхід відкликано - unauthorized; інша несподівана помилка - server', () async {
+      expect(await failWith(({bool force = false}) async => throw const SyncSignedOut()),
+          AssistantFailure.unauthorized);
+      expect(await failWith(({bool force = false}) async => throw StateError('диск')), AssistantFailure.server);
+    });
+
+    test('дійсний токен береться з телефона: без мережі запит лише падає на зв\'язку', () async {
+      final m = RemoteAssistantModel(url, fixedToken('t'),
+          client: MockClient((_) async => throw http.ClientException('offline')));
+      await expectLater(
+          m.send(ask), throwsA(isA<AssistantException>().having((e) => e.kind, 'kind', AssistantFailure.offline)));
+    });
+
+    test('401 - один раз беремо свіжий токен і повторюємо', () async {
+      final forced = <bool>[];
+      final seen = <String?>[];
+      final m = RemoteAssistantModel(url, ({bool force = false}) async {
+        forced.add(force);
+        return force ? 'new' : 'old';
+      }, client: MockClient((r) async {
+        seen.add(r.headers['Authorization']);
+        return r.headers['Authorization'] == 'Bearer new' ? ok : http.Response('', 401);
+      }));
+      expect((await m.send(ask)).text, 'Так');
+      expect(forced, [false, true]);
+      expect(seen, ['Bearer old', 'Bearer new']);
+    });
+
+    test('401 і зі свіжим токеном - unauthorized, не більше двох запитів', () async {
+      final hits = <int>[];
+      expect(await failWith(fixedToken('t'), status: 401, hits: hits), AssistantFailure.unauthorized);
+      expect(hits.length, 2);
+    });
+
+    test('денний ліміт - один запит, без повторів', () async {
+      final hits = <int>[];
+      expect(await failWith(fixedToken('t'), status: 429, hits: hits), AssistantFailure.limit);
+      expect(hits.length, 1);
     });
   });
 

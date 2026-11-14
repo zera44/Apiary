@@ -6,18 +6,26 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildRequest, type Deps, handle, stepsSinceHuman, stripOldThinking, trimHistory } from '../functions/assistant/index.ts';
-import { testTokenAccess, TEST_TOKEN_HEADER } from '../functions/assistant/access.ts';
+import type { AccessCheck, UsageCheck } from '../functions/assistant/access.ts';
 import { DEFAULT_MODEL, isSimpleRequest, lastHumanText, MAX_STEPS, nextModel, route, routeActive, struggled } from '../functions/assistant/config.ts';
 
 const TOKEN = 'test-token-0123456789abcdef';
 const SECRETS: Record<string, string> = {
   ANTHROPIC_API_KEY: 'sk-ant-test',
-  APIARY_ASSISTANT_TEST_TOKEN: TOKEN,
 };
+const USER = '11111111-1111-4111-8111-111111111111';
+
+// вхід перевіряє access.ts (див. assistant_access.test.ts); тут - заглушка:
+// пускає лише Bearer із TOKEN
+const fakeAccess: AccessCheck = async (req) =>
+  req.headers.get('Authorization') === `Bearer ${TOKEN}`
+    ? { ok: true, subject: USER }
+    : { ok: false, status: 401, error: 'unauthorized' };
+const unlimited: UsageCheck = async () => 'ok';
 
 type Call = { url: string; headers: Record<string, string>; body: any };
 
-function deps(reply: () => Response, env: Record<string, string> = SECRETS) {
+function deps(reply: () => Response, env: Record<string, string> = SECRETS, usage: UsageCheck = unlimited) {
   const calls: Call[] = [];
   const logs: string[] = [];
   const d: Deps = {
@@ -27,7 +35,8 @@ function deps(reply: () => Response, env: Record<string, string> = SECRETS) {
       return reply();
     }) as typeof fetch,
     log: (l) => logs.push(l),
-    access: testTokenAccess,
+    access: fakeAccess,
+    usage,
     tools: [
       { name: 'open_screen', description: 'Відкрити екран', input_schema: { type: 'object', properties: {} } },
       { name: 'apiaries_list', description: 'Список пасік', input_schema: { type: 'object', properties: {} } },
@@ -49,7 +58,7 @@ const modelReply = (content: unknown[], stop_reason = 'end_turn') => () =>
 const post = (body: unknown, token: string | null = TOKEN) =>
   new Request('https://x.supabase.co/functions/v1/assistant', {
     method: 'POST',
-    headers: token == null ? {} : { [TEST_TOKEN_HEADER]: token },
+    headers: token == null ? {} : { Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
 
@@ -57,7 +66,7 @@ const hello = { messages: [{ role: 'user', content: 'Скільки в мене 
 // складне питання: Пасічник відповідає сам (просте він передає Ведмедику)
 const heavy = { messages: [{ role: 'user', content: 'Поясни, чому слабка сім\'я у вулику 5' }] };
 
-test('неправильний чи відсутній тестовий код - відмова, модель не викликається', async () => {
+test('неправильний чи відсутній токен входу - відмова, модель не викликається', async () => {
   for (const t of [null, 'wrong', TOKEN + 'x']) {
     const { d, calls } = deps(modelReply([]));
     const r = await handle(post(hello, t), d);
@@ -66,15 +75,8 @@ test('неправильний чи відсутній тестовий код -
   }
 });
 
-test('код не задано на сервері - не пускає нікого', async () => {
-  const { d, calls } = deps(modelReply([]), { ANTHROPIC_API_KEY: 'k' });
-  const r = await handle(post(hello, ''), d);
-  assert.equal(r.status, 401);
-  assert.equal(calls.length, 0);
-});
-
 test('немає ключа Anthropic - not_configured', async () => {
-  const { d } = deps(modelReply([]), { APIARY_ASSISTANT_TEST_TOKEN: TOKEN });
+  const { d } = deps(modelReply([]), {});
   const r = await handle(post(hello), d);
   assert.equal(r.status, 500);
   assert.deepEqual(await r.json(), { error: 'not_configured' });
@@ -483,7 +485,7 @@ test('без інструментів запит не містить tools', () 
 
 test('лише POST', async () => {
   const { d } = deps(modelReply([]));
-  const r = await handle(new Request('https://x/assistant', { headers: { [TEST_TOKEN_HEADER]: TOKEN } }), d);
+  const r = await handle(new Request('https://x/assistant', { headers: { Authorization: `Bearer ${TOKEN}` } }), d);
   assert.equal(r.status, 405);
 });
 

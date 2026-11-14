@@ -220,6 +220,7 @@ abstract class AppStrings {
   String get assistantUndone;
   String assistantOpenTarget(String what);
   String get assistantUnauthorized;
+  String get assistantLimit;
   String get assistantServerError;
   String get assistantTimedOut;
   String get assistantRetrying;
