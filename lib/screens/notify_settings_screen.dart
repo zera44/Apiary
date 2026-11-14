@@ -297,7 +297,8 @@ class _NotifySettingsScreenState extends State<NotifySettingsScreen> {
                         ),
                       ),
                   ]),
-                  if (s.mode != NotifyMode.daily) _card([_calendar(s)]),
+                  // будь-який режим зафарбовує дні календаря
+                  _card([_calendar(s)]),
                 ]),
               ),
               Padding(
