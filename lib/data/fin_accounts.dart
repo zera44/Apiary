@@ -128,6 +128,17 @@ extension RepositoryFinAccounts on Repository {
     return rows.map(FinAccount.fromRow).toList();
   }
 
+  /// Зберегти новий порядок рахунків (довге натискання й перетягування).
+  Future<void> reorderFinAccounts(List<String> ids) async {
+    final now = Repository.now();
+    final batch = db.batch();
+    for (var i = 0; i < ids.length; i++) {
+      batch.update('fin_accounts', {'sort_order': i, 'updated_at': now, 'synced': 0},
+          where: 'id = ?', whereArgs: [ids[i]]);
+    }
+    await batch.commit(noResult: true);
+  }
+
   /// Усі рахунки, зокрема видалені (для підписів у старих переказах).
   Future<Map<String, FinAccount>> finAccountMap() async {
     final rows = await db.query('fin_accounts');

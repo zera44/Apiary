@@ -83,6 +83,15 @@ void main() {
   Future<FinCategory> cat(String name) async =>
       (await repo.listFinCategories()).firstWhere((c) => c.name == name);
 
+  test('порядок рахунків зберігається після перетягування', () async {
+    final a = await repo.addFinAccount('Аа');
+    final b = await repo.addFinAccount('Бб');
+    final c = await repo.addFinAccount('Вв');
+    await repo.reorderFinAccounts([c, a, b]);
+    final names = [for (final x in await repo.listFinAccounts().then((l) => l.where((x) => [a, b, c].contains(x.id)))) x.id];
+    expect(names, [c, a, b]);
+  });
+
   test('початкові категорії створюються один раз, «Корми» йдуть на склад', () async {
     await repo.init();
     final all = await repo.listFinCategories();

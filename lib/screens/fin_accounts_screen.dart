@@ -126,6 +126,13 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
         ),
       );
 
+  Future<void> _reorder(int from, int to) async {
+    if (to > from) to--;
+    if (from == to) return;
+    setState(() => _accounts.insert(to, _accounts.removeAt(from)));
+    await widget.repo.reorderFinAccounts([for (final a in _accounts) a.id]);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         key: _scaffoldKey,
@@ -180,8 +187,18 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                           _action(Icons.upload_file, tr.finImport, _import),
                         ]),
                         const SizedBox(height: 14),
-                        for (final a in _accounts)
-                          Container(
+                        // довге натискання - перетягнути рахунок на нове місце
+                        ReorderableListView(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          buildDefaultDragHandles: true,
+                          onReorder: _reorder,
+                          proxyDecorator: (child, _, _) => Material(
+                              color: Colors.transparent, elevation: 6, child: child),
+                          children: [
+                            for (final a in _accounts)
+                            Container(
+                            key: ValueKey(a.id),
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
                                 color: AppColors.card, borderRadius: BorderRadius.circular(16)),
@@ -217,6 +234,8 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                               ),
                             ),
                           ),
+                          ],
+                        ),
                       ]),
               ),
             ]),
