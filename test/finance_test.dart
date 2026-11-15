@@ -427,6 +427,9 @@ void main() {
 
       await tester.tap(find.text('Корми'));
       await tester.pump();
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
       await settle(tester);
@@ -443,6 +446,9 @@ void main() {
 
     Future<void> saveAs(WidgetTester tester, String category) async {
       await tester.tap(find.text(category));
+      await tester.pump();
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -616,6 +622,9 @@ void main() {
 
     testWidgets('без категорії не записується', (tester) async {
       await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
       expect(find.textContaining('Оберіть категорію'), findsOneWidget);
@@ -627,6 +636,9 @@ void main() {
       await tester.tap(find.text('Дорога'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, '0').first, '250');
+      await tester.pump();
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -650,6 +662,9 @@ void main() {
       await tester.tap(find.text('Дорога'));
       await tester.pump();
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '250');
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
       await settle(tester);
@@ -659,6 +674,9 @@ void main() {
       await settle(tester);
       expect(sumFocused(), isTrue);
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '90');
+      await tester.scrollUntilVisible(find.text('Додати'), 300,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
       await settle(tester);

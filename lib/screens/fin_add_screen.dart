@@ -1262,19 +1262,20 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     _scanHero(),
                   ],
                   _table(),
+                  // «Додати» - одразу під таблицею, а не прибита до низу екрана
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: PillButton(
+                      text: tr.add,
+                      bg: AppColors.accent,
+                      height: 52,
+                      radius: 26,
+                      fontSize: 17,
+                      width: double.infinity,
+                      onPressed: _saving ? null : _save,
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: PillButton(
-                text: tr.add,
-                bg: AppColors.accent,
-                height: 52,
-                radius: 26,
-                fontSize: 17,
-                width: double.infinity,
-                onPressed: _saving ? null : _save,
               ),
             ),
           ]),
