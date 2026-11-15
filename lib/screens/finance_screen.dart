@@ -386,11 +386,25 @@ class _FinanceScreenState extends State<FinanceScreen> {
     });
   }
 
+  // поточна дата пристрою без часу; рахуємо щоразу, бо екран може
+  // лишатися відкритим після півночі
+  static DateTime _today() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day);
+  }
+
+  // у режимі «День» далі за сьогодні не йдемо: майбутніх днів не показуємо
+  bool get _canGoForward =>
+      _period != FinPeriod.day ||
+      DateTime(_anchor.year, _anchor.month, _anchor.day).isBefore(_today());
+
   void _shift(int d) {
     final a = _anchor;
     switch (_period) {
       case FinPeriod.day:
-        _anchor = DateTime(a.year, a.month, a.day + d);
+        final next = DateTime(a.year, a.month, a.day + d);
+        final today = _today();
+        _anchor = next.isAfter(today) ? today : next;
       case FinPeriod.week:
         _anchor = DateTime(a.year, a.month, a.day + 7 * d);
       case FinPeriod.month:
@@ -419,6 +433,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
       setState(() {
         _period = p;
         if (p == FinPeriod.month) _anchor = DateTime(_anchor.year, _anchor.month, 1);
+        if (p == FinPeriod.day && _anchor.isAfter(_today())) _anchor = _today();
       });
     }
     _reload();
@@ -526,9 +541,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
           ),
           if (_period != FinPeriod.custom)
             IconButton(
-                onPressed: () => _shift(1),
+                onPressed: _canGoForward ? () => _shift(1) : null,
                 tooltip: tr.later,
-                icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
+                icon: Icon(TablerIcons.chevron_right,
+                    color: _canGoForward ? AppColors.text : AppColors.textMuted.withValues(alpha: 0.35))),
         ]),
         SizedBox(
           width: donut,

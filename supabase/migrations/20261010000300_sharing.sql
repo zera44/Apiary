@@ -4,7 +4,8 @@
 create or replace function public.find_user(p_email text) returns uuid
 language sql stable security definer set search_path = public as $$
   select p.id from public.profiles p
-  where auth.uid() is not null and p.email = lower(trim(p_email))
+  where auth.uid() is not null and p.email <> '' and p.email not like '%@tg.vulyk.invalid'
+    and p.email = lower(trim(p_email))
   limit 1
 $$;
 
@@ -20,7 +21,7 @@ declare
   stamp double precision := extract(epoch from now());
 begin
   select * into inv from public.invitations where id = p_id for update;
-  if inv.id is null or me is null or inv.to_email <> public.my_email() then
+  if inv.id is null or me is null or public.my_email() = '' or inv.to_email <> public.my_email() then
     raise exception 'чуже запрошення' using errcode = '42501';
   end if;
   if inv.status <> 'pending' then

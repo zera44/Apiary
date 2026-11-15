@@ -2035,6 +2035,128 @@ class AppStringsEn extends AppStrings {
   @override
   String get soon => 'soon';
 
+  // ---- Захист входу (налаштування) ----
+  @override
+  String get secTitle => 'Sign-in protection';
+  @override
+  String secTelegramLinked(String phone) => 'Telegram linked: $phone';
+  @override
+  String get secTelegramNone => 'Telegram is not linked. With it you can sign in without Google.';
+  @override
+  String get secLinkTelegram => 'Link Telegram';
+  @override
+  String get secLinkedOk => 'Telegram linked';
+  @override
+  String get secPinOn => 'PIN is on';
+  @override
+  String get secPinOff => 'PIN is off. A PIN protects the account even if someone gets into your Telegram.';
+  @override
+  String get secPinEnable => 'Turn on PIN';
+  @override
+  String get secPinChange => 'Change PIN';
+  @override
+  String get secPinDisable => 'Turn off PIN';
+  @override
+  String get secPinCurrent => 'Current PIN';
+  @override
+  String get secPinDisableWarn => 'Without a PIN sign-in protection is weaker. Confirm with the current PIN.';
+  @override
+  String secPinScheduled(String when) => 'The PIN will be turned off $when. If it was not you, tap “Not me” in the bot message.';
+  @override
+  String get secPinDisabledNow => 'PIN turned off';
+  @override
+  String get secPinChanged => 'PIN changed';
+  @override
+  String get secPinEnabled => 'PIN turned on';
+  @override
+  String get secPinLocked => 'Too many failed attempts. Try later.';
+  @override
+  String get secSignOutAll => 'Sign out everywhere';
+  @override
+  String get secSignOutAllText => 'All devices you are signed in on will be signed out. Data stays on the devices and on the server.';
+  @override
+  String get secLoadFailed => 'Could not get the protection status. Check the internet.';
+  @override
+  String get secSave => 'Save';
+
+  // ---- Вхід через Telegram і PIN ----
+  @override
+  String get signInTelegram => 'Sign in with Telegram';
+  @override
+  String get tgTitle => 'Telegram sign-in';
+  @override
+  String get tgStarting => 'Getting ready…';
+  @override
+  String get tgNumberLabel => 'Number for the bot';
+  @override
+  String get tgStep1 => 'Tap “Open Telegram” and start the bot.';
+  @override
+  String get tgStep2 => 'In the bot, pick the number shown above.';
+  @override
+  String get tgStep3 => 'Tap “Share number”: Telegram confirms the number is yours.';
+  @override
+  String get tgOpenTelegram => 'Open Telegram';
+  @override
+  String get tgWaiting => 'Waiting for confirmation in Telegram…';
+  @override
+  String tgExpiresIn(String t) => 'Valid for $t more';
+  @override
+  String get tgOpenFailed => 'Could not open Telegram. Install it and try again.';
+  @override
+  String get tgExpired => 'Time is up. Start again.';
+  @override
+  String get tgCancelled => 'Sign-in was cancelled in Telegram. Start again.';
+  @override
+  String get tgTryAgain => 'Try again';
+  @override
+  String get tgOffline => 'Cannot reach the server. Check the internet.';
+  @override
+  String get tgFailed => 'Could not sign in. Try again.';
+  @override
+  String get tgTooMany => 'Too many attempts. Wait a few minutes.';
+  @override
+  String get tgNotConfigured => 'Telegram sign-in is not set up in this build.';
+  @override
+  String get pinSetupTitle => 'Choose a PIN';
+  @override
+  String get pinSetupText => 'The PIN protects your account if someone gets into your Telegram. At least 6 characters, digits or letters.';
+  @override
+  String get pinField => 'PIN';
+  @override
+  String get pinRepeat => 'Repeat the PIN';
+  @override
+  String get pinMismatch => 'The PINs do not match';
+  @override
+  String get pinSave => 'Save PIN';
+  @override
+  String get pinEnterTitle => 'Enter your PIN';
+  @override
+  String get pinEnterText => 'This account is protected by a PIN.';
+  @override
+  String get pinWrong => 'Wrong PIN';
+  @override
+  String pinLocked(String t) => 'Too many attempts. Try again in $t.';
+  @override
+  String get pinForgot => 'Forgot your PIN?';
+  @override
+  String get pinRecoveryTitle => 'Recover access';
+  @override
+  String get pinRecoveryText => 'Enter the recovery code you wrote down and choose a new PIN.';
+  @override
+  String get pinRecoveryField => 'Recovery code';
+  @override
+  String get pinNewField => 'New PIN';
+  @override
+  String get pinContinue => 'Continue';
+  @override
+  String get recoveryTitle => 'Save your recovery code';
+  @override
+  String get recoveryText => 'If you forget the PIN, this code is the only way back in. Write it down on paper. It is shown only once.';
+  @override
+  String get recoveryWritten => 'I wrote it down';
+  @override
+  String get recoveryCopied => 'Copied';
+
   // ---- Вхід ----
   @override
   String get signingIn => 'Signing in…';

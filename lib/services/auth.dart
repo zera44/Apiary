@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../l10n/l10n.dart';
+import 'telegram_login.dart';
 
 /// Користувач, що увійшов через Google.
 class AppUser {
@@ -12,6 +13,9 @@ class AppUser {
   final String email;
   final String name;
   const AppUser({required this.id, required this.email, required this.name});
+
+  /// Увійшов через Telegram (пошта технічна, не справжня).
+  bool get viaTelegram => isTelegramEmail(email);
 
   Map<String, Object?> toJson() => {'id': id, 'email': email, 'name': name};
 
@@ -49,6 +53,10 @@ abstract class AuthService {
   /// Інтерактивний вхід. Кидає [SignInCancelled], якщо користувач
   /// передумав, або інший виняток, якщо вхід не вдався.
   Future<AppUser> signIn();
+
+  /// Запам'ятати вхід, виконаний не через Google (Telegram): сервер уже видав
+  /// сесію, тут лише зберігаємо, хто увійшов.
+  Future<AppUser> signInExternal(AppUser user);
 
   Future<void> signOut();
 
@@ -120,6 +128,15 @@ class GoogleAuthService implements AuthService {
   }
 
   @override
+  Future<AppUser> signInExternal(AppUser user) async {
+    _user = user;
+    _guest = false;
+    _idToken = null;
+    await _write(user.toJson());
+    return user;
+  }
+
+  @override
   Future<void> signOut() async {
     _user = null;
     _guest = false;
@@ -141,7 +158,7 @@ class GoogleAuthService implements AuthService {
       _idToken = null; // токен Google живе годину - вдруге беремо свіжий
       return t;
     }
-    if (_user == null || serverClientId.isEmpty) return null;
+    if (_user == null || _user!.viaTelegram || serverClientId.isEmpty) return null;
     try {
       final g = GoogleSignIn.instance;
       if (!_googleReady) {
