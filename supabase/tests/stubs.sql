@@ -27,6 +27,12 @@ language sql stable as $$
   select nullif(auth.jwt() ->> 'sub', '')::uuid
 $$;
 
+-- сесії входу (лише те, на що спирається sign_out_everywhere)
+create table auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null
+);
+
 -- storage: кошики й файли (лише те, на що спираються наші правила)
 create table storage.buckets (
   id text primary key,

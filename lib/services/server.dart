@@ -118,6 +118,19 @@ abstract final class Server {
     }
   }
 
+  /// Після входу через Telegram: сервер уже видав сесію - запам'ятати її,
+  /// підключити синхронізацію й спільний доступ. false - сервер не налаштовано.
+  static Future<bool> connectWithSession(Repository repo, AuthService auth, SupabaseSession session) async {
+    _auth = auth;
+    final config = AppConfig.current;
+    if (!config.syncConfigured) return false;
+    final api = await SupabaseApi.fromSession(config, await sessionStore(), session);
+    await repo.setMeta(signInAgainKey, '');
+    _attach(repo, api, auth);
+    await _firstLogin(repo, api);
+    return true;
+  }
+
   /// Чи потрібен вибір (дані і тут, і на сервері; інший акаунт). Ні -
   /// синхронізуватись.
   static Future<void> _firstLogin(Repository repo, SupabaseApi api) async {

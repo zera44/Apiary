@@ -9,6 +9,7 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/visit_reminders.dart';
 import '../l10n/l10n.dart';
+import '../services/app_config.dart';
 import '../services/auth.dart';
 import '../services/invite_link.dart';
 import '../services/reminders.dart';
@@ -29,6 +30,7 @@ import 'feedback_chat_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 import 'splash_screen.dart';
+import 'telegram_login_screen.dart';
 import 'fin_add_screen.dart';
 import 'finance_screen.dart';
 import 'stock_screen.dart';
@@ -284,6 +286,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _signInTelegram(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
+    try {
+      if (!await signInWithTelegram(context, repo, auth)) return;
+      HomeScreen.signedInMail = null;
+      nav.pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen(repo: repo, auth: auth)));
+    } on StateError catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text(tr.tgFailed)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nav = Navigator.of(context);
@@ -352,6 +368,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Text(tr.signInForSync,
               style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
         ),
+        if (AppConfig.current.syncConfigured)
+          TextButton(
+            onPressed: () => _signInTelegram(context),
+            child: Text(tr.signInTelegram,
+                style: TextStyle(color: AppColors.create, fontWeight: FontWeight.w600)),
+          ),
       ],
     ];
     // панель у стилі вулика: медова рамка, пасічник-порадник, «Почати»

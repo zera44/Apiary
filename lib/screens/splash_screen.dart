@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/repository.dart';
+import '../services/app_config.dart';
 import '../services/auth.dart';
 import '../services/server.dart';
 import '../ui/app_logo.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import 'home_screen.dart';
+import 'telegram_login_screen.dart';
 import '../l10n/l10n.dart';
 
 /// Заставка = екран входу: іконка, назва, «Увійти через Google» і
@@ -50,6 +52,28 @@ class _SplashScreenState extends State<SplashScreen> {
       if (mounted) {
         setState(() => _error = tr.signInFailed);
       }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signInTelegram() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final ok = await signInWithTelegram(context, widget.repo, widget.auth);
+      if (!ok || !mounted) return;
+      HomeScreen.signedInMail = null;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => HomeScreen(repo: widget.repo, auth: widget.auth),
+      ));
+    } on StateError catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = tr.tgFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -98,6 +122,19 @@ class _SplashScreenState extends State<SplashScreen> {
                     fontSize: 16,
                     onPressed: _busy ? null : _signIn,
                   ),
+                  if (AppConfig.current.syncConfigured) ...[
+                    const SizedBox(height: 12),
+                    PillButton(
+                      text: tr.signInTelegram,
+                      bg: AppColors.darkBtn,
+                      fg: AppColors.text,
+                      width: 260,
+                      height: 48,
+                      radius: 18,
+                      fontSize: 15,
+                      onPressed: _busy ? null : _signInTelegram,
+                    ),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     Text(_error!,

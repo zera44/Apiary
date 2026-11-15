@@ -2032,6 +2032,128 @@ class AppStringsUk extends AppStrings {
   @override
   String get soon => 'скоро';
 
+  // ---- Захист входу (налаштування) ----
+  @override
+  String get secTitle => 'Захист входу';
+  @override
+  String secTelegramLinked(String phone) => 'Telegram прив\'язано: $phone';
+  @override
+  String get secTelegramNone => 'Telegram не прив\'язано. З ним можна входити без Google.';
+  @override
+  String get secLinkTelegram => 'Прив\'язати Telegram';
+  @override
+  String get secLinkedOk => 'Telegram прив\'язано';
+  @override
+  String get secPinOn => 'PIN увімкнено';
+  @override
+  String get secPinOff => 'PIN вимкнено. З PIN акаунт захищений, навіть якщо хтось отримає доступ до вашого Telegram.';
+  @override
+  String get secPinEnable => 'Увімкнути PIN';
+  @override
+  String get secPinChange => 'Змінити PIN';
+  @override
+  String get secPinDisable => 'Вимкнути PIN';
+  @override
+  String get secPinCurrent => 'Поточний PIN';
+  @override
+  String get secPinDisableWarn => 'Без PIN захист входу слабший. Підтвердьте поточним PIN.';
+  @override
+  String secPinScheduled(String when) => 'PIN буде вимкнено $when. Якщо це були не ви, натисніть «Це не я» у повідомленні від бота.';
+  @override
+  String get secPinDisabledNow => 'PIN вимкнено';
+  @override
+  String get secPinChanged => 'PIN змінено';
+  @override
+  String get secPinEnabled => 'PIN увімкнено';
+  @override
+  String get secPinLocked => 'Забагато невдалих спроб. Спробуйте пізніше.';
+  @override
+  String get secSignOutAll => 'Вийти на всіх пристроях';
+  @override
+  String get secSignOutAllText => 'Усі пристрої, де ви ввійшли, вийдуть з акаунта. Дані лишаються на пристроях і на сервері.';
+  @override
+  String get secLoadFailed => 'Не вдалося отримати стан захисту. Перевірте інтернет.';
+  @override
+  String get secSave => 'Зберегти';
+
+  // ---- Вхід через Telegram і PIN ----
+  @override
+  String get signInTelegram => 'Увійти через Telegram';
+  @override
+  String get tgTitle => 'Вхід через Telegram';
+  @override
+  String get tgStarting => 'Готуємо вхід…';
+  @override
+  String get tgNumberLabel => 'Число для бота';
+  @override
+  String get tgStep1 => 'Натисніть «Відкрити Telegram» і запустіть бота.';
+  @override
+  String get tgStep2 => 'У боті виберіть число, показане вище.';
+  @override
+  String get tgStep3 => 'Натисніть «Поділитися номером»: Telegram підтверджує, що номер ваш.';
+  @override
+  String get tgOpenTelegram => 'Відкрити Telegram';
+  @override
+  String get tgWaiting => 'Чекаємо підтвердження в Telegram…';
+  @override
+  String tgExpiresIn(String t) => 'Діє ще $t';
+  @override
+  String get tgOpenFailed => 'Не вдалося відкрити Telegram. Встановіть його й спробуйте ще раз.';
+  @override
+  String get tgExpired => 'Час вийшов. Почніть вхід заново.';
+  @override
+  String get tgCancelled => 'Вхід скасовано в Telegram. Почніть заново.';
+  @override
+  String get tgTryAgain => 'Спробувати знову';
+  @override
+  String get tgOffline => 'Немає зв\'язку з сервером. Перевірте інтернет.';
+  @override
+  String get tgFailed => 'Не вдалося увійти. Спробуйте ще раз.';
+  @override
+  String get tgTooMany => 'Забагато спроб. Зачекайте кілька хвилин.';
+  @override
+  String get tgNotConfigured => 'Вхід через Telegram у цій збірці не налаштований.';
+  @override
+  String get pinSetupTitle => 'Придумайте PIN';
+  @override
+  String get pinSetupText => 'PIN захищає акаунт, якщо хтось отримає доступ до вашого Telegram. Мінімум 6 знаків, цифри або літери.';
+  @override
+  String get pinField => 'PIN';
+  @override
+  String get pinRepeat => 'Повторіть PIN';
+  @override
+  String get pinMismatch => 'PIN не збігаються';
+  @override
+  String get pinSave => 'Зберегти PIN';
+  @override
+  String get pinEnterTitle => 'Введіть PIN';
+  @override
+  String get pinEnterText => 'Цей акаунт захищено PIN.';
+  @override
+  String get pinWrong => 'Невірний PIN';
+  @override
+  String pinLocked(String t) => 'Забагато спроб. Спробуйте через $t.';
+  @override
+  String get pinForgot => 'Забули PIN?';
+  @override
+  String get pinRecoveryTitle => 'Відновлення доступу';
+  @override
+  String get pinRecoveryText => 'Введіть код відновлення, який ви записали, і придумайте новий PIN.';
+  @override
+  String get pinRecoveryField => 'Код відновлення';
+  @override
+  String get pinNewField => 'Новий PIN';
+  @override
+  String get pinContinue => 'Продовжити';
+  @override
+  String get recoveryTitle => 'Збережіть код відновлення';
+  @override
+  String get recoveryText => 'Якщо забудете PIN, цей код - єдиний спосіб повернути доступ. Запишіть його на папері. Він показується лише раз.';
+  @override
+  String get recoveryWritten => 'Код записано';
+  @override
+  String get recoveryCopied => 'Скопійовано';
+
   // ---- Вхід ----
   @override
   String get signingIn => 'Входимо…';

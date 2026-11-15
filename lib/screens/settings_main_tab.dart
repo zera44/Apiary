@@ -17,6 +17,7 @@ import '../services/receipt_photo_share.dart';
 import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
+import '../ui/security_controls.dart';
 import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
 import '../ui/orientation.dart';
@@ -26,6 +27,7 @@ import 'backups_screen.dart';
 import 'notify_settings_screen.dart';
 import 'home_screen.dart';
 import 'splash_screen.dart';
+import 'telegram_login_screen.dart';
 
 /// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
 /// інше про сам застосунок). Синхронізація, копії й акаунт - на вкладці
@@ -546,8 +548,13 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     if (auth == null || _busy) return;
     setState(() => _busy = true);
     try {
-      await auth.signIn();
-      await Server.connect(widget.repo, auth);
+      if (auth.user?.viaTelegram == true) {
+        // акаунт із Telegram: знову підтвердити в боті (Google тут ні до чого)
+        await signInWithTelegram(context, widget.repo, auth);
+      } else {
+        await auth.signIn();
+        await Server.connect(widget.repo, auth);
+      }
     } catch (e) {
       if (mounted) _say(tr.syncError('$e'));
     } finally {
@@ -642,6 +649,11 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
               ],
             ],
           ),
+          // Telegram, PIN, «вийти всюди» - лише для того, хто ввійшов на сервер
+          if (Server.api != null)
+            SettingsSection(
+                title: tr.secTitle,
+                children: [SecurityControls(afterSignOutEverywhere: _afterSignOutEverywhere)]),
           SettingsSection(
             title: tr.syncSection,
             children: [
@@ -705,6 +717,19 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
           ),
         ],
       );
+
+  /// Сервер вивів усі пристрої: виходимо й тут (дані на телефоні лишаються).
+  Future<void> _afterSignOutEverywhere() async {
+    final auth = Server.auth;
+    if (auth == null) return;
+    final nav = Navigator.of(context);
+    await Server.signOut(widget.repo);
+    await auth.signOut();
+    nav.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => SplashScreen(repo: widget.repo, auth: auth)),
+      (_) => false,
+    );
+  }
 
   /// «Вийти»: з підтвердженням; дані лишаються на телефоні, далі - екран
   /// входу.
@@ -915,7 +940,9 @@ class _AccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user.name.trim().isEmpty ? user.email.split('@').first : user.name.trim();
+    final name = user.name.trim().isEmpty
+        ? (user.viaTelegram ? 'Telegram' : user.email.split('@').first)
+        : user.name.trim();
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -943,7 +970,7 @@ class _AccountCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            Text(user.email,
+            Text(user.viaTelegram ? 'Telegram' : user.email,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),

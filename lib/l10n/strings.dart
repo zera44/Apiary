@@ -994,6 +994,69 @@ abstract class AppStrings {
   String get lessonBasics;
   String get soon;
 
+  // ---- Захист входу (налаштування) ----
+  String get secTitle;
+  String secTelegramLinked(String phone);
+  String get secTelegramNone;
+  String get secLinkTelegram;
+  String get secLinkedOk;
+  String get secPinOn;
+  String get secPinOff;
+  String get secPinEnable;
+  String get secPinChange;
+  String get secPinDisable;
+  String get secPinCurrent;
+  String get secPinDisableWarn;
+  String secPinScheduled(String when);
+  String get secPinDisabledNow;
+  String get secPinChanged;
+  String get secPinEnabled;
+  String get secPinLocked;
+  String get secSignOutAll;
+  String get secSignOutAllText;
+  String get secLoadFailed;
+  String get secSave;
+
+  // ---- Вхід через Telegram і PIN ----
+  String get signInTelegram;
+  String get tgTitle;
+  String get tgStarting;
+  String get tgNumberLabel;
+  String get tgStep1;
+  String get tgStep2;
+  String get tgStep3;
+  String get tgOpenTelegram;
+  String get tgWaiting;
+  String tgExpiresIn(String t);
+  String get tgOpenFailed;
+  String get tgExpired;
+  String get tgCancelled;
+  String get tgTryAgain;
+  String get tgOffline;
+  String get tgFailed;
+  String get tgTooMany;
+  String get tgNotConfigured;
+  String get pinSetupTitle;
+  String get pinSetupText;
+  String get pinField;
+  String get pinRepeat;
+  String get pinMismatch;
+  String get pinSave;
+  String get pinEnterTitle;
+  String get pinEnterText;
+  String get pinWrong;
+  String pinLocked(String t);
+  String get pinForgot;
+  String get pinRecoveryTitle;
+  String get pinRecoveryText;
+  String get pinRecoveryField;
+  String get pinNewField;
+  String get pinContinue;
+  String get recoveryTitle;
+  String get recoveryText;
+  String get recoveryWritten;
+  String get recoveryCopied;
+
   // ---- Вхід ----
   String get signingIn;
   String get signInGoogle;
