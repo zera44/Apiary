@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -300,7 +301,7 @@ class _HelpersScreenState extends State<HelpersScreen> {
                           ),
                           trailing: IconButton(
                             tooltip: tr.inviteCancel,
-                            icon: Icon(Icons.close, color: AppColors.textMuted),
+                            icon: Icon(TablerIcons.x, color: AppColors.textMuted),
                             onPressed: () => _guarded(() => _sharing.cancel(i)),
                           ),
                         ),

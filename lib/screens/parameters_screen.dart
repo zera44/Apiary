@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -959,12 +960,12 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   ),
                   IconButton(
                     tooltip: tr.groupName,
-                    icon: const Icon(Icons.edit, color: honeyDark, size: 20),
+                    icon: const Icon(TablerIcons.pencil, color: honeyDark, size: 20),
                     onPressed: () => _renameGroup(g),
                   ),
                   IconButton(
                     tooltip: tr.groupDelete,
-                    icon: const Icon(Icons.delete_outline, color: honeyDark, size: 22),
+                    icon: const Icon(TablerIcons.trash, color: honeyDark, size: 22),
                     onPressed: () => _deleteGroup(g),
                   ),
                 ]),
@@ -995,7 +996,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                           index: i,
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Icon(Icons.drag_indicator, color: AppColors.textMuted, size: 24),
+                            child: Icon(TablerIcons.grip_vertical, color: AppColors.textMuted, size: 24),
                           ),
                         ),
                         Expanded(
@@ -1183,7 +1184,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
             index: dragIndex,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Icon(Icons.drag_indicator, color: AppColors.textMuted, size: 26),
+              child: Icon(TablerIcons.grip_vertical, color: AppColors.textMuted, size: 26),
             ),
           ),
           const SizedBox(width: 4),

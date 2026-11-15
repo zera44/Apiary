@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/rendering.dart';
 
 import 'common.dart';
@@ -438,7 +439,7 @@ class LessonContinue extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: padding,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          LessonPillButton(label: label ?? tr.continueAction, icon: Icons.chevron_right_rounded, onPressed: onContinue),
+          LessonPillButton(label: label ?? tr.continueAction, icon: TablerIcons.chevron_right, onPressed: onContinue),
           if (onFinish != null) ...[
             const SizedBox(height: 8),
             Center(child: LessonFinishLink(onPressed: onFinish!)),
@@ -458,7 +459,7 @@ class LessonDoneButton extends StatelessWidget {
         padding: const EdgeInsets.only(left: 10, top: 10, bottom: 8),
         child: LessonPillButton(
             label: label ?? tr.finish,
-            icon: Icons.check_rounded,
+            icon: TablerIcons.check,
             onPressed: onPressed,
             bg: AppColors.create,
             fg: AppColors.bg),

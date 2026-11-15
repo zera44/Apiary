@@ -41,6 +41,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/fake_sharing_server.dart';
@@ -728,7 +729,7 @@ void main() {
     await settle(tester);
     final chosen = (await tester.runAsync(() => repo.attachedParameterIds(hive.entity, elType: 'hive')))!;
     // ручка — у кожного обраного (базові теж), у необраних — немає
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(chosen.length));
+    expect(find.byIcon(TablerIcons.grip_vertical), findsNWidgets(chosen.length));
     expect(find.byType(ReorderableListView), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

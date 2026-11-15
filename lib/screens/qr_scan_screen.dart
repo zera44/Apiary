@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show HapticFeedback, SystemSound, SystemSoundType;
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -499,7 +500,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                       key: const ValueKey('bind-search'),
                       onChanged: (v) => setS(() => query = v),
                       decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search), hintText: tr.bindSearch),
+                          prefixIcon: const Icon(TablerIcons.search), hintText: tr.bindSearch),
                     ),
                   ),
                   Expanded(
@@ -740,7 +741,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   key: const ValueKey('bind-prev'),
                   tooltip: tr.bindPrevHive,
                   style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                  icon: const Icon(TablerIcons.chevron_left, color: Colors.white, size: 28),
                   onPressed: () => _bGo(-1),
                 ),
               ),
@@ -750,7 +751,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                   key: const ValueKey('bind-next'),
                   tooltip: tr.bindNextHive,
                   style: IconButton.styleFrom(backgroundColor: Colors.black54),
-                  icon: const Icon(Icons.chevron_right, color: Colors.white, size: 28),
+                  icon: const Icon(TablerIcons.chevron_right, color: Colors.white, size: 28),
                   onPressed: () => _bGo(1),
                 ),
               ),

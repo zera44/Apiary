@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -27,12 +28,12 @@ Future<void> showApiaryReport(BuildContext context, Repository repo, Apiary apia
               style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         ),
         ListTile(
-          leading: Icon(Icons.share, color: AppColors.accent),
+          leading: Icon(TablerIcons.share, color: AppColors.accent),
           title: Text(tr.backupShare, style: TextStyle(color: AppColors.text)),
           onTap: () => Navigator.of(ctx).pop('share'),
         ),
         ListTile(
-          leading: Icon(Icons.save_alt, color: AppColors.accent),
+          leading: Icon(TablerIcons.download, color: AppColors.accent),
           title: Text(tr.backupSaveToFile, style: TextStyle(color: AppColors.text)),
           onTap: () => Navigator.of(ctx).pop('save'),
         ),

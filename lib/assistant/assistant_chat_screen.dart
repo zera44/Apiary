@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
@@ -379,7 +380,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       onPressed: () => _copy(it.text),
-      icon: Icon(Icons.copy_rounded, size: 18, color: AppColors.textMuted),
+      icon: Icon(TablerIcons.copy, size: 18, color: AppColors.textMuted),
     ),
   );
 
@@ -589,7 +590,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         child: TextButton.icon(
           key: const ValueKey('assistant-context-repin'),
           onPressed: () => _pinTo(null),
-          icon: Icon(Icons.push_pin_outlined, size: 18, color: AppColors.create),
+          icon: Icon(TablerIcons.pin, size: 18, color: AppColors.create),
           label: Text(tr.assistantContextPin(here.label), style: TextStyle(color: AppColors.create)),
         ),
       );
@@ -617,7 +618,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.layers_outlined, size: 17, color: AppColors.create),
+                    Icon(TablerIcons.stack_2, size: 17, color: AppColors.create),
                     const SizedBox(width: 6),
                     ConstrainedBox(
                       constraints: BoxConstraints(
@@ -640,7 +641,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 }),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(4, 6, 10, 6),
-                  child: Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                  child: Icon(TablerIcons.x, size: 18, color: AppColors.textMuted),
                 ),
               ),
             ],
@@ -690,7 +691,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             key: const ValueKey('assistant-dock-close'),
             tooltip: tr.assistantClose,
             onPressed: widget.onClose,
-            icon: Icon(Icons.close, color: AppColors.text, size: 26),
+            icon: Icon(TablerIcons.x, color: AppColors.text, size: 26),
           )
         else
           CircleIconButton(
@@ -717,13 +718,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           key: const ValueKey('assistant-conversations'),
           tooltip: tr.assistantConversations,
           onPressed: _conversations,
-          icon: Icon(Icons.forum_outlined, color: AppColors.create, size: 26),
+          icon: Icon(TablerIcons.messages, color: AppColors.create, size: 26),
         ),
         IconButton(
           key: const ValueKey('assistant-new-chat'),
           tooltip: tr.assistantNewChat,
           onPressed: _newChat,
-          icon: Icon(Icons.add_comment_outlined, color: AppColors.create, size: 28),
+          icon: Icon(TablerIcons.message_plus, color: AppColors.create, size: 28),
         ),
       ],
     ),
@@ -799,7 +800,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               side: BorderSide(color: AppColors.create),
             ),
             onPressed: () => _go(n),
-            icon: const Icon(Icons.open_in_new, size: 18),
+            icon: const Icon(TablerIcons.external_link, size: 18),
             label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
@@ -808,7 +809,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           key: ValueKey('assistant-escalated-${it.id}'),
           padding: const EdgeInsets.only(left: 6, top: 2),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.trending_up, size: 15, color: AppColors.textMuted),
+            Icon(TablerIcons.trending_up, size: 15, color: AppColors.textMuted),
             const SizedBox(width: 4),
             Flexible(
               child: Text(
@@ -826,7 +827,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           key: ValueKey('assistant-routed-${it.id}'),
           padding: const EdgeInsets.only(left: 6, top: 2),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.swap_horiz, size: 15, color: AppColors.textMuted),
+            Icon(TablerIcons.arrows_left_right, size: 15, color: AppColors.textMuted),
             const SizedBox(width: 4),
             Flexible(
               child: Text(
@@ -885,7 +886,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               spacing: 4,
               children: [
                 Icon(
-                  failed ? Icons.error_outline : Icons.schedule,
+                  failed ? TablerIcons.alert_circle : TablerIcons.clock,
                   size: 14,
                   color: failed ? AppColors.danger : AppColors.textMuted,
                 ),
@@ -1011,8 +1012,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                 children: [
                   Icon(
                     it.status == ChatStatus.confirmed && !_undone.contains(it.id)
-                        ? Icons.check_circle
-                        : Icons.remove_circle_outline,
+                        ? TablerIcons.check
+                        : TablerIcons.circle_minus,
                     size: 18,
                     color: it.status == ChatStatus.confirmed
                         ? AppColors.addObject
@@ -1054,7 +1055,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          Icon(_download != null ? Icons.download : Icons.mic, color: AppColors.danger),
+          Icon(_download != null ? TablerIcons.download : TablerIcons.microphone, color: AppColors.danger),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1091,7 +1092,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             border: Border.all(color: AppColors.frame, width: 2),
           ),
           child: Icon(
-            _listening ? Icons.stop : Icons.mic,
+            _listening ? TablerIcons.player_stop : TablerIcons.microphone,
             color: Colors.white,
             size: _listening ? 40 : 34,
           ),
@@ -1123,7 +1124,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                       ? CircleAvatar(
                           radius: 9,
                           backgroundColor: colors[ch] ?? Colors.transparent,
-                          child: colors[ch] == null ? const Icon(Icons.block, size: 14) : null,
+                          child: colors[ch] == null ? const Icon(TablerIcons.ban, size: 14) : null,
                         )
                       : null,
                   selected: v.text == ch,
@@ -1167,7 +1168,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                             key: const ValueKey('assistant-mic-more'),
                             tooltip: tr.assistantMicHold,
                             onPressed: _micTap,
-                            icon: Icon(Icons.mic, color: AppColors.create),
+                            icon: Icon(TablerIcons.microphone, color: AppColors.create),
                           ),
                   ),
                   filled: true,
@@ -1191,7 +1192,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                       tooltip: tr.assistantSend,
                       style: IconButton.styleFrom(backgroundColor: AppColors.accent),
                       onPressed: _busy ? null : _send,
-                      icon: const Icon(Icons.send, color: Colors.white),
+                      icon: const Icon(TablerIcons.send, color: Colors.white),
                     ),
             ),
           ],
@@ -1249,7 +1250,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     style: const TextStyle(fontSize: 14),
                   ),
                 ),
-                Icon(Icons.expand_more, size: 18, color: AppColors.textMuted),
+                Icon(TablerIcons.chevron_down, size: 18, color: AppColors.textMuted),
               ],
             ),
           ),
@@ -1352,9 +1353,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               ),
             ),
             if (locked)
-              Icon(Icons.lock_outline, size: 20, color: AppColors.textMuted)
+              Icon(TablerIcons.lock, size: 20, color: AppColors.textMuted)
             else if (selected)
-              Icon(Icons.check_circle, color: AppColors.create),
+              Icon(TablerIcons.check, color: AppColors.create),
           ],
         ),
       ),
@@ -1461,7 +1462,7 @@ class _ConversationsSheetState extends State<_ConversationsSheet> {
                       selected: c.id == store.conv,
                       selectedTileColor: AppColors.card,
                       leading: Icon(
-                        c.id == store.conv ? Icons.chat_bubble : Icons.chat_bubble_outline,
+                        c.id == store.conv ? TablerIcons.message : TablerIcons.message,
                         color: AppColors.create,
                       ),
                       title: Text(
@@ -1477,7 +1478,7 @@ class _ConversationsSheetState extends State<_ConversationsSheet> {
                       trailing: IconButton(
                         key: ValueKey('assistant-conv-delete-${c.id}'),
                         tooltip: tr.assistantConvDelete,
-                        icon: Icon(Icons.delete_outline, color: AppColors.textMuted),
+                        icon: Icon(TablerIcons.trash, color: AppColors.textMuted),
                         onPressed: () async {
                           final ok = await showConfirm(
                             context,

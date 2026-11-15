@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 
@@ -374,7 +375,7 @@ class _VoiceInputHostState extends State<VoiceInputHost> with WidgetsBindingObse
                   ? const Padding(
                       padding: EdgeInsets.all(10),
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Icon(listening || dl != null ? Icons.stop : Icons.mic,
+                  : Icon(listening || dl != null ? TablerIcons.player_stop : TablerIcons.microphone,
                       color: Colors.white, size: 22),
             ),
           ),

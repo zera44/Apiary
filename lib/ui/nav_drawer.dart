@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../assistant/assistant_chat_screen.dart';
 import '../data/repository.dart';
@@ -103,12 +104,12 @@ class NavDrawer extends StatelessWidget {
             child: ListView(padding: const EdgeInsets.only(top: 8), children: [
               item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries'),
               item(NavSection.stock, tr.stock, icon: 'box'),
-              item(NavSection.finances, tr.finances, data: Icons.account_balance_wallet_outlined),
+              item(NavSection.finances, tr.finances, data: TablerIcons.wallet),
               item(NavSection.history, tr.history, icon: 'history'),
               item(NavSection.qr, tr.qrCode, icon: 'qr'),
-              item(NavSection.assistant, tr.aiAssistant, data: Icons.smart_toy_outlined),
-              item(NavSection.tutorial, tr.tutorial, data: Icons.school_outlined),
-              item(NavSection.settings, tr.settingsTitle, data: Icons.settings),
+              item(NavSection.assistant, tr.aiAssistant, data: TablerIcons.robot),
+              item(NavSection.tutorial, tr.tutorial, data: TablerIcons.school),
+              item(NavSection.settings, tr.settingsTitle, data: TablerIcons.settings),
               item(NavSection.feedback, tr.feedbackTitle, icon: 'feedback'),
             ]),
           ),

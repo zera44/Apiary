@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../icons/app_icons.dart';
@@ -349,7 +350,7 @@ class TopBar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(color: AppColors.create, width: 1.5)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.menu, size: 20, color: AppColors.create),
+                        Icon(TablerIcons.menu_2, size: 20, color: AppColors.create),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(title,
@@ -359,7 +360,7 @@ class TopBar extends StatelessWidget {
                                   color: AppColors.text, fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 4),
-                        Icon(Icons.keyboard_arrow_down, size: 20, color: AppColors.create),
+                        Icon(TablerIcons.chevron_down, size: 20, color: AppColors.create),
                       ]),
                     ),
                   ),

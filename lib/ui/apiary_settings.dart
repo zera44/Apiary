@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -44,7 +45,7 @@ Future<bool> editApiarySettings(BuildContext context, Repository repo, Apiary a)
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             TextButton.icon(
-              icon: Icon(Icons.table_chart_outlined, color: AppColors.accent),
+              icon: Icon(TablerIcons.table, color: AppColors.accent),
               label: Text(tr.apiaryReportExcel, style: TextStyle(color: AppColors.accent)),
               onPressed: () {
                 Navigator.pop(ctx);

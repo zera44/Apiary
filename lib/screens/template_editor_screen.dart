@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -983,7 +984,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       child: InkWell(
                         onTap: _save,
                         child: const SizedBox.square(
-                            dimension: 46, child: Icon(Icons.save, color: Colors.white, size: 26)),
+                            dimension: 46, child: Icon(TablerIcons.device_floppy, color: Colors.white, size: 26)),
                       ),
                     ),
                   ),

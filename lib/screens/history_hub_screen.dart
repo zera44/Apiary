@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -192,7 +193,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: AppColors.textMuted),
+            Icon(TablerIcons.chevron_right, color: AppColors.textMuted),
           ]),
         ),
       ),

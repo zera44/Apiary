@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
@@ -506,7 +507,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             IconButton(
                 onPressed: () => _shift(-1),
                 tooltip: tr.earlier,
-                icon: Icon(Icons.chevron_left, color: AppColors.text)),
+                icon: Icon(TablerIcons.chevron_left, color: AppColors.text)),
           Flexible(
             child: GestureDetector(
               onTap: _period == FinPeriod.custom
@@ -527,7 +528,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             IconButton(
                 onPressed: () => _shift(1),
                 tooltip: tr.later,
-                icon: Icon(Icons.chevron_right, color: AppColors.text)),
+                icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
         ]),
         SizedBox(
           width: donut,
@@ -686,7 +687,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   width: 64,
                   height: 64,
                   child: Tooltip(
-                      message: tr.finNewOperation, child: const Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                      message: tr.finNewOperation, child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                 ),
               ),
             ),

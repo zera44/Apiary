@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/repository.dart';
 import '../services/feedback_chat.dart';
@@ -154,7 +155,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
                 tooltip: tr.send,
                 style: IconButton.styleFrom(backgroundColor: AppColors.accent),
                 onPressed: _sending ? null : _send,
-                icon: const Icon(Icons.send, color: Colors.white),
+                icon: const Icon(TablerIcons.send, color: Colors.white),
               ),
             ]),
           ),
@@ -196,7 +197,7 @@ class _FeedbackChatScreenState extends State<FeedbackChatScreen> {
             Text(_when(m.at), style: TextStyle(color: AppColors.textMuted, fontSize: 11.5)),
             if (m.pending) ...[
               const SizedBox(width: 6),
-              Icon(Icons.schedule, size: 13, color: AppColors.textMuted),
+              Icon(TablerIcons.clock, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 3),
               Text(tr.waitingInternet,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11.5)),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import 'theme.dart';
@@ -19,10 +20,10 @@ class DataTypePicker extends StatelessWidget {
     return switch (type) {
       DataTypes.int_ => t('123'),
       DataTypes.float_ => t('1,5'),
-      DataTypes.date => i(Icons.calendar_today),
-      DataTypes.bool_ => i(Icons.toggle_on_outlined),
-      DataTypes.choice => i(Icons.arrow_drop_down_circle_outlined),
-      DataTypes.color => i(Icons.palette_outlined),
+      DataTypes.date => i(TablerIcons.calendar),
+      DataTypes.bool_ => i(TablerIcons.toggle_right),
+      DataTypes.choice => i(TablerIcons.chevron_down),
+      DataTypes.color => i(TablerIcons.palette),
       _ => t(tr.textTypeIcon),
     };
   }
@@ -152,7 +153,7 @@ class _OptionsEditorState extends State<OptionsEditor> {
         ),
         IconButton(
           tooltip: tr.optionAdd,
-          icon: Icon(Icons.add_circle, color: AppColors.create),
+          icon: Icon(TablerIcons.plus, color: AppColors.create),
           onPressed: _add,
         ),
       ]),

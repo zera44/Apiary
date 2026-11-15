@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -27,7 +28,7 @@ class GearButton extends StatelessWidget {
             onTap: onPressed,
             child: SizedBox.square(
                 dimension: size,
-                child: Icon(Icons.settings, size: size * 0.55, color: AppColors.text)),
+                child: Icon(TablerIcons.settings, size: size * 0.55, color: AppColors.text)),
           ),
         ),
       );

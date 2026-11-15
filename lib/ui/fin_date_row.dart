@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../l10n/l10n.dart';
 import 'date_picker.dart';
@@ -59,7 +60,7 @@ class FinDateRow extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.calendar_month_outlined, size: 24, color: AppColors.create),
+              Icon(TablerIcons.calendar, size: 24, color: AppColors.create),
               if (custom)
                 Text(formatDdMmYyyy(date), style: TextStyle(color: AppColors.text, fontSize: 11.5)),
             ]),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../assistant/assistant_chat_screen.dart';
 import '../data/models.dart';
@@ -265,7 +266,7 @@ class _AppDrawerState extends State<AppDrawer> {
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
           _t(2, _item(context, '', tr.finances,
               widget.tour ? () {} : () => _open(nav, FinanceScreen(repo: repo)),
-              iconData: Icons.account_balance_wallet_outlined)),
+              iconData: TablerIcons.wallet)),
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _t(3, _item(context, 'history', tr.history,
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
@@ -277,13 +278,13 @@ class _AppDrawerState extends State<AppDrawer> {
             _item(context, '', tr.aiAssistant, () {
               nav.pop(); // закрити меню
               unawaited(AssistantChatScreen.open(nav, repo));
-            }, iconData: Icons.smart_toy_outlined),
+            }, iconData: TablerIcons.robot),
           _t(5, _item(context, '', tr.tutorial,
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
-              iconData: Icons.school_outlined)),
+              iconData: TablerIcons.school)),
           _t(6, _item(context, '', tr.settingsTitle,
               widget.tour ? () {} : () => _open(nav, SettingsScreen(repo: repo)),
-              iconData: Icons.settings)),
+              iconData: TablerIcons.settings)),
           _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav, repo);

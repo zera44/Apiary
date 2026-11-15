@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data/repository.dart';
@@ -315,7 +316,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           child: IconButton(
             tooltip: tr.deleteRow,
             padding: EdgeInsets.zero,
-            icon: Icon(Icons.close, size: 20, color: AppColors.textMuted),
+            icon: Icon(TablerIcons.x, size: 20, color: AppColors.textMuted),
             onPressed: () => _remove(l),
           ),
         ),
@@ -397,7 +398,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       tooltip: tr.copyList,
                       visualDensity: VisualDensity.compact,
                       onPressed: _copy,
-                      icon: Icon(Icons.copy, size: 20, color: AppColors.textMuted),
+                      icon: Icon(TablerIcons.copy, size: 20, color: AppColors.textMuted),
                     ),
                 ]),
               ),

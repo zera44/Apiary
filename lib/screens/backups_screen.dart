@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../data/repository.dart';
@@ -132,12 +133,12 @@ class _BackupsScreenState extends State<BackupsScreen> {
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
-            leading: Icon(Icons.save_alt, color: AppColors.text),
+            leading: Icon(TablerIcons.download, color: AppColors.text),
             title: Text(tr.backupSaveToFile, style: TextStyle(color: AppColors.text)),
             onTap: () => Navigator.pop(ctx, false),
           ),
           ListTile(
-            leading: Icon(Icons.share, color: AppColors.text),
+            leading: Icon(TablerIcons.share, color: AppColors.text),
             title: Text(tr.backupShare, style: TextStyle(color: AppColors.text)),
             onTap: () => Navigator.pop(ctx, true),
           ),

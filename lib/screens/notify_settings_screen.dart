@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -203,7 +204,7 @@ class _NotifySettingsScreenState extends State<NotifySettingsScreen> {
       Row(children: [
         IconButton(
             onPressed: () => setState(() => _month = DateTime(_month.year, _month.month - 1)),
-            icon: Icon(Icons.chevron_left, color: AppColors.text)),
+            icon: Icon(TablerIcons.chevron_left, color: AppColors.text)),
         Expanded(
           child: Text('${tr.monthNames[_month.month]} ${_month.year}',
               textAlign: TextAlign.center,
@@ -211,7 +212,7 @@ class _NotifySettingsScreenState extends State<NotifySettingsScreen> {
         ),
         IconButton(
             onPressed: () => setState(() => _month = DateTime(_month.year, _month.month + 1)),
-            icon: Icon(Icons.chevron_right, color: AppColors.text)),
+            icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
       ]),
       GridView.count(
         crossAxisCount: 7,

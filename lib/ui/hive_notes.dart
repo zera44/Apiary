@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/notes.dart';
@@ -175,7 +176,7 @@ class _HiveNotesViewState extends State<HiveNotesView> {
                 child: PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
                   tooltip: tr.actions,
-                  icon: Icon(Icons.more_horiz, size: 20, color: AppColors.textMuted),
+                  icon: Icon(TablerIcons.dots, size: 20, color: AppColors.textMuted),
                   color: AppColors.popupBg,
                   onSelected: (v) => v == 'edit' ? _edit(n) : _delete(n),
                   itemBuilder: (_) => [

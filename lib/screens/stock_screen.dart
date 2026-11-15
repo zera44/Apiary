@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
@@ -438,7 +439,7 @@ class _StockScreenState extends State<StockScreen> {
                             decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.45),
                                 shape: BoxShape.circle),
-                            child: const Icon(Icons.history, size: 20, color: Colors.white),
+                            child: const Icon(TablerIcons.history, size: 20, color: Colors.white),
                           ),
                         ),
                       ),
@@ -548,7 +549,7 @@ Future<void> showStockPhoto(BuildContext context, String photo) {
               child: Image.file(File(path),
                   fit: BoxFit.contain,
                   errorBuilder: (_, _, _) =>
-                      Icon(Icons.broken_image_outlined, color: AppColors.textMuted, size: 64)),
+                      Icon(TablerIcons.photo_off, color: AppColors.textMuted, size: 64)),
             ),
           ),
         ),
@@ -558,7 +559,7 @@ Future<void> showStockPhoto(BuildContext context, String photo) {
           child: SafeArea(
             child: IconButton(
               tooltip: tr.close,
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              icon: const Icon(TablerIcons.x, color: Colors.white, size: 30),
               onPressed: () => Navigator.pop(ctx),
             ),
           ),
