@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-  <title>Домівки</title>
-  <path d="M4.9 14.86 L4.9 9.55 L11.42 9.55 L11.42 14.86" stroke-width="1.31"/>
-  <path d="M4.11 9.55 L8.16 5.84 L12.21 9.55" stroke-width="1.31"/>
-  <path d="M12.48 15.36 L12.48 9.12 L20.16 9.12 L20.16 15.36" stroke-width="1.31"/>
-  <path d="M11.56 9.12 L16.32 4.75 L21.08 9.12" stroke-width="1.31"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Будинок</title>
+  <path d="M3 11 12 4l9 7"/>
+  <path d="M5 9.4V20h14V9.4"/>
+  <path d="M10 20v-4.5h4V20"/>
+  <path d="M10.8 9.2h2.4v2.4h-2.4z"/>
+  <path d="M2 20h20"/>
 </svg>

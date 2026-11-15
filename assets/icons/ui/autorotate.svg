@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Автоповорот екрана</title>
+  <path d="M4.58 8.39L8.39 4.58A1.6 1.6 0 0 1 10.66 4.58L19.42 13.34A1.6 1.6 0 0 1 19.42 15.61L15.61 19.42A1.6 1.6 0 0 1 13.34 19.42L4.58 10.66A1.6 1.6 0 0 1 4.58 8.39z"/>
+  <path d="M16.10 17.23L17.23 16.10"/>
+  <path d="M10.61 2.10A10 10 0 0 1 21.90 10.61"/>
+  <path d="M12.64 -0.01L10.61 2.10L13.14 3.56"/>
+  <path d="M13.39 21.90A10 10 0 0 1 2.10 13.39"/>
+  <path d="M11.36 24.01L13.39 21.90L10.86 20.44"/>
+</svg>

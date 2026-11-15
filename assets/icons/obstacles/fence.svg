@@ -1,9 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <title>Паркан</title>
-  <path d="M3.6 17.52 L3.6 6.48" stroke-width="1.31"/>
-  <path d="M9.2 17.52 L9.2 6.48" stroke-width="1.31"/>
-  <path d="M14.8 17.52 L14.8 6.48" stroke-width="1.31"/>
-  <path d="M20.4 17.52 L20.4 6.48" stroke-width="1.31"/>
-  <path d="M3.6 10.45 L20.4 10.45" stroke-width="1.31"/>
-  <path d="M3.6 15.31 L20.4 15.31" stroke-width="1.31"/>
+  <path d="M4 12v4h16v-4z" />
+  <path d="M6 16v4h4v-4m0 -4v-6l-2 -2l-2 2v6" />
+  <path d="M14 16v4h4v-4m0 -4v-6l-2 -2l-2 2v6" />
 </svg>

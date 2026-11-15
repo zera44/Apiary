@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Медогонка</title>
+  <ellipse cx="12" cy="7" rx="6.5" ry="2"/>
+  <path d="M5.5 7v10c0 1.1 2.9 2 6.5 2s6.5-.9 6.5-2V7"/>
+  <path d="M12 7V3.3h4.2V5M18.5 14.5h2.2v1.8M7 18.7 6 21.5M17 18.7l1 2.8"/>
+</svg>

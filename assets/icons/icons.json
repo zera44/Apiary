@@ -4,38 +4,462 @@
   "categories": {
     "objects": "Об'єкти на карті",
     "obstacles": "Перешкоди",
-    "ui": "Інтерфейс (кнопки, меню)"
+    "ui": "Інтерфейс (кнопки, меню)",
+    "apiary": "Пасіка (значки для фінансів і складу)"
   },
   "icons": [
-    {"id": "beehive", "file": "objects/beehive.svg", "label": "Вулик", "category": "objects", "pickable": true, "label_en": "Hive"},
-    {"id": "hexagon", "file": "objects/hexagon.svg", "label": "Стільник", "category": "objects", "pickable": true, "label_en": "Honeycomb"},
-    {"id": "mountain", "file": "obstacles/mountain.svg", "label": "Гора", "category": "obstacles", "pickable": true, "variantLabel": "Інше", "label_en": "Mountain", "variantLabel_en": "Other"},
-    {"id": "river", "file": "obstacles/river.svg", "label": "Річка", "category": "obstacles", "pickable": true, "variantLabel": "Річка", "label_en": "River", "variantLabel_en": "River"},
-    {"id": "lake", "file": "obstacles/lake.svg", "label": "Озеро", "category": "obstacles", "pickable": true, "variantLabel": "Озеро", "label_en": "Lake", "variantLabel_en": "Lake"},
-    {"id": "trees", "file": "obstacles/trees.svg", "label": "Дерева", "category": "obstacles", "pickable": true, "variantLabel": "Дерева", "label_en": "Trees", "variantLabel_en": "Trees"},
-    {"id": "houses", "file": "obstacles/houses.svg", "label": "Домівки", "category": "obstacles", "pickable": true, "variantLabel": "Домівки", "label_en": "Houses", "variantLabel_en": "Houses"},
-    {"id": "fence", "file": "obstacles/fence.svg", "label": "Паркан", "category": "obstacles", "pickable": true, "variantLabel": "Паркан", "label_en": "Fence", "variantLabel_en": "Fence"},
-    {"id": "road", "file": "obstacles/road.svg", "label": "Дорога", "category": "obstacles", "pickable": true, "variantLabel": "Дорога", "label_en": "Road", "variantLabel_en": "Road"},
-    {"id": "menu", "file": "ui/menu.svg", "label": "Меню", "category": "ui"},
-    {"id": "qr", "file": "ui/qr.svg", "label": "QR-код", "category": "ui"},
-    {"id": "rotate", "file": "ui/rotate.svg", "label": "Повернути", "category": "ui"},
-    {"id": "trash", "file": "ui/trash.svg", "label": "Видалити", "category": "ui"},
-    {"id": "back_arrow", "file": "ui/back_arrow.svg", "label": "Крок назад", "category": "ui"},
-    {"id": "pencil", "file": "ui/pencil.svg", "label": "Олівець", "category": "ui"},
-    {"id": "eye", "file": "ui/eye.svg", "label": "Око", "category": "ui"},
-    {"id": "plus_circle", "file": "ui/plus_circle.svg", "label": "Додати", "category": "ui"},
-    {"id": "check", "file": "ui/check.svg", "label": "Готово", "category": "ui"},
-    {"id": "lock", "file": "ui/lock.svg", "label": "Замок", "category": "ui"},
-
-    {"id": "beekeeper", "file": "ui/beekeeper.svg", "label": "Пасічник", "category": "ui"},
-    {"id": "camera", "file": "ui/camera.svg", "label": "Фото", "category": "ui"},
-    {"id": "box", "file": "ui/box.svg", "label": "Склад", "category": "ui"},
-    {"id": "move", "file": "ui/move.svg", "label": "Переміщення", "category": "ui"},
-    {"id": "close", "file": "ui/close.svg", "label": "Закрити", "category": "ui"},
-    {"id": "arrow_left", "file": "ui/arrow_left.svg", "label": "Стрілка вліво", "category": "ui"},
-    {"id": "arrow_right", "file": "ui/arrow_right.svg", "label": "Стрілка вправо", "category": "ui"},
-    {"id": "history", "file": "ui/history.svg", "label": "Історія", "category": "ui"},
-    {"id": "apiaries", "file": "ui/apiaries.svg", "label": "Мої пасіки", "category": "ui"},
-    {"id": "feedback", "file": "ui/feedback.svg", "label": "Відгук", "category": "ui"}
+    {
+      "id": "beehive",
+      "file": "objects/beehive.svg",
+      "label": "Вулик",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Hive"
+    },
+    {
+      "id": "hexagon",
+      "file": "objects/hexagon.svg",
+      "label": "Стільник",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Honeycomb"
+    },
+    {
+      "id": "lezhak",
+      "file": "objects/lezhak.svg",
+      "label": "Лежак",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Long hive"
+    },
+    {
+      "id": "nucleus",
+      "file": "objects/nucleus.svg",
+      "label": "Нуклеус",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Nucleus"
+    },
+    {
+      "id": "skep",
+      "file": "objects/skep.svg",
+      "label": "Дуплянка",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Skep"
+    },
+    {
+      "id": "pavilion",
+      "file": "objects/pavilion.svg",
+      "label": "Павільйон",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Bee trailer"
+    },
+    {
+      "id": "swarm",
+      "file": "objects/swarm.svg",
+      "label": "Рій",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Swarm"
+    },
+    {
+      "id": "bee",
+      "file": "objects/bee.svg",
+      "label": "Бджола",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Bee"
+    },
+    {
+      "id": "frame",
+      "file": "objects/frame.svg",
+      "label": "Рамка",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Frame"
+    },
+    {
+      "id": "queen_cell",
+      "file": "objects/queen_cell.svg",
+      "label": "Маточник",
+      "category": "objects",
+      "pickable": true,
+      "label_en": "Queen cell"
+    },
+    {
+      "id": "mountain",
+      "file": "obstacles/mountain.svg",
+      "label": "Гора",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Інше",
+      "label_en": "Mountain",
+      "variantLabel_en": "Other"
+    },
+    {
+      "id": "river",
+      "file": "obstacles/river.svg",
+      "label": "Річка",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Річка",
+      "label_en": "River",
+      "variantLabel_en": "River"
+    },
+    {
+      "id": "lake",
+      "file": "obstacles/lake.svg",
+      "label": "Озеро",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Озеро",
+      "label_en": "Lake",
+      "variantLabel_en": "Lake"
+    },
+    {
+      "id": "drinker",
+      "file": "obstacles/drinker.svg",
+      "label": "Поїлка",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Поїлка",
+      "label_en": "Bee waterer",
+      "variantLabel_en": "Waterer"
+    },
+    {
+      "id": "tree",
+      "file": "obstacles/tree.svg",
+      "label": "Дерево",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Дерево",
+      "label_en": "Tree",
+      "variantLabel_en": "Tree"
+    },
+    {
+      "id": "trees",
+      "file": "obstacles/trees.svg",
+      "label": "Ліс",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Ліс",
+      "label_en": "Forest",
+      "variantLabel_en": "Forest"
+    },
+    {
+      "id": "bushes",
+      "file": "obstacles/bushes.svg",
+      "label": "Кущі",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Кущі",
+      "label_en": "Bushes",
+      "variantLabel_en": "Bushes"
+    },
+    {
+      "id": "honey_plants",
+      "file": "obstacles/honey_plants.svg",
+      "label": "Медоноси",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Медоноси",
+      "label_en": "Honey plants",
+      "variantLabel_en": "Honey plants"
+    },
+    {
+      "id": "field",
+      "file": "obstacles/field.svg",
+      "label": "Поле",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Поле",
+      "label_en": "Field",
+      "variantLabel_en": "Field"
+    },
+    {
+      "id": "houses",
+      "file": "obstacles/houses.svg",
+      "label": "Будинок",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Будинок",
+      "label_en": "House",
+      "variantLabel_en": "House"
+    },
+    {
+      "id": "beekeeper_house",
+      "file": "obstacles/beekeeper_house.svg",
+      "label": "Будиночок пасічника",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Будиночок пасічника",
+      "label_en": "Beekeeper's house",
+      "variantLabel_en": "Beekeeper's house"
+    },
+    {
+      "id": "barn",
+      "file": "obstacles/barn.svg",
+      "label": "Омшаник / сарай",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Омшаник / сарай",
+      "label_en": "Winter shed",
+      "variantLabel_en": "Shed"
+    },
+    {
+      "id": "church",
+      "file": "obstacles/church.svg",
+      "label": "Церква",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Церква",
+      "label_en": "Church",
+      "variantLabel_en": "Church"
+    },
+    {
+      "id": "fence",
+      "file": "obstacles/fence.svg",
+      "label": "Паркан",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Паркан",
+      "label_en": "Fence",
+      "variantLabel_en": "Fence"
+    },
+    {
+      "id": "road",
+      "file": "obstacles/road.svg",
+      "label": "Дорога",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Дорога",
+      "label_en": "Road",
+      "variantLabel_en": "Road"
+    },
+    {
+      "id": "car",
+      "file": "obstacles/car.svg",
+      "label": "Авто",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Авто",
+      "label_en": "Car",
+      "variantLabel_en": "Car"
+    },
+    {
+      "id": "trailer",
+      "file": "obstacles/trailer.svg",
+      "label": "Вагончик",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Вагончик",
+      "label_en": "Trailer",
+      "variantLabel_en": "Trailer"
+    },
+    {
+      "id": "power",
+      "file": "obstacles/power.svg",
+      "label": "Електрика",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Електрика",
+      "label_en": "Power",
+      "variantLabel_en": "Power"
+    },
+    {
+      "id": "cctv",
+      "file": "obstacles/cctv.svg",
+      "label": "Камера",
+      "category": "obstacles",
+      "pickable": true,
+      "variantLabel": "Камера",
+      "label_en": "Camera",
+      "variantLabel_en": "Camera"
+    },
+    {
+      "id": "extractor",
+      "file": "apiary/extractor.svg",
+      "label": "Медогонка",
+      "category": "apiary",
+      "label_en": "Honey extractor"
+    },
+    {
+      "id": "honey_jar",
+      "file": "apiary/honey_jar.svg",
+      "label": "Банка меду",
+      "category": "apiary",
+      "label_en": "Honey jar"
+    },
+    {
+      "id": "smoker",
+      "file": "apiary/smoker.svg",
+      "label": "Димар",
+      "category": "apiary",
+      "label_en": "Smoker"
+    },
+    {
+      "id": "wax",
+      "file": "apiary/wax.svg",
+      "label": "Віск",
+      "category": "apiary",
+      "label_en": "Wax"
+    },
+    {
+      "id": "sugar",
+      "file": "apiary/sugar.svg",
+      "label": "Цукор / сироп",
+      "category": "apiary",
+      "label_en": "Sugar / syrup"
+    },
+    {
+      "id": "treatment",
+      "file": "apiary/treatment.svg",
+      "label": "Обробка",
+      "category": "apiary",
+      "label_en": "Treatment"
+    },
+    {
+      "id": "barrel",
+      "file": "apiary/barrel.svg",
+      "label": "Бочка",
+      "category": "apiary",
+      "label_en": "Barrel"
+    },
+    {
+      "id": "veil",
+      "file": "apiary/veil.svg",
+      "label": "Захисна сітка",
+      "category": "apiary",
+      "label_en": "Bee veil"
+    },
+    {
+      "id": "menu",
+      "file": "ui/menu.svg",
+      "label": "Меню",
+      "category": "ui"
+    },
+    {
+      "id": "qr",
+      "file": "ui/qr.svg",
+      "label": "QR-код",
+      "category": "ui"
+    },
+    {
+      "id": "rotate",
+      "file": "ui/rotate.svg",
+      "label": "Повернути",
+      "category": "ui"
+    },
+    {
+      "id": "trash",
+      "file": "ui/trash.svg",
+      "label": "Видалити",
+      "category": "ui"
+    },
+    {
+      "id": "back_arrow",
+      "file": "ui/back_arrow.svg",
+      "label": "Крок назад",
+      "category": "ui"
+    },
+    {
+      "id": "pencil",
+      "file": "ui/pencil.svg",
+      "label": "Олівець",
+      "category": "ui"
+    },
+    {
+      "id": "eye",
+      "file": "ui/eye.svg",
+      "label": "Око",
+      "category": "ui"
+    },
+    {
+      "id": "plus_circle",
+      "file": "ui/plus_circle.svg",
+      "label": "Додати",
+      "category": "ui"
+    },
+    {
+      "id": "check",
+      "file": "ui/check.svg",
+      "label": "Готово",
+      "category": "ui"
+    },
+    {
+      "id": "lock",
+      "file": "ui/lock.svg",
+      "label": "Замок",
+      "category": "ui"
+    },
+    {
+      "id": "beekeeper",
+      "file": "ui/beekeeper.svg",
+      "label": "Пасічник",
+      "category": "ui"
+    },
+    {
+      "id": "camera",
+      "file": "ui/camera.svg",
+      "label": "Фото",
+      "category": "ui"
+    },
+    {
+      "id": "box",
+      "file": "ui/box.svg",
+      "label": "Склад",
+      "category": "ui"
+    },
+    {
+      "id": "move",
+      "file": "ui/move.svg",
+      "label": "Переміщення",
+      "category": "ui"
+    },
+    {
+      "id": "close",
+      "file": "ui/close.svg",
+      "label": "Закрити",
+      "category": "ui"
+    },
+    {
+      "id": "arrow_left",
+      "file": "ui/arrow_left.svg",
+      "label": "Стрілка вліво",
+      "category": "ui"
+    },
+    {
+      "id": "arrow_right",
+      "file": "ui/arrow_right.svg",
+      "label": "Стрілка вправо",
+      "category": "ui"
+    },
+    {
+      "id": "history",
+      "file": "ui/history.svg",
+      "label": "Історія",
+      "category": "ui"
+    },
+    {
+      "id": "apiaries",
+      "file": "ui/apiaries.svg",
+      "label": "Мої пасіки",
+      "category": "ui"
+    },
+    {
+      "id": "feedback",
+      "file": "ui/feedback.svg",
+      "label": "Відгук",
+      "category": "ui"
+    },
+    {
+      "id": "autorotate",
+      "file": "ui/autorotate.svg",
+      "label": "Автоповорот екрана",
+      "category": "ui",
+      "label_en": "Auto-rotate"
+    }
   ]
 }

@@ -66,6 +66,7 @@ dependencies:
   app_links: ^7.2.2
   speech_to_text: ^7.5.0
   flutter_tts: ^4.2.5
+  flutter_tabler_icons: 1.43.0
 
 dev_dependencies:
   flutter_test:
@@ -87,6 +88,7 @@ flutter:
   assets:
     # іконки застосунку (див. assets/icons/README.md); кожна підпапка — окремий рядок
     - assets/icons/icons.json
+    - assets/icons/apiary/
     - assets/icons/objects/
     - assets/icons/obstacles/
     - assets/icons/ui/

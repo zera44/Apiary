@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Поле</title>
+  <path d="M2 9.5h20"/>
+  <path d="M10.2 9.5 3 20.5M11.4 9.5 8.5 20.5M12.6 9.5 15.5 20.5M13.8 9.5 21 20.5M2 20.5h20"/>
+  <path d="M5 6.5v3M5 6.5c-.8-.4-1-1.200-.6-2M5 6.5c.8-.4 1-1.200.6-2M8 7v2.5M8 7c-.7-.4-.9-1.100-.5-1.800M8 7c.7-.4.9-1.100.5-1.800M16 7v2.5M16 7c-.7-.4-.9-1.100-.5-1.800M16 7c.7-.4.9-1.100.5-1.800M19 6.500v3M19 6.500c-.8-.4-1-1.200-.6-2M19 6.500c.8-.4 1-1.200.6-2"/>
+</svg>
