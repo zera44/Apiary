@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../assistant/assistant_host.dart';
+import '../logic/notify_schedule.dart';
 import '../assistant/assistant_voice.dart';
 import '../data/repository.dart';
 import '../data/sync_api.dart';
@@ -23,6 +24,7 @@ import '../ui/start_screen.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'notify_settings_screen.dart';
+import 'home_screen.dart';
 import 'splash_screen.dart';
 
 /// Налаштування → «Головне»: мова, розмір шрифту, орієнтація екрана, помічник «Пасічник» (і далі -
@@ -48,22 +50,70 @@ class MainSettingsTab extends StatelessWidget {
 }
 
 /// «Сповіщення»: кнопка в екран з часом нагадувань і графіком днів.
-class _NotificationsSection extends StatelessWidget {
+class _NotificationsSection extends StatefulWidget {
   final Repository repo;
   const _NotificationsSection({required this.repo});
+
+  @override
+  State<_NotificationsSection> createState() => _NotificationsSectionState();
+}
+
+class _NotificationsSectionState extends State<_NotificationsSection> {
+  NotifySchedule? _s;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final s = await NotifySchedule.load(widget.repo);
+      if (mounted) setState(() => _s = s);
+    } catch (_) {}
+  }
+
+  String _hhmm(int m) =>
+      '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+
+  /// Поточний режим: «Щодня · 09:00 і 14:00», «5/2 · …», «Вимкнено».
+  String? get _mode {
+    final s = _s;
+    if (s == null) return null;
+    if (!s.enabled) return tr.notifOff;
+    final name = switch (s.mode) {
+      NotifyMode.daily => tr.notifDaily,
+      NotifyMode.w52 => '5/2',
+      NotifyMode.w22 => '2/2',
+      NotifyMode.custom => tr.notifCustom,
+    };
+    return '$name · ${_hhmm(s.morning)} / ${_hhmm(s.repeat)}';
+  }
 
   @override
   Widget build(BuildContext context) => SettingsSection(
         title: tr.notifTitle,
         children: [
+          if (_mode != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(_mode!,
+                  key: const ValueKey('notifications-mode'),
+                  style: TextStyle(
+                      color: AppColors.create, fontSize: 15, fontWeight: FontWeight.w600)),
+            ),
           PillButton(
             key: const ValueKey('notifications-open'),
             text: tr.notifSummary,
             bg: AppColors.darkBtn,
             fg: AppColors.text,
             height: 44,
-            onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: repo))),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => NotifySettingsScreen(repo: widget.repo)));
+              if (mounted) await _load();
+            },
           ),
         ],
       );
@@ -576,8 +626,20 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                   width: double.infinity,
                   onPressed: _busy ? null : _signOut,
                 ),
-              ] else
+              ] else ...[
                 Text(tr.accountGuest, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
+                if (Server.auth != null) ...[
+                  const SizedBox(height: 12),
+                  PillButton(
+                    key: const ValueKey('account-sign-in'),
+                    text: _busy ? tr.signingIn : tr.signInGoogle,
+                    bg: AppColors.accent,
+                    height: 44,
+                    width: double.infinity,
+                    onPressed: _busy ? null : _signInHere,
+                  ),
+                ],
+              ],
             ],
           ),
           SettingsSection(
@@ -646,6 +708,26 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
 
   /// «Вийти»: з підтвердженням; дані лишаються на телефоні, далі - екран
   /// входу.
+  /// Гість входить через Google просто з налаштувань, без повернення на заставку.
+  Future<void> _signInHere() async {
+    final auth = Server.auth;
+    if (auth == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await auth.signIn();
+      HomeScreen.signedInMail = auth.user?.email;
+      await Server.connect(widget.repo, auth);
+    } on SignInCancelled {
+      // передумали - лишаємось як є
+    } on StateError catch (e) {
+      if (mounted) _say(e.message);
+    } catch (_) {
+      if (mounted) _say(tr.signInFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _signOut() async {
     final auth = Server.auth;
     if (auth == null) return;

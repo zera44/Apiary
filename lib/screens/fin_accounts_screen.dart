@@ -103,6 +103,54 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
           if (a.inTotal) (_balances[a.id] ?? 0) * (_rates[a.currency] ?? 0)
       ].fold(0.0, (x, y) => x + y);
 
+  /// Усі рахунки в гривнях, разом з тими, що не входять у «Загалом».
+  double get _totalAll => [
+        for (final a in _accounts) (_balances[a.id] ?? 0) * (_rates[a.currency] ?? 0)
+      ].fold(0.0, (x, y) => x + y);
+
+  /// Аркуш «Деталі балансу»: усі рахунки, включені й невключені в загальну суму.
+  void _showDetails() {
+    final all = _totalAll, inc = _total;
+    Widget row(String label, double v, [IconData? icon]) => Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            const SizedBox(height: 2),
+            Row(children: [
+              if (icon != null) ...[Icon(icon, color: AppColors.create, size: 22), const SizedBox(width: 10)],
+              Text(_money(v),
+                  style: TextStyle(color: AppColors.text, fontSize: 22, fontWeight: FontWeight.w600)),
+            ]),
+          ]),
+        );
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(
+                child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: AppColors.textMuted.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Text(tr.finBalanceDetails,
+                style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w700)),
+            row(tr.finBalanceAll, all),
+            row(tr.finBalanceIncluded, inc, Icons.visibility_outlined),
+            row(tr.finBalanceExcluded, all - inc, Icons.visibility_off_outlined),
+          ]),
+        ),
+      ),
+    );
+  }
+
   bool get _hasForeign => _accounts.any((a) => a.inTotal && a.foreign);
 
   Widget _action(IconData icon, String text, VoidCallback onTap) => Expanded(
@@ -149,10 +197,15 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                 child: !_loaded
                     ? const Center(child: CircularProgressIndicator())
                     : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), children: [
-                        Container(
+                        Material(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(20),
+                          child: InkWell(
+                            key: const ValueKey('fin-total-card'),
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: _showDetails,
+                            child: Padding(
                           padding: const EdgeInsets.fromLTRB(18, 14, 8, 14),
-                          decoration: BoxDecoration(
-                              color: AppColors.card, borderRadius: BorderRadius.circular(20)),
                           child: Row(children: [
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -164,6 +217,16 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                         color: AppColors.text,
                                         fontSize: 28,
                                         fontWeight: FontWeight.w700)),
+                                // усі рахунки разом з невключеними: значок монет і сума
+                                Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      Icon(Icons.toll_outlined, size: 18, color: AppColors.textMuted),
+                                      const SizedBox(width: 6),
+                                      Text(_money(_totalAll),
+                                          style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+                                    ]),
+                                  ),
                                 if (_hasForeign)
                                   Text(tr.finRateNote,
                                       style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
@@ -177,6 +240,8 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                   size: 28),
                             ),
                           ]),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Row(children: [
