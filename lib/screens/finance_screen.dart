@@ -312,8 +312,9 @@ class FinanceScreen extends StatefulWidget {
 
 class _FinanceScreenState extends State<FinanceScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  FinPeriod _period = FinPeriod.month;
-  DateTime _anchor = DateTime.now();
+  // відкриваємо на поточному дні
+  FinPeriod _period = FinPeriod.day;
+  DateTime _anchor = _today();
   DateTime? _customFrom;
   DateTime? _customTo;
   String _kind = kFinExpense;
@@ -393,27 +394,27 @@ class _FinanceScreenState extends State<FinanceScreen> {
     return DateTime(n.year, n.month, n.day);
   }
 
-  // у режимі «День» далі за сьогодні не йдемо: майбутніх днів не показуємо
-  bool get _canGoForward =>
-      _period != FinPeriod.day ||
-      DateTime(_anchor.year, _anchor.month, _anchor.day).isBefore(_today());
+  // у майбутнє (день, тиждень, місяць, рік) не гортаємо: наступний період
+  // має починатися не пізніше сьогодні
+  bool get _canGoForward => !_range.$2.isAfter(_today());
 
   void _shift(int d) {
     final a = _anchor;
+    final DateTime next;
     switch (_period) {
       case FinPeriod.day:
-        final next = DateTime(a.year, a.month, a.day + d);
-        final today = _today();
-        _anchor = next.isAfter(today) ? today : next;
+        next = DateTime(a.year, a.month, a.day + d);
       case FinPeriod.week:
-        _anchor = DateTime(a.year, a.month, a.day + 7 * d);
+        next = DateTime(a.year, a.month, a.day + 7 * d);
       case FinPeriod.month:
-        _anchor = DateTime(a.year, a.month + d, 1);
+        next = DateTime(a.year, a.month + d, 1);
       case FinPeriod.year:
-        _anchor = DateTime(a.year + d, 1, 1);
+        next = DateTime(a.year + d, 1, 1);
       case FinPeriod.custom:
         return;
     }
+    if (d > 0 && !_canGoForward) return;
+    _anchor = next;
     setState(() {});
     _reload();
   }
@@ -432,8 +433,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
     } else {
       setState(() {
         _period = p;
-        if (p == FinPeriod.month) _anchor = DateTime(_anchor.year, _anchor.month, 1);
-        if (p == FinPeriod.day && _anchor.isAfter(_today())) _anchor = _today();
+        // з вкладки на вкладку - завжди поточний день, тиждень, місяць, рік
+        final t = _today();
+        _anchor = p == FinPeriod.month ? DateTime(t.year, t.month, 1) : t;
       });
     }
     _reload();

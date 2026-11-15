@@ -6,12 +6,13 @@ import 'package:apiary/logic/fz2/fz2.dart';
 import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
-import 'package:apiary/screens/finance_screen.dart' show openFinEntry;
+import 'package:apiary/screens/finance_screen.dart' show FinanceScreen, openFinEntry;
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -712,6 +713,46 @@ void main() {
       expect(find.text('Корми'), findsOneWidget);
       expect(find.text('Категорія'), findsOneWidget);
       expect(find.text('Дорога'), findsNothing);
+    });
+  });
+
+  group('екран фінансів: період', () {
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+    }
+
+    bool forwardEnabled(WidgetTester tester) => tester
+        .widget<IconButton>(find.widgetWithIcon(IconButton, TablerIcons.chevron_right))
+        .onPressed != null;
+
+    testWidgets('відкривається на дні; у майбутнє не гортається в жодному періоді, в доході теж',
+        (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinanceScreen(repo: repo)));
+      await settle(tester);
+      final now = DateTime.now();
+      String dd(int v) => v.toString().padLeft(2, '0');
+      expect(find.text('${dd(now.day)}.${dd(now.month)}.${now.year}'), findsOneWidget);
+      for (final kind in ['Витрати', 'Дохід']) {
+        await tester.tap(find.text(kind));
+        await settle(tester);
+        for (final period in ['День', 'Тиждень', 'Місяць', 'Рік']) {
+          await tester.tap(find.text(period));
+          await settle(tester);
+          expect(forwardEnabled(tester), isFalse, reason: '$kind / $period: сьогодні далі не можна');
+          // назад - можна, і звідти вперед знову можна
+          await tester.tap(find.byTooltip('Раніше'));
+          await settle(tester);
+          expect(forwardEnabled(tester), isTrue, reason: '$kind / $period: назад і вперед');
+          await tester.tap(find.byTooltip('Пізніше'));
+          await settle(tester);
+          expect(forwardEnabled(tester), isFalse, reason: '$kind / $period: знову на сьогодні');
+        }
+      }
     });
   });
 }
