@@ -841,6 +841,7 @@ abstract class AppStrings {
   String get catGoesToStockHint;
   String get catFromStockHint;
   String get icon;
+  List<String> get finIconGroups;
   String get categoryDelete;
   String get create;
   String finNotInStock(String name);

@@ -599,26 +599,10 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           ]),
                         ),
                       _label(tr.icon),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Wrap(spacing: 10, runSpacing: 10, children: [
-                          for (final e in kFinAccountIcons.entries)
-                            GestureDetector(
-                              onTap: () => setState(() => _icon = e.key),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: e.key == _icon ? finColor(_color) : AppColors.typeBtn,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(e.value,
-                                    size: 22,
-                                    color: e.key == _icon ? AppColors.bg : AppColors.textMuted),
-                              ),
-                            ),
-                        ]),
-                      ),
+                      FinIconPicker(
+                          selected: _icon,
+                          color: finColor(_color),
+                          onPick: (k) => setState(() => _icon = k)),
                       _label(tr.color),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),

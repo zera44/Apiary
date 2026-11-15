@@ -142,26 +142,10 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                     ]),
                   ),
                 _label(tr.icon),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(spacing: 10, runSpacing: 10, children: [
-                    for (final k in kFinIcons.keys)
-                      GestureDetector(
-                        onTap: () => setState(() => _icon = k),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: k == _icon ? finColor(_color) : AppColors.typeBtn,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(finIcon(k),
-                              size: 22,
-                              color: k == _icon ? AppColors.bg : AppColors.textMuted),
-                        ),
-                      ),
-                  ]),
-                ),
+                FinIconPicker(
+                    selected: _icon,
+                    color: finColor(_color),
+                    onPick: (k) => setState(() => _icon = k)),
                 _label(tr.color),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
