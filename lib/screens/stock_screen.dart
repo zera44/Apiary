@@ -286,16 +286,12 @@ class _StockScreenState extends State<StockScreen> {
   Widget build(BuildContext context) {
     final all = items;
     final list = all;
-    final title = switch (_op) {
-      StockOp.receive || StockOp.writeOff => tr.stockInOut,
-      StockOp.inventory => tr.stocktake,
-    };
     return Scaffold(
       drawer: NavDrawer(repo: widget.repo, current: NavSection.stock),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            NavTopBar(title: title),
+            NavTopBar(title: tr.stock),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
               child: Row(children: [

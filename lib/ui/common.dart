@@ -265,7 +265,9 @@ class TopBar extends StatelessWidget {
 
   Widget _bar(double reserve) {
     // під помічника: шапка вища, праворуч - відступ до кнопки
-    final height = reserve > 0 ? AssistantSlot.headerHeight : 52.0;
+    var height = reserve > 0 ? AssistantSlot.headerHeight : 52.0;
+    // плашка меню вища за 52: без місця під помічника її не можна обрізати
+    if (onTitleTap != null && height < AssistantSlot.headerHeight) height = AssistantSlot.headerHeight;
     final right = reserve > 14 ? reserve : 14.0;
     // меню навігації — як на карті: назва скраю, велика кнопка під нею ліворуч
     if (onBack == null && onMenu != null) {

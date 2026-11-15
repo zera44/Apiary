@@ -46,9 +46,10 @@ class NavDrawer extends StatelessWidget {
       case NavSection.finances:
         nav.push(MaterialPageRoute<void>(builder: (_) => FinanceScreen(repo: repo)));
       case NavSection.history:
+        // пасік може ще не бути - історія відкривається й без звіту по пасіці
         unawaited(repo.startApiary().then((a) async {
           final apiary = a ?? (await repo.listApiaries()).firstOrNull;
-          if (apiary == null || !nav.mounted) return;
+          if (!nav.mounted) return;
           nav.push(MaterialPageRoute<void>(
               builder: (_) => HistoryHubScreen(repo: repo, apiary: apiary)));
         }));
