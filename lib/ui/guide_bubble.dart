@@ -14,7 +14,7 @@ import '../l10n/l10n.dart';
 /// посередині кнопки.
 const kLessonOnButtonBottom = 58.0;
 const kLessonOnButtonLeft = 31.0;
-const kLessonBeekeeper = 'assets/guide/beekeeper_nohive.webp';
+const kLessonBeekeeper = 'assets/guide/beekeeper_on_toggle.webp';
 
 /// Коли кнопки «Редагувати» немає (редагування, вибір шаблону, форма огляду)
 /// — пасічник спирається на свою «стійку» (малюнок у тому ж масштабі, вищий).
