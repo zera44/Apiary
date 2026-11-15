@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../ui/common.dart';
@@ -41,7 +42,7 @@ class _FinPickCategoryScreenState extends State<FinPickCategoryScreen> {
                 style: TextStyle(color: AppColors.text),
                 decoration: InputDecoration(
                   hintText: tr.searchHint,
-                  prefixIcon: Icon(Icons.search, color: AppColors.textMuted),
+                  prefixIcon: Icon(TablerIcons.search, color: AppColors.textMuted),
                 ),
                 onChanged: (v) => setState(() => _q = v),
               ),

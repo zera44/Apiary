@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../assistant/assistant_host.dart';
 import '../logic/notify_schedule.dart';
@@ -17,6 +18,7 @@ import '../services/receipt_photo_share.dart';
 import '../services/reminders.dart';
 import '../services/server_backups.dart';
 import '../ui/common.dart';
+import '../ui/icons.dart';
 import '../ui/security_controls.dart';
 import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
@@ -148,7 +150,7 @@ class _LanguageSection extends StatelessWidget {
                           fontWeight:
                               e.key == tr.languageCode ? FontWeight.w700 : FontWeight.w400)),
                 ),
-                if (e.key == tr.languageCode) Icon(Icons.check, color: AppColors.create),
+                if (e.key == tr.languageCode) Icon(TablerIcons.check, color: AppColors.create),
               ]),
             ),
         ],
@@ -195,11 +197,11 @@ class _StartScreenSection extends StatefulWidget {
   const _StartScreenSection({required this.repo});
 
   static const icons = [
-    Icons.home_outlined,
-    Icons.qr_code_scanner,
-    Icons.map_outlined,
-    Icons.inventory_2_outlined,
-    Icons.account_balance_wallet_outlined,
+    TablerIcons.home,
+    TablerIcons.scan,
+    TablerIcons.map,
+    TablerIcons.package,
+    TablerIcons.wallet,
   ];
 
   @override
@@ -235,7 +237,7 @@ class _StartScreenSectionState extends State<_StartScreenSection> {
                           fontSize: 16,
                           fontWeight: s == current ? FontWeight.w700 : FontWeight.w400)),
                 ),
-                if (s == current) Icon(Icons.check, color: AppColors.create),
+                if (s == current) Icon(TablerIcons.check, color: AppColors.create),
               ]),
             ),
         ],
@@ -486,7 +488,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
             ),
             for (final x in list)
               ListTile(
-                leading: Icon(Icons.cloud_download_outlined, color: AppColors.text),
+                leading: Icon(TablerIcons.cloud_download, color: AppColors.text),
                 title: Text(tr.serverBackupItem(formatWhen(x.createdAt), tr.fileSize(x.size)),
                     style: TextStyle(color: AppColors.text)),
                 onTap: () => Navigator.pop(ctx, x),
@@ -691,7 +693,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
             title: tr.privacySection,
             children: [
               _AccountLink(
-                icon: Icons.privacy_tip_outlined,
+                icon: TablerIcons.shield_lock,
                 text: tr.privacyPolicy,
                 color: AppColors.text,
                 onTap: () => showDialog<void>(
@@ -708,7 +710,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
               ),
               if (Server.auth?.user != null)
                 _AccountLink(
-                  icon: Icons.delete_outline,
+                  icon: TablerIcons.trash,
                   text: tr.accountDelete,
                   color: AppColors.danger,
                   onTap: _busy ? null : _deleteAccount,
@@ -876,7 +878,7 @@ class _OrientationSection extends StatelessWidget {
   final Repository repo;
   const _OrientationSection({required this.repo});
 
-  static const _icons = [Icons.screen_rotation, Icons.stay_current_portrait, Icons.stay_current_landscape];
+  static const _icons = [null, TablerIcons.device_mobile, TablerIcons.device_mobile_rotated];
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<ScreenOrientation>(
@@ -908,8 +910,11 @@ class _OrientationSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(_icons[o.index],
-                              color: o == current ? AppColors.bg : AppColors.text, size: 26),
+                          _icons[o.index] == null
+                              ? AppIcon('autorotate',
+                                  color: o == current ? AppColors.bg : AppColors.text, size: 26)
+                              : Icon(_icons[o.index],
+                                  color: o == current ? AppColors.bg : AppColors.text, size: 26),
                           const SizedBox(height: 4),
                           FittedBox(
                             fit: BoxFit.scaleDown,
@@ -976,7 +981,7 @@ class _AccountCard extends StatelessWidget {
                 style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
             const SizedBox(height: 4),
             Row(children: [
-              Icon(Icons.verified_user_outlined, size: 14, color: AppColors.create),
+              Icon(TablerIcons.shield_check, size: 14, color: AppColors.create),
               const SizedBox(width: 4),
               Text(tr.accountSignedInVia, style: TextStyle(color: AppColors.create, fontSize: 12)),
             ]),
@@ -1005,7 +1010,7 @@ class _AccountLink extends StatelessWidget {
             Icon(icon, size: 20, color: color),
             const SizedBox(width: 10),
             Expanded(child: Text(text, style: TextStyle(color: color, fontSize: 14.5))),
-            Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+            Icon(TablerIcons.chevron_right, size: 20, color: AppColors.textMuted),
           ]),
         ),
       );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -101,7 +102,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             const SizedBox(width: 8),
             IconButton(
               tooltip: tr.clearFilter,
-              icon: Icon(Icons.close, color: AppColors.text),
+              icon: Icon(TablerIcons.x, color: AppColors.text),
               onPressed: () async {
                 _entity = null;
                 await _load();

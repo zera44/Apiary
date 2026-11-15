@@ -10,6 +10,7 @@ import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -141,7 +142,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantRobo), findsOneWidget);
     expect(find.text(tr.assistantRoboLocked), findsOneWidget);
-    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+    expect(find.byIcon(TablerIcons.lock), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('persona-opus')));
     await settle(tester);
     expect(AssistantPrefs.persona.value, AssistantPersona.bear);

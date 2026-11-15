@@ -49,5 +49,3 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 - beekeeper_scheming.webp — «задумує» назву параметра;
 - beekeeper_surprised.webp — здивований (нова група, фінал уроку);
 - beekeeper_thinking.webp — замислений (назва групи «Обходи»);
-- continue_with_sign.webp — «Продовжити» з табличкою «Завершити» на мотузках;
-- button_wide.webp — широка кнопка «Завершити» в кінці уроку.

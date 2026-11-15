@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
@@ -95,7 +96,7 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(color: AppColors.text, fontSize: 16))),
                                   if (c.toStock)
-                                    Icon(Icons.inventory_2_outlined,
+                                    Icon(TablerIcons.package,
                                         size: 20, color: AppColors.textMuted),
                                 ]),
                               ),
@@ -119,7 +120,7 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
                     height: 64,
                     child: Tooltip(
                         message: tr.categoryNew,
-                        child: const Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                        child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                   ),
                 ),
               ),

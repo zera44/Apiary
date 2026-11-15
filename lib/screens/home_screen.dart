@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../assistant/assistant_chat_screen.dart';
 import '../assistant/assistant_queue.dart';
@@ -332,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final tiles = IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _Tile(
-          icon: Icon(Icons.account_balance_wallet_outlined, size: 30, color: AppColors.text),
+          icon: Icon(TablerIcons.wallet, size: 30, color: AppColors.text),
           label: tr.finances,
           onTap: () => push(FinanceScreen(repo: repo)),
           // швидка витрата: після збереження лишаємось у фінансах, а не на головному
@@ -348,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
           label: tr.stock,
           onTap: () => push(StockScreen(repo: repo))),
       _Tile(
-          icon: Icon(Icons.school_outlined, size: 30, color: AppColors.text),
+          icon: Icon(TablerIcons.school, size: 30, color: AppColors.text),
           label: tr.tutorial,
           onTap: () => push(TutorialScreen(realRepo: repo))),
       _Tile(
@@ -708,7 +709,7 @@ class _AdvisorState extends State<_Advisor> {
                 title: Text(d.t.name, style: TextStyle(color: AppColors.text)),
                 subtitle: Text(d.t.apiaryName.isEmpty ? tr.myApiary : d.t.apiaryName,
                     style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
+                trailing: Icon(TablerIcons.chevron_right, color: AppColors.textMuted),
                 onTap: () => Navigator.pop(ctx, d.t),
               ),
           ]),
@@ -861,7 +862,7 @@ class _AdvisorState extends State<_Advisor> {
                     onTap: () => setState(() => _i++),
                     child: Padding(
                       padding: const EdgeInsets.all(2),
-                      child: Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+                      child: Icon(TablerIcons.chevron_right, size: 20, color: AppColors.textMuted),
                     ),
                   ),
               ]),

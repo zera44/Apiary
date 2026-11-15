@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
@@ -127,7 +128,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                       border: Border.all(color: _toStock ? AppColors.addObject : AppColors.darkBtn),
                     ),
                     child: Row(children: [
-                      Icon(Icons.inventory_2_outlined, color: AppColors.addObject),
+                      Icon(TablerIcons.package, color: AppColors.addObject),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -142,26 +143,10 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                     ]),
                   ),
                 _label(tr.icon),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(spacing: 10, runSpacing: 10, children: [
-                    for (final k in kFinIcons.keys)
-                      GestureDetector(
-                        onTap: () => setState(() => _icon = k),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: k == _icon ? finColor(_color) : AppColors.typeBtn,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(finIcon(k),
-                              size: 22,
-                              color: k == _icon ? AppColors.bg : AppColors.textMuted),
-                        ),
-                      ),
-                  ]),
-                ),
+                FinIconPicker(
+                    selected: _icon,
+                    color: finColor(_color),
+                    onPick: (k) => setState(() => _icon = k)),
                 _label(tr.color),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

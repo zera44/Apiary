@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data/fin_accounts.dart';
@@ -143,8 +144,8 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
             Text(tr.finBalanceDetails,
                 style: TextStyle(color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w700)),
             row(tr.finBalanceAll, all),
-            row(tr.finBalanceIncluded, inc, Icons.visibility_outlined),
-            row(tr.finBalanceExcluded, all - inc, Icons.visibility_off_outlined),
+            row(tr.finBalanceIncluded, inc, TablerIcons.eye),
+            row(tr.finBalanceExcluded, all - inc, TablerIcons.eye_off),
           ]),
         ),
       ),
@@ -221,7 +222,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                 Padding(
                                     padding: const EdgeInsets.only(top: 2),
                                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      Icon(Icons.toll_outlined, size: 18, color: AppColors.textMuted),
+                                      Icon(TablerIcons.coins, size: 18, color: AppColors.textMuted),
                                       const SizedBox(width: 6),
                                       Text(_money(_totalAll),
                                           style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
@@ -235,7 +236,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                             IconButton(
                               onPressed: () => setState(() => _hidden = !_hidden),
                               icon: Icon(
-                                  _hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                  _hidden ? TablerIcons.eye_off : TablerIcons.eye,
                                   color: AppColors.create,
                                   size: 28),
                             ),
@@ -245,11 +246,11 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                         ),
                         const SizedBox(height: 12),
                         Row(children: [
-                          _action(Icons.history, tr.finTransfers, () => _transfers()),
+                          _action(TablerIcons.history, tr.finTransfers, () => _transfers()),
                           const SizedBox(width: 12),
-                          _action(Icons.swap_horiz, tr.finTransferNew, () => _transfers(create: true)),
+                          _action(TablerIcons.arrows_left_right, tr.finTransferNew, () => _transfers(create: true)),
                           const SizedBox(width: 12),
-                          _action(Icons.upload_file, tr.finImport, _import),
+                          _action(TablerIcons.file_upload, tr.finImport, _import),
                         ]),
                         const SizedBox(height: 14),
                         // довге натискання - перетягнути рахунок на нове місце
@@ -285,7 +286,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                                                   alignment: PlaceholderAlignment.middle,
                                                   child: Padding(
                                                       padding: const EdgeInsets.only(left: 6),
-                                                      child: Icon(Icons.visibility_off_outlined,
+                                                      child: Icon(TablerIcons.eye_off,
                                                           size: 18, color: AppColors.textMuted))),
                                           ]),
                                           maxLines: 2,
@@ -327,7 +328,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
                     height: 64,
                     child: Tooltip(
                         message: tr.finAccountNew,
-                        child: const Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                        child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                   ),
                 ),
               ),
@@ -567,7 +568,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           border: Border.all(color: _inTotal ? AppColors.create : AppColors.darkBtn),
                         ),
                         child: Row(children: [
-                          Icon(Icons.functions, color: AppColors.create),
+                          Icon(TablerIcons.sum, color: AppColors.create),
                           const SizedBox(width: 12),
                           Expanded(
                               child: Text(tr.finInTotal,
@@ -585,7 +586,7 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                             border: Border.all(color: _adjustInStats ? AppColors.addObject : AppColors.darkBtn),
                           ),
                           child: Row(children: [
-                            Icon(Icons.bar_chart, color: AppColors.addObject),
+                            Icon(TablerIcons.chart_bar, color: AppColors.addObject),
                             const SizedBox(width: 12),
                             Expanded(
                                 child: Text(tr.finAdjustInStats,
@@ -599,26 +600,10 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                           ]),
                         ),
                       _label(tr.icon),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Wrap(spacing: 10, runSpacing: 10, children: [
-                          for (final e in kFinAccountIcons.entries)
-                            GestureDetector(
-                              onTap: () => setState(() => _icon = e.key),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: e.key == _icon ? finColor(_color) : AppColors.typeBtn,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(e.value,
-                                    size: 22,
-                                    color: e.key == _icon ? AppColors.bg : AppColors.textMuted),
-                              ),
-                            ),
-                        ]),
-                      ),
+                      FinIconPicker(
+                          selected: _icon,
+                          color: finColor(_color),
+                          onPick: (k) => setState(() => _icon = k)),
                       _label(tr.color),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),

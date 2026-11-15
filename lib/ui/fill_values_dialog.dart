@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
 import '../data/models.dart';
@@ -615,7 +616,7 @@ class _FillDialogState extends State<_FillDialog> {
                         color: dateText.isEmpty ? AppColors.textMuted : AppColors.text,
                         fontSize: 15)),
               ),
-              Icon(Icons.calendar_today, size: 16, color: AppColors.textMuted),
+              Icon(TablerIcons.calendar, size: 16, color: AppColors.textMuted),
             ]),
           ),
         );
@@ -741,7 +742,7 @@ class _FillDialogState extends State<_FillDialog> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(children: [
-          Icon(Icons.check_circle_outline, size: 18, color: AppColors.create),
+          Icon(TablerIcons.check, size: 18, color: AppColors.create),
           const SizedBox(width: 8),
           Expanded(
               child: Text(widget.notice!, style: TextStyle(color: AppColors.text, fontSize: 13))),
@@ -783,14 +784,14 @@ class _FillDialogState extends State<_FillDialog> {
         if (widget.onHistory != null)
           IconButton(
             tooltip: tr.history,
-            icon: Icon(Icons.history, color: AppColors.text),
+            icon: Icon(TablerIcons.history, color: AppColors.text),
             onPressed: widget.onHistory,
           ),
         // обхід: вийти з огляду (кнопки внизу ведуть до наступного вулика)
         if (widget.offerNext)
           IconButton(
             tooltip: tr.close,
-            icon: Icon(Icons.close, color: AppColors.text),
+            icon: Icon(TablerIcons.x, color: AppColors.text),
             onPressed: _saving ? null : () => Navigator.pop(context),
           ),
       ]),
@@ -853,7 +854,7 @@ class _FillDialogState extends State<_FillDialog> {
                               ? _save
                               : () => _save(next: true),
                       child: const SizedBox.square(
-                          dimension: 50, child: Icon(Icons.save, color: Colors.white, size: 28)),
+                          dimension: 50, child: Icon(TablerIcons.device_floppy, color: Colors.white, size: 28)),
                     ),
                   ),
                 ),

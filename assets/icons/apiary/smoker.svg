@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Димар</title>
+  <rect x="7.5" y="10" width="7" height="11" rx="1"/>
+  <path d="M7.5 10 9 7.2h4L14.5 10M10.3 7.2l.4-2h1.6l.4 2M14.5 12.5l5-1.8v8.6l-5-1.8M7.5 14h7"/>
+  <path d="M11.5 3.3c-.9-.9.6-1.4 0-2.3M14.3 4.3c.9-.8-.2-1.5.5-2.3"/>
+</svg>

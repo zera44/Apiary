@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -108,12 +109,12 @@ class _QrSectionScreenState extends State<QrSectionScreen> {
             ),
             Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
-            _drawerItem(Icons.qr_code_scanner, tr.scan, () => _menu(_scan)),
-            _drawerItem(Icons.qr_code_2, tr.generate, () => _menu(_generate)),
-            _drawerItem(Icons.format_list_numbered, tr.qrBindRow, () => _menu(_bindRow)),
+            _drawerItem(TablerIcons.scan, tr.scan, () => _menu(_scan)),
+            _drawerItem(TablerIcons.qrcode, tr.generate, () => _menu(_generate)),
+            _drawerItem(TablerIcons.list_numbers, tr.qrBindRow, () => _menu(_bindRow)),
             const Spacer(),
             Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
-            _drawerItem(Icons.undo, tr.finBackToApiary, () {
+            _drawerItem(TablerIcons.arrow_back_up, tr.finBackToApiary, () {
               Navigator.of(context).pop(); // меню
               Navigator.of(context).pop(); // розділ
             }),
@@ -127,9 +128,9 @@ class _QrSectionScreenState extends State<QrSectionScreen> {
             TopBar(title: tr.qrCode, onTitleTap: () => _key.currentState?.openDrawer()),
             Expanded(
               child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 16), children: [
-                _card(Icons.qr_code_scanner, tr.scan, tr.qrScanHint, _scan),
-                _card(Icons.qr_code_2, tr.generate, tr.qrGenerateHint, _generate),
-                _card(Icons.format_list_numbered, tr.qrBindRow, tr.qrBindRowHint, _bindRow),
+                _card(TablerIcons.scan, tr.scan, tr.qrScanHint, _scan),
+                _card(TablerIcons.qrcode, tr.generate, tr.qrGenerateHint, _generate),
+                _card(TablerIcons.list_numbers, tr.qrBindRow, tr.qrBindRowHint, _bindRow),
               ]),
             ),
           ]),

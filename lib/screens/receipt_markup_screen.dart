@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../l10n/l10n.dart';
 import '../logic/fz2/fz2.dart';
@@ -127,7 +128,7 @@ class _FullScreenReceipt extends StatelessWidget {
                 tooltip: tr.back,
                 style: IconButton.styleFrom(
                     backgroundColor: Colors.black54, minimumSize: const Size(48, 48)),
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                icon: const Icon(TablerIcons.arrow_left, color: Colors.white),
                 onPressed: () => Navigator.pop(context),
               ),
             ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../data/models.dart';
@@ -2111,7 +2112,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               key: const ValueKey('bind-close'),
               tooltip: tr.close,
               visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.close, color: AppColors.text),
+              icon: Icon(TablerIcons.x, color: AppColors.text),
               onPressed: _bindExit,
             ),
           ]),
@@ -2653,7 +2654,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                       height: 52,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.qr_code_scanner,
+                        Icon(TablerIcons.scan,
                             size: 24, color: _dueHere > 0 ? Colors.white : AppColors.text),
                         const SizedBox(width: 8),
                         Text(tr.scan,

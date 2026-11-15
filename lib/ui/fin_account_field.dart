@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/fin_accounts.dart';
 import '../l10n/l10n.dart';
@@ -119,7 +120,7 @@ class FinAccountField extends StatelessWidget {
                               color: balance! < 0 ? AppColors.danger : AppColors.textMuted, fontSize: 12)),
                   ]),
                 ),
-                Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
+                Icon(TablerIcons.chevron_down, color: AppColors.textMuted),
               ]),
             ),
           ),

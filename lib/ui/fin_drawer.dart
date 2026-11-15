@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
@@ -75,7 +76,7 @@ class FinDrawer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
             child: Row(children: [
-              Icon(Icons.account_balance_wallet_outlined, color: AppColors.text, size: 32),
+              Icon(TablerIcons.wallet, color: AppColors.text, size: 32),
               const SizedBox(width: 16),
               Text(tr.finances,
                   style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800)),
@@ -83,15 +84,15 @@ class FinDrawer extends StatelessWidget {
           ),
           Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
           const SizedBox(height: 8),
-          item(FinSection.home, Icons.donut_large_outlined, tr.finHome),
-          item(FinSection.accounts, Icons.account_balance_outlined, tr.finAccounts),
-          item(FinSection.stats, Icons.bar_chart_rounded, tr.finStats),
-          item(FinSection.categories, Icons.view_list_outlined, tr.finCategories),
-          item(FinSection.ops, Icons.receipt_long_outlined, tr.finOps),
+          item(FinSection.home, TablerIcons.chart_donut, tr.finHome),
+          item(FinSection.accounts, TablerIcons.building_bank, tr.finAccounts),
+          item(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
+          item(FinSection.categories, TablerIcons.list, tr.finCategories),
+          item(FinSection.ops, TablerIcons.receipt, tr.finOps),
           const Spacer(),
           Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
           ListTile(
-            leading: Icon(Icons.undo, color: AppColors.text, size: 28),
+            leading: Icon(TablerIcons.arrow_back_up, color: AppColors.text, size: 28),
             title: Text(tr.finBackToApiary, style: TextStyle(color: AppColors.text, fontSize: 16)),
             onTap: () => _toApiary(context),
           ),

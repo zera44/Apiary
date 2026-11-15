@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -161,7 +162,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
                           onTap: () => HelpersScreen.open(context, widget.repo),
                           child: SizedBox.square(
                               dimension: 34,
-                              child: Icon(Icons.person_add_alt_1, size: 20, color: AppColors.text)),
+                              child: Icon(TablerIcons.user_plus, size: 20, color: AppColors.text)),
                         ),
                       ),
                     ),

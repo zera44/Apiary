@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Бджола</title>
+  <circle cx="6" cy="13.5" r="2.3"/>
+  <ellipse cx="13.3" cy="14" rx="5.3" ry="3.9"/>
+  <path d="M11.6 10.4v7.2M14.9 10.4v7.2M18.6 14l2.6.6"/>
+  <path d="M11.5 10.2C9 7.5 9.3 4 11.3 4s2.2 3.5.7 6.2M13.6 10.2c.8-3.6 3.6-5.2 5.1-4.2s-.9 3.8-5.1 4.2"/>
+  <path d="M5 11.4 3.8 8.6M6.8 11.3 7.6 8.7M10.6 17.7l-1 2.3M13.3 18v2.4M16 17.5l1 2.2"/>
+</svg>

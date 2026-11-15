@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -502,6 +503,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
     // перемикач угорі показує, де ми, і теж гортає
     var tab = 0;
     final pages = PageController();
+    final pageScroll = {'picker-hive': ScrollController(), 'picker-obstacle': ScrollController()};
     final hiveIcons = AppIcons.pickableIn('objects');
     final picked = await showDialog<(String, String?)>(
       context: context,
@@ -515,11 +517,18 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
               radius: 14,
               child: Align(
                 alignment: Alignment.topCenter,
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: choices,
+                child: Scrollbar(
+                  controller: pageScroll[name],
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: pageScroll[name],
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: choices,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -560,7 +569,9 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                   // висота картки - за найбільшим набором (стільки рядків по 48)
                   LayoutBuilder(builder: (context, box) {
                     final perRow = ((box.maxWidth + 8) / 56).floor().clamp(1, 99);
-                    final rows = (obstacles.length / perRow).ceil();
+                    // більше трьох рядків - гортається всередині картки, щоб вікно
+                    // влазило на малий екран разом з підказкою уроку
+                    final rows = (obstacles.length / perRow).ceil().clamp(1, 2);
                     return SizedBox(
                       height: rows * 56 - 8,
                       child: LessonTarget(
@@ -983,7 +994,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen>
                       child: InkWell(
                         onTap: _save,
                         child: const SizedBox.square(
-                            dimension: 46, child: Icon(Icons.save, color: Colors.white, size: 26)),
+                            dimension: 46, child: Icon(TablerIcons.device_floppy, color: Colors.white, size: 26)),
                       ),
                     ),
                   ),

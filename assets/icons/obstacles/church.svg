@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <title>Церква</title>
+  <path d="M12 1.800v3M10.700 3h2.600"/>
+  <path d="M12 4.800c-2 1.400-3 2.900-3 4.400h6c0-1.500-1-3-3-4.400z"/>
+  <path d="M9.500 9.200h5V12h-5zM6 12h12v9H6zM6 12l-2 2.500M18 12l2 2.500"/>
+  <path d="M10.500 21v-3a1.500 1.500 0 0 1 3 0v3M3 21h18"/>
+</svg>

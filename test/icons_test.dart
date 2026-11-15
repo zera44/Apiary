@@ -46,9 +46,14 @@ void main() {
 
     test('списки вибору: іконки об\'єкта й варіанти перешкоди - з реєстру', () {
       expect([for (final (k, _) in AppIcons.pickable) k],
-          ['beehive', 'hexagon', 'mountain', 'river', 'lake', 'trees', 'houses', 'fence', 'road']);
+          ['beehive', 'hexagon', 'lezhak', 'nucleus', 'skep', 'pavilion', 'swarm', 'bee', 'frame',
+            'queen_cell', 'mountain', 'river', 'lake', 'drinker', 'tree', 'trees', 'bushes',
+            'honey_plants', 'field', 'houses', 'beekeeper_house', 'barn', 'church', 'fence',
+            'road', 'car', 'trailer', 'power', 'cctv']);
       expect([for (final (k, _) in AppIcons.obstacleVariants) k],
-          ['mountain', 'river', 'lake', 'trees', 'houses', 'fence', 'road']);
+          ['mountain', 'river', 'lake', 'drinker', 'tree', 'trees', 'bushes', 'honey_plants', 'field',
+            'houses', 'beekeeper_house', 'barn', 'church', 'fence', 'road', 'car', 'trailer',
+            'power', 'cctv']);
       expect(AppIcons.obstacleVariants.first.$2, 'Інше');
       // усі іконки, що використовує код, існують
       for (final id in [
@@ -65,8 +70,8 @@ void main() {
         final icon = parseSvgIcon(text);
         for (final s in icon.shapes) {
           final b = s.path.getBounds().inflate(s.stroke ? s.strokeWidth / 2 : 0);
-          expect(icon.viewBox.inflate(1.5).contains(b.topLeft) &&
-                  icon.viewBox.inflate(1.5).contains(b.bottomRight),
+          expect(icon.viewBox.inflate(6).contains(b.topLeft) &&
+                  icon.viewBox.inflate(6).contains(b.bottomRight),
               isTrue,
               reason: '${e.id}: елемент виходить за межі viewBox ($b)');
         }

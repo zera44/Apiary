@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import 'theme.dart';
 import '../l10n/l10n.dart';
@@ -69,8 +70,8 @@ class ModeToggle extends StatelessWidget {
           ),
         ),
         Row(mainAxisSize: MainAxisSize.min, children: [
-          seg(tr.workMode, Icons.visibility_outlined, !editing),
-          seg(tr.editing, Icons.edit_outlined, editing),
+          seg(tr.workMode, TablerIcons.eye, !editing),
+          seg(tr.editing, TablerIcons.pencil, editing),
         ]),
       ]),
       ),

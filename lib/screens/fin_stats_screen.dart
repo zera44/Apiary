@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
@@ -95,7 +96,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                             IconButton(
                                 onPressed: () => _shift(-1),
                                 tooltip: tr.earlier,
-                                icon: Icon(Icons.chevron_left, color: AppColors.text)),
+                                icon: Icon(TablerIcons.chevron_left, color: AppColors.text)),
                             Text('$_year',
                                 style: TextStyle(
                                     color: AppColors.text,
@@ -104,7 +105,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                             IconButton(
                                 onPressed: () => _shift(1),
                                 tooltip: tr.later,
-                                icon: Icon(Icons.chevron_right, color: AppColors.text)),
+                                icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
                           ]),
                           SizedBox(
                             height: 220,
