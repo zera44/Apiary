@@ -1,26 +1,189 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../logic/stock_format.dart';
+import 'icons.dart';
 import 'theme.dart';
 import '../l10n/l10n.dart';
 
-/// Значки категорій фінансів (ключ зберігається в базі).
-const Map<String, IconData> kFinIcons = {
-  'feed': Icons.shopping_basket_outlined,
-  'medicine': Icons.medication_outlined,
-  'frame': Icons.grid_view,
-  'honey': Icons.hexagon_outlined,
-  'jar': Icons.science_outlined,
-  'car': Icons.directions_car_outlined,
-  'tool': Icons.build_outlined,
-  'drop': Icons.water_drop_outlined,
-  'scale': Icons.scale_outlined,
-  'home': Icons.home_outlined,
-  'doc': Icons.receipt_long_outlined,
-  'other': Icons.more_horiz,
+/// Значки категорій фінансів (ключ зберігається в базі). Значення: [IconData]
+/// з Tabler або назва власного значка з реєстру (assets/icons).
+const Map<String, Object> kFinIcons = {
+  'feed': TablerIcons.basket,
+  'medicine': TablerIcons.pill,
+  'frame': 'frame',
+  'honey': 'hexagon',
+  'jar': 'honey_jar',
+  'car': TablerIcons.car,
+  'tool': TablerIcons.tool,
+  'drop': TablerIcons.droplet,
+  'scale': TablerIcons.scale,
+  'home': TablerIcons.home,
+  'doc': TablerIcons.receipt,
+  'other': TablerIcons.dots,
 };
 
+/// Значки рахунків (гаманців).
+const Map<String, Object> kFinAccountIcons = {
+  'payments': TablerIcons.cash,
+  'card': TablerIcons.credit_card,
+  'bank': TablerIcons.building_bank,
+  'savings': TablerIcons.pig_money,
+  'wallet': TablerIcons.wallet,
+  'safe': TablerIcons.lock,
+};
+
+/// Каталог значків за групами (назви груп - `tr.finIconGroups`, у тому ж
+/// порядку). Ключ зберігається в базі, тож наявні ключі не змінюємо.
+const List<Map<String, Object>> kFinIconGroups = [
+  // Гроші й банки
+  {
+    'payments': TablerIcons.cash,
+    'card': TablerIcons.credit_card,
+    'bank': TablerIcons.building_bank,
+    'savings': TablerIcons.pig_money,
+    'wallet': TablerIcons.wallet,
+    'safe': TablerIcons.lock,
+    'dollar': TablerIcons.currency_dollar,
+    'euro': TablerIcons.currency_euro,
+    'hryvnia': TablerIcons.currency_hryvnia,
+    'coin': TablerIcons.coin,
+    'coins': TablerIcons.coins,
+    'exchange': TablerIcons.arrows_left_right,
+    'phone_pay': TablerIcons.device_mobile,
+    'contactless': TablerIcons.credit_card_pay,
+    'invest': TablerIcons.chart_line,
+    'percent': TablerIcons.percentage,
+    'shield': TablerIcons.shield,
+    'briefcase': TablerIcons.briefcase,
+    'gift_card': TablerIcons.gift_card,
+    'group': TablerIcons.topology_star,
+    'gift_money': TablerIcons.gift,
+    'calc': TablerIcons.calculator,
+  },
+  // Пасіка
+  {
+    'hive': 'beehive',
+    'skep': 'skep',
+    'frame': 'frame',
+    'extractor': 'extractor',
+    'jar': 'honey_jar',
+    'smoker': 'smoker',
+    'queen_cell': 'queen_cell',
+    'wax': 'wax',
+    'sugar': 'sugar',
+    'treatment': 'treatment',
+    'barrel': 'barrel',
+    'flower': 'honey_plants',
+    'veil': 'veil',
+    'bee': 'bee',
+    'honey': 'hexagon',
+    'feed': TablerIcons.basket,
+    'medicine': TablerIcons.pill,
+    'drop': TablerIcons.droplet,
+    'scale': TablerIcons.scale,
+    'tool': TablerIcons.tool,
+  },
+  // Ферма
+  {
+    'tractor': TablerIcons.tractor,
+    'tree': TablerIcons.tree,
+    'trees': TablerIcons.trees,
+    'sprout': TablerIcons.seeding,
+    'barn': TablerIcons.building_warehouse,
+    'fence': TablerIcons.fence,
+    'apple': TablerIcons.apple,
+    'factory': TablerIcons.building_factory,
+  },
+  // Транспорт
+  {
+    'car': TablerIcons.car,
+    'fuel': TablerIcons.gas_station,
+    'truck': TablerIcons.truck,
+    'train': TablerIcons.train,
+    'bus': TablerIcons.bus,
+    'moto': TablerIcons.motorbike,
+    'bike': TablerIcons.bike,
+    'plane': TablerIcons.plane,
+    'parking': TablerIcons.parking,
+    'garage': TablerIcons.car_garage,
+    'ship': TablerIcons.ship,
+  },
+  // Дім і комуналка
+  {
+    'home': TablerIcons.home,
+    'cottage': TablerIcons.building_cottage,
+    'light': TablerIcons.bulb,
+    'fire': TablerIcons.flame,
+    'wifi': TablerIcons.wifi,
+    'phone': TablerIcons.phone,
+    'heat': TablerIcons.temperature,
+    'repair': TablerIcons.hammer,
+    'tools': TablerIcons.tools,
+    'plug': TablerIcons.plug,
+    'doc': TablerIcons.receipt,
+  },
+  // Покупки й їжа
+  {
+    'cart': TablerIcons.shopping_cart,
+    'store': TablerIcons.building_store,
+    'shirt': TablerIcons.shirt,
+    'phone_buy': TablerIcons.device_mobile,
+    'devices': TablerIcons.device_laptop,
+    'food': TablerIcons.bread,
+    'coffee': TablerIcons.coffee,
+    'drink': TablerIcons.beer,
+    'pizza': TablerIcons.pizza,
+    'gift': TablerIcons.gift,
+  },
+  // Здоров'я й сім'я
+  {
+    'health': TablerIcons.heart,
+    'pulse': TablerIcons.heartbeat,
+    'doctor': TablerIcons.stethoscope,
+    'tooth': TablerIcons.dental,
+    'vaccine': TablerIcons.vaccine,
+    'baby': TablerIcons.baby_carriage,
+    'bottle': TablerIcons.baby_bottle,
+    'family': TablerIcons.users,
+    'pet': TablerIcons.paw,
+    'dog': TablerIcons.dog,
+    'cat': TablerIcons.cat,
+  },
+  // Розваги й освіта
+  {
+    'school': TablerIcons.school,
+    'book': TablerIcons.book,
+    'movie': TablerIcons.movie,
+    'music': TablerIcons.music,
+    'sport': TablerIcons.ball_football,
+    'travel': TablerIcons.luggage,
+    'camp': TablerIcons.tent,
+    'ticket': TablerIcons.ticket,
+    'trophy': TablerIcons.trophy,
+    'swim': TablerIcons.swimming,
+    'campfire': TablerIcons.campfire,
+  },
+  // Інше
+  {
+    'other': TablerIcons.dots,
+  },
+];
+
+/// Значок за ключем: Tabler або власний SVG.
+Widget finIconWidget(String key, {required double size, required Color color}) {
+  Object? v = kFinIcons[key] ?? kFinAccountIcons[key];
+  if (v == null) {
+    for (final g in kFinIconGroups) {
+      v = g[key];
+      if (v != null) break;
+    }
+  }
+  v ??= TablerIcons.dots;
+  if (v is String) return AppIcon(v, size: size, color: color);
+  return Icon(v as IconData, size: size, color: color);
+}
 /// Кольори категорій (ключ -> колір).
 const Map<String, Color> kFinColors = {
   'honey': Color(0xFFED9D2F),
@@ -32,133 +195,6 @@ const Map<String, Color> kFinColors = {
   'plum': Color(0xFF9B6A9E),
 };
 
-/// Значки рахунків (гаманців).
-const Map<String, IconData> kFinAccountIcons = {
-  'payments': Icons.payments_outlined,
-  'card': Icons.credit_card,
-  'bank': Icons.account_balance_outlined,
-  'savings': Icons.savings_outlined,
-  'wallet': Icons.account_balance_wallet_outlined,
-  'safe': Icons.lock_outline,
-};
-
-/// Каталог значків за групами (назви груп - `tr.finIconGroups`, у тому ж
-/// порядку). Ключ зберігається в базі, тож наявні ключі не змінюємо.
-const List<Map<String, IconData>> kFinIconGroups = [
-  // Гроші й банки
-  {
-    'payments': Icons.payments_outlined,
-    'card': Icons.credit_card,
-    'bank': Icons.account_balance_outlined,
-    'savings': Icons.savings_outlined,
-    'wallet': Icons.account_balance_wallet_outlined,
-    'safe': Icons.lock_outline,
-    'dollar': Icons.attach_money,
-    'euro': Icons.euro,
-    'exchange': Icons.currency_exchange,
-    'phone_pay': Icons.phone_iphone,
-    'contactless': Icons.contactless_outlined,
-    'invest': Icons.trending_up,
-    'percent': Icons.percent,
-    'shield': Icons.shield_outlined,
-    'star': Icons.star_outline,
-    'group': Icons.group_outlined,
-    'gift_money': Icons.volunteer_activism_outlined,
-    'calc': Icons.calculate_outlined,
-  },
-  // Пасіка
-  {
-    'honey': Icons.hexagon_outlined,
-    'frame': Icons.grid_view,
-    'jar': Icons.science_outlined,
-    'feed': Icons.shopping_basket_outlined,
-    'medicine': Icons.medication_outlined,
-    'flower': Icons.local_florist_outlined,
-    'drop': Icons.water_drop_outlined,
-    'scale': Icons.scale_outlined,
-    'tool': Icons.build_outlined,
-  },
-  // Ферма
-  {
-    'tractor': Icons.agriculture_outlined,
-    'tree': Icons.park_outlined,
-    'sprout': Icons.eco_outlined,
-    'grass': Icons.grass,
-    'barn': Icons.warehouse_outlined,
-    'fence': Icons.fence_outlined,
-  },
-  // Транспорт
-  {
-    'car': Icons.directions_car_outlined,
-    'fuel': Icons.local_gas_station_outlined,
-    'truck': Icons.local_shipping_outlined,
-    'train': Icons.train_outlined,
-    'bus': Icons.directions_bus_outlined,
-    'taxi': Icons.local_taxi_outlined,
-    'bike': Icons.pedal_bike,
-    'plane': Icons.flight_outlined,
-    'parking': Icons.local_parking,
-    'car_wash': Icons.local_car_wash_outlined,
-  },
-  // Дім і комуналка
-  {
-    'home': Icons.home_outlined,
-    'light': Icons.lightbulb_outline,
-    'water': Icons.water_outlined,
-    'fire': Icons.local_fire_department_outlined,
-    'wifi': Icons.wifi,
-    'phone': Icons.phone_outlined,
-    'heat': Icons.thermostat,
-    'repair': Icons.hardware_outlined,
-    'doc': Icons.receipt_long_outlined,
-  },
-  // Покупки й їжа
-  {
-    'cart': Icons.shopping_cart_outlined,
-    'bag': Icons.shopping_bag_outlined,
-    'store': Icons.storefront_outlined,
-    'shirt': Icons.checkroom_outlined,
-    'devices': Icons.devices_outlined,
-    'food': Icons.restaurant_outlined,
-    'coffee': Icons.local_cafe_outlined,
-    'bakery': Icons.bakery_dining_outlined,
-    'drink': Icons.local_bar_outlined,
-    'gift': Icons.card_giftcard_outlined,
-  },
-  // Здоров'я й сім'я
-  {
-    'health': Icons.favorite_border,
-    'doctor': Icons.local_hospital_outlined,
-    'tooth': Icons.health_and_safety_outlined,
-    'baby': Icons.child_care,
-    'family': Icons.family_restroom,
-    'pet': Icons.pets,
-  },
-  // Розваги й освіта
-  {
-    'school': Icons.school_outlined,
-    'book': Icons.menu_book_outlined,
-    'movie': Icons.movie_outlined,
-    'music': Icons.music_note_outlined,
-    'sport': Icons.sports_soccer_outlined,
-    'travel': Icons.luggage_outlined,
-    'camp': Icons.cabin_outlined,
-  },
-  // Інше
-  {
-    'other': Icons.more_horiz,
-  },
-];
-
-IconData finIcon(String key) {
-  final v = kFinIcons[key] ?? kFinAccountIcons[key];
-  if (v != null) return v;
-  for (final g in kFinIconGroups) {
-    final i = g[key];
-    if (i != null) return i;
-  }
-  return Icons.more_horiz;
-}
 Color finColor(String key) => kFinColors[key] ?? kFinColors['honey']!;
 
 /// Назва для запису без категорії - прихід, внесений прямо на складі.
@@ -207,7 +243,8 @@ class FinBadge extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(color: finColor(color), shape: BoxShape.circle),
-        child: Icon(finIcon(icon), size: size * 0.52, color: const Color(0xFF1D1611)),
+        child: Center(
+            child: finIconWidget(icon, size: size * 0.55, color: const Color(0xFF1D1611))),
       );
 }
 
@@ -285,9 +322,11 @@ class FinIconPicker extends StatelessWidget {
                     color: e.key == selected ? color : AppColors.typeBtn,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(e.value,
-                      size: 22,
-                      color: e.key == selected ? AppColors.bg : AppColors.textMuted),
+                  child: Center(
+                    child: finIconWidget(e.key,
+                        size: 24,
+                        color: e.key == selected ? AppColors.bg : AppColors.textMuted),
+                  ),
                 ),
               ),
           ]),

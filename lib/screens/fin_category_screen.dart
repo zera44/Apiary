@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
@@ -127,7 +128,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                       border: Border.all(color: _toStock ? AppColors.addObject : AppColors.darkBtn),
                     ),
                     child: Row(children: [
-                      Icon(Icons.inventory_2_outlined, color: AppColors.addObject),
+                      Icon(TablerIcons.package, color: AppColors.addObject),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

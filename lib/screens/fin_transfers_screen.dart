@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/fin_accounts.dart';
 import '../data/repository.dart';
@@ -80,12 +81,12 @@ class _FinTransfersScreenState extends State<FinTransfersScreen> {
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 IconButton(
                     onPressed: () => _shift(-1),
-                    icon: Icon(Icons.chevron_left, color: AppColors.text, size: 30)),
+                    icon: Icon(TablerIcons.chevron_left, color: AppColors.text, size: 30)),
                 Text(finMonthTitle(_month),
                     style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w700)),
                 IconButton(
                     onPressed: () => _shift(1),
-                    icon: Icon(Icons.chevron_right, color: AppColors.text, size: 30)),
+                    icon: Icon(TablerIcons.chevron_right, color: AppColors.text, size: 30)),
               ]),
               Expanded(
                 child: !_loaded
@@ -102,7 +103,7 @@ class _FinTransfersScreenState extends State<FinTransfersScreen> {
                                 decoration: BoxDecoration(
                                     color: AppColors.card, borderRadius: BorderRadius.circular(16)),
                                 child: Row(children: [
-                                  Icon(Icons.swap_horiz, color: AppColors.create, size: 28),
+                                  Icon(TablerIcons.arrows_left_right, color: AppColors.create, size: 28),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -129,7 +130,7 @@ class _FinTransfersScreenState extends State<FinTransfersScreen> {
                                   ]),
                                   IconButton(
                                       onPressed: () => _delete(t),
-                                      icon: Icon(Icons.delete_outline, color: AppColors.textMuted)),
+                                      icon: Icon(TablerIcons.trash, color: AppColors.textMuted)),
                                 ]),
                               ),
                           ]),
@@ -150,7 +151,7 @@ class _FinTransfersScreenState extends State<FinTransfersScreen> {
                     height: 64,
                     child: Tooltip(
                         message: tr.finTransferNew,
-                        child: const Icon(Icons.add, size: 36, color: Color(0xFF1D1611))),
+                        child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                   ),
                 ),
               ),
@@ -346,7 +347,7 @@ class _FinTransferScreenState extends State<FinTransferScreen> {
                         child: IconButton(
                           key: const ValueKey('fin-transfer-swap'),
                           tooltip: tr.swapAccounts,
-                          icon: Icon(Icons.swap_vert, color: AppColors.create),
+                          icon: Icon(TablerIcons.arrows_up_down, color: AppColors.create),
                           onPressed: () => setState(() {
                             final x = _from;
                             _from = _to;

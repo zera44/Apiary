@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/fin_accounts.dart';
 import '../data/finance.dart';
@@ -679,7 +680,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(color: AppColors.darkBtn, shape: BoxShape.circle),
-                  child: Icon(more ? Icons.more_horiz : Icons.add, color: AppColors.text, size: 28),
+                  child: Icon(more ? TablerIcons.dots : TablerIcons.plus, color: AppColors.text, size: 28),
                 ),
                 label: more ? tr.moreCategories : tr.newCategoryShort,
                 labelColor: AppColors.create,
@@ -742,7 +743,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                           color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w600)),
                 ]),
               ),
-              Icon(Icons.chevron_right, color: AppColors.textMuted),
+              Icon(TablerIcons.chevron_right, color: AppColors.textMuted),
             ]),
           ),
         ),
@@ -869,7 +870,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   width: 52,
                   height: 52,
                   decoration: const BoxDecoration(color: Color(0xFF1D1611), shape: BoxShape.circle),
-                  child: Icon(Icons.photo_camera_outlined, size: 30, color: AppColors.create),
+                  child: Icon(TablerIcons.camera, size: 30, color: AppColors.create),
                 ),
                 const SizedBox(width: 14),
                 Flexible(
@@ -914,10 +915,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
       child: Row(children: [
         Icon(
             _receiptOk
-                ? Icons.check_circle_outline
+                ? TablerIcons.check
                 : _receiptSoft
-                    ? Icons.info_outline
-                    : Icons.warning_amber_rounded,
+                    ? TablerIcons.info_circle
+                    : TablerIcons.alert_triangle,
             size: 20,
             color: _receiptOk ? AppColors.addObject : _receiptSoft ? AppColors.caution : AppColors.danger),
         const SizedBox(width: 8),
@@ -950,7 +951,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
       child: Row(children: [
-        SizedBox(width: 34, child: Tooltip(message: _expense ? tr.toStock : tr.fromStock, child: Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.textMuted))),
+        SizedBox(width: 34, child: Tooltip(message: _expense ? tr.toStock : tr.fromStock, child: Icon(TablerIcons.package, size: 16, color: AppColors.textMuted))),
         Expanded(flex: 5, child: Text(tr.goods, style: s)),
         const SizedBox(width: 6),
         Expanded(flex: 3, child: Text(tr.qtyShort, style: s)),
@@ -1081,7 +1082,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 tooltip: _expense ? tr.putToStock : tr.writeOffFromStock,
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
-                icon: Icon(l.toStock ? Icons.inventory_2 : Icons.inventory_2_outlined,
+                icon: Icon(l.toStock ? TablerIcons.package : TablerIcons.package,
                     size: 22, color: l.toStock ? AppColors.addObject : AppColors.textMuted),
                 onPressed: l.adjust
                     ? null
@@ -1106,7 +1107,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     ? Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.lock_outline, size: 12, color: AppColors.textMuted),
+                          Icon(TablerIcons.lock, size: 12, color: AppColors.textMuted),
                           const SizedBox(width: 2),
                           Text(l.unit, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
                         ]),
@@ -1157,7 +1158,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
               tooltip: tr.deleteRow,
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
-              icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
+              icon: Icon(TablerIcons.x, size: 18, color: AppColors.textMuted),
               onPressed: () => setState(() {
                 _adjustEdited(l);
                 _lines.remove(l);
