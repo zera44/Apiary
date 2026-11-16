@@ -755,4 +755,33 @@ void main() {
       }
     });
   });
+
+  group('екран фінансів: зміна категорії', () {
+    testWidgets('нова назва й значок категорії одразу видно в діаграмі', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final korm = await repo.addFinCategory('Стара назва', kFinExpense, icon: 'other', color: 'honey');
+      await repo.addFinOp(
+          kind: kFinExpense, categoryId: korm, amount: 100, date: DateTime.now());
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinanceScreen(repo: repo)));
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      await tester.tap(find.text('Місяць'));
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(find.text('Стара назва'), findsWidgets);
+      await tester.runAsync(() => repo.updateFinCategory(korm, name: 'Нова назва', icon: 'hair'));
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(find.text('Стара назва'), findsNothing);
+      expect(find.text('Нова назва'), findsWidgets);
+      expect(find.byIcon(TablerIcons.scissors), findsWidgets);
+    });
+  });
 }
