@@ -2441,6 +2441,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final status = _warning ?? _statusText;
     final isWarn = _warning != null;
+    // звичайний режим: плашка «≡ назва ✎ ⌄», як в усіх розділах (урок, огляд і
+    // фон головного екрана лишаються зі старим козирьком)
+    final pill = widget.lesson == null && !widget.tutorial && !_tourMenu && !widget.backdrop;
     // урок: вийти можна лише кнопкою «назад» угорі ліворуч (системне «назад»
     // і меню ☰ вивели б із пісочниці на справжні екрани)
     return PopScope(
@@ -2502,6 +2505,77 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             // «козирьок»: меню навігації - з одного боку, назва пасіки (з олівцем
             // для перейменування) - по центру, помічник - з іншого (його кнопка
             // поверх усіх екранів, [AssistantSlot]; налаштування - у меню ☰)
+            if (pill)
+              Positioned(
+                key: _topKey,
+                top: 8,
+                left: 12,
+                right: 70, // місце під помічника
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Builder(
+                    builder: (ctx) => Container(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      decoration: BoxDecoration(
+                          color: AppColors.popupBg,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: AppColors.create, width: 1.5)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        // ≡ і назва відкривають меню навігації
+                        Flexible(
+                          child: InkWell(
+                            borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
+                            onTap: () {
+                              if (_menuHint) setState(() => _menuHint = false);
+                              Scaffold.of(ctx).openDrawer();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Tooltip(
+                                    message: tr.menu,
+                                    child: Icon(TablerIcons.menu_2,
+                                        size: 20, color: AppColors.create)),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(_apiaryName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          color: AppColors.text,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold)),
+                                ),
+                              ]),
+                            ),
+                          ),
+                        ),
+                        // олівець - перейменувати пасіку
+                        InkWell(
+                          onTap: _guided ? null : _renameApiary,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                            child: Tooltip(
+                                message: tr.apiarySettings,
+                                child: AppIcon('pencil', size: 20, color: AppColors.textMuted)),
+                          ),
+                        ),
+                        InkWell(
+                          borderRadius:
+                              const BorderRadius.horizontal(right: Radius.circular(24)),
+                          onTap: () => Scaffold.of(ctx).openDrawer(),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 8, 12, 8),
+                            child: Icon(TablerIcons.chevron_down,
+                                size: 20, color: AppColors.create),
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              )
+            else
             Positioned(
               key: _topKey,
               top: 0,
@@ -2557,6 +2631,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             const Positioned.fill(child: ScreenFrame()),
             // меню навігації (в уроці — «Назад»): більша кнопка ліворуч під
             // назвою пасіки
+            if (!pill)
             Positioned(
               top: 8,
               left: 10,

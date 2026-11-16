@@ -20,6 +20,14 @@ class AppStringsUk extends AppStrings {
   String get settingsTabAccount => 'Акаунт';
   @override
   String get settingsTabTemplates => 'Шаблони';
+  @override
+  String get settingsSecLook => 'Вигляд';
+  @override
+  String get settingsSecAssistant => 'Помічник';
+  @override
+  String get settingsSecData => 'Дані';
+  @override
+  String get settingsSecAbout => 'Про застосунок';
 
   // ---- Синхронізація ----
   @override
@@ -742,7 +750,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get generate => 'Генерувати';
   @override
-  String get qrBindRow => 'Прив\'язати підряд';
+  String get qrBindRow => 'Прив\'язати';
 
   // ---- Головний екран ----
   @override

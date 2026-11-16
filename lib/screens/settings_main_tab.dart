@@ -24,6 +24,7 @@ import '../ui/sync_status.dart';
 import '../ui/text_scale.dart';
 import '../ui/orientation.dart';
 import '../ui/start_screen.dart';
+import '../ui/settings_part.dart';
 import '../ui/theme.dart';
 import 'backups_screen.dart';
 import 'notify_settings_screen.dart';
@@ -36,19 +37,26 @@ import 'telegram_login_screen.dart';
 /// «Акаунт».
 class MainSettingsTab extends StatelessWidget {
   final Repository repo;
-  const MainSettingsTab({super.key, required this.repo});
+
+  /// Лише один розділ («Вигляд» чи «Помічник»); без нього - усе разом.
+  final SettingsPart? part;
+  const MainSettingsTab({super.key, required this.repo, this.part});
 
   @override
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          _LanguageSection(repo: repo),
-          _TextSizeSection(repo: repo),
-          _OrientationSection(repo: repo),
-          _StartScreenSection(repo: repo),
-          _AssistantSection(repo: repo),
-          if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
-          _NotificationsSection(repo: repo),
+          if (part == null || part == SettingsPart.look) ...[
+            _LanguageSection(repo: repo),
+            _TextSizeSection(repo: repo),
+            _OrientationSection(repo: repo),
+            _StartScreenSection(repo: repo),
+          ],
+          if (part == null || part == SettingsPart.assistant) ...[
+            _AssistantSection(repo: repo),
+            if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
+            _NotificationsSection(repo: repo),
+          ],
         ],
       );
 }
@@ -378,7 +386,10 @@ class _ReceiptShareSectionState extends State<_ReceiptShareSection> {
 /// копії, політика конфіденційності й «Видалити акаунт».
 class AccountSettingsTab extends StatefulWidget {
   final Repository repo;
-  const AccountSettingsTab({super.key, required this.repo});
+
+  /// Лише один розділ («Акаунт», «Дані» чи «Про застосунок»); без нього - усе разом.
+  final SettingsPart? part;
+  const AccountSettingsTab({super.key, required this.repo, this.part});
 
   @override
   State<AccountSettingsTab> createState() => _AccountSettingsTabState();
@@ -617,10 +628,13 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     } catch (_) {}
   }
 
+  bool _shows(SettingsPart p) => widget.part == null || widget.part == p;
+
   @override
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
+          if (_shows(SettingsPart.account)) ...[
           SettingsSection(
             title: tr.accountSection,
             children: [
@@ -656,6 +670,8 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
             SettingsSection(
                 title: tr.secTitle,
                 children: [SecurityControls(afterSignOutEverywhere: _afterSignOutEverywhere)]),
+          ],
+          if (_shows(SettingsPart.data)) ...[
           SettingsSection(
             title: tr.syncSection,
             children: [
@@ -689,6 +705,8 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
               ),
             ],
           ),
+          ],
+          if (_shows(SettingsPart.about))
           SettingsSection(
             title: tr.privacySection,
             children: [

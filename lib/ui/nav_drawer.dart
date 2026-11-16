@@ -15,21 +15,78 @@ import '../screens/settings_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'common.dart';
+import 'fin_drawer.dart';
+import 'settings_part.dart';
 import 'icons.dart';
 import 'theme.dart';
 
 /// Розділи спільного меню навігації.
-enum NavSection { apiaries, stock, finances, history, qr, assistant, tutorial, settings, feedback }
+enum NavSection {
+  apiaries,
+  stock,
+  finances,
+  history,
+  qr,
+  assistant,
+  tutorial,
+  settings,
+  feedback,
+}
+
+/// Дія-підпункт розкривного списку розділу (напр. «Сканувати» в QR-коді).
+typedef NavAction = ({IconData icon, String label, VoidCallback onTap});
 
 /// Спільне меню головних екранів (плашка «≡ назва ⌄» замість стрілки «назад»):
 /// той самий вигляд, що в Фінансів, поточний розділ підсвічено. Фінанси й QR-код
 /// мають ще й своє меню з розділами. «Назад» - системною кнопкою телефона.
-class NavDrawer extends StatelessWidget {
+class NavDrawer extends StatefulWidget {
   final Repository repo;
   final NavSection current;
-  const NavDrawer({super.key, required this.repo, required this.current});
+
+  /// Поточний підрозділ Фінансів (лише для екранів Фінансів): «Фінанси» в меню
+  /// розкриваються списком підрозділів, а розділи нижче ховаються.
+  final FinSection? finSection;
+
+  /// Поточний розділ «Налаштувань» і вибір іншого (екран Налаштувань сам міняє вміст).
+  final SettingsPart? settingsPart;
+  final ValueChanged<SettingsPart>? onSettingsPart;
+
+  /// Дії розділу «QR-код»: розкриваються списком під його назвою.
+  final List<NavAction>? qrActions;
+  const NavDrawer({
+    super.key,
+    required this.repo,
+    required this.current,
+    this.finSection,
+    this.settingsPart,
+    this.onSettingsPart,
+    this.qrActions,
+  });
+
+  @override
+  State<NavDrawer> createState() => _NavDrawerState();
+}
+
+class _NavDrawerState extends State<NavDrawer> {
+  Repository get repo => widget.repo;
+  NavSection get current => widget.current;
+  late bool _finOpen = widget.finSection != null;
+  late bool _setOpen = widget.settingsPart != null;
+  late bool _qrOpen = widget.qrActions != null;
 
   void _go(BuildContext context, NavSection target) {
+    if (target == NavSection.finances && widget.finSection != null) {
+      setState(() => _finOpen = !_finOpen); // розкрити/згорнути підрозділи
+      return;
+    }
+    if (target == NavSection.qr && widget.qrActions != null) {
+      setState(() => _qrOpen = !_qrOpen);
+      return;
+    }
+    if (target == NavSection.settings && widget.settingsPart != null) {
+      setState(() => _setOpen = !_setOpen);
+      return;
+    }
     final nav = Navigator.of(context);
     nav.pop(); // закрити меню
     if (target == NavSection.assistant) {
@@ -41,25 +98,44 @@ class NavDrawer extends StatelessWidget {
     nav.popUntil((r) => r.isFirst);
     switch (target) {
       case NavSection.apiaries:
-        nav.push(MaterialPageRoute<void>(builder: (_) => ApiaryListScreen(repo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => ApiaryListScreen(repo: repo)),
+        );
       case NavSection.stock:
-        nav.push(MaterialPageRoute<void>(builder: (_) => StockScreen(repo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => StockScreen(repo: repo)),
+        );
       case NavSection.finances:
-        nav.push(MaterialPageRoute<void>(builder: (_) => FinanceScreen(repo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => FinanceScreen(repo: repo)),
+        );
       case NavSection.history:
         // пасік може ще не бути - історія відкривається й без звіту по пасіці
-        unawaited(repo.startApiary().then((a) async {
-          final apiary = a ?? (await repo.listApiaries()).firstOrNull;
-          if (!nav.mounted) return;
-          nav.push(MaterialPageRoute<void>(
-              builder: (_) => HistoryHubScreen(repo: repo, apiary: apiary)));
-        }));
+        unawaited(
+          repo.startApiary().then((a) async {
+            final apiary = a ?? (await repo.listApiaries()).firstOrNull;
+            if (!nav.mounted) return;
+            nav.push(
+              MaterialPageRoute<void>(
+                builder: (_) => HistoryHubScreen(repo: repo, apiary: apiary),
+              ),
+            );
+          }),
+        );
       case NavSection.qr:
-        nav.push(MaterialPageRoute<void>(builder: (_) => QrSectionScreen(repo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => QrSectionScreen(repo: repo)),
+        );
       case NavSection.tutorial:
-        nav.push(MaterialPageRoute<void>(builder: (_) => TutorialScreen(realRepo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(
+            builder: (_) => TutorialScreen(realRepo: repo),
+          ),
+        );
       case NavSection.settings:
-        nav.push(MaterialPageRoute<void>(builder: (_) => SettingsScreen(repo: repo)));
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => SettingsScreen(repo: repo)),
+        );
       case NavSection.feedback:
         unawaited(openFeedback(nav, repo));
       case NavSection.assistant:
@@ -69,51 +145,222 @@ class NavDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget sub(FinSection s, IconData icon, String label) {
+      final on = s == widget.finSection;
+      final color = on ? AppColors.text : AppColors.textMuted;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
+        child: Material(
+          color: on ? AppColors.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            leading: Icon(icon, color: color, size: 24),
+            title: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+            onTap: () =>
+                FinDrawer.goSection(context, repo, widget.finSection!, s),
+          ),
+        ),
+      );
+    }
+
+    Widget actionSub(NavAction a) => Padding(
+          padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
+          child: ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            leading: Icon(a.icon, color: AppColors.textMuted, size: 24),
+            title: Text(a.label, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
+            onTap: () {
+              Navigator.of(context).pop(); // закрити меню
+              a.onTap();
+            },
+          ),
+        );
+
+    Widget setSub(SettingsPart p) {
+      final on = p == widget.settingsPart;
+      final color = on ? AppColors.text : AppColors.textMuted;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
+        child: Material(
+          color: on ? AppColors.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: ListTile(
+            dense: true,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            leading: Icon(p.icon, color: color, size: 24),
+            title: Text(
+              p.label,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+            onTap: () {
+              Navigator.of(context).pop(); // закрити меню
+              widget.onSettingsPart?.call(p);
+            },
+          ),
+        ),
+      );
+    }
+
     Widget item(NavSection s, String label, {String? icon, IconData? data}) {
       final on = s == current;
       final color = on ? AppColors.create : AppColors.text;
       return Container(
         decoration: BoxDecoration(
-          color: on ? AppColors.create.withValues(alpha: 0.16) : null,
           border: Border(
-              left: BorderSide(color: on ? AppColors.create : Colors.transparent, width: 4)),
+            left: BorderSide(
+              color: on ? AppColors.create : Colors.transparent,
+              width: 4,
+            ),
+          ),
         ),
-        child: ListTile(
-          leading: data != null
-              ? Icon(data, color: color, size: 28)
-              : AppIcon(icon!, color: color, size: 30),
-          title: Text(label,
+        // фон - у Material, щоб ListTile бачив його (інакше підсвітка ховається)
+        child: Material(
+          color: on
+              ? AppColors.create.withValues(alpha: 0.16)
+              : Colors.transparent,
+          child: ListTile(
+            leading: data != null
+                ? Icon(data, color: color, size: 28)
+                : AppIcon(icon!, color: color, size: 30),
+            title: Text(
+              label,
               style: TextStyle(
-                  color: color, fontSize: 17, fontWeight: on ? FontWeight.w700 : FontWeight.w400)),
-          onTap: () => _go(context, s),
+                color: color,
+                fontSize: 17,
+                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+            trailing: s == NavSection.finances && widget.finSection != null
+                ? Icon(
+                    _finOpen
+                        ? TablerIcons.chevron_up
+                        : TablerIcons.chevron_down,
+                    color: color,
+                  )
+                : s == NavSection.settings && widget.settingsPart != null
+                ? Icon(
+                    _setOpen
+                        ? TablerIcons.chevron_up
+                        : TablerIcons.chevron_down,
+                    color: color,
+                  )
+                : null,
+            onTap: () => _go(context, s),
+          ),
         ),
       );
     }
 
+    final finOpen = _finOpen && widget.finSection != null;
+    final setOpen = _setOpen && widget.settingsPart != null;
+    final qrOpen = _qrOpen && widget.qrActions != null;
+
     return Drawer(
       backgroundColor: AppColors.card,
       child: SafeArea(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 14),
-            child: Text(tr.navMenu,
-                style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800)),
-          ),
-          Divider(height: 1, color: AppColors.textMuted.withValues(alpha: 0.3)),
-          Expanded(
-            child: ListView(padding: const EdgeInsets.only(top: 8), children: [
-              item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries'),
-              item(NavSection.stock, tr.stock, icon: 'box'),
-              item(NavSection.finances, tr.finances, data: TablerIcons.wallet),
-              item(NavSection.history, tr.history, icon: 'history'),
-              item(NavSection.qr, tr.qrCode, icon: 'qr'),
-              item(NavSection.assistant, tr.aiAssistant, data: TablerIcons.robot),
-              item(NavSection.tutorial, tr.tutorial, data: TablerIcons.school),
-              item(NavSection.settings, tr.settingsTitle, data: TablerIcons.settings),
-              item(NavSection.feedback, tr.feedbackTitle, icon: 'feedback'),
-            ]),
-          ),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 14),
+              child: Text(
+                tr.navMenu,
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Divider(
+              height: 1,
+              color: AppColors.textMuted.withValues(alpha: 0.3),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(top: 8),
+                children: [
+                  item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries'),
+                  item(NavSection.stock, tr.stock, icon: 'box'),
+                  item(
+                    NavSection.finances,
+                    tr.finances,
+                    data: TablerIcons.wallet,
+                  ),
+                  if (finOpen) ...[
+                    sub(FinSection.home, TablerIcons.chart_donut, tr.finHome),
+                    sub(
+                      FinSection.accounts,
+                      TablerIcons.building_bank,
+                      tr.finAccounts,
+                    ),
+                    sub(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
+                    sub(
+                      FinSection.categories,
+                      TablerIcons.list,
+                      tr.finCategories,
+                    ),
+                    sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
+                  ] else if (qrOpen) ...[
+                // «QR-код» розкритий: решта розділів нижче ховається
+                item(NavSection.history, tr.history, icon: 'history'),
+                item(NavSection.qr, tr.qrCode, icon: 'qr'),
+                for (final a in widget.qrActions!) actionSub(a),
+              ] else if (!setOpen) ...[
+                    item(NavSection.history, tr.history, icon: 'history'),
+                    item(NavSection.qr, tr.qrCode, icon: 'qr'),
+                    item(
+                      NavSection.assistant,
+                      tr.aiAssistant,
+                      data: TablerIcons.robot,
+                    ),
+                    item(
+                      NavSection.tutorial,
+                      tr.tutorial,
+                      data: TablerIcons.school,
+                    ),
+                    item(
+                      NavSection.settings,
+                      tr.settingsTitle,
+                      data: TablerIcons.settings,
+                    ),
+                    item(
+                      NavSection.feedback,
+                      tr.feedbackTitle,
+                      icon: 'feedback',
+                    ),
+                  ] else ...[
+                    // Налаштування розкриті: решта розділів ховається, нижче - лише підрозділи
+                    item(
+                      NavSection.settings,
+                      tr.settingsTitle,
+                      data: TablerIcons.settings,
+                    ),
+                    for (final p in SettingsPart.values) setSub(p),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -128,8 +375,8 @@ class NavTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TopBar(
-        title: title,
-        trailing: trailing,
-        onTitleTap: () => Scaffold.of(context).openDrawer(),
-      );
+    title: title,
+    trailing: trailing,
+    onTitleTap: () => Scaffold.of(context).openDrawer(),
+  );
 }
