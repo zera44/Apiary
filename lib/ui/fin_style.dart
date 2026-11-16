@@ -222,6 +222,20 @@ const Map<String, Color> kFinColors = {
   'violet': Color(0xFF8E5CC4),
   'magenta': Color(0xFFC25BA8),
   'stone': Color(0xFF9A9186),
+  'crimson': Color(0xFFB8323F),
+  'orange': Color(0xFFE8672A),
+  'amber': Color(0xFFF5B82E),
+  'sand': Color(0xFFD9C08A),
+  'brown': Color(0xFF7A4E32),
+  'moss': Color(0xFF5E7A32),
+  'mint': Color(0xFF7CCBA2),
+  'aqua': Color(0xFF2FA7A0),
+  'navy': Color(0xFF2F5C8F),
+  'lavender': Color(0xFFA99AD8),
+  'purple': Color(0xFF6E3F8F),
+  'pink': Color(0xFFE88FB4),
+  'slate': Color(0xFF5E6B7A),
+  'graphite': Color(0xFF4A423B),
 };
 
 Color finColor(String key) => kFinColors[key] ?? kFinColors['honey']!;
