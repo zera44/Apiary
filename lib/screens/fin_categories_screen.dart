@@ -76,57 +76,51 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
               Expanded(
                 child: !_loaded
                     ? const Center(child: CircularProgressIndicator())
-                    : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 100), children: [
-                        for (final c in _cats)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            decoration: BoxDecoration(
-                                color: AppColors.card, borderRadius: BorderRadius.circular(16)),
-                            child: InkWell(
+                    : GridView.count(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 14,
+                        childAspectRatio: 0.82,
+                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 24),
+                        children: [
+                          for (final c in _cats)
+                            InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap: () => _open(category: c),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Row(children: [
-                                  FinBadge(icon: c.icon, color: c.color, size: 44),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                      child: Text(c.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(color: AppColors.text, fontSize: 16))),
-                                  if (c.toStock)
-                                    Icon(TablerIcons.package,
-                                        size: 20, color: AppColors.textMuted),
-                                ]),
-                              ),
+                              child: _tile(
+                                  FinBadge(icon: c.icon, color: c.color, size: 68), c.name),
                             ),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _open(),
+                            child: _tile(
+                                Container(
+                                  width: 68,
+                                  height: 68,
+                                  decoration: const BoxDecoration(
+                                      color: Color(0xFFFBC02D), shape: BoxShape.circle),
+                                  child: const Icon(TablerIcons.plus,
+                                      size: 40, color: Color(0xFF1D1611)),
+                                ),
+                                tr.create),
                           ),
-                      ]),
+                        ],
+                      ),
               ),
             ]),
-            Positioned(
-              right: 20,
-              bottom: 24,
-              child: Material(
-                color: const Color(0xFFFBC02D),
-                shape: const CircleBorder(),
-                elevation: 4,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => _open(),
-                  child: SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: Tooltip(
-                        message: tr.categoryNew,
-                        child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
-                  ),
-                ),
-              ),
-            ),
             const Positioned.fill(child: ScreenFrame()),
           ]),
         ),
       );
 }
+
+Widget _tile(Widget badge, String name) => Column(children: [
+      badge,
+      const SizedBox(height: 6),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text(name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: AppColors.text, fontSize: 13)),
+      ),
+    ]);
