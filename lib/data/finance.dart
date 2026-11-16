@@ -233,6 +233,18 @@ extension RepositoryFinance on Repository {
     return rows.map(FinCategory.fromRow).toList();
   }
 
+  /// Зберегти новий порядок категорій (довге натискання й перетягування).
+  Future<void> reorderFinCategories(List<String> ids) async {
+    final now = Repository.now();
+    final batch = db.batch();
+    for (var i = 0; i < ids.length; i++) {
+      batch.update('fin_categories', {'sort_order': i, 'updated_at': now, 'synced': 0},
+          where: 'id = ?', whereArgs: [ids[i]]);
+    }
+    await batch.commit(noResult: true);
+    stockChanges.value++;
+  }
+
   /// Усі категорії, зокрема видалені (для підписів у старих записах).
   Future<Map<String, FinCategory>> finCategoryMap() async {
     final rows = await db.query('fin_categories');
