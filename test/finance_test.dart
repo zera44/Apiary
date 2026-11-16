@@ -6,6 +6,7 @@ import 'package:apiary/logic/fz2/fz2.dart';
 import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
+import 'package:apiary/screens/fin_stats_screen.dart';
 import 'package:apiary/screens/finance_screen.dart' show FinanceScreen, openFinEntry;
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
@@ -782,6 +783,44 @@ void main() {
       expect(find.text('Стара назва'), findsNothing);
       expect(find.text('Нова назва'), findsWidgets);
       expect(find.byIcon(TablerIcons.scissors), findsWidgets);
+    });
+  });
+
+  group('статистика: стовпчики', () {
+    testWidgets('дотик до стовпчика - плашка із сумою й розбивка за категоріями місяця', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
+      final inc = await repo.addFinCategory('Прибуткова', kFinIncome);
+      final now = DateTime.now();
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 300, date: now);
+      await repo.addFinOp(kind: kFinIncome, categoryId: inc, amount: 500, date: now);
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      await settle();
+      await tester.tap(find.text('По місяцях'));
+      await settle();
+      expect(find.text('Витратна'), findsNothing);
+      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
+      await tester.pump();
+      expect(find.textContaining('300'), findsWidgets); // плашка і рядок категорії
+      expect(find.text('Витратна'), findsOneWidget);
+      expect(find.text('100%'), findsOneWidget);
+      expect(find.byIcon(TablerIcons.scissors), findsOneWidget);
+      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-0')));
+      await tester.pump();
+      expect(find.text('Прибуткова'), findsOneWidget);
+      expect(find.text('Витратна'), findsNothing);
+      // повторний дотик знімає вибір
+      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-0')));
+      await tester.pump();
+      expect(find.text('Прибуткова'), findsNothing);
     });
   });
 }
