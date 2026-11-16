@@ -23,7 +23,7 @@ class FinCategoriesScreen extends StatefulWidget {
 class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   String _kind = kFinExpense;
-  List<FinCategory> _cats = const [];
+  List<FinCategory> _cats = [];
   bool _loaded = false;
 
   @override
@@ -45,6 +45,15 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
     await Navigator.of(context).push(MaterialPageRoute<String>(
         builder: (_) => FinCategoryScreen(repo: widget.repo, kind: _kind, category: category)));
     await _reload();
+  }
+
+  /// Перенести категорію [fromId] на місце [toId] й зберегти порядок.
+  Future<void> _move(String fromId, String toId) async {
+    final from = _cats.indexWhere((c) => c.id == fromId);
+    final to = _cats.indexWhere((c) => c.id == toId);
+    if (from < 0 || to < 0 || from == to) return;
+    setState(() => _cats.insert(to, _cats.removeAt(from)));
+    await widget.repo.reorderFinCategories([for (final c in _cats) c.id]);
   }
 
   @override
@@ -76,34 +85,53 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
               Expanded(
                 child: !_loaded
                     ? const Center(child: CircularProgressIndicator())
-                    : GridView.count(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.82,
+                    : GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3, mainAxisSpacing: 14, childAspectRatio: 0.82),
                         padding: const EdgeInsets.fromLTRB(10, 4, 10, 24),
-                        children: [
-                          for (final c in _cats)
-                            InkWell(
+                        itemCount: _cats.length + 1,
+                        itemBuilder: (_, i) {
+                          if (i == _cats.length) {
+                            return InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () => _open(category: c),
+                              onTap: () => _open(),
                               child: _tile(
-                                  FinBadge(icon: c.icon, color: c.color, size: 68), c.name),
+                                  Container(
+                                    width: 68,
+                                    height: 68,
+                                    decoration: const BoxDecoration(
+                                        color: Color(0xFFFBC02D), shape: BoxShape.circle),
+                                    child: const Icon(TablerIcons.plus,
+                                        size: 40, color: Color(0xFF1D1611)),
+                                  ),
+                                  tr.create),
+                            );
+                          }
+                          final c = _cats[i];
+                          final tile = _tile(
+                              FinBadge(icon: c.icon, color: c.color, size: 68), c.name);
+                          // довге натискання - узяти категорію, відпустити на іншій - поміняти місцями
+                          return DragTarget<String>(
+                            onWillAcceptWithDetails: (d) => d.data != c.id,
+                            onAcceptWithDetails: (d) => _move(d.data, c.id),
+                            builder: (_, hover, __) => LongPressDraggable<String>(
+                              data: c.id,
+                              feedback: Material(
+                                  color: Colors.transparent,
+                                  child: SizedBox(width: 110, child: Opacity(opacity: 0.9, child: tile))),
+                              childWhenDragging: Opacity(opacity: 0.3, child: tile),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: hover.isEmpty ? null : AppColors.darkBtn,
+                                    borderRadius: BorderRadius.circular(16)),
+                                child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () => _open(category: c),
+                                    child: tile),
+                              ),
                             ),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () => _open(),
-                            child: _tile(
-                                Container(
-                                  width: 68,
-                                  height: 68,
-                                  decoration: const BoxDecoration(
-                                      color: Color(0xFFFBC02D), shape: BoxShape.circle),
-                                  child: const Icon(TablerIcons.plus,
-                                      size: 40, color: Color(0xFF1D1611)),
-                                ),
-                                tr.create),
-                          ),
-                        ],
+                          );
+                        },
                       ),
               ),
             ]),

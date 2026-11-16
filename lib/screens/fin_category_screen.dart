@@ -148,26 +148,7 @@ class _FinCategoryScreenState extends State<FinCategoryScreen> {
                     color: finColor(_color),
                     onPick: (k) => setState(() => _icon = k)),
                 _label(tr.color),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(spacing: 10, runSpacing: 10, children: [
-                    for (final e in kFinColors.entries)
-                      GestureDetector(
-                        onTap: () => setState(() => _color = e.key),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: e.value,
-                            shape: BoxShape.circle,
-                            border: e.key == _color
-                                ? Border.all(color: AppColors.text, width: 3)
-                                : null,
-                          ),
-                        ),
-                      ),
-                  ]),
-                ),
+                FinColorGrid(selected: _color, onPick: (k) => setState(() => _color = k)),
                 if (_editing)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),

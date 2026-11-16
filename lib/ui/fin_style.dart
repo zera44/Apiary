@@ -202,47 +202,84 @@ Widget finIconWidget(String key, {required double size, required Color color}) {
   if (v is String) return AppIcon(v, size: size, color: color);
   return Icon(v as IconData, size: size, color: color);
 }
-/// Кольори категорій (ключ -> колір).
+/// Кольори категорій (ключ -> колір). Порядок = порядок на екрані: по 6 в
+/// рядку; зліва направо відтінок (червоні, жовті, зелені, сині, фіолетові,
+/// рожеві), зверху вниз від світлих до темних; останній рядок - сірі й коричневі.
 const Map<String, Color> kFinColors = {
-  // Червоні й помаранчеві
-  'crimson': Color(0xFFB8323F),
-  'terra': Color(0xFFCD4C28),
   'coral': Color(0xFFE8795A),
-  'orange': Color(0xFFE8672A),
-  'honey': Color(0xFFED9D2F),
-  // Жовті й пісочні
-  'amber': Color(0xFFF5B82E),
-  'light': Color(0xFFF3C969),
   'sand': Color(0xFFD9C08A),
-  // Зелені
-  'lime': Color(0xFFB7C94A),
-  'olive': Color(0xFF8E9D3D),
-  'moss': Color(0xFF5E7A32),
-  'green': Color(0xFF4FA36A),
   'mint': Color(0xFF7CCBA2),
-  // Бірюзові й сині
-  'teal': Color(0xFF3E9C97),
-  'aqua': Color(0xFF2FA7A0),
   'cyan': Color(0xFF5BB8D0),
-  'sky': Color(0xFF6E9FB8),
-  'blue': Color(0xFF4A7FC1),
-  'navy': Color(0xFF2F5C8F),
-  // Фіолетові й рожеві
-  'indigo': Color(0xFF6B6CC4),
   'lavender': Color(0xFFA99AD8),
-  'violet': Color(0xFF8E5CC4),
-  'purple': Color(0xFF6E3F8F),
-  'plum': Color(0xFF9B6A9E),
-  'magenta': Color(0xFFC25BA8),
+  'blush': Color(0xFFF4B8CC),
+  'orange': Color(0xFFE8672A),
+  'light': Color(0xFFF3C969),
+  'green': Color(0xFF4FA36A),
+  'sky': Color(0xFF6E9FB8),
+  'indigo': Color(0xFF6B6CC4),
   'pink': Color(0xFFE88FB4),
+  'terra': Color(0xFFCD4C28),
+  'lime': Color(0xFFB7C94A),
+  'aqua': Color(0xFF2FA7A0),
+  'teal': Color(0xFF3E9C97),
+  'violet': Color(0xFF8E5CC4),
   'rose': Color(0xFFD9708A),
-  // Коричневі й сірі
-  'nut': Color(0xFF9C7A55),
+  'crimson': Color(0xFFB8323F),
+  'amber': Color(0xFFF5B82E),
+  'olive': Color(0xFF8E9D3D),
+  'blue': Color(0xFF4A7FC1),
+  'purple': Color(0xFF6E3F8F),
+  'magenta': Color(0xFFC25BA8),
   'brown': Color(0xFF7A4E32),
+  'honey': Color(0xFFED9D2F),
+  'moss': Color(0xFF5E7A32),
+  'navy': Color(0xFF2F5C8F),
+  'plum': Color(0xFF9B6A9E),
+  'wine': Color(0xFF8A2D52),
+  'cloud': Color(0xFFCFC8BD),
   'stone': Color(0xFF9A9186),
+  'nut': Color(0xFF9C7A55),
   'slate': Color(0xFF5E6B7A),
   'graphite': Color(0xFF4A423B),
+  'ink': Color(0xFF2E2924),
 };
+
+/// Палітра кольорів: сітка по 6 у рядку (відтінок по горизонталі, світлота по вертикалі).
+class FinColorGrid extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onPick;
+  const FinColorGrid({super.key, required this.selected, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    final keys = kFinColors.keys.toList();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(children: [
+        for (var i = 0; i < keys.length; i += 6)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              for (final k in keys.skip(i).take(6))
+                GestureDetector(
+                  onTap: () => onPick(k),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: kFinColors[k],
+                      shape: BoxShape.circle,
+                      border:
+                          k == selected ? Border.all(color: AppColors.text, width: 3) : null,
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+      ]),
+    );
+  }
+}
 
 Color finColor(String key) => kFinColors[key] ?? kFinColors['honey']!;
 
