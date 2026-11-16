@@ -137,6 +137,7 @@ extension RepositoryFinAccounts on Repository {
           where: 'id = ?', whereArgs: [ids[i]]);
     }
     await batch.commit(noResult: true);
+    stockChanges.value++;
   }
 
   /// Усі рахунки, зокрема видалені (для підписів у старих переказах).
@@ -175,6 +176,7 @@ extension RepositoryFinAccounts on Repository {
       'updated_at': Repository.now(),
       'synced': 0,
     });
+    stockChanges.value++;
     return id;
   }
 
@@ -189,6 +191,7 @@ extension RepositoryFinAccounts on Repository {
     if (f.isEmpty) return;
     await db.update('fin_accounts', {...f, 'updated_at': Repository.now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    stockChanges.value++;
   }
 
   /// М'яке видалення рахунку: його операції й перекази лишаються в журналі.
@@ -243,6 +246,7 @@ extension RepositoryFinAccounts on Repository {
   Future<void> deleteFinAccount(String id) async {
     await db.update('fin_accounts', {'deleted': 1, 'updated_at': Repository.now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    stockChanges.value++;
   }
 
   /// Залишки всіх рахунків: id -> сума.

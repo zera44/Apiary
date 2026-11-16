@@ -1718,7 +1718,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get icon => 'Значок';
   @override
-  List<String> get finIconGroups => const ['Гроші й банки', 'Пасіка', 'Ферма', 'Транспорт', 'Дім і комуналка', 'Покупки й їжа', 'Здоров\'я й сім\'я', 'Розваги й освіта', 'Інше'];
+  List<String> get finIconGroups => const ['Гроші й банки', 'Пасіка', 'Ферма', 'Транспорт', 'Дім і комуналка', 'Покупки й їжа', 'Краса й здоров\'я', 'Сім\'я й тварини', 'Розваги й освіта', 'Інше'];
   @override
   String get categoryDelete => 'Видалити категорію';
   @override

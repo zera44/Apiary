@@ -1718,7 +1718,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get icon => 'Icon';
   @override
-  List<String> get finIconGroups => const ['Money & banks', 'Apiary', 'Farm', 'Transport', 'Home & utilities', 'Shopping & food', 'Health & family', 'Leisure & education', 'Other'];
+  List<String> get finIconGroups => const ['Money & banks', 'Apiary', 'Farm', 'Transport', 'Home & utilities', 'Shopping & food', 'Beauty & health', 'Family & pets', 'Leisure & education', 'Other'];
   @override
   String get categoryDelete => 'Delete category';
   @override

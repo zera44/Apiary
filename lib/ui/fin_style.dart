@@ -137,13 +137,31 @@ const List<Map<String, Object>> kFinIconGroups = [
     'pizza': TablerIcons.pizza,
     'gift': TablerIcons.gift,
   },
-  // Здоров'я й сім'я
+  // Краса й здоров'я
   {
+    'hair': TablerIcons.scissors,
+    'shave': TablerIcons.razor,
+    'makeup': TablerIcons.brush,
+    'spray': TablerIcons.spray,
+    'perfume': TablerIcons.perfume,
+    'manicure': TablerIcons.hand_finger,
+    'massage': TablerIcons.massage,
+    'bath': TablerIcons.bath,
+    'beauty': TablerIcons.sparkles,
+    'smile': TablerIcons.mood_smile,
+    'glasses': TablerIcons.eyeglass,
+    'yoga': TablerIcons.yoga,
+    'gym': TablerIcons.barbell,
     'health': TablerIcons.heart,
     'pulse': TablerIcons.heartbeat,
     'doctor': TablerIcons.stethoscope,
     'tooth': TablerIcons.dental,
     'vaccine': TablerIcons.vaccine,
+    'first_aid': TablerIcons.first_aid_kit,
+    'bandage': TablerIcons.bandage,
+  },
+  // Сім'я й тварини
+  {
     'baby': TablerIcons.baby_carriage,
     'bottle': TablerIcons.baby_bottle,
     'family': TablerIcons.users,

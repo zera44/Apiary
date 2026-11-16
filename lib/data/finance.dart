@@ -261,6 +261,7 @@ extension RepositoryFinance on Repository {
       'updated_at': t,
       'synced': 0,
     });
+    stockChanges.value++;
     return id;
   }
 
@@ -275,12 +276,15 @@ extension RepositoryFinance on Repository {
     if (f.isEmpty) return;
     await db.update('fin_categories', {...f, 'updated_at': Repository.now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    // назва, значок і колір категорії одразу змінюються в діаграмі й усіх розділах
+    stockChanges.value++;
   }
 
   /// М'яке видалення: у старих операціях назва лишається.
   Future<void> deleteFinCategory(String id) async {
     await db.update('fin_categories', {'deleted': 1, 'updated_at': Repository.now(), 'synced': 0},
         where: 'id = ?', whereArgs: [id]);
+    stockChanges.value++;
   }
 
   // ---------------------------------------------------------------- операції
