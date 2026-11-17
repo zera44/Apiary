@@ -49,7 +49,7 @@ final _qtyLine = RegExp(
 
 /// «Мед липовий 0.5кг 150.00 А»: назва і сума в кінці.
 final _priceLine = RegExp(
-  r'^(?<name>.*?[' + _letters + r'].*?)\s+[гГ]?(?<sum>\d+[.,]\d{2})\s*[' + _letters + r']?$',
+  r'^(?<name>.*?[' + _letters + r'].*?)\s+[гГ]?(?<sum>\d+[.,]\d{2})\s*[' + _letters + r']{0,2}$',
 );
 
 /// Службові рядки чека - не товари.
@@ -57,7 +57,7 @@ final _skip = RegExp(
   r'(пдв|податк|фн(?=\s|$|[.:№])|пн(?=\s|$|[.:№])|чек|каса|касир|готівк|картк|безготів|решта|дякуєм|знижк|'
   r'округл|дата|час(?=\s|$|[.:])|еквайр|термінал|термiнал|рнок|iпн|іпн|(?<![а-яіїєґ])код(?=\s|$|[.:])|номер|тел(?=\s|$|[.:])|'
   r'www|http|фіскал|фiскал|сплачено|повернен|бонус|акція|сума до|вартість|гарантій|епз|платіжн|рнн|термін|'
-  r'комісі|нарахован|витрачен|залишок|баланс|\*{2,}|rrn|auth|visa|master)',
+  r'комісі|нарахован|витрачен|залишок|баланс|акциз|\*{2,}|rrn|auth|visa|master)',
   caseSensitive: false,
 );
 
@@ -65,8 +65,11 @@ final _skip = RegExp(
 final _end = RegExp(r'^([сc][уy][мm][аa]|разом|всього|до сплати|усього|підсумок)(?![а-яіїєґa-z])', caseSensitive: false);
 
 /// Велика літера «О» всередині числа (45.5О, 1О0) - це нуль.
-String _fixDigits(String s) => s.replaceAllMapped(
-    RegExp(r'(?<=\d)[OО](?=\d)|(?<=\d[.,])[OО]|(?<=\d)[OО](?=[.,]\d)|(?<=\d)[OО](?=\s|$)'), (_) => '0');
+String _fixDigits(String s) => s
+    // «1'171,00» - апостроф як роздільник тисяч
+    .replaceAllMapped(RegExp(r"(\d)['’ʼ](?=\d{3}(?!\d))"), (m) => m[1]!)
+    .replaceAllMapped(
+        RegExp(r'(?<=\d)[OО](?=\d)|(?<=\d[.,])[OО]|(?<=\d)[OО](?=[.,]\d)|(?<=\d)[OО](?=\s|$)'), (_) => '0');
 
 double? _num(String? s) {
   if (s == null) return null;
@@ -271,6 +274,12 @@ final _nameNoise = RegExp(r'гарантій|термін', caseSensitive: false
 
 /// Знижка під позицією: «ЗНИЖКА -3,16», «ЦІНА КГ/Л ЗІ ЗНИЖКОЮ 29,32».
 final _discountLine = RegExp(r'^(?:зни[а-яіїєґ]{1,2}ка|ціна\s)', caseSensitive: false);
+
+/// Рядок лише із сумою й літерою податкової групи: «556,00 А».
+final _bareSum = RegExp(r'^(?<sum>\d+[.,]\d{2})\s*[A-ZА-ЯІЇЄҐ]$');
+
+/// «Ціна після знижки 37,00 А» (Копійочка).
+final _afterDiscount = RegExp(r'^ціна\s+після\s+знижк');
 
 /// Саме «ЗНИЖКА -3,16» (без «ціна за кг»).
 final _discountOnly = RegExp(r'^зни[а-яіїєґ]{1,2}ка', caseSensitive: false);
@@ -747,6 +756,14 @@ List<ReceiptRow> _parseOnce(String text, {bool fill = true}) {
       continue;
     }
 
+    // «Ціна після знижки 37,00 А»: справжня сума позиції вище, а не ціна до знижки
+    if (rows.isNotEmpty && _afterDiscount.hasMatch(low)) {
+      final v = _lastMoney(line);
+      if (v != null && v > 0) rows.last.price = _to(v / rows.last.qty, 2);
+      pending = null;
+      continue;
+    }
+
     if (_skip.hasMatch(low)) {
       pending = null;
       continue;
@@ -758,6 +775,17 @@ List<ReceiptRow> _parseOnce(String text, {bool fill = true}) {
       final glue = RegExp(r'[\d/]$').hasMatch(last.name) ? '' : ' ';
       last.name = '${last.name}$glue${line.toLowerCase()}';
       continue;
+    }
+
+    // ціна окремим рядком під назвою: «Кава Peru 250г» / «556,00 А»
+    final bare = _bareSum.firstMatch(line);
+    if (bare != null && pending != null && _hasWord(pending)) {
+      final sum = _num(bare.namedGroup('sum'));
+      if (sum != null && sum > 0) {
+        add(pending, 1, null, sum);
+        pending = null;
+        continue;
+      }
     }
 
     final p = _priceLine.firstMatch(_trimTail(line));
