@@ -25,7 +25,6 @@ import 'package:apiary/screens/history_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
 import 'package:apiary/screens/parameters_screen.dart';
 import 'package:apiary/screens/qr_generate_screen.dart';
-import 'package:apiary/screens/qr_section_screen.dart';
 import 'package:apiary/services/qr_labels.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
 import 'package:apiary/screens/templates_screen.dart';
@@ -106,8 +105,8 @@ void main() {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    // «QR-код» - окремий розділ: дії - плитками на його екрані
-    final item = find.descendant(of: find.byType(QrSectionScreen), matching: find.text(action));
+    // «QR-код» розкривається в меню: дії - підпунктами
+    final item = find.descendant(of: find.byType(AppDrawer), matching: find.text(action));
     await tester.ensureVisible(item);
     await settle(tester);
     await tester.tap(item);
@@ -2205,7 +2204,10 @@ void main() {
     expect(find.byTooltip('Налаштування'), findsNothing); // на місці шестерні - помічник
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
+    // тап розкриває розділи Налаштувань - обираємо «Вигляд»
     await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text(SettingsPart.look.label)));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
     expect(find.text(SettingsPart.look.label), findsOneWidget); // назва розділу на плашці

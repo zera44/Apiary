@@ -11,14 +11,16 @@ import '../screens/feedback_chat_screen.dart';
 import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
-import '../screens/qr_section_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'common.dart';
+import 'qr_actions.dart';
 import 'guide_bubble.dart';
+import 'fin_drawer.dart';
 import 'icons.dart';
+import 'settings_part.dart';
 import 'theme.dart';
 import '../l10n/l10n.dart';
 
@@ -153,6 +155,30 @@ List<List<InlineSpan>> get kDrawerTour => [
 
 class _AppDrawerState extends State<AppDrawer> {
   int _step = 0;
+  /// Розкритий розділ меню: 'fin', 'qr' або 'set' (його підрозділи під назвою).
+  String? _openRow;
+
+  void _toggle(String row) => setState(() => _openRow = _openRow == row ? null : row);
+
+  Widget? _chev(String row) => widget.tour
+      ? null
+      : Icon(_openRow == row ? TablerIcons.chevron_up : TablerIcons.chevron_down,
+          color: AppColors.text);
+
+  /// Підрозділ: закриває меню й виконує дію.
+  Widget _sub(IconData icon, String label, VoidCallback onTap, {bool close = true}) => Padding(
+        padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
+        child: ListTile(
+          dense: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          leading: Icon(icon, color: AppColors.textMuted, size: 24),
+          title: Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
+          onTap: () {
+            if (close) Navigator.of(context).pop(); // закрити меню
+            onTap();
+          },
+        ),
+      );
 
   Repository get repo => widget.repo;
   Apiary get currentApiary => widget.currentApiary;
@@ -265,14 +291,27 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(1, _item(context, 'box', tr.stock,
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
           _t(2, _item(context, '', tr.finances,
-              widget.tour ? () {} : () => _open(nav, FinanceScreen(repo: repo)),
-              iconData: TablerIcons.wallet)),
+              widget.tour ? () {} : () => _toggle('fin'),
+              iconData: TablerIcons.wallet, trailing: _chev('fin'))),
+          // розділ розкритий: підрозділи під ним, решта нижче ховається
+          if (_openRow == 'fin' && !widget.tour) ...[
+            _sub(TablerIcons.chart_donut, tr.finHome, () => FinDrawer.openFrom(context, repo, FinSection.home), close: false),
+            _sub(TablerIcons.building_bank, tr.finAccounts, () => FinDrawer.openFrom(context, repo, FinSection.accounts), close: false),
+            _sub(TablerIcons.chart_bar, tr.finStats, () => FinDrawer.openFrom(context, repo, FinSection.stats), close: false),
+            _sub(TablerIcons.list, tr.finCategories, () => FinDrawer.openFrom(context, repo, FinSection.categories), close: false),
+            _sub(TablerIcons.receipt, tr.finOps, () => FinDrawer.openFrom(context, repo, FinSection.ops), close: false),
+          ] else ...[
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _t(3, _item(context, 'history', tr.history,
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
-          // QR-код - окремий розділ зі своїм меню (як Фінанси)
+          // QR-код: тап розкриває Сканувати, Генерувати, Прив'язати
           _t(4, _item(context, 'qr', tr.qrCode,
-              widget.tour ? () {} : () => _open(nav, QrSectionScreen(repo: repo)))),
+              widget.tour ? () {} : () => _toggle('qr'),
+              trailing: _chev('qr'))),
+          if (_openRow == 'qr' && !widget.tour)
+            for (final a in qrActions(context, repo))
+              _sub(a.icon, a.label, a.onTap)
+          else ...[
           // ШІ-помічник: відкрити розмову (поза екскурсією)
           if (!widget.tour && widget.hint == null)
             _item(context, '', tr.aiAssistant, () {
@@ -283,12 +322,22 @@ class _AppDrawerState extends State<AppDrawer> {
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: TablerIcons.school)),
           _t(6, _item(context, '', tr.settingsTitle,
-              widget.tour ? () {} : () => _open(nav, SettingsScreen(repo: repo)),
-              iconData: TablerIcons.settings)),
+              widget.tour ? () {} : () => _toggle('set'),
+              iconData: TablerIcons.settings, trailing: _chev('set'))),
+          if (_openRow == 'set' && !widget.tour)
+            for (final p in SettingsPart.values)
+              _sub(p.icon, p.label, () {
+                nav.popUntil((r) => r.isFirst);
+                nav.push(MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(repo: repo, part: p)));
+              })
+          else
           _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav, repo);
           })),
+          ],
+          ],
           ])),
           if (widget.tour || widget.hint != null) _tourFooter(),
         ]),
@@ -297,8 +346,9 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Widget _item(BuildContext context, String icon, String text, VoidCallback onTap,
-      {IconData? iconData}) {
+      {IconData? iconData, Widget? trailing}) {
     return ListTile(
+      trailing: trailing,
       leading: iconData != null
           ? Icon(iconData, color: AppColors.text, size: 28)
           : AppIcon(icon, color: AppColors.text, size: 30),
