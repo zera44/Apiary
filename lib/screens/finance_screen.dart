@@ -13,7 +13,6 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
-import '../ui/thousands_input.dart';
 import '../l10n/l10n.dart';
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
@@ -156,102 +155,12 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
   }
 }
 
-/// Форма «Змінити запис»: категорія, сума (якщо немає рядків таблиці), дата, коментар.
+/// «Змінити запис»: той самий екран, що й нова витрата чи дохід, але заповнений
+/// тим, що було обрано (категорія, рахунок, дата, сума, рядки, коментар).
 Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) async {
-  final cats = await repo.listFinCategories(kind: e.kind);
-  if (!context.mounted) return false;
-  final amountCtrl = TextEditingController(text: _plain(e.amount));
-  final noteCtrl = TextEditingController(text: e.comment ?? '');
-  var catId = e.categoryId;
-  var date = e.date;
-  String? error;
-  final amountLocked = e.lineCount > 0;
-  final saved = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(builder: (ctx, setD) {
-      Future<void> save() async {
-        final v = double.tryParse(amountCtrl.text.trim().replaceAll(',', '.').replaceAll(' ', ''));
-        if (v == null || v < 0 || (amountCtrl.text.trim().startsWith('-'))) {
-          setD(() => error = tr.finSumBad);
-          return;
-        }
-        try {
-          await repo.updateFinOp(e.id,
-              categoryId: catId, date: date, amount: v, comment: noteCtrl.text);
-          if (ctx.mounted) Navigator.pop(ctx, true);
-        } on StateError catch (err) {
-          setD(() => error = err.message);
-        } catch (err) {
-          setD(() => error = '$err');
-        }
-      }
-
-      return AlertDialog(
-        title: Text(tr.finEditRecord),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-            TextField(
-              controller: amountCtrl,
-              enabled: !amountLocked,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: thousandsInput,
-              decoration: InputDecoration(
-                  labelText: tr.finSumUah,
-                  helperText: amountLocked ? tr.finSumFromLines : null),
-            ),
-            const SizedBox(height: 12),
-            Text(tr.category, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final c in cats)
-                ChoiceButton(
-                  text: c.name,
-                  selected: catId == c.id,
-                  onTap: () => setD(() => catId = c.id),
-                ),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Text(tr.dateColon, style: TextStyle(color: AppColors.textMuted)),
-              TextButton(
-                onPressed: () async {
-                  final r = await showAppDatePicker(ctx, formatDdMmYyyy(date));
-                  final d = parseDdMmYyyy(r);
-                  if (d != null) setD(() => date = d);
-                },
-                child: Text(formatDdMmYyyy(date)),
-              ),
-            ]),
-            TextField(
-              controller: noteCtrl,
-              maxLength: 200,
-              decoration: InputDecoration(labelText: tr.commentOptional),
-            ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(error!, style: TextStyle(color: AppColors.danger, fontSize: 12.5)),
-              ),
-          ]),
-        ),
-        actions: [
-          Row(children: [
-            Expanded(
-              child: PillButton(
-                  text: tr.cancel,
-                  bg: AppColors.neutralBtn,
-                  fg: AppColors.text,
-                  onPressed: () => Navigator.pop(ctx, false)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: PillButton(text: tr.save, bg: AppColors.accent, onPressed: save)),
-          ]),
-        ],
-      );
-    }),
-  );
-  return saved ?? false;
+  final r = await Navigator.of(context)
+      .push<String>(MaterialPageRoute(builder: (_) => FinAddScreen(repo: repo, edit: e)));
+  return r != null;
 }
 
 String _plain(double v) =>

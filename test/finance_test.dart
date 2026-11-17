@@ -622,6 +622,40 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('«Змінити»: екран як у новій витраті, заповнений; рядки зі складом - лише перегляд', (tester) async {
+      final cats = (await tester.runAsync(() => repo.listFinCategories(kind: kFinExpense)))!;
+      final a = cats.firstWhere((c) => !c.toStock), b = cats.firstWhere((c) => !c.toStock && c.id != a.id);
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinExpense,
+          categoryId: a.id,
+          amount: 120,
+          date: DateTime(2026, 10, 3),
+          comment: 'моя примітка',
+          lines: const [FinLineInput(name: 'Цвяхи', qty: 2, unit: 'шт', price: 60)]));
+      final e = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      await open(tester, FinAddScreen(repo: repo, edit: e));
+      // як екран витрати, але з назвою зміни, без перемикача «Витрати/Дохід»
+      expect(find.text('Змінити запис'), findsOneWidget);
+      expect(find.text('Дохід'), findsNothing);
+      expect(find.text('Сфотографувати чек'), findsNothing);
+      // заповнено: категорія, коментар, рядок таблиці
+      expect(find.text('моя примітка'), findsOneWidget);
+      expect(find.text('Цвяхи'), findsOneWidget);
+      // сума з рядків - не редагується
+      final sum = tester.widget<TextField>(find.byKey(const ValueKey('fin-sum')));
+      expect(sum.enabled, isFalse);
+      await tester.tap(find.text(b.name));
+      await tester.pump();
+      await tester.tap(find.text('Зберегти'));
+      await settle(tester);
+      await settle(tester);
+      final after = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      expect(after.categoryId, b.id);
+      expect(after.amount, 120);
+      expect(after.comment, 'моя примітка');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('без категорії не записується', (tester) async {
       await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
@@ -787,6 +821,34 @@ void main() {
   });
 
   group('статистика: стовпчики', () {
+    testWidgets('діаграма по місяцях широка й гортається вбік, відкривається на поточному місяці', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
+      final now = DateTime.now();
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 300, date: now);
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      await settle();
+      await tester.tap(find.text('По місяцях'));
+      await settle();
+      final scroll = tester.state<ScrollableState>(
+          find.descendant(of: find.byKey(const ValueKey('stat-scroll')), matching: find.byType(Scrollable)));
+      // 12 місяців не вміщаються в екран - діаграма гортається
+      expect(scroll.position.maxScrollExtent, greaterThan(0));
+      // відкрито на поточному місяці: його стовпчик у межах екрана
+      final bar = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
+      expect(bar.left, greaterThanOrEqualTo(0));
+      expect(bar.right, lessThanOrEqualTo(412));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('дотик до стовпчика - плашка із сумою й розбивка за категоріями місяця', (tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 915));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -810,6 +872,16 @@ void main() {
       await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
       await tester.pump();
       expect(find.textContaining('300'), findsWidgets); // плашка і рядок категорії
+      // усі стовпчики цього місяця яскраві, стовпчики інших місяців тьмяніють
+      Color barColor(int mi, int series) => (tester
+              .widget<Container>(find.descendant(
+                  of: find.byKey(ValueKey('stat-bar-$mi-$series')), matching: find.byType(Container)).first)
+              .decoration as BoxDecoration)
+          .color!;
+      final other = now.month == 1 ? 1 : 0;
+      expect(barColor(now.month - 1, 0).a, 1.0);
+      expect(barColor(now.month - 1, 2).a, 1.0);
+      expect(barColor(other, 0).a, lessThan(1.0));
       expect(find.text('Витратна'), findsOneWidget);
       expect(find.text('100%'), findsOneWidget);
       expect(find.byIcon(TablerIcons.scissors), findsOneWidget);
