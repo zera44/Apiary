@@ -441,6 +441,8 @@ void main() {
         .first;
     final chip = find.descendant(
         of: find.byType(LongPressDraggable<String>), matching: find.textContaining('Мітка матки'));
+    // список будується ліниво: на малому екрані параметр може бути ще не збудований
+    await tester.dragUntilVisible(chip, scroll, const Offset(0, -80));
     await tester.ensureVisible(chip.first);
     await settle(tester, 2);
     final before = tester.state<ScrollableState>(scroll).position.pixels;

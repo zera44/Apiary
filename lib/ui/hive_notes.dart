@@ -110,13 +110,9 @@ class _HiveNotesViewState extends State<HiveNotesView> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
       children: [
-        PillButton(
+        AddButton(
           key: const ValueKey('note-add'),
           text: tr.noteAdd,
-          bg: AppColors.accent,
-          height: 38,
-          fontSize: 13,
-          width: double.infinity,
           onPressed: () => _edit(),
         ),
         if (chips.isNotEmpty) ...[
@@ -355,7 +351,7 @@ class _NoteEditorState extends State<_NoteEditor> {
     if (mounted) Navigator.pop(context, true);
   }
 
-  Widget _chip(String text, bool on, VoidCallback onTap, {VoidCallback? onLong, Key? key}) =>
+  Widget _chip(String text, bool on, VoidCallback onTap, {VoidCallback? onLong, Key? key, bool add = false}) =>
       GestureDetector(
         key: key,
         onTap: onTap,
@@ -368,7 +364,7 @@ class _NoteEditorState extends State<_NoteEditor> {
           ),
           child: Text(text,
               style: TextStyle(
-                  color: on ? AppColors.bg : AppColors.text,
+                  color: on ? AppColors.bg : (add ? AppColors.create : AppColors.text),
                   fontSize: 13,
                   fontWeight: on ? FontWeight.bold : FontWeight.w500)),
         ),
@@ -414,7 +410,7 @@ class _NoteEditorState extends State<_NoteEditor> {
               for (final l in _labels)
                 _chip(l.name, _label == l.id, () => setState(() => _label = l.id),
                     onLong: () => _labelMenu(l)),
-              _chip(tr.labelAdd, false, _newLabel, key: const ValueKey('note-new-label')),
+              _chip(tr.labelAdd, false, _newLabel, key: const ValueKey('note-new-label'), add: true),
             ]),
             if (_labels.isNotEmpty)
               Padding(

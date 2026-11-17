@@ -375,12 +375,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   children: [
                     for (final l in _lines) _row(l),
-                    PillButton(
+                    AddButton(
                       text: tr.addRowButton,
-                      bg: AppColors.darkBtn,
-                      fg: AppColors.text,
-                      height: 42,
-                      width: double.infinity,
                       onPressed: _addLine,
                     ),
                   ],

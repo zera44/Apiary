@@ -518,11 +518,8 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               const SizedBox(height: 12),
-              PillButton(
+              AddButton(
                 text: tr.paramNewDots,
-                bg: AppColors.accent,
-                height: 42,
-                width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, ''),
               ),
               for (final p in targets) ...[
@@ -1053,13 +1050,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
       LessonTarget(
         lesson: _lesson,
         name: 'new-group',
-        radius: 14,
-        child: PillButton(
+        radius: 24,
+        child: AddButton(
           text: tr.groupNewButton,
-          bg: AppColors.darkBtn,
-          fg: AppColors.text,
-          height: 42,
-          width: double.infinity,
           onPressed: _addGroup,
         ),
       ),

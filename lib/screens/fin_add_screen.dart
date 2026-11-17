@@ -681,7 +681,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(color: AppColors.darkBtn, shape: BoxShape.circle),
-                  child: Icon(more ? TablerIcons.dots : TablerIcons.plus, color: AppColors.text, size: 28),
+                  child: Icon(more ? TablerIcons.dots : TablerIcons.plus,
+                      color: more ? AppColors.text : AppColors.create, size: 28),
                 ),
                 label: more ? tr.moreCategories : tr.newCategoryShort,
                 labelColor: AppColors.create,
@@ -1182,17 +1183,18 @@ class _FinAddScreenState extends State<FinAddScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _tableHeader(),
         for (final l in _lines) _row(l),
-        Row(children: [
-          TextButton(
-            // ціль не менше 48 dp: кнопка в самому низу картки
-            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
-            onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
-            child: Text(tr.addRow, style: TextStyle(color: AppColors.create)),
+        if (t > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13))),
           ),
-          const Spacer(),
-          if (t > 0)
-            Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-        ]),
+        const SizedBox(height: 8),
+        AddButton(
+          text: tr.addRow,
+          onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
+        ),
       ]),
     );
   }

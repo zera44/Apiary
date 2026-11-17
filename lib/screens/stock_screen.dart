@@ -366,12 +366,8 @@ class _StockScreenState extends State<StockScreen> {
             if (_op == StockOp.receive)
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: PillButton(
+                child: AddButton(
                   text: tr.stockItemAdd,
-                  bg: AppColors.accent,
-                  height: 48,
-                  radius: 16,
-                  width: double.infinity,
                   onPressed: _add,
                 ),
               ),

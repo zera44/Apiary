@@ -203,12 +203,8 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: PillButton(
+              child: AddButton(
                 text: tr.createMapButton,
-                bg: AppColors.accent,
-                height: 48,
-                radius: 16,
-                width: double.infinity,
                 onPressed: _create,
               ),
             ),

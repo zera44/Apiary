@@ -63,6 +63,26 @@ class _IconPainter extends CustomPainter {
 }
 
 /// Заокруглена кнопка-пігулка з текстом.
+/// Кнопка «+ …» (додати): одна на весь додаток - темна пігулка з медовим
+/// текстом, висота 48, на всю ширину; стоїть у кінці списку.
+class AddButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  const AddButton({super.key, required this.text, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => PillButton(
+        text: text,
+        bg: AppColors.darkBtn,
+        fg: AppColors.create,
+        height: 48,
+        radius: 24,
+        fontSize: 15,
+        width: double.infinity,
+        onPressed: onPressed,
+      );
+}
+
 class PillButton extends StatelessWidget {
   final String text;
   final Color bg;
