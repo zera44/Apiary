@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:apiary/data/database.dart';
+import 'package:apiary/ui/nav_drawer.dart';
+import 'package:apiary/ui/settings_part.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/notes.dart';
@@ -99,7 +101,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
-  /// Меню ☰ уже відкрите: «QR-код» → [action] (Сканувати / Генерувати / Прив'язати підряд).
+  /// Меню ☰ уже відкрите: «QR-код» → [action] (Сканувати / Генерувати / Прив'язати).
   Future<void> qrMenu(WidgetTester tester, String action) async {
     await tester.ensureVisible(find.text('QR-код'));
     await tester.tap(find.text('QR-код'));
@@ -581,7 +583,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('меню: «Прив\'язати підряд» - вибір вуликів без коду й сканер', (tester) async {
+  testWidgets('меню: «Прив\'язати» - вибір вуликів без коду й сканер', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final a = (await tester.runAsync(() => repo.getApiary(apiaryId)))!;
@@ -589,7 +591,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await qrMenu(tester, 'Прив\'язати підряд');
+    await qrMenu(tester, 'Прив\'язати');
     await tester.pump(const Duration(seconds: 1)); // меню закрилось
     // одразу карта з вибором: вулики без коду, нічого ще не обрано
     expect(find.byKey(const ValueKey('bind-bar')), findsOneWidget);
@@ -620,7 +622,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('«Прив\'язати підряд»: пропустити, список і «Продовжити»', (tester) async {
+  testWidgets('«Прив\'язати»: пропустити, список і «Продовжити»', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.runAsync(() => repo.addGroup(apiaryId, {'0,0': 'hive'}, 0, -4, groupLabel: 'Вулик 2'));
@@ -629,7 +631,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.byTooltip('Меню'));
     await settle(tester);
-    await qrMenu(tester, 'Прив\'язати підряд');
+    await qrMenu(tester, 'Прив\'язати');
     await tester.pump(const Duration(seconds: 1)); // меню закрилось
     expect(find.text('Без коду: 2 · обрано: 0'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('bind-all')));
@@ -1193,7 +1195,9 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Шаблони'), findsOneWidget);
+    await tester.tap(find.text(SettingsPart.look.label)); // плашка «≡ назва ⌄» відкриває меню
+    await settle(tester);
+    expect(find.text('Шаблони'), findsOneWidget); // підрозділ Налаштувань
     expect(find.text('Характеристики'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -2204,17 +2208,22 @@ void main() {
     await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Налаштування')));
     await settle(tester);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Налаштування'), findsOneWidget);
-    expect(find.text('Головне'), findsOneWidget);
-    expect(find.text(tr.textSizeSection), findsOneWidget); // «Головне» - розмір шрифту
-    // «Акаунт»: розділ синхронізації; без сервера - вона вимкнена
-    await tester.tap(find.text(tr.settingsTabAccount));
+    expect(find.text(SettingsPart.look.label), findsOneWidget); // назва розділу на плашці
+    expect(find.text(tr.textSizeSection), findsOneWidget); // «Вигляд» - розмір шрифту
+    // «Дані»: розділ синхронізації; без сервера - вона вимкнена
+    await tester.tap(find.text(SettingsPart.look.label));
+    await settle(tester);
+    await tester.tap(find.descendant(
+        of: find.byType(NavDrawer), matching: find.text(SettingsPart.data.label)));
     await settle(tester);
     expect(find.text('Синхронізація'), findsOneWidget);
     expect(find.text(tr.syncDisabled), findsOneWidget);
     expect(find.textContaining('з\'являться тут згодом'), findsNothing);
     expect(find.text('Історія'), findsNothing); // історія - лише по картах
-    await tester.tap(find.text('Шаблони'));
+    await tester.pump(const Duration(seconds: 1)); // меню закрилося
+    await tester.tap(find.descendant(of: find.byType(NavTopBar), matching: find.text(SettingsPart.data.label)));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(NavDrawer), matching: find.text('Шаблони')));
     await settle(tester);
     expect(tester.takeException(), isNull);
   });

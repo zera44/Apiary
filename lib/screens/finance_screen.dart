@@ -7,6 +7,7 @@ import '../data/finance.dart';
 import '../data/repository.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/date_picker.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
@@ -649,7 +650,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     ];
     return Scaffold(
       key: _scaffoldKey,
-      drawer: FinDrawer(repo: repo, current: FinSection.home),
+      drawer: NavDrawer(repo: repo, current: NavSection.finances, finSection: FinSection.home),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
@@ -802,7 +803,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
     ];
     return Scaffold(
       key: _scaffoldKey,
-      drawer: FinDrawer(repo: repo, current: FinSection.ops),
+      drawer: NavDrawer(repo: repo, current: NavSection.finances, finSection: FinSection.ops),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [

@@ -6,6 +6,7 @@ import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 
@@ -69,7 +70,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
     final profit = finColor('sky'), loss = finColor('terra');
     return Scaffold(
       key: _scaffoldKey,
-      drawer: FinDrawer(repo: widget.repo, current: FinSection.stats),
+      drawer: NavDrawer(repo: widget.repo, current: NavSection.finances, finSection: FinSection.stats),
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [

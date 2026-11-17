@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:apiary/data/database.dart';
+import 'package:apiary/ui/settings_part.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/l10n/l10n.dart';
@@ -316,9 +317,7 @@ void main() {
       }
     }
 
-    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: SettingsScreen(repo: repo)));
-    await settle();
-    await tester.tap(find.text(tr.settingsTabAccount));
+    await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: SettingsScreen(repo: repo, part: SettingsPart.data)));
     await settle();
     expect(find.text(tr.backupsSection), findsNWidgets(2)); // заголовок і кнопка
     expect(find.text(tr.backupsNone), findsOneWidget);

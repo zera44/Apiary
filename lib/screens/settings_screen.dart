@@ -5,6 +5,7 @@ import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
 import '../ui/nav_drawer.dart';
+import '../ui/settings_part.dart';
 import '../ui/theme.dart';
 import '../tutorial/lesson.dart';
 import 'settings_main_tab.dart';
@@ -43,7 +44,11 @@ class SettingsScreen extends StatefulWidget {
 
   /// Урок «Шаблони».
   final LessonController? lesson;
-  const SettingsScreen({super.key, required this.repo, this.lesson});
+
+  /// З якого розділу почати.
+  final SettingsPart part;
+  const SettingsScreen(
+      {super.key, required this.repo, this.lesson, this.part = SettingsPart.look});
 
   static Future<void> open(NavigatorState nav, Repository repo, {LessonController? lesson}) =>
       nav.push(MaterialPageRoute(builder: (_) => SettingsScreen(repo: repo, lesson: lesson)));
@@ -54,6 +59,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _tab = 0;
+  late SettingsPart _part = widget.part;
   final _templates = GlobalKey<TemplatesScreenState>();
 
   LessonController? get _lesson => widget.lesson;
@@ -112,39 +118,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (!didPop) _back();
       },
       child: Scaffold(
-        drawer: l == null ? NavDrawer(repo: widget.repo, current: NavSection.settings) : null,
+        drawer: l == null
+            ? NavDrawer(
+                repo: widget.repo,
+                current: NavSection.settings,
+                settingsPart: _part,
+                onSettingsPart: (p) => setState(() => _part = p),
+              )
+            : null,
         body: SafeArea(
           child: Stack(children: [
             ScreenColumn(children: [
               l == null
-                  ? NavTopBar(title: tr.settingsTitle)
+                  ? NavTopBar(title: _part.label)
                   : TopBar(title: tr.settingsTitle, onBack: _back),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-                child: Row(children: [
-                  _tabButton(tr.settingsTabMain, 0),
-                  const SizedBox(width: 8),
-                  _tabButton(tr.settingsTabTemplates, 1),
-                  if (l == null) ...[
+              if (l != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: Row(children: [
+                    _tabButton(tr.settingsTabMain, 0),
                     const SizedBox(width: 8),
-                    _tabButton(tr.settingsTabAccount, 2),
-                  ],
-                ]),
-              ),
-              Expanded(
-                child: TabSwipe(
-                  index: _tab,
-                  count: l == null ? 3 : 2,
-                  // в уроці вкладку веде урок - свайп не збиває крок
-                  onChanged: (i) {
-                    if (l == null) setState(() => _tab = i);
-                  },
-                  child: switch (_tab) {
-                    0 => MainSettingsTab(repo: widget.repo),
-                    1 => TemplatesScreen(key: _templates, repo: widget.repo, embedded: true, lesson: l),
-                    _ => AccountSettingsTab(repo: widget.repo),
-                  },
+                    _tabButton(tr.settingsTabTemplates, 1),
+                  ]),
                 ),
+              Expanded(
+                child: l != null
+                    ? (_tab == 0
+                        ? MainSettingsTab(repo: widget.repo)
+                        : TemplatesScreen(
+                            key: _templates, repo: widget.repo, embedded: true, lesson: l))
+                    : switch (_part) {
+                        SettingsPart.look || SettingsPart.assistant =>
+                          MainSettingsTab(key: ValueKey(_part), repo: widget.repo, part: _part),
+                        SettingsPart.templates => TemplatesScreen(
+                            key: _templates, repo: widget.repo, embedded: true),
+                        _ => AccountSettingsTab(key: ValueKey(_part), repo: widget.repo, part: _part),
+                      },
               ),
               // місце під пасічника з хмаркою
               if (l != null) const SizedBox(height: kLessonReserve),

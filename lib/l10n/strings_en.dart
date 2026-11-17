@@ -23,6 +23,14 @@ class AppStringsEn extends AppStrings {
   String get settingsTabAccount => 'Account';
   @override
   String get settingsTabTemplates => 'Templates';
+  @override
+  String get settingsSecLook => 'Look';
+  @override
+  String get settingsSecAssistant => 'Assistant';
+  @override
+  String get settingsSecData => 'Data';
+  @override
+  String get settingsSecAbout => 'About';
 
   // ---- Синхронізація ----
   @override
@@ -741,7 +749,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get generate => 'Generate';
   @override
-  String get qrBindRow => 'Link in a row';
+  String get qrBindRow => 'Link';
 
   // ---- Головний екран ----
   @override

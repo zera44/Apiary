@@ -21,7 +21,12 @@ class FinDrawer extends StatelessWidget {
   final FinSection current;
   const FinDrawer({super.key, required this.repo, required this.current});
 
-  void _go(BuildContext context, FinSection target) {
+  void _go(BuildContext context, FinSection target) => goSection(context, repo, current, target);
+
+  /// Перехід між розділами Фінансів (спільний для цього меню й розкривного
+  /// списку в [NavDrawer]).
+  static void goSection(
+      BuildContext context, Repository repo, FinSection current, FinSection target) {
     final nav = Navigator.of(context);
     nav.pop(); // закрити меню
     if (target == current) return;

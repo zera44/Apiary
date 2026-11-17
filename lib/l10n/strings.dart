@@ -24,6 +24,10 @@ abstract class AppStrings {
   String get settingsTabMain;
   String get settingsTabTemplates;
   String get settingsTabAccount;
+  String get settingsSecLook;
+  String get settingsSecAssistant;
+  String get settingsSecData;
+  String get settingsSecAbout;
 
   // ---- Синхронізація ----
   String get syncSection;

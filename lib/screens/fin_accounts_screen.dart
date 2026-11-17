@@ -8,6 +8,7 @@ import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import '../ui/thousands_input.dart';
@@ -185,7 +186,7 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         key: _scaffoldKey,
-        drawer: FinDrawer(repo: widget.repo, current: FinSection.accounts),
+        drawer: NavDrawer(repo: widget.repo, current: NavSection.finances, finSection: FinSection.accounts),
         body: SafeArea(
           child: Stack(children: [
             ScreenColumn(children: [

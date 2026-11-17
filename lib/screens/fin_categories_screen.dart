@@ -6,6 +6,7 @@ import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
+import '../ui/nav_drawer.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_category_screen.dart';
@@ -59,7 +60,7 @@ class _FinCategoriesScreenState extends State<FinCategoriesScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         key: _scaffoldKey,
-        drawer: FinDrawer(repo: widget.repo, current: FinSection.categories),
+        drawer: NavDrawer(repo: widget.repo, current: NavSection.finances, finSection: FinSection.categories),
         body: SafeArea(
           child: Stack(children: [
             ScreenColumn(children: [
