@@ -14,7 +14,6 @@ import '../l10n/l10n.dart';
 Future<void> showApiaryReport(BuildContext context, Repository repo, Apiary apiary) async {
   final choice = await showModalBottomSheet<String>(
     context: context,
-    backgroundColor: AppColors.card,
     builder: (ctx) => SafeArea(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Padding(

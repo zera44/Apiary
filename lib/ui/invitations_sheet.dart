@@ -11,7 +11,6 @@ import 'theme.dart';
 Future<void> showInvitations(BuildContext context) => showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.popupBg,
       builder: (_) => const _InvitationsSheet(),
     );
 

@@ -396,17 +396,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     unawaited(_speaker.stop());
     if (await widget.repo.getMeta(AssistantVoiceSettings.micExplainedKey) != '1') {
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.popupBg,
-          title: Text(tr.assistantMicExplainTitle, style: TextStyle(color: AppColors.text)),
-          content: Text(tr.assistantMicExplain, style: TextStyle(color: AppColors.text)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.assistantMicExplainOk)),
-          ],
-        ),
-      );
+      await showInfo(context, tr.assistantMicExplain,
+          title: tr.assistantMicExplainTitle, okText: tr.assistantMicExplainOk);
       await widget.repo.setMeta(AssistantVoiceSettings.micExplainedKey, '1');
       return;
     }
@@ -501,7 +492,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   Future<void> _conversations() async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.bg,
       isScrollControlled: true,
       builder: (_) => _ConversationsSheet(
         store: store,
@@ -1262,7 +1252,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   /// Знизу - хто допомагає (Ведмедик / Пасічник) і глибина міркувань.
   Future<void> _choose() => showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppColors.popupBg,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (ctx) => SafeArea(

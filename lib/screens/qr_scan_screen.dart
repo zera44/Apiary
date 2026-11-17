@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:io' show Directory, File, Platform;
+import 'dart:io' show Directory, File;
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
@@ -12,6 +11,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../data/repository.dart';
 import '../logic/receipt_detect.dart';
 import '../services/receipt_ocr.dart';
+import '../services/photo_pick.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import '../data/finance.dart';
@@ -19,7 +19,7 @@ import 'fin_add_screen.dart';
 import '../l10n/l10n.dart';
 
 /// Чи є на цьому пристрої камера-сканер (телефон/планшет).
-bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+bool get qrCameraAvailable => photoCameraAvailable;
 
 /// Фото чека для нової витрати: на телефоні - камера з рамкою-контуром (як у
 /// сканері), на комп'ютері - звичайний вибір файла. null - скасовано.
@@ -490,9 +490,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
       picked = await showModalBottomSheet<int>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: AppColors.popupBg,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
         builder: (ctx) {
           var query = '';
           return StatefulBuilder(builder: (ctx, setS) {

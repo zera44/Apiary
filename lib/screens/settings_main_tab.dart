@@ -489,7 +489,6 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
       }
       final b = await showModalBottomSheet<ServerBackup>(
         context: context,
-        backgroundColor: AppColors.popupBg,
         builder: (ctx) => SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Padding(
@@ -714,17 +713,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                 icon: TablerIcons.shield_lock,
                 text: tr.privacyPolicy,
                 color: AppColors.text,
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: AppColors.popupBg,
-                    title: Text(tr.privacyPolicy, style: TextStyle(color: AppColors.text)),
-                    content: Text(tr.privacySoon, style: TextStyle(color: AppColors.text)),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.close)),
-                    ],
-                  ),
-                ),
+                onTap: () => showInfo(context, tr.privacySoon, title: tr.privacyPolicy, okText: tr.close),
               ),
               if (Server.auth?.user != null)
                 _AccountLink(

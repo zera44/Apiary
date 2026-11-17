@@ -127,9 +127,6 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
         );
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),

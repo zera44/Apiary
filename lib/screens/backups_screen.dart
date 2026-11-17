@@ -129,7 +129,6 @@ class _BackupsScreenState extends State<BackupsScreen> {
   Future<void> _export(LocalBackup b) async {
     final share = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.popupBg,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(

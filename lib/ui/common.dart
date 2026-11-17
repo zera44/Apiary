@@ -579,7 +579,7 @@ String? cancelText,
 }
 
 /// Повідомлення з кнопкою "Гаразд".
-Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
+Future<void> showInfo(BuildContext context, String text, {String title = '', String? okText}) {
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -587,7 +587,7 @@ Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
       content: Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
       actions: [
         _dialogButtons([
-          PillButton(text: tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
+          PillButton(text: okText ?? tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
         ]),
       ],
     ),

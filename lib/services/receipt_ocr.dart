@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:image_picker/image_picker.dart';
+import 'photo_pick.dart';
 import 'package:paddle_ocr_flutter/paddle_ocr_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -129,14 +129,8 @@ Future<String> readReceiptText(ReceiptOcr ocr, String imagePath) async {
 /// Фото чека: [camera] - знімок камерою, інакше - з галереї (на комп'ютері - файл).
 /// null - скасовано.
 Future<String?> pickReceiptPhoto({required bool camera}) async {
-  final cameraOk = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-  final x = await ImagePicker().pickImage(
-    source: camera && cameraOk ? ImageSource.camera : ImageSource.gallery,
-    // чек вузький і довгий: потрібна роздільність, інакше дрібний шрифт не читається
-    maxWidth: 2400,
-    maxHeight: 4800,
-    imageQuality: 92,
-  );
+  // чек вузький і довгий: потрібна роздільність, інакше дрібний шрифт не читається
+  final x = await pickPhoto(camera: camera, maxWidth: 2400, maxHeight: 4800, quality: 92);
   return x?.path;
 }
 

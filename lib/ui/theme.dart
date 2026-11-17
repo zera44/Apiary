@@ -57,6 +57,19 @@ ThemeData buildAppTheme() {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       titleTextStyle: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.bold),
     ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: AppColors.popupBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.popupBg,
+      contentTextStyle: TextStyle(color: AppColors.text, fontSize: 14),
+      actionTextColor: AppColors.accent,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: AppColors.accent),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.input,
