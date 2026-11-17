@@ -821,6 +821,34 @@ void main() {
   });
 
   group('статистика: стовпчики', () {
+    testWidgets('діаграма по місяцях широка й гортається вбік, відкривається на поточному місяці', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
+      final now = DateTime.now();
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 300, date: now);
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      await settle();
+      await tester.tap(find.text('По місяцях'));
+      await settle();
+      final scroll = tester.state<ScrollableState>(
+          find.descendant(of: find.byKey(const ValueKey('stat-scroll')), matching: find.byType(Scrollable)));
+      // 12 місяців не вміщаються в екран - діаграма гортається
+      expect(scroll.position.maxScrollExtent, greaterThan(0));
+      // відкрито на поточному місяці: його стовпчик у межах екрана
+      final bar = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
+      expect(bar.left, greaterThanOrEqualTo(0));
+      expect(bar.right, lessThanOrEqualTo(412));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('дотик до стовпчика - плашка із сумою й розбивка за категоріями місяця', (tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 915));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -844,6 +872,16 @@ void main() {
       await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
       await tester.pump();
       expect(find.textContaining('300'), findsWidgets); // плашка і рядок категорії
+      // усі стовпчики цього місяця яскраві, стовпчики інших місяців тьмяніють
+      Color barColor(int mi, int series) => (tester
+              .widget<Container>(find.descendant(
+                  of: find.byKey(ValueKey('stat-bar-$mi-$series')), matching: find.byType(Container)).first)
+              .decoration as BoxDecoration)
+          .color!;
+      final other = now.month == 1 ? 1 : 0;
+      expect(barColor(now.month - 1, 0).a, 1.0);
+      expect(barColor(now.month - 1, 2).a, 1.0);
+      expect(barColor(other, 0).a, lessThan(1.0));
       expect(find.text('Витратна'), findsOneWidget);
       expect(find.text('100%'), findsOneWidget);
       expect(find.byIcon(TablerIcons.scissors), findsOneWidget);
