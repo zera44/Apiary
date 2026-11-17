@@ -168,7 +168,7 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
       ok = await widget.openUrl(r.url);
     } catch (_) {}
     if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.tgOpenFailed)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.tgOpenFailed, kind: SnackKind.error)));
     }
   }
 

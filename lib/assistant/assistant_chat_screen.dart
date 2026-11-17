@@ -235,7 +235,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       );
       if (!ok && mounted) {
         _noUkVoice = true;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.assistantNoUkVoice)));
       }
     }
     if (widget.queue.chatVisible) unawaited(widget.queue.markAllRead());
@@ -340,7 +340,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     if (out != null && !out.isError && _lastUndo != null) _undo[c.id] = _lastUndo!;
     _lastUndo = null;
     if (out != null && out.isError && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(out.content)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(out.content)));
     }
   }
 
@@ -352,7 +352,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       widget.queue.noteUndone(u.label);
       setState(() => _undone.add(c.id));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText('$e', kind: SnackKind.error)));
     }
   }
 
@@ -363,7 +363,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   // коротке натискання вимикало його раніше, ніж людина почала говорити.)
 
   void _say(String m) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(m)));
   }
 
   /// Питання чи відповідь - у буфер обміну (без розмітки посилань).
@@ -951,12 +951,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                           labelText: f.label,
                           labelStyle: label,
                           isDense: true,
-                          filled: true,
-                          fillColor: AppColors.input,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
                       )
                     : Text.rich(
@@ -1287,7 +1281,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   onTap: () {
                     if (p.locked) {
                       ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text(tr.assistantRoboLocked)));
+                          .showSnackBar(SnackBar(content: SnackText(tr.assistantRoboLocked)));
                       return;
                     }
                     AssistantPrefs.setPersona(widget.repo, p);

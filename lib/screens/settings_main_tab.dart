@@ -419,7 +419,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
 
   void _say(String text) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
+    ..showSnackBar(SnackBar(content: SnackText(text)));
 
   Future<void> _syncNow() async {
     final s = _sync;
@@ -515,7 +515,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
       if (!ok || !mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       final nav = Navigator.of(context);
-      messenger.showSnackBar(SnackBar(content: Text(tr.serverRestoring)));
+      messenger.showSnackBar(SnackBar(content: SnackText(tr.serverRestoring)));
       try {
         final before = await server.restore(b);
         // усі відкриті екрани показували старі дані - на головний
@@ -523,16 +523,16 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
         messenger
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(
-            content: Text(tr.serverRestored),
+            content: SnackText(tr.serverRestored, kind: SnackKind.done),
             duration: const Duration(seconds: 8),
             action: SnackBarAction(
               label: tr.undo,
               onPressed: () async {
                 try {
                   await local.restoreFrom(before.path);
-                  messenger.showSnackBar(SnackBar(content: Text(tr.backupUndone)));
+                  messenger.showSnackBar(SnackBar(content: SnackText(tr.backupUndone, kind: SnackKind.done)));
                 } catch (e) {
-                  messenger.showSnackBar(SnackBar(content: Text(tr.backupRestoreFailed('$e'))));
+                  messenger.showSnackBar(SnackBar(content: SnackText(tr.backupRestoreFailed('$e'), kind: SnackKind.error)));
                 }
               },
             ),
@@ -541,7 +541,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
       } catch (e) {
         messenger
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(tr.serverRestoreFailed('$e'))));
+          ..showSnackBar(SnackBar(content: SnackText(tr.serverRestoreFailed('$e'), kind: SnackKind.error)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -797,13 +797,13 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
     setState(() => _busy = true);
-    messenger.showSnackBar(SnackBar(content: Text(tr.accountDeleting)));
+    messenger.showSnackBar(SnackBar(content: SnackText(tr.accountDeleting)));
     try {
       await Server.deleteAccount(widget.repo);
       final auth = Server.auth;
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr.accountDeleted)));
+        ..showSnackBar(SnackBar(content: SnackText(tr.accountDeleted, kind: SnackKind.done)));
       if (auth != null) {
         nav.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => SplashScreen(repo: widget.repo, auth: auth)),
@@ -813,7 +813,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
     } catch (e) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr.accountDeleteFailed('$e'))));
+        ..showSnackBar(SnackBar(content: SnackText(tr.accountDeleteFailed('$e'), kind: SnackKind.error)));
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -1057,13 +1057,18 @@ class _TypeToConfirmState extends State<_TypeToConfirm> {
           ),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(tr.cancel)),
-          PillButton(
-            text: tr.accountDelete,
-            bg: AppColors.danger,
-            height: 38,
-            onPressed: _ok ? () => Navigator.pop(context, true) : null,
-          ),
+          dialogButtons([
+            PillButton(
+                text: tr.cancel,
+                bg: AppColors.neutralBtn,
+                fg: AppColors.text,
+                onPressed: () => Navigator.pop(context, false)),
+            PillButton(
+              text: tr.accountDelete,
+              bg: AppColors.danger,
+              onPressed: _ok ? () => Navigator.pop(context, true) : null,
+            ),
+          ]),
         ],
       );
 }

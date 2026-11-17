@@ -122,32 +122,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   /// Чи продовжити перерваний урок: true - продовжити, false - спочатку,
   /// null - передумали.
-  Future<bool?> _askResume(LessonDef def) => showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(def.title),
-          content: Text(tr.lessonResumeAsk,
-              style: TextStyle(color: AppColors.text)),
-          actions: [
-            Row(children: [
-              Expanded(
-                child: PillButton(
-                    text: tr.fromStart,
-                    bg: AppColors.neutralBtn,
-                    fg: AppColors.text,
-                    onPressed: () => Navigator.pop(ctx, false)),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: PillButton(
-                    text: tr.continueAction,
-                    bg: AppColors.accent,
-                    onPressed: () => Navigator.pop(ctx, true)),
-              ),
-            ]),
-          ],
-        ),
-      );
+  Future<bool?> _askResume(LessonDef def) => showConfirmOrDismiss(context,
+      title: def.title,
+      text: tr.lessonResumeAsk,
+      cancelText: tr.fromStart,
+      confirmText: tr.continueAction,
+      danger: false);
 
   /// Урок із [kLessons]: пісочниця, карта уроку, пасічник веде крок за кроком.
   /// Перерваний урок («завершити» чи вихід) запам'ятовується - наступного

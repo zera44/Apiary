@@ -55,7 +55,7 @@ class _SecurityControlsState extends State<SecurityControls> {
     }
   }
 
-  void _say(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  void _say(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(t)));
 
   String _error(Object e) {
     if (e is TelegramApiError) {

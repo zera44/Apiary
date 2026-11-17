@@ -538,7 +538,8 @@ class _SwatchPainter extends CustomPainter {
 // Діалоги
 // ---------------------------------------------------------------------------
 
-Widget _dialogButtons(List<Widget> buttons) => Row(
+/// Кнопки діалогу в один ряд, порівну: однаково в усіх вікнах додатка.
+Widget dialogButtons(List<Widget> buttons) => Row(
       children: [
         for (var i = 0; i < buttons.length; i++) ...[
           if (i > 0) const SizedBox(width: 8),
@@ -547,8 +548,8 @@ Widget _dialogButtons(List<Widget> buttons) => Row(
       ],
     );
 
-/// Підтвердження дії. Повертає true, якщо підтверджено.
-Future<bool> showConfirm(
+/// Підтвердження дії з третім станом: null - вікно закрили повз кнопки.
+Future<bool?> showConfirmOrDismiss(
   BuildContext context, {
   required String text,
 String? title, String? confirmText,
@@ -561,7 +562,7 @@ String? cancelText,
       title: Text(title ?? tr.confirmTitle),
       content: Text(text, style: TextStyle(color: AppColors.text)),
       actions: [
-        _dialogButtons([
+        dialogButtons([
           PillButton(
               text: cancelText ?? tr.cancel,
               bg: AppColors.neutralBtn,
@@ -575,8 +576,21 @@ String? cancelText,
       ],
     ),
   );
-  return res ?? false;
+  return res;
 }
+
+/// Підтвердження дії. Повертає true, якщо підтверджено.
+Future<bool> showConfirm(
+  BuildContext context, {
+  required String text,
+  String? title,
+  String? confirmText,
+  bool danger = true,
+  String? cancelText,
+}) async =>
+    await showConfirmOrDismiss(context,
+        text: text, title: title, confirmText: confirmText, danger: danger, cancelText: cancelText) ??
+    false;
 
 /// Повідомлення з кнопкою "Гаразд".
 Future<void> showInfo(BuildContext context, String text, {String title = '', String? okText}) {
@@ -586,7 +600,7 @@ Future<void> showInfo(BuildContext context, String text, {String title = '', Str
       title: title.isEmpty ? null : Text(title),
       content: Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
       actions: [
-        _dialogButtons([
+        dialogButtons([
           PillButton(text: okText ?? tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
         ]),
       ],
@@ -647,7 +661,7 @@ Future<String?> showTextPrompt(BuildContext context,
             ),
         ]),
         actions: [
-          _dialogButtons([
+          dialogButtons([
             deco(
                 'cancel',
                 PillButton(
@@ -785,6 +799,37 @@ Future<(String?,)?> pickObjectColor(BuildContext context, {bool withReset = fals
 
 Color _hex(String hex) => Color(int.parse('FF${hex.substring(1)}', radix: 16));
 
+/// Вид повідомлення знизу: звичайне, помилка (червона смужка), готово (зелена).
+enum SnackKind { info, error, done }
+
+/// Текст повідомлення знизу в єдиному вигляді: для помилки й «готово» -
+/// кольорова смужка зліва. Сам SnackBar оформлює тема додатка.
+class SnackText extends StatelessWidget {
+  final String text;
+  final SnackKind kind;
+  const SnackText(this.text, {super.key, this.kind = SnackKind.info});
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = switch (kind) {
+      SnackKind.error => AppColors.danger,
+      SnackKind.done => AppColors.grass,
+      SnackKind.info => null,
+    };
+    final t = Text(text);
+    if (mark == null) return t;
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+            width: 4,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(color: mark, borderRadius: BorderRadius.circular(2))),
+        Expanded(child: Align(alignment: Alignment.centerLeft, child: t)),
+      ]),
+    );
+  }
+}
+
 /// Видалення без «Точно видалити?»: [hide] одразу прибирає з екрана, внизу —
 /// «[message]» з кнопкою «Відмінити». Відмінили — [restore]; повідомлення
 /// зникло (час минув, нове повідомлення, перехід) — [commit], справжнє
@@ -800,7 +845,7 @@ Future<void> deleteWithUndo(
   hide();
   messenger.hideCurrentSnackBar();
   final ctrl = messenger.showSnackBar(SnackBar(
-    content: Text(message),
+    content: SnackText(message),
     duration: const Duration(seconds: 5),
     // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
     // завершитись само через 5 с

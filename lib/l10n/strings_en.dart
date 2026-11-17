@@ -814,7 +814,7 @@ class AppStringsEn extends AppStrings {
   String get apiaryListHello =>
       'Well hello, newbie, sting me a bee! Where is your apiary? That will not do... Tap ';
   @override
-  String get createMapQuoted => '"Create a map"';
+  String get createMapQuoted => '"+ Map"';
   @override
   String get deleteApiaryTitle => 'Delete the apiary?';
   @override
@@ -825,7 +825,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get noApiariesYet => 'No apiaries yet.\nCreate one with the button below.';
   @override
-  String get createMapButton => '+  Create a map';
+  String get createMapButton => '+ Map';
   @override
   String get open => 'Open';
   @override
@@ -1234,7 +1234,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get stockTakeSave => 'Save stocktaking';
   @override
-  String get stockItemAdd => 'Add an item';
+  String get stockItemAdd => '+ Item';
   @override
   String get writeOff => 'Write off';
   @override
@@ -1645,7 +1645,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get searchHint => 'Search';
   @override
-  String get newCategoryBtn => '+ New category';
+  String get newCategoryBtn => '+ Category';
   @override
   String get chooseAccount => 'Account';
   @override
@@ -1685,7 +1685,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get fromReceipt => 'From a receipt';
   @override
-  String get addRow => '+ row';
+  String get addRow => '+ Row';
   @override
   String tableOf(String v) => 'table $v';
   @override
@@ -1782,7 +1782,7 @@ class AppStringsEn extends AppStrings {
   @override
   String paramFrom(String name, String type) => 'From "$name" ($type)';
   @override
-  String get paramNewDots => '+ New parameter…';
+  String get paramNewDots => '+ Parameter';
   @override
   String paramMoveText(String from, String to, String type, String records) =>
       '$records of history will be moved from "$from" to "$to" ($type) with the same dates and objects.';
@@ -1833,7 +1833,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get builderHint => 'Hold a parameter and drag it into a group.';
   @override
-  String get groupNewButton => '+ New group';
+  String get groupNewButton => '+ Group';
   @override
   String get chosenNoGroup => 'Chosen, but not in a group yet';
   @override
@@ -1986,7 +1986,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get receiptTitle => 'Receipt';
   @override
-  String get addRowButton => '+ Add a row';
+  String get addRowButton => '+ Row';
   @override
   String get totalColon => 'Total: ';
   @override

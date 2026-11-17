@@ -160,7 +160,7 @@ void main() {
         home: ReceiptScreen(repo: repo, ocr: _FakeOcr('')),
       ));
       await settle(tester);
-      await tester.tap(find.text('+ Додати рядок'));
+      await tester.tap(find.text('+ Рядок'));
       await tester.pump();
       await tester.tap(find.text('Додати на склад'));
       await settle(tester);
@@ -177,7 +177,7 @@ void main() {
       ));
       await settle(tester);
       expect(find.textContaining('працює на телефоні'), findsOneWidget);
-      expect(find.text('+ Додати рядок'), findsOneWidget);
+      expect(find.text('+ Рядок'), findsOneWidget);
     });
   });
 

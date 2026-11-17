@@ -225,9 +225,10 @@ class _StockScreenState extends State<StockScreen> {
         await _reload();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(changed == 0
+              content: SnackText(changed == 0
                   ? tr.stockNoDiffs
-                  : tr.stockTakeSaved(changed))));
+                  : tr.stockTakeSaved(changed),
+                  kind: changed == 0 ? SnackKind.info : SnackKind.done)));
         }
       });
 

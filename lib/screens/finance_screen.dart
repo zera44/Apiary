@@ -448,7 +448,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     if (!mounted) return;
     await _reload();
     if (msg != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(msg)));
     }
   }
 

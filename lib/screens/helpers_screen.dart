@@ -171,7 +171,7 @@ class _HelpersScreenState extends State<HelpersScreen> {
       await f();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.inviteFailed('$e'))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.inviteFailed('$e'), kind: SnackKind.error)));
       }
     }
     await _load();

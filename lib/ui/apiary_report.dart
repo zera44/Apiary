@@ -53,7 +53,7 @@ Future<void> showApiaryReport(BuildContext context, Repository repo, Apiary apia
   } else {
     final msg = await saveApiaryReport(report, apiary.name);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(msg)));
     }
   }
 }

@@ -65,7 +65,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
   void _say(String text, {SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text), action: action));
+      ..showSnackBar(SnackBar(content: SnackText(text), action: action));
   }
 
   Future<void> _guard(Future<void> Function() f) async {
@@ -105,17 +105,17 @@ class _BackupsScreenState extends State<BackupsScreen> {
           messenger
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(
-              content: Text(tr.backupRestored),
+              content: SnackText(tr.backupRestored, kind: SnackKind.done),
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
                 label: tr.undo,
                 onPressed: () async {
                   try {
                     await service.restoreFrom(before.path);
-                    messenger.showSnackBar(SnackBar(content: Text(tr.backupUndone)));
+                    messenger.showSnackBar(SnackBar(content: SnackText(tr.backupUndone, kind: SnackKind.done)));
                   } catch (e) {
                     messenger.showSnackBar(
-                        SnackBar(content: Text(tr.backupRestoreFailed('$e'))));
+                        SnackBar(content: SnackText(tr.backupRestoreFailed('$e'), kind: SnackKind.error)));
                   }
                 },
               ),

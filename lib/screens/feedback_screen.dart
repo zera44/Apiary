@@ -53,7 +53,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       _ctrl.clear();
       // без окремого вікна з «Гаразд»: коротке повідомлення внизу й назад
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr.feedbackThanks)),
+        SnackBar(content: SnackText(tr.feedbackThanks, kind: SnackKind.done)),
       );
       Navigator.of(context).pop();
       return;
@@ -89,7 +89,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(tr.feedbackCopied)),
+                      SnackBar(content: SnackText(tr.feedbackCopied, kind: SnackKind.done)),
                     );
                   }
                 },

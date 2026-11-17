@@ -129,7 +129,7 @@ class _ApiaryListScreenState extends State<ApiaryListScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(tr.apiaryDeleted(a.name))));
+        ..showSnackBar(SnackBar(content: SnackText(tr.apiaryDeleted(a.name))));
     }
   }
 

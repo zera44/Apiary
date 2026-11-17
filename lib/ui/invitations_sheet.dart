@@ -61,7 +61,7 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
       Navigator.pop(context);
       // вікно закрилось - повідомлення вже видно
       messenger.showSnackBar(
-          SnackBar(content: Text(accept ? tr.inviteAccepted : tr.inviteDeclined)));
+          SnackBar(content: SnackText(accept ? tr.inviteAccepted : tr.inviteDeclined)));
     }
   }
 
