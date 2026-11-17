@@ -838,6 +838,16 @@ void main() {
       await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
       await tester.pump();
       expect(find.textContaining('300'), findsWidgets); // плашка і рядок категорії
+      // усі стовпчики цього місяця яскраві, стовпчики інших місяців тьмяніють
+      Color barColor(int mi, int series) => (tester
+              .widget<Container>(find.descendant(
+                  of: find.byKey(ValueKey('stat-bar-$mi-$series')), matching: find.byType(Container)).first)
+              .decoration as BoxDecoration)
+          .color!;
+      final other = now.month == 1 ? 1 : 0;
+      expect(barColor(now.month - 1, 0).a, 1.0);
+      expect(barColor(now.month - 1, 2).a, 1.0);
+      expect(barColor(other, 0).a, lessThan(1.0));
       expect(find.text('Витратна'), findsOneWidget);
       expect(find.text('100%'), findsOneWidget);
       expect(find.byIcon(TablerIcons.scissors), findsOneWidget);

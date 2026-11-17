@@ -233,8 +233,8 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   /// Стовпчик, який можна торкнутися: він підсвічується, решта тьмяніє,
   /// над ним - плашка із сумою; повторний дотик знімає вибір.
   Widget _bar(int mi, int series, double v, double maxV, Color c) {
-    final sel = _selM == mi && _selS == series;
-    final dim = _selM != null && !sel;
+    final sel = _selM == mi && _selS == series; // плашка із сумою - лише над торкнутим
+    final dim = _selM != null && _selM != mi; // усі стовпчики обраного місяця яскраві, решта тьмяніє
     final factor = maxV > 0 ? (v / maxV).clamp(0.0, 1.0) : 0.0;
     final m = _months[mi];
     final tip = series == 2 && m.balance < 0 ? '−${uah(v)}' : uah(v);
