@@ -1222,7 +1222,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       await _reload();
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(SnackBar(
-        content: Text(isGroup ? tr.mapGroupDeleted : tr.mapObjectDeleted),
+        content: SnackText(isGroup ? tr.mapGroupDeleted : tr.mapObjectDeleted),
         duration: const Duration(seconds: 5),
         // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
         // завершитись само через 5 с
@@ -1665,7 +1665,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       final messenger = ScaffoldMessenger.of(context);
       messenger.hideCurrentSnackBar();
       messenger.showSnackBar(SnackBar(
-        content: Text(done > 1 ? tr.inspectionSavedCount(title, done) : tr.inspectionSaved(title)),
+        content: SnackText(done > 1 ? tr.inspectionSavedCount(title, done) : tr.inspectionSaved(title),
+            kind: SnackKind.done),
         duration: const Duration(seconds: 5),
         persist: false,
         action: SnackBarAction(

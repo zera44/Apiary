@@ -86,14 +86,8 @@ class _FinPickCategoryScreenState extends State<FinPickCategoryScreen> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: PillButton(
+              child: AddButton(
                 text: tr.newCategoryBtn,
-                bg: AppColors.darkBtn,
-                fg: AppColors.create,
-                height: 48,
-                radius: 24,
-                fontSize: 16,
-                width: double.infinity,
                 onPressed: () => Navigator.pop(context, kPickNewCategory),
               ),
             ),

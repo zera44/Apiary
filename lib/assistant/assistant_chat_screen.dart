@@ -235,7 +235,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       );
       if (!ok && mounted) {
         _noUkVoice = true;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.assistantNoUkVoice)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.assistantNoUkVoice)));
       }
     }
     if (widget.queue.chatVisible) unawaited(widget.queue.markAllRead());
@@ -340,7 +340,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     if (out != null && !out.isError && _lastUndo != null) _undo[c.id] = _lastUndo!;
     _lastUndo = null;
     if (out != null && out.isError && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(out.content)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(out.content)));
     }
   }
 
@@ -352,7 +352,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       widget.queue.noteUndone(u.label);
       setState(() => _undone.add(c.id));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText('$e', kind: SnackKind.error)));
     }
   }
 
@@ -363,7 +363,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   // коротке натискання вимикало його раніше, ніж людина почала говорити.)
 
   void _say(String m) {
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(m)));
   }
 
   /// Питання чи відповідь - у буфер обміну (без розмітки посилань).
@@ -396,17 +396,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     unawaited(_speaker.stop());
     if (await widget.repo.getMeta(AssistantVoiceSettings.micExplainedKey) != '1') {
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.popupBg,
-          title: Text(tr.assistantMicExplainTitle, style: TextStyle(color: AppColors.text)),
-          content: Text(tr.assistantMicExplain, style: TextStyle(color: AppColors.text)),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr.assistantMicExplainOk)),
-          ],
-        ),
-      );
+      await showInfo(context, tr.assistantMicExplain,
+          title: tr.assistantMicExplainTitle, okText: tr.assistantMicExplainOk);
       await widget.repo.setMeta(AssistantVoiceSettings.micExplainedKey, '1');
       return;
     }
@@ -501,7 +492,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   Future<void> _conversations() async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.bg,
       isScrollControlled: true,
       builder: (_) => _ConversationsSheet(
         store: store,
@@ -794,14 +784,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       for (final n in it.offeredNav)
         Padding(
           padding: const EdgeInsets.only(left: 10, top: 4),
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.create,
-              side: BorderSide(color: AppColors.create),
-            ),
+          child: PillButton(
+            text: tr.assistantOpenTarget(n.label),
+            bg: AppColors.neutralBtn,
+            fg: AppColors.text,
+            height: 36,
             onPressed: () => _go(n),
-            icon: const Icon(TablerIcons.external_link, size: 18),
-            label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
       if (it.data['escalated_from'] != null)
@@ -961,12 +949,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                           labelText: f.label,
                           labelStyle: label,
                           isDense: true,
-                          filled: true,
-                          fillColor: AppColors.input,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
                       )
                     : Text.rich(
@@ -1117,10 +1099,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             runSpacing: 6,
             children: [
               for (final ch in f.choices)
-                ChoiceChip(
+                ChoiceButton(
                   key: ValueKey('card-${it.id}-${f.key}-$ch'),
-                  label: Text(ch),
-                  avatar: colors.containsKey(ch)
+                  text: ch,
+                  leading: colors.containsKey(ch)
                       ? CircleAvatar(
                           radius: 9,
                           backgroundColor: colors[ch] ?? Colors.transparent,
@@ -1128,7 +1110,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                         )
                       : null,
                   selected: v.text == ch,
-                  onSelected: (_) => c.text = ch,
+                  onTap: () => c.text = ch,
                 ),
             ],
           ),
@@ -1262,7 +1244,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   /// Знизу - хто допомагає (Ведмедик / Пасічник) і глибина міркувань.
   Future<void> _choose() => showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppColors.popupBg,
     isScrollControlled: true,
     showDragHandle: true,
     builder: (ctx) => SafeArea(
@@ -1298,7 +1279,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   onTap: () {
                     if (p.locked) {
                       ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: Text(tr.assistantRoboLocked)));
+                          .showSnackBar(SnackBar(content: SnackText(tr.assistantRoboLocked)));
                       return;
                     }
                     AssistantPrefs.setPersona(widget.repo, p);

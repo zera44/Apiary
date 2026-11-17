@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import '../logic/receipt_pick.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
+import 'qr_scan_screen.dart';
 import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
@@ -361,7 +362,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   // ------------------------------------------------------------------- чек
 
   Future<void> _pickReceipt({required bool camera}) async {
-    final path = await pickReceiptPhoto(camera: camera);
+    final path = await shootReceipt(context, camera: camera);
     if (path == null || !mounted) return;
     await _recognize(path);
   }
@@ -680,7 +681,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(color: AppColors.darkBtn, shape: BoxShape.circle),
-                  child: Icon(more ? TablerIcons.dots : TablerIcons.plus, color: AppColors.text, size: 28),
+                  child: Icon(more ? TablerIcons.dots : TablerIcons.plus,
+                      color: more ? AppColors.text : AppColors.create, size: 28),
                 ),
                 label: more ? tr.moreCategories : tr.newCategoryShort,
                 labelColor: AppColors.create,
@@ -755,9 +757,6 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final id = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (ctx) => ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.75),
         child: SafeArea(
@@ -1184,17 +1183,18 @@ class _FinAddScreenState extends State<FinAddScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         _tableHeader(),
         for (final l in _lines) _row(l),
-        Row(children: [
-          TextButton(
-            // ціль не менше 48 dp: кнопка в самому низу картки
-            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
-            onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
-            child: Text(tr.addRow, style: TextStyle(color: AppColors.create)),
+        if (t > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13))),
           ),
-          const Spacer(),
-          if (t > 0)
-            Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-        ]),
+        const SizedBox(height: 8),
+        AddButton(
+          text: tr.addRow,
+          onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
+        ),
       ]),
     );
   }

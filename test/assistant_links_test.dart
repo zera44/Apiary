@@ -1,3 +1,4 @@
+import 'package:apiary/ui/common.dart';
 import 'package:apiary/assistant/assistant_chat_screen.dart';
 import 'package:apiary/assistant/assistant_links.dart';
 import 'package:apiary/assistant/assistant_model.dart';
@@ -184,7 +185,7 @@ void main() {
     final yellow = find.byKey(ValueKey('card-${card.id}-p:$mark-Жовтий'));
     await tester.ensureVisible(yellow);
     await tester.pumpAndSettle();
-    expect(tester.widget<ChoiceChip>(find.byKey(ValueKey('card-${card.id}-p:$mark-Синій'))).selected, isTrue);
+    expect(tester.widget<ChoiceButton>(find.byKey(ValueKey('card-${card.id}-p:$mark-Синій'))).selected, isTrue);
     await tester.tap(yellow);
     await tester.pump();
     await tester.ensureVisible(find.byKey(ValueKey('card-yes-${card.id}')));

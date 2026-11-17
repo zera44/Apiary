@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     const SizedBox(height: 12),
                     PillButton(
                       text: tr.signInTelegram,
-                      bg: AppColors.darkBtn,
+                      bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       width: 260,
                       height: 48,
@@ -144,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   const SizedBox(height: 12),
                   PillButton(
                     text: tr.continueNoSignIn,
-                    bg: AppColors.darkBtn,
+                    bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     width: 260,
                     height: 48,

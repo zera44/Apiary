@@ -65,7 +65,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
   void _say(String text, {SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text), action: action));
+      ..showSnackBar(SnackBar(content: SnackText(text), action: action));
   }
 
   Future<void> _guard(Future<void> Function() f) async {
@@ -105,17 +105,17 @@ class _BackupsScreenState extends State<BackupsScreen> {
           messenger
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(
-              content: Text(tr.backupRestored),
+              content: SnackText(tr.backupRestored, kind: SnackKind.done),
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
                 label: tr.undo,
                 onPressed: () async {
                   try {
                     await service.restoreFrom(before.path);
-                    messenger.showSnackBar(SnackBar(content: Text(tr.backupUndone)));
+                    messenger.showSnackBar(SnackBar(content: SnackText(tr.backupUndone, kind: SnackKind.done)));
                   } catch (e) {
                     messenger.showSnackBar(
-                        SnackBar(content: Text(tr.backupRestoreFailed('$e'))));
+                        SnackBar(content: SnackText(tr.backupRestoreFailed('$e'), kind: SnackKind.error)));
                   }
                 },
               ),
@@ -129,7 +129,6 @@ class _BackupsScreenState extends State<BackupsScreen> {
   Future<void> _export(LocalBackup b) async {
     final share = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.popupBg,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(
@@ -242,7 +241,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
             Expanded(
               child: PillButton(
                 text: tr.backupSaveToFile,
-                bg: AppColors.darkBtn,
+                bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 36,
                 onPressed: _busy ? null : () => _export(b),

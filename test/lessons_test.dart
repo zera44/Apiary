@@ -186,7 +186,7 @@ void main() {
 
     // 8. нова група
     expect(find.textContaining('який безлад'), findsOneWidget, reason: said(tester));
-    await tester.tap(find.text('+ Нова група'));
+    await tester.tap(find.text('+ Група'));
     await settle(tester);
     // 9. назва - лише «Обходи»
     expect(find.textContaining('Назви її'), findsOneWidget, reason: said(tester));
@@ -429,7 +429,7 @@ void main() {
     await settle(tester, 8);
     await tester.tap(find.text('Конструктор'));
     await settle(tester);
-    await tester.tap(find.text('+ Нова група'));
+    await tester.tap(find.text('+ Група'));
     await settle(tester);
     await tester.enterText(find.byType(TextField).first, 'Обходи');
     await tester.tap(find.widgetWithText(PillButton, 'Зберегти').last);
@@ -441,6 +441,8 @@ void main() {
         .first;
     final chip = find.descendant(
         of: find.byType(LongPressDraggable<String>), matching: find.textContaining('Мітка матки'));
+    // список будується ліниво: на малому екрані параметр може бути ще не збудований
+    await tester.dragUntilVisible(chip, scroll, const Offset(0, -80));
     await tester.ensureVisible(chip.first);
     await settle(tester, 2);
     final before = tester.state<ScrollableState>(scroll).position.pixels;
@@ -552,13 +554,13 @@ void main() {
     }))!;
     await tester.pumpWidget(wrap(ParametersScreen.forElement(repo: repo, element: hive)));
     await settle(tester);
-    expect(find.text('+ Нова група'), findsNothing);
+    expect(find.text('+ Група'), findsNothing);
     await tester.fling(find.byType(TabSwipe), const Offset(-300, 0), 1200);
     await settle(tester);
-    expect(find.text('+ Нова група'), findsOneWidget);
+    expect(find.text('+ Група'), findsOneWidget);
     await tester.fling(find.byType(TabSwipe), const Offset(300, 0), 1200);
     await settle(tester);
-    expect(find.text('+ Нова група'), findsNothing);
+    expect(find.text('+ Група'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

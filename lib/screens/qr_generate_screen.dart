@@ -249,7 +249,7 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
               Expanded(
                 child: PillButton(
                   text: tr.qrAllWithoutCode,
-                  bg: AppColors.darkBtn,
+                  bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   height: 46,
                   fontSize: 13,
@@ -390,7 +390,7 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
                 Expanded(
                   child: PillButton(
                     text: _saving ? tr.pleaseWait : tr.savePdf,
-                    bg: AppColors.darkBtn,
+                    bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     height: 48,
                     radius: 16,

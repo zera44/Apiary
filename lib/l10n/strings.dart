@@ -374,6 +374,7 @@ abstract class AppStrings {
   String get gotIt;
   String get continueAction;
   String get navMenu;
+  String get navOtherFunctions;
   String get scan;
   String get generate;
   String get qrBindRow;

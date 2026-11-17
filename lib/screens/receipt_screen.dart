@@ -161,7 +161,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (rows.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: receiptAsText(rows)));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.listCopied)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.listCopied, kind: SnackKind.done)));
   }
 
   void _addLine() => setState(() => _lines.add(_Line(ReceiptRow(name: '', price: 0))));
@@ -215,7 +215,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       final messenger = ScaffoldMessenger.of(context);
       nav.pushReplacement(MaterialPageRoute(builder: (_) => StockScreen(repo: widget.repo)));
       messenger.showSnackBar(SnackBar(
-          content: Text(tr.receiptAdded(todo.length, created, topped))));
+          content: SnackText(tr.receiptAdded(todo.length, created, topped), kind: SnackKind.done)));
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -375,12 +375,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                   padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                   children: [
                     for (final l in _lines) _row(l),
-                    PillButton(
+                    AddButton(
                       text: tr.addRowButton,
-                      bg: AppColors.darkBtn,
-                      fg: AppColors.text,
-                      height: 42,
-                      width: double.infinity,
                       onPressed: _addLine,
                     ),
                   ],

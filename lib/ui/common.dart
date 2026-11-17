@@ -63,6 +63,76 @@ class _IconPainter extends CustomPainter {
 }
 
 /// Заокруглена кнопка-пігулка з текстом.
+/// Вибір одного з кількох (режим, вкладка, категорія, мітка, фільтр): один
+/// вигляд у всьому додатку - обране медове, решта темні; висота 36, кут як у кнопок.
+class ChoiceButton extends StatelessWidget {
+  final String text;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Кружечок кольору чи іконка перед написом (необов'язково).
+  final Widget? leading;
+
+  /// Колір напису невибраної кнопки (для «+ …» - медовий).
+  final Color? fg;
+  const ChoiceButton(
+      {super.key,
+      required this.text,
+      required this.selected,
+      this.onTap,
+      this.onLongPress,
+      this.leading,
+      this.fg});
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? AppColors.accent : AppColors.darkBtn,
+        borderRadius: BorderRadius.circular(PillButton.kRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 6)],
+                Flexible(
+                  child: Text(text,
+                      style: TextStyle(
+                          color: selected ? Colors.white : (fg ?? AppColors.text),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+/// Кнопка «+ …» (додати): одна на весь додаток - темна пігулка з медовим
+/// текстом, висота 48, на всю ширину; стоїть у кінці списку.
+class AddButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  const AddButton({super.key, required this.text, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => PillButton(
+        text: text,
+        bg: AppColors.darkBtn,
+        fg: AppColors.create,
+        height: 48,
+        radius: 24,
+        fontSize: 15,
+        width: double.infinity,
+        onPressed: onPressed,
+      );
+}
+
 class PillButton extends StatelessWidget {
   final String text;
   final Color bg;
@@ -89,14 +159,29 @@ class PillButton extends StatelessWidget {
     this.width,
   });
 
+  /// Єдиний стиль кнопок: лише три розміри - головна дія (48), у вікні чи
+  /// рядку (42), компактна (36); один кут для всіх.
+  static double snapHeight(double h) => h <= 39 ? 36 : (h <= 45 ? 42 : 48);
+  static const kRadius = 14.0;
+
+  /// Другорядні кнопки - одного кольору; вимкнений варіант перемикача - теж одного.
+  static Color snapColor(Color c) {
+    if (c == AppColors.roundBtn) return AppColors.neutralBtn;
+    if (c == AppColors.typeBtn) return AppColors.darkBtn;
+    return c;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final h = snapHeight(height);
+    final fontSize = h >= 48 ? 15.0 : (h >= 42 ? 14.0 : 13.0);
+    final bg = snapColor(this.bg);
     return SizedBox(
-      height: height,
+      height: h,
       width: width,
       child: Material(
         color: onPressed == null ? bg.withValues(alpha: 0.45) : bg,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(kRadius),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,
@@ -538,7 +623,8 @@ class _SwatchPainter extends CustomPainter {
 // Діалоги
 // ---------------------------------------------------------------------------
 
-Widget _dialogButtons(List<Widget> buttons) => Row(
+/// Кнопки діалогу в один ряд, порівну: однаково в усіх вікнах додатка.
+Widget dialogButtons(List<Widget> buttons) => Row(
       children: [
         for (var i = 0; i < buttons.length; i++) ...[
           if (i > 0) const SizedBox(width: 8),
@@ -547,8 +633,8 @@ Widget _dialogButtons(List<Widget> buttons) => Row(
       ],
     );
 
-/// Підтвердження дії. Повертає true, якщо підтверджено.
-Future<bool> showConfirm(
+/// Підтвердження дії з третім станом: null - вікно закрили повз кнопки.
+Future<bool?> showConfirmOrDismiss(
   BuildContext context, {
   required String text,
 String? title, String? confirmText,
@@ -561,7 +647,7 @@ String? cancelText,
       title: Text(title ?? tr.confirmTitle),
       content: Text(text, style: TextStyle(color: AppColors.text)),
       actions: [
-        _dialogButtons([
+        dialogButtons([
           PillButton(
               text: cancelText ?? tr.cancel,
               bg: AppColors.neutralBtn,
@@ -575,19 +661,32 @@ String? cancelText,
       ],
     ),
   );
-  return res ?? false;
+  return res;
 }
 
+/// Підтвердження дії. Повертає true, якщо підтверджено.
+Future<bool> showConfirm(
+  BuildContext context, {
+  required String text,
+  String? title,
+  String? confirmText,
+  bool danger = true,
+  String? cancelText,
+}) async =>
+    await showConfirmOrDismiss(context,
+        text: text, title: title, confirmText: confirmText, danger: danger, cancelText: cancelText) ??
+    false;
+
 /// Повідомлення з кнопкою "Гаразд".
-Future<void> showInfo(BuildContext context, String text, {String title = ''}) {
+Future<void> showInfo(BuildContext context, String text, {String title = '', String? okText}) {
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
       title: title.isEmpty ? null : Text(title),
       content: Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppColors.text)),
       actions: [
-        _dialogButtons([
-          PillButton(text: tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
+        dialogButtons([
+          PillButton(text: okText ?? tr.ok, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
         ]),
       ],
     ),
@@ -647,7 +746,7 @@ Future<String?> showTextPrompt(BuildContext context,
             ),
         ]),
         actions: [
-          _dialogButtons([
+          dialogButtons([
             deco(
                 'cancel',
                 PillButton(
@@ -785,6 +884,37 @@ Future<(String?,)?> pickObjectColor(BuildContext context, {bool withReset = fals
 
 Color _hex(String hex) => Color(int.parse('FF${hex.substring(1)}', radix: 16));
 
+/// Вид повідомлення знизу: звичайне, помилка (червона смужка), готово (зелена).
+enum SnackKind { info, error, done }
+
+/// Текст повідомлення знизу в єдиному вигляді: для помилки й «готово» -
+/// кольорова смужка зліва. Сам SnackBar оформлює тема додатка.
+class SnackText extends StatelessWidget {
+  final String text;
+  final SnackKind kind;
+  const SnackText(this.text, {super.key, this.kind = SnackKind.info});
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = switch (kind) {
+      SnackKind.error => AppColors.danger,
+      SnackKind.done => AppColors.grass,
+      SnackKind.info => null,
+    };
+    final t = Text(text);
+    if (mark == null) return t;
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Container(
+            width: 4,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(color: mark, borderRadius: BorderRadius.circular(2))),
+        Expanded(child: Align(alignment: Alignment.centerLeft, child: t)),
+      ]),
+    );
+  }
+}
+
 /// Видалення без «Точно видалити?»: [hide] одразу прибирає з екрана, внизу —
 /// «[message]» з кнопкою «Відмінити». Відмінили — [restore]; повідомлення
 /// зникло (час минув, нове повідомлення, перехід) — [commit], справжнє
@@ -800,7 +930,7 @@ Future<void> deleteWithUndo(
   hide();
   messenger.hideCurrentSnackBar();
   final ctrl = messenger.showSnackBar(SnackBar(
-    content: Text(message),
+    content: SnackText(message),
     duration: const Duration(seconds: 5),
     // з дією SnackBar інакше висить, доки не натиснуть — а видалення має
     // завершитись само через 5 с

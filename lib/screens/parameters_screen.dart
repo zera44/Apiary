@@ -377,7 +377,7 @@ class _ParametersScreenState extends State<ParametersScreen> {
                     const SizedBox(height: 8),
                     PillButton(
                       text: tr.paramMoveHistoryDots,
-                      bg: AppColors.darkBtn,
+                      bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       height: 38,
                       fontSize: 13,
@@ -518,18 +518,15 @@ class _ParametersScreenState extends State<ParametersScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               const SizedBox(height: 12),
-              PillButton(
+              AddButton(
                 text: tr.paramNewDots,
-                bg: AppColors.accent,
-                height: 42,
-                width: double.infinity,
                 onPressed: () => Navigator.pop(ctx, ''),
               ),
               for (final p in targets) ...[
                 const SizedBox(height: 6),
                 PillButton(
                   text: '${p.nameWithUnit} · ${DataTypes.label(p.dataType)}',
-                  bg: AppColors.darkBtn,
+                  bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   height: 42,
                   fontSize: 13,
@@ -1053,13 +1050,9 @@ class _ParametersScreenState extends State<ParametersScreen> {
       LessonTarget(
         lesson: _lesson,
         name: 'new-group',
-        radius: 14,
-        child: PillButton(
+        radius: 24,
+        child: AddButton(
           text: tr.groupNewButton,
-          bg: AppColors.darkBtn,
-          fg: AppColors.text,
-          height: 42,
-          width: double.infinity,
           onPressed: _addGroup,
         ),
       ),
@@ -1300,8 +1293,8 @@ class ApplyScopeSwitch extends StatelessWidget {
         height: _h + 8,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppColors.roundBtn,
-          borderRadius: BorderRadius.circular(24),
+          color: AppColors.darkBtn,
+          borderRadius: BorderRadius.circular(PillButton.kRadius + 4),
           border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
         child: LayoutBuilder(builder: (context, box) {
@@ -1318,7 +1311,7 @@ class ApplyScopeSwitch extends StatelessWidget {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(PillButton.kRadius),
                 ),
               ),
             ),

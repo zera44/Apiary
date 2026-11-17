@@ -127,9 +127,6 @@ class _FinAccountsScreenState extends State<FinAccountsScreen> {
         );
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
@@ -594,8 +591,6 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                                     style: TextStyle(color: AppColors.text, fontSize: 15))),
                             Switch(
                                 key: const ValueKey('fin-adjust-in-stats'),
-                                activeThumbColor: AppColors.addObject,
-                                activeTrackColor: AppColors.addObject.withValues(alpha: 0.45),
                                 value: _adjustInStats,
                                 onChanged: (v) => setState(() => _adjustInStats = v)),
                           ]),

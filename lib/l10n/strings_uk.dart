@@ -746,6 +746,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get navMenu => 'Меню навігації';
   @override
+  String get navOtherFunctions => 'Інші функції';
+  @override
   String get scan => 'Сканувати';
   @override
   String get generate => 'Генерувати';
@@ -813,7 +815,7 @@ class AppStringsUk extends AppStrings {
   String get apiaryListHello =>
       'Здоров був, новачок, укуси мене бджола! А де твоя пасіка? Непорядок... Натисни ';
   @override
-  String get createMapQuoted => '«Створити карту»';
+  String get createMapQuoted => '«+ Карта»';
   @override
   String get deleteApiaryTitle => 'Видалити пасіку?';
   @override
@@ -824,7 +826,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get noApiariesYet => 'Ще немає жодної пасіки.\nСтвори її кнопкою нижче.';
   @override
-  String get createMapButton => '+  Створити карту';
+  String get createMapButton => '+ Карта';
   @override
   String get open => 'Відкрити';
   @override
@@ -1234,7 +1236,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get stockTakeSave => 'Зберегти переоблік';
   @override
-  String get stockItemAdd => 'Додати номенклатуру';
+  String get stockItemAdd => '+ Номенклатура';
   @override
   String get writeOff => 'Списати';
   @override
@@ -1643,7 +1645,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get searchHint => 'Пошук';
   @override
-  String get newCategoryBtn => '+ Нова категорія';
+  String get newCategoryBtn => '+ Категорія';
   @override
   String get chooseAccount => 'Рахунок';
   @override
@@ -1683,7 +1685,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get fromReceipt => 'З чека';
   @override
-  String get addRow => '+ рядок';
+  String get addRow => '+ Рядок';
   @override
   String tableOf(String v) => 'таблиця $v';
   @override
@@ -1780,7 +1782,7 @@ class AppStringsUk extends AppStrings {
   @override
   String paramFrom(String name, String type) => 'З «$name» ($type)';
   @override
-  String get paramNewDots => '+ Новий параметр…';
+  String get paramNewDots => '+ Параметр';
   @override
   String paramMoveText(String from, String to, String type, String records) =>
       'З «$from» у «$to» ($type) буде перенесено $records історії з тими самими датами й об\'єктами.';
@@ -1830,7 +1832,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get builderHint => 'Затисни параметр і веди в потрібну групу.';
   @override
-  String get groupNewButton => '+ Нова група';
+  String get groupNewButton => '+ Група';
   @override
   String get chosenNoGroup => 'Обрані, але ще без групи';
   @override
@@ -1982,7 +1984,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get receiptTitle => 'Чек';
   @override
-  String get addRowButton => '+ Додати рядок';
+  String get addRowButton => '+ Рядок';
   @override
   String get totalColon => 'Разом: ';
   @override
