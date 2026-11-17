@@ -32,10 +32,34 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   int? _selM;
   int? _selS;
 
+  /// Ширина колонки одного місяця / року: стовпчики крупні, діаграма гортається вбік.
+  static const _colW = 120.0;
+  static const _chartH = 280.0;
+  final _scroll = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _reload();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Відкрити діаграму на поточному місяці (інший рік - з початку); роки - на останньому.
+  void _scrollToCurrent() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final n = _months.length;
+      if (n == 0) return;
+      final idx = _byYears ? n - 1 : (_year == DateTime.now().year ? DateTime.now().month - 1 : 0);
+      final view = _scroll.position.viewportDimension;
+      final target = ((idx + 0.5) * _colW - view / 2).clamp(0.0, _scroll.position.maxScrollExtent);
+      _scroll.jumpTo(target);
+    });
   }
 
   Future<void> _reload() async {
@@ -50,6 +74,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
       _months = _byYears ? finYearlyTotals(list) : finMonthlyTotals(list, _year);
       _loaded = true;
     });
+    _scrollToCurrent();
   }
 
   void _shift(int d) {
@@ -119,39 +144,61 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                 tooltip: tr.later,
                                 icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
                           ]),
-                          SizedBox(
-                            height: 220,
-                            child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  for (var mi = 0; mi < _months.length; mi++)
-                                    Expanded(
-                                      child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.end,
-                                          children: [
-                                            Expanded(
-                                              child: Row(
-                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                          LayoutBuilder(builder: (context, box) {
+                            final w = _months.length * _colW > box.maxWidth
+                                ? _months.length * _colW
+                                : box.maxWidth;
+                            return SingleChildScrollView(
+                              key: const ValueKey('stat-scroll'),
+                              controller: _scroll,
+                              scrollDirection: Axis.horizontal,
+                              child: Padding(
+                                // зверху - місце для плашки із сумою над найвищим стовпчиком
+                                padding: const EdgeInsets.only(top: 40),
+                                child: SizedBox(
+                                  width: w,
+                                  height: _chartH,
+                                  child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        for (var mi = 0; mi < _months.length; mi++)
+                                          Expanded(
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                                              child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.end,
                                                   children: [
-                                                    _bar(mi, 0, _months[mi].income, maxV, green),
-                                                    _bar(mi, 1, _months[mi].expense, maxV, yellow),
-                                                    // третій стовпчик: прибуток, а коли витрати більші - збитки
-                                                    _bar(mi, 2, _months[mi].balance.abs(), maxV,
-                                                        _months[mi].balance >= 0 ? profit : loss),
+                                                    Expanded(
+                                                      child: Row(
+                                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                                          children: [
+                                                            _bar(mi, 0, _months[mi].income, maxV, green),
+                                                            _bar(mi, 1, _months[mi].expense, maxV, yellow),
+                                                            // третій стовпчик: прибуток, а коли витрати більші - збитки
+                                                            _bar(mi, 2, _months[mi].balance.abs(), maxV,
+                                                                _months[mi].balance >= 0 ? profit : loss),
+                                                          ]),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                        _byYears
+                                                            ? '${_months[mi].month}'
+                                                            : tr.monthNames[_months[mi].month].substring(0, 3),
+                                                        style: TextStyle(
+                                                            color: _selM == null || _selM == mi
+                                                                ? AppColors.textMuted
+                                                                : AppColors.textMuted.withValues(alpha: 0.5),
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                _selM == mi ? FontWeight.w700 : FontWeight.w400)),
                                                   ]),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(_byYears ? '${_months[mi].month}' : tr.monthNames[_months[mi].month].substring(0, 3),
-                                                style: TextStyle(
-                                                    color: _selM == null || _selM == mi
-                                                        ? AppColors.textMuted
-                                                        : AppColors.textMuted.withValues(alpha: 0.5),
-                                                    fontSize: 10,
-                                                    fontWeight: _selM == mi ? FontWeight.w700 : FontWeight.w400)),
-                                          ]),
-                                    ),
-                                ]),
-                          ),
+                                          ),
+                                      ]),
+                                ),
+                              ),
+                            );
+                          }),
                           const SizedBox(height: 12),
                           Wrap(
                               alignment: WrapAlignment.center,
