@@ -48,7 +48,7 @@ class DataTypePicker extends StatelessWidget {
     final selected = key == value;
     final fg = selected ? Colors.white : (enabled ? AppColors.text : AppColors.textMuted);
     return Material(
-      color: selected ? AppColors.accent : AppColors.typeBtn,
+      color: selected ? AppColors.accent : AppColors.darkBtn,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),

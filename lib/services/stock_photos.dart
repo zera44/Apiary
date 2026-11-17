@@ -7,7 +7,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart' show compute, debugPrint, visibleForTesting;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
+import 'photo_pick.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -171,7 +171,7 @@ class StockPhotos {
   }
 
   /// Камера є лише на телефоні (на комп'ютері image_picker вміє тільки файли).
-  static bool get cameraSupported => Platform.isAndroid || Platform.isIOS;
+  static bool get cameraSupported => photoCameraAvailable;
 
   /// Старий запис: повний шлях до файлу (до перетискання).
   static bool isLegacy(String photo) => p.isAbsolute(photo);
@@ -259,13 +259,8 @@ class StockPhotos {
       final b = await fake(camera: camera);
       return b == null ? null : save(b);
     }
-    final x = await ImagePicker().pickImage(
-      source: camera && cameraSupported ? ImageSource.camera : ImageSource.gallery,
-      // запас для якісного зменшення до 800 px
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 95,
-    );
+    // запас для якісного зменшення до 800 px
+    final x = await pickPhoto(camera: camera, maxWidth: 1600, maxHeight: 1600, quality: 95);
     if (x == null) return null;
     return save(await x.readAsBytes());
   }

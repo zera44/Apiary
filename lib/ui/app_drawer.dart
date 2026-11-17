@@ -289,17 +289,10 @@ class _AppDrawerState extends State<AppDrawer> {
           })),
           _t(1, _item(context, 'box', tr.stock,
               widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo)))),
+          if (_openRow == null || widget.tour) ...[
           _t(2, _item(context, '', tr.finances,
               widget.tour ? () {} : () => _toggle('fin'),
               iconData: TablerIcons.wallet, trailing: _chev('fin'))),
-          // розділ розкритий: підрозділи під ним, решта нижче ховається
-          if (_openRow == 'fin' && !widget.tour) ...[
-            _sub(TablerIcons.chart_donut, tr.finHome, () => FinDrawer.openFrom(context, repo, FinSection.home), close: false),
-            _sub(TablerIcons.building_bank, tr.finAccounts, () => FinDrawer.openFrom(context, repo, FinSection.accounts), close: false),
-            _sub(TablerIcons.chart_bar, tr.finStats, () => FinDrawer.openFrom(context, repo, FinSection.stats), close: false),
-            _sub(TablerIcons.list, tr.finCategories, () => FinDrawer.openFrom(context, repo, FinSection.categories), close: false),
-            _sub(TablerIcons.receipt, tr.finOps, () => FinDrawer.openFrom(context, repo, FinSection.ops), close: false),
-          ] else ...[
           // «Звіт по пасіці (Excel)» — усередині «Історії»
           _t(3, _item(context, 'history', tr.history,
               widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary)))),
@@ -307,10 +300,6 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(4, _item(context, 'qr', tr.qrCode,
               widget.tour ? () {} : () => _toggle('qr'),
               trailing: _chev('qr'))),
-          if (_openRow == 'qr' && !widget.tour)
-            for (final a in qrActions(context, repo))
-              _sub(a.icon, a.label, a.onTap)
-          else ...[
           // ШІ-помічник: відкрити розмову (поза екскурсією)
           if (!widget.tour && widget.hint == null)
             _item(context, '', tr.aiAssistant, () {
@@ -323,19 +312,47 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(6, _item(context, '', tr.settingsTitle,
               widget.tour ? () {} : () => _toggle('set'),
               iconData: TablerIcons.settings, trailing: _chev('set'))),
-          if (_openRow == 'set' && !widget.tour)
+          _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
+            nav.pop(); // закрити меню
+            openFeedback(nav, repo);
+          })),
+          ] else ...[
+          // розкритий розділ: його підрозділи, решта розділів - за «Інші функції»
+          if (_openRow == 'fin') ...[
+            _item(context, '', tr.finances, () => _toggle('fin'),
+                iconData: TablerIcons.wallet, trailing: _chev('fin')),
+            _sub(TablerIcons.chart_donut, tr.finHome, () => FinDrawer.openFrom(context, repo, FinSection.home), close: false),
+            _sub(TablerIcons.building_bank, tr.finAccounts, () => FinDrawer.openFrom(context, repo, FinSection.accounts), close: false),
+            _sub(TablerIcons.chart_bar, tr.finStats, () => FinDrawer.openFrom(context, repo, FinSection.stats), close: false),
+            _sub(TablerIcons.list, tr.finCategories, () => FinDrawer.openFrom(context, repo, FinSection.categories), close: false),
+            _sub(TablerIcons.receipt, tr.finOps, () => FinDrawer.openFrom(context, repo, FinSection.ops), close: false),
+          ] else if (_openRow == 'qr') ...[
+            _item(context, 'qr', tr.qrCode, () => _toggle('qr'), trailing: _chev('qr')),
+            for (final a in qrActions(context, repo)) _sub(a.icon, a.label, a.onTap),
+          ] else ...[
+            _item(context, '', tr.settingsTitle, () => _toggle('set'),
+                iconData: TablerIcons.settings, trailing: _chev('set')),
             for (final p in SettingsPart.values)
               _sub(p.icon, p.label, () {
                 nav.popUntil((r) => r.isFirst);
                 nav.push(MaterialPageRoute<void>(
                     builder: (_) => SettingsScreen(repo: repo, part: p)));
-              })
-          else
-          _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
-            nav.pop(); // закрити меню
-            openFeedback(nav, repo);
-          })),
+              }),
           ],
+          // «⋯ Інші функції» (іконка «Інше»): ховає підрозділи, показує всі розділи
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+                border: Border(
+                    top: BorderSide(color: AppColors.textMuted.withValues(alpha: 0.25)))),
+            child: ListTile(
+              leading: Icon(TablerIcons.dots, color: AppColors.textMuted, size: 28),
+              title: Text(tr.navOtherFunctions,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
+              trailing: Icon(TablerIcons.chevron_down, color: AppColors.textMuted),
+              onTap: () => setState(() => _openRow = null),
+            ),
+          ),
           ],
           ])),
           if (widget.tour || widget.hint != null) _tourFooter(),

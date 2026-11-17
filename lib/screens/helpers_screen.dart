@@ -9,6 +9,7 @@ import '../data/sharing.dart';
 import '../l10n/l10n.dart';
 import '../services/sharing.dart';
 import '../ui/common.dart';
+import '../ui/pick_sheet.dart';
 import '../ui/theme.dart';
 
 /// «Мої пасіки» → «Додати помічника»: форма запрошення (логін - пошта
@@ -171,7 +172,7 @@ class _HelpersScreenState extends State<HelpersScreen> {
       await f();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(tr.inviteFailed('$e'))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(tr.inviteFailed('$e'), kind: SnackKind.error)));
       }
     }
     await _load();
@@ -235,16 +236,11 @@ class _HelpersScreenState extends State<HelpersScreen> {
                     ),
                     if (!_all && _apiaries.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      DropdownButton<String>(
-                        isExpanded: true,
+                      PickField<String>(
+                        title: tr.chooseApiary,
                         value: _apiary,
-                        hint: Text(tr.chooseApiary),
-                        dropdownColor: AppColors.popupBg,
-                        style: TextStyle(color: AppColors.text),
-                        items: [
-                          for (final a in _apiaries)
-                            DropdownMenuItem(value: a.id, child: Text(a.name)),
-                        ],
+                        hint: tr.chooseApiary,
+                        options: [for (final a in _apiaries) (value: a.id, label: a.name)],
                         onChanged: on ? (v) => setState(() => _apiary = v) : null,
                       ),
                     ],
@@ -265,7 +261,7 @@ class _HelpersScreenState extends State<HelpersScreen> {
                     PillButton(
                       key: const ValueKey('invite-link'),
                       text: tr.inviteLinkButton,
-                      bg: AppColors.darkBtn,
+                      bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       height: 44,
                       width: double.infinity,

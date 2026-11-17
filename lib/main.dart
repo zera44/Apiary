@@ -25,6 +25,7 @@ import 'services/reminders.dart';
 import 'services/server.dart';
 import 'services/stock_photos.dart';
 import 'ui/app_drawer.dart';
+import 'ui/common.dart';
 import 'ui/theme.dart';
 import 'ui/text_scale.dart';
 import 'ui/orientation.dart';
@@ -289,7 +290,9 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                   const SizedBox(height: 20),
-                  FilledButton(
+                  PillButton(
+                    text: _busy ? tr.startupOpening : tr.retry,
+                    bg: AppColors.accent,
                     onPressed: _busy
                         ? null
                         : () async {
@@ -297,7 +300,6 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
                             await widget.onRetry();
                             if (mounted) setState(() => _busy = false);
                           },
-                    child: Text(_busy ? tr.startupOpening : tr.retry),
                   ),
                 ],
               ]),

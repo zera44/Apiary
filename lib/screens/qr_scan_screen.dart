@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:io' show Directory, File, Platform;
+import 'dart:io' show Directory, File;
 import 'dart:ui' as ui;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
@@ -12,6 +11,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../data/repository.dart';
 import '../logic/receipt_detect.dart';
 import '../services/receipt_ocr.dart';
+import '../services/photo_pick.dart';
 import '../ui/common.dart';
 import '../ui/theme.dart';
 import '../data/finance.dart';
@@ -19,7 +19,15 @@ import 'fin_add_screen.dart';
 import '../l10n/l10n.dart';
 
 /// Чи є на цьому пристрої камера-сканер (телефон/планшет).
-bool get qrCameraAvailable => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+bool get qrCameraAvailable => photoCameraAvailable;
+
+/// Фото чека для нової витрати: на телефоні - камера з рамкою-контуром (як у
+/// сканері), на комп'ютері - звичайний вибір файла. null - скасовано.
+Future<String?> shootReceipt(BuildContext context, {required bool camera}) async {
+  if (!camera || !qrCameraAvailable) return pickReceiptPhoto(camera: camera);
+  return Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScanScreen(receiptPick: true)));
+}
 
 /// Отримати текст QR-коду: на телефоні — камерою, на комп'ютері (де
 /// сканера немає) — ручним вводом. null — скасовано.
@@ -85,12 +93,17 @@ final String? title;
 
   /// Прив'язка наліпок підряд (сканер не закривається після кожного коду).
   final QrBindConfig? bind;
+
+  /// Лише чек: екран одразу в режимі «Чек» (з рамкою), без перемикача; знімок
+  /// повертається шляхом до файлу, а таблицю витрати не відкриває (її вже відкрито).
+  final bool receiptPick;
   const QrScanScreen(
       {super.key,
       this.title,
       this.skipLabel,
       this.receiptRepo,
-      this.bind});
+      this.bind,
+      this.receiptPick = false});
 
   /// Скільки тримати камеру над QR-кодом.
   static const qrHold = Duration(milliseconds: 1500);
@@ -157,10 +170,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
     super.dispose();
   }
 
-  bool get _receiptOn => widget.receiptRepo != null;
+  bool get _receiptOn => widget.receiptRepo != null || widget.receiptPick;
 
   /// Режим «Чек» (перемикач угорі): камера шукає контур чека, а не QR-код.
-  bool _receipt = false;
+  late bool _receipt = widget.receiptPick;
 
   void _setMode(bool receipt) {
     if (_receipt == receipt) return;
@@ -177,7 +190,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     Widget tab(String text, bool receipt) => Expanded(
           child: PillButton(
             text: text,
-            bg: _receipt == receipt ? AppColors.accent : AppColors.roundBtn,
+            bg: _receipt == receipt ? AppColors.accent : AppColors.darkBtn,
             fg: _receipt == receipt ? Colors.white : AppColors.text,
             height: 40,
             fontSize: 13,
@@ -287,7 +300,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   /// Зберегти чек із екрана (обрізаний по контуру) й відкрити таблицю витрати.
   Future<void> _captureReceipt(ReceiptQuad? q) async {
     final repo = widget.receiptRepo;
-    if (repo == null || _capturing || _done) return;
+    if ((repo == null && !widget.receiptPick) || _capturing || _done) return;
     _capturing = true;
     try {
       final ro = _previewKey.currentContext?.findRenderObject();
@@ -313,6 +326,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
       if (!mounted || _done) return;
       _done = true;
       HapticFeedback.mediumImpact();
+      if (repo == null) {
+        Navigator.of(context).pop(file.path);
+        return;
+      }
       await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
           builder: (_) => FinAddScreen(repo: repo, kind: kFinExpense, imagePath: file.path)));
     } catch (_) {
@@ -325,7 +342,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   /// Знімок системною камерою чи вибір з галереї: найякісніший спосіб.
   Future<void> _receiptPhoto({required bool camera}) async {
     final repo = widget.receiptRepo;
-    if (repo == null || _done || _manualOpen) return;
+    if ((repo == null && !widget.receiptPick) || _done || _manualOpen) return;
     _manualOpen = true; // поки відкрита камера/галерея, коди не слухаємо
     String? path;
     try {
@@ -339,6 +356,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
       return;
     }
     _done = true;
+    if (repo == null) {
+      Navigator.of(context).pop(path);
+      return;
+    }
     // екран чека стає на місце сканера
     await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
         builder: (_) => FinAddScreen(repo: repo, kind: kFinExpense, imagePath: path!)));
@@ -469,9 +490,6 @@ class _QrScanScreenState extends State<QrScanScreen> {
       picked = await showModalBottomSheet<int>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: AppColors.popupBg,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
         builder: (ctx) {
           var query = '';
           return StatefulBuilder(builder: (ctx, setS) {

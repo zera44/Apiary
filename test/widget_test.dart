@@ -151,7 +151,7 @@ void main() {
     expect(find.text('Прихід і списання'), findsWidgets);
     expect(find.text('Ще немає жодної номенклатури'), findsOneWidget);
 
-    await tester.tap(find.text('Додати номенклатуру'));
+    await tester.tap(find.text('+ Номенклатура'));
     await settle(tester);
     // без назви не зберігається
     await tester.tap(find.text('Зберегти'));
@@ -751,7 +751,7 @@ void main() {
     await settle(tester);
     expect(find.text('Огляд'), findsOneWidget);
     expect(find.text('Обрані, але ще без групи'), findsOneWidget);
-    expect(find.text('+ Нова група'), findsOneWidget);
+    expect(find.text('+ Група'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -781,7 +781,7 @@ void main() {
   testWidgets('нова номенклатура одразу з приходом', (tester) async {
     await tester.pumpWidget(wrap(StockScreen(repo: repo)));
     await settle(tester);
-    await tester.tap(find.text('Додати номенклатуру'));
+    await tester.tap(find.text('+ Номенклатура'));
     await settle(tester);
     await tester.enterText(find.widgetWithText(TextField, 'Назва'), 'Вощина');
     await tester.tap(find.text('кг'));
@@ -849,7 +849,7 @@ void main() {
     // пісочниця: справжніх пасік не видно, замість порожнього тексту — підказка
     expect(find.text('Тестова пасіка'), findsNothing);
     expect(find.textContaining('Здоров був, новачок'), findsOneWidget);
-    expect(find.textContaining('«Створити карту»'), findsOneWidget);
+    expect(find.textContaining('«+ Карта»'), findsOneWidget);
     expect(find.text('Ще немає жодної пасіки.\nСтвори її кнопкою нижче.'), findsNothing);
     // «назад» — до плиток уроків, а не на заставку
     await tester.tap(find
@@ -871,7 +871,7 @@ void main() {
     await tester.tap(find.text('Базові поняття'));
     await settle(tester);
     await settle(tester);
-    await tester.tap(find.text('+  Створити карту'));
+    await tester.tap(find.text('+ Карта'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
@@ -962,7 +962,7 @@ void main() {
     await tester.tap(find.text('Базові поняття'));
     await settle(tester);
     await settle(tester);
-    await tester.tap(find.text('+  Створити карту'));
+    await tester.tap(find.text('+ Карта'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }
@@ -1205,7 +1205,7 @@ void main() {
     await pumpApp(tester, ApiaryApp(repo: repo, auth: FakeAuth()));
     await settle(tester);
     await toApiaries(tester);
-    await tester.tap(find.text('+  Створити карту'));
+    await tester.tap(find.text('+ Карта'));
     for (var i = 0; i < 4; i++) {
       await settle(tester);
     }

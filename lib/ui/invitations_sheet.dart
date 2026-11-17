@@ -11,7 +11,6 @@ import 'theme.dart';
 Future<void> showInvitations(BuildContext context) => showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.popupBg,
       builder: (_) => const _InvitationsSheet(),
     );
 
@@ -62,7 +61,7 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
       Navigator.pop(context);
       // вікно закрилось - повідомлення вже видно
       messenger.showSnackBar(
-          SnackBar(content: Text(accept ? tr.inviteAccepted : tr.inviteDeclined)));
+          SnackBar(content: SnackText(accept ? tr.inviteAccepted : tr.inviteDeclined)));
     }
   }
 
@@ -125,7 +124,7 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
           Expanded(
             child: PillButton(
                 text: tr.decline,
-                bg: AppColors.darkBtn,
+                bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 38,
                 onPressed: _busy ? null : () => _respond(i, false)),

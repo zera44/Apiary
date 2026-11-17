@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final messenger = ScaffoldMessenger.of(context);
       if (!SharingService.current.available) {
         InviteLink.pending.value = null;
-        messenger.showSnackBar(SnackBar(content: Text(tr.joinUnavailable)));
+        messenger.showSnackBar(SnackBar(content: SnackText(tr.joinUnavailable, kind: SnackKind.error)));
         return;
       }
       final ok = await showConfirm(context,
@@ -185,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!ok || !mounted) return;
       final (outcome, joined) = await SharingService.current.join(token);
       messenger.showSnackBar(SnackBar(
-        content: Text(switch (outcome) {
+        content: SnackText(switch (outcome) {
           JoinOutcome.joined => tr.joinDone(joined?.ownerEmail ?? '', joined?.apiaryNames ?? const []),
           JoinOutcome.invalid => tr.joinInvalid,
           JoinOutcome.own => tr.joinOwn,
@@ -221,10 +221,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final messenger = ScaffoldMessenger.of(context);
         try {
           await Server.choose(repo, a.choice!);
-          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginDone)));
+          messenger.showSnackBar(SnackBar(content: SnackText(tr.firstLoginDone, kind: SnackKind.done)));
           return;
         } catch (e) {
-          messenger.showSnackBar(SnackBar(content: Text(tr.firstLoginFailed('$e'))));
+          messenger.showSnackBar(SnackBar(content: SnackText(tr.firstLoginFailed('$e'), kind: SnackKind.error)));
         }
       }
     } finally {
@@ -281,9 +281,9 @@ class _HomeScreenState extends State<HomeScreen> {
     } on SignInCancelled {
       // передумали
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(SnackBar(content: SnackText(e.message, kind: SnackKind.error)));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(tr.signInFailed)));
+      messenger.showSnackBar(SnackBar(content: SnackText(tr.signInFailed, kind: SnackKind.error)));
     }
   }
 
@@ -295,9 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
       HomeScreen.signedInMail = null;
       nav.pushReplacement(MaterialPageRoute(builder: (_) => HomeScreen(repo: repo, auth: auth)));
     } on StateError catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+      messenger.showSnackBar(SnackBar(content: SnackText(e.message, kind: SnackKind.error)));
     } catch (_) {
-      messenger.showSnackBar(SnackBar(content: Text(tr.tgFailed)));
+      messenger.showSnackBar(SnackBar(content: SnackText(tr.tgFailed, kind: SnackKind.error)));
     }
   }
 
@@ -341,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
             final msg = await nav.push<String>(
                 MaterialPageRoute(builder: (_) => FinAddScreen(repo: repo)));
             if (msg == null || !context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(msg)));
             nav.push(MaterialPageRoute(builder: (_) => FinanceScreen(repo: repo)));
           }),
       _Tile(

@@ -55,7 +55,7 @@ class _SecurityControlsState extends State<SecurityControls> {
     }
   }
 
-  void _say(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  void _say(String t) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(t)));
 
   String _error(Object e) {
     if (e is TelegramApiError) {
@@ -222,7 +222,7 @@ class _SecurityControlsState extends State<SecurityControls> {
         child: PillButton(
           key: key,
           text: text,
-          bg: primary ? AppColors.accent : AppColors.darkBtn,
+          bg: primary ? AppColors.accent : AppColors.neutralBtn,
           fg: primary ? Colors.white : AppColors.text,
           height: 40,
           width: double.infinity,

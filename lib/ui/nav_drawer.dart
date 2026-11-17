@@ -64,21 +64,23 @@ class NavDrawer extends StatefulWidget {
 class _NavDrawerState extends State<NavDrawer> {
   Repository get repo => widget.repo;
   NavSection get current => widget.current;
-  late bool _finOpen = widget.finSection != null;
-  late bool _setOpen = widget.settingsPart != null;
-  late bool _qrOpen = widget.current == NavSection.qr;
+  /// Розкритий розділ із підрозділами (Фінанси, Налаштування, QR-код) або null -
+  /// тоді видно всі розділи. Коли щось розкрито, решта ховається за рядком
+  /// «Інші функції».
+  late NavSection? _open = widget.finSection != null
+      ? NavSection.finances
+      : widget.settingsPart != null
+      ? NavSection.settings
+      : widget.current == NavSection.qr
+      ? NavSection.qr
+      : null;
 
   void _go(BuildContext context, NavSection target) {
-    if (target == NavSection.finances) {
-      setState(() => _finOpen = !_finOpen); // розкрити/згорнути підрозділи
-      return;
-    }
-    if (target == NavSection.qr) {
-      setState(() => _qrOpen = !_qrOpen);
-      return;
-    }
-    if (target == NavSection.settings) {
-      setState(() => _setOpen = !_setOpen);
+    if (target == NavSection.finances ||
+        target == NavSection.qr ||
+        target == NavSection.settings) {
+      // розділ із підрозділами: розкрити (решта ховається) або згорнути
+      setState(() => _open = _open == target ? null : target);
       return;
     }
     final nav = Navigator.of(context);
@@ -254,14 +256,21 @@ class _NavDrawerState extends State<NavDrawer> {
             ),
             trailing: s == NavSection.finances
                 ? Icon(
-                    _finOpen
+                    _open == NavSection.finances
                         ? TablerIcons.chevron_up
                         : TablerIcons.chevron_down,
                     color: color,
                   )
                 : s == NavSection.settings
                 ? Icon(
-                    _setOpen
+                    _open == NavSection.settings
+                        ? TablerIcons.chevron_up
+                        : TablerIcons.chevron_down,
+                    color: color,
+                  )
+                : s == NavSection.qr
+                ? Icon(
+                    _open == NavSection.qr
                         ? TablerIcons.chevron_up
                         : TablerIcons.chevron_down,
                     color: color,
@@ -273,9 +282,26 @@ class _NavDrawerState extends State<NavDrawer> {
       );
     }
 
-    final finOpen = _finOpen;
-    final setOpen = _setOpen;
-    final qrOpen = _qrOpen;
+    final open = _open;
+
+    // «⋯ Інші функції» (іконка «Інше»): ховає підрозділи й показує всі розділи
+    Widget _otherFunctions() => Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.textMuted.withValues(alpha: 0.25)),
+        ),
+      ),
+      child: ListTile(
+        leading: Icon(TablerIcons.dots, color: AppColors.textMuted, size: 28),
+        title: Text(
+          tr.navOtherFunctions,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 17),
+        ),
+        trailing: Icon(TablerIcons.chevron_down, color: AppColors.textMuted),
+        onTap: () => setState(() => _open = null),
+      ),
+    );
 
     return Drawer(
       backgroundColor: AppColors.card,
@@ -304,31 +330,12 @@ class _NavDrawerState extends State<NavDrawer> {
                 children: [
                   item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries'),
                   item(NavSection.stock, tr.stock, icon: 'box'),
-                  item(
-                    NavSection.finances,
-                    tr.finances,
-                    data: TablerIcons.wallet,
-                  ),
-                  if (finOpen) ...[
-                    sub(FinSection.home, TablerIcons.chart_donut, tr.finHome),
-                    sub(
-                      FinSection.accounts,
-                      TablerIcons.building_bank,
-                      tr.finAccounts,
+                  if (open == null) ...[
+                    item(
+                      NavSection.finances,
+                      tr.finances,
+                      data: TablerIcons.wallet,
                     ),
-                    sub(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
-                    sub(
-                      FinSection.categories,
-                      TablerIcons.list,
-                      tr.finCategories,
-                    ),
-                    sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
-                  ] else if (qrOpen) ...[
-                    // «QR-код» розкритий: решта розділів нижче ховається
-                    item(NavSection.history, tr.history, icon: 'history'),
-                    item(NavSection.qr, tr.qrCode, icon: 'qr'),
-                    for (final a in qrActions(context, repo)) actionSub(a),
-                  ] else if (!setOpen) ...[
                     item(NavSection.history, tr.history, icon: 'history'),
                     item(NavSection.qr, tr.qrCode, icon: 'qr'),
                     item(
@@ -352,13 +359,38 @@ class _NavDrawerState extends State<NavDrawer> {
                       icon: 'feedback',
                     ),
                   ] else ...[
-                    // Налаштування розкриті: решта розділів ховається, нижче - лише підрозділи
-                    item(
-                      NavSection.settings,
-                      tr.settingsTitle,
-                      data: TablerIcons.settings,
-                    ),
-                    for (final p in SettingsPart.values) setSub(p),
+                    // розкритий розділ: його підрозділи, решта розділів - за «Інші функції»
+                    if (open == NavSection.finances) ...[
+                      item(
+                        NavSection.finances,
+                        tr.finances,
+                        data: TablerIcons.wallet,
+                      ),
+                      sub(FinSection.home, TablerIcons.chart_donut, tr.finHome),
+                      sub(
+                        FinSection.accounts,
+                        TablerIcons.building_bank,
+                        tr.finAccounts,
+                      ),
+                      sub(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
+                      sub(
+                        FinSection.categories,
+                        TablerIcons.list,
+                        tr.finCategories,
+                      ),
+                      sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
+                    ] else if (open == NavSection.qr) ...[
+                      item(NavSection.qr, tr.qrCode, icon: 'qr'),
+                      for (final a in qrActions(context, repo)) actionSub(a),
+                    ] else ...[
+                      item(
+                        NavSection.settings,
+                        tr.settingsTitle,
+                        data: TablerIcons.settings,
+                      ),
+                      for (final p in SettingsPart.values) setSub(p),
+                    ],
+                    _otherFunctions(),
                   ],
                 ],
               ),

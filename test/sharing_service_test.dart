@@ -1,3 +1,4 @@
+import 'package:apiary/ui/pick_sheet.dart';
 import 'package:apiary/data/database.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/sharing.dart';
@@ -268,7 +269,7 @@ void main() {
       await tester.enterText(find.byType(TextField), 'petro@gmail.com');
       await tester.tap(find.text(tr.accessOne));
       await settle(tester);
-      expect(find.byType(DropdownButton<String>), findsOneWidget);
+      expect(find.byType(PickField<String>), findsOneWidget);
       await tester.tap(find.text(tr.accessStock));
       await settle(tester);
       await tester.tap(find.text(tr.sendInvite));

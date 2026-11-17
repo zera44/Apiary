@@ -45,8 +45,8 @@ Future<bool> editApiarySettings(BuildContext context, Repository repo, Apiary a)
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
             const SizedBox(height: 8),
             TextButton.icon(
-              icon: Icon(TablerIcons.table, color: AppColors.accent),
-              label: Text(tr.apiaryReportExcel, style: TextStyle(color: AppColors.accent)),
+              icon: Icon(TablerIcons.table, color: AppColors.create),
+              label: Text(tr.apiaryReportExcel),
               onPressed: () {
                 Navigator.pop(ctx);
                 showApiaryReport(context, repo, a);

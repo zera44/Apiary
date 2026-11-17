@@ -57,6 +57,36 @@ ThemeData buildAppTheme() {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       titleTextStyle: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.bold),
     ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: AppColors.popupBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.popupBg,
+      contentTextStyle: TextStyle(color: AppColors.text, fontSize: 14),
+      actionTextColor: AppColors.accent,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? Colors.white : AppColors.textMuted),
+      trackColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? AppColors.accent : AppColors.darkBtn),
+      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? AppColors.accent : Colors.transparent),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: BorderSide(color: AppColors.textMuted, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: AppColors.create),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: AppColors.accent),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.input,
