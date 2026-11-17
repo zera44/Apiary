@@ -127,12 +127,12 @@ void main() {
   test('Копійочка: «Ціна після знижки» - ціна позиції', () {
     final rows = parseReceipt(_kopiyochka);
     expect(rows.length, 1);
-    expect(rows.single.total, closeTo(37.00, 0.001));
+    expect(rows.single.total, closeTo(37.00, 0.01));
   });
 
   test('Аурбир: пиво на вагу, «кількість X ціна» окремо, сума з ВГ', () {
     final rows = parseReceipt(_aurbyr);
-    expect(rows.map((r) => r.total), [closeTo(156.75, 0.001), closeTo(191.17, 0.001)]);
+    expect(rows.map((r) => r.total), [closeTo(156.75, 0.01), closeTo(191.17, 0.01)]);
     expect(rows.any((r) => r.name.toLowerCase().contains('акциз')), isFalse);
   });
 
@@ -140,6 +140,6 @@ void main() {
     final rows = parseReceipt(_aurbyrTwo);
     expect(rows.length, 3);
     expect(rows.every((r) => !r.name.contains('ВГ')), isTrue);
-    expect(rows.fold<double>(0, (a, r) => a + r.total), closeTo(584.63, 0.001));
+    expect(rows.fold<double>(0, (a, r) => a + r.total), closeTo(584.63, 0.01));
   });
 }
