@@ -266,6 +266,13 @@ class _NavDrawerState extends State<NavDrawer> {
                         : TablerIcons.chevron_down,
                     color: color,
                   )
+                : s == NavSection.qr
+                ? Icon(
+                    _qrOpen
+                        ? TablerIcons.chevron_up
+                        : TablerIcons.chevron_down,
+                    color: color,
+                  )
                 : null,
             onTap: () => _go(context, s),
           ),
