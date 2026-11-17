@@ -8,7 +8,6 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_chat_screen.dart';
-import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/qr_scan_screen.dart';
