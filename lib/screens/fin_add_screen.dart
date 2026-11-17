@@ -33,8 +33,16 @@ class FinAddScreen extends StatefulWidget {
 
   /// Чим розпізнавати (у тестах підміняється).
   final ReceiptOcr? ocr;
+
+  /// Зміна наявного запису: той самий екран, заповнений тим, що обрано раніше.
+  final FinEntry? edit;
   const FinAddScreen(
-      {super.key, required this.repo, this.kind = kFinExpense, this.imagePath, this.ocr});
+      {super.key,
+      required this.repo,
+      this.kind = kFinExpense,
+      this.imagePath,
+      this.ocr,
+      this.edit});
 
   @override
   State<FinAddScreen> createState() => _FinAddScreenState();
@@ -97,7 +105,9 @@ class _FLine {
 }
 
 class _FinAddScreenState extends State<FinAddScreen> {
-  late String _kind = widget.kind;
+  late String _kind = widget.edit?.kind ?? widget.kind;
+  final _note = TextEditingController();
+  bool _accountFromOp = false;
   List<FinCategory> _cats = [];
   String? _catId;
   List<FinAccount> _accounts = [];
@@ -141,6 +151,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
   String? _markSkip;
 
   Repository get repo => widget.repo;
+  bool get _editing => widget.edit != null;
+
+  /// Рядки таблиці прив'язані до складу: у зміні вони лише для перегляду, сума - з них.
+  bool get _locked => _editing && widget.edit!.lineCount > 0;
   ReceiptOcr get _ocr => widget.ocr ?? ReceiptOcr.instance;
   bool get _expense => _kind == kFinExpense;
 
@@ -190,7 +204,18 @@ class _FinAddScreenState extends State<FinAddScreen> {
   @override
   void initState() {
     super.initState();
-    _lines.add(_FLine());
+    final e = widget.edit;
+    if (e != null) {
+      _catId = e.categoryId;
+      _date = e.date;
+      _note.text = e.comment ?? '';
+      _sum.text = formatMoney(e.amount);
+      _sumManual = true;
+      for (final l in e.lines) {
+        _lines.add(_FLine(name: l.name, qty: l.qty, unit: l.unit, price: l.price, toStock: l.toStock));
+      }
+    }
+    if (_lines.isEmpty) _lines.add(_FLine());
     _load().then((_) {
       if (widget.imagePath != null) _recognize(widget.imagePath!);
     });
@@ -202,6 +227,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       l.dispose();
     }
     _sum.dispose();
+    _note.dispose();
     _accAmt.dispose();
     super.dispose();
   }
@@ -215,11 +241,16 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final lastAccount = await repo.getMeta('fin_last_account');
     final rates = await repo.finRates();
     final balances = await repo.finAccountBalances();
+    final opAccount = _editing && !_accountFromOp ? await repo.finOpAccountId(widget.edit!.id) : null;
     if (!mounted) return;
     setState(() {
       _rates = rates;
       _balances = balances;
       _accounts = accounts;
+      if (opAccount != null && accounts.any((a) => a.id == opAccount)) {
+        _accountId = opAccount;
+        _accountFromOp = true;
+      }
       if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
         _accountId = accounts.any((a) => a.id == lastAccount)
             ? lastAccount
@@ -231,7 +262,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       if (_catId != null && !cats.any((c) => c.id == _catId)) _catId = null;
     });
     // ще не обрали - категорія минулого запису цього виду (видалена - ніяка)
-    if (_catId == null) {
+    if (_catId == null && !_editing) {
       for (final c in cats) {
         if (c.id == last) _pickCategory(c);
       }
@@ -327,7 +358,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   }
 
   void _setKind(String kind) {
-    if (kind == _kind) return;
+    if (kind == _kind || _editing) return;
     setState(() {
       _kind = kind;
       _catId = null;
@@ -476,7 +507,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
       return;
     }
     final used = [for (final l in _lines) if (!l.empty) l];
-    final bad = used.where((l) => !l.valid).toList();
+    final bad = _editing ? <_FLine>[] : used.where((l) => !l.valid).toList();
     if (bad.isNotEmpty) {
       await showInfo(
           context,
@@ -509,6 +540,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final accAmount = acc != null && acc.foreign ? parseAmount(_accAmt.text) : null;
     if (acc != null && acc.foreign && !(accAmount != null && accAmount > 0)) {
       await showInfo(context, tr.finEnterSum);
+      return;
+    }
+    if (_editing) {
+      await _saveEdit(cat.id, amount, accAmount);
       return;
     }
     setState(() => _saving = true);
@@ -550,6 +585,34 @@ class _FinAddScreenState extends State<FinAddScreen> {
     }
   }
 
+  /// Зберегти зміну наявного запису: категорія, рахунок, дата, сума (якщо не з рядків), коментар.
+  Future<void> _saveEdit(String categoryId, double amount, double? accountAmount) async {
+    final e = widget.edit!;
+    setState(() => _saving = true);
+    try {
+      final when = _sameDay(_date, e.date)
+          ? e.date
+          : (_sameDay(_date, DateTime.now())
+              ? DateTime.now()
+              : DateTime(_date.year, _date.month, _date.day, 12));
+      await repo.updateFinOp(e.id,
+          categoryId: categoryId,
+          date: when,
+          amount: _locked ? e.amount : amount,
+          comment: _note.text,
+          accountId: _accountId,
+          accountAmount: accountAmount);
+      if (!mounted) return;
+      Navigator.pop(context, tr.recorded);
+    } catch (err) {
+      if (mounted) {
+        setState(() => _saving = false);
+        await showInfo(context, err is StateError ? err.message : tr.recordFailed('$err'),
+            title: tr.notRecorded);
+      }
+    }
+  }
+
   // ------------------------------------------------------------------ вигляд
 
   Widget _card({required Widget child, EdgeInsets? margin}) => Container(
@@ -563,7 +626,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     final t = _tableSum;
     final cur = parseAmount(_sum.text) ?? 0;
     String? note;
-    if (_sumManual && t > 0 && (cur - t).abs() > 0.005) {
+    if (!_editing && _sumManual && t > 0 && (cur - t).abs() > 0.005) {
       note = tr.finFixedByHand(uah(t));
       if (cur < t) note += tr.finDiscount(uah(t - cur));
     }
@@ -575,7 +638,8 @@ class _FinAddScreenState extends State<FinAddScreen> {
           key: const ValueKey('fin-sum'),
           controller: _sum,
           // вручну - одразу клавіатура для суми (як у Складі); з чека - ні
-          autofocus: widget.imagePath == null,
+          autofocus: widget.imagePath == null && !_editing,
+          enabled: !_locked,
           textAlign: TextAlign.center,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: thousandsInput,
@@ -1177,7 +1241,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
     );
   }
 
-  Widget _table() {
+  Widget _table() => _tableView(withAdd: true);
+
+  Widget _tableView({bool withAdd = false}) {
     final t = _tableSum;
     return _card(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -1190,18 +1256,40 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 alignment: Alignment.centerRight,
                 child: Text(tr.tableOf(uah(t)), style: TextStyle(color: AppColors.textMuted, fontSize: 13))),
           ),
-        const SizedBox(height: 8),
-        AddButton(
-          text: tr.addRow,
-          onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
-        ),
+        if (withAdd) ...[
+          const SizedBox(height: 8),
+          AddButton(
+            text: tr.addRow,
+            onPressed: () => setState(() => _lines.add(_FLine(toStock: _cat?.toStock ?? false))),
+          ),
+        ],
       ]),
     );
   }
 
+  /// Коментар до запису (лише у зміні запису).
+  Widget _noteField() => _card(
+        child: TextField(
+          controller: _note,
+          maxLength: 200,
+          decoration: InputDecoration(labelText: tr.commentOptional),
+        ),
+      );
+
+  /// Рядки запису зі складом - лише перегляд (змінити можна категорію, рахунок, дату, коментар).
+  Widget _lockedTable() => IgnorePointer(child: Opacity(opacity: 0.65, child: _tableView()));
+
   /// Щось уже введено (сума, рядки таблиці чи розпізнаний чек).
-  bool get _dirty =>
-      (parseAmount(_sum.text) ?? 0) != 0 || _hasReceipt || _lines.any((l) => !l.empty);
+  bool get _dirty {
+    final e = widget.edit;
+    if (e != null) {
+      return _catId != e.categoryId ||
+          !_sameDay(_date, e.date) ||
+          _note.text != (e.comment ?? '') ||
+          (!_locked && (parseAmount(_sum.text) ?? 0) != e.amount);
+    }
+    return (parseAmount(_sum.text) ?? 0) != 0 || _hasReceipt || _lines.any((l) => !l.empty);
+  }
 
   /// Вихід без збереження: якщо щось введено — спершу перепитати.
   Future<void> _leave() async {
@@ -1229,7 +1317,9 @@ class _FinAddScreenState extends State<FinAddScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(title: _expense ? tr.newExpense : tr.newIncome, onBack: _leave),
+            TopBar(
+                title: _editing ? tr.finEditRecord : (_expense ? tr.newExpense : tr.newIncome),
+                onBack: _leave),
             Expanded(
               child: ListView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1237,11 +1327,13 @@ class _FinAddScreenState extends State<FinAddScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: FinSegment(
-                      labels: [tr.expenses, tr.income],
-                      selected: _expense ? 0 : 1,
-                      onChanged: (i) => _setKind(i == 0 ? kFinExpense : kFinIncome),
-                    ),
+                    child: _editing
+                        ? const SizedBox.shrink()
+                        : FinSegment(
+                            labels: [tr.expenses, tr.income],
+                            selected: _expense ? 0 : 1,
+                            onChanged: (i) => _setKind(i == 0 ? kFinExpense : kFinIncome),
+                          ),
                   ),
                   _sumBlock(),
                   _foreignAmount(),
@@ -1259,14 +1351,14 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     if (_accounts.length > 1 && _account != null) _accountTile(),
                     _categories(),
                     FinDateRow(date: _date, onChanged: (d) => setState(() => _date = d), onPickCalendar: _pickDate),
-                    _scanHero(),
+                    if (_editing) _noteField() else _scanHero(),
                   ],
-                  _table(),
+                  if (!_editing) _table() else if (_locked) _lockedTable(),
                   // «Додати» - одразу під таблицею, а не прибита до низу екрана
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                     child: PillButton(
-                      text: tr.add,
+                      text: _editing ? tr.save : tr.add,
                       bg: AppColors.accent,
                       height: 52,
                       radius: 26,

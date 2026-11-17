@@ -460,7 +460,13 @@ extension RepositoryFinance on Repository {
     return opId;
   }
 
-  /// Змінити власну операцію: категорію, дату, суму, коментар. Якщо в операції
+  /// Рахунок власної операції (для екрана зміни запису).
+  Future<String?> finOpAccountId(String id) async {
+    final r = await db.query('fin_ops', columns: ['account_id'], where: 'id = ?', whereArgs: [id], limit: 1);
+    return r.isEmpty ? null : r.first['account_id'] as String?;
+  }
+
+  /// Змінити власну операцію: категорію, рахунок, дату, суму, коментар. Якщо в операції
   /// є рядки таблиці, суму змінити не можна (вона з рядків); дата тоді
   /// змінюється й у пов'язаних приходах на складі. Скасовану не змінюють.
   Future<void> updateFinOp(
@@ -469,6 +475,8 @@ extension RepositoryFinance on Repository {
     required DateTime date,
     required double amount,
     String? comment,
+    String? accountId,
+    double? accountAmount,
   }) async {
     if (amount.isNaN || amount < 0) throw ArgumentError.value(amount, 'amount', 'не менше 0');
     var touched = false;
@@ -491,6 +499,8 @@ extension RepositoryFinance on Repository {
             'amount': amount,
             'op_date': _secs(date),
             'comment': (comment ?? '').trim().isEmpty ? null : comment!.trim(),
+            'account_id': ?accountId,
+            if (accountId != null) 'account_amount': accountAmount,
             'updated_at': t,
             'synced': 0,
           },

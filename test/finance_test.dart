@@ -622,6 +622,40 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('«Змінити»: екран як у новій витраті, заповнений; рядки зі складом - лише перегляд', (tester) async {
+      final cats = (await tester.runAsync(() => repo.listFinCategories(kind: kFinExpense)))!;
+      final a = cats.firstWhere((c) => !c.toStock), b = cats.firstWhere((c) => !c.toStock && c.id != a.id);
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinExpense,
+          categoryId: a.id,
+          amount: 120,
+          date: DateTime(2026, 10, 3),
+          comment: 'моя примітка',
+          lines: const [FinLineInput(name: 'Цвяхи', qty: 2, unit: 'шт', price: 60)]));
+      final e = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      await open(tester, FinAddScreen(repo: repo, edit: e));
+      // як екран витрати, але з назвою зміни, без перемикача «Витрати/Дохід»
+      expect(find.text('Змінити запис'), findsOneWidget);
+      expect(find.text('Дохід'), findsNothing);
+      expect(find.text('Сфотографувати чек'), findsNothing);
+      // заповнено: категорія, коментар, рядок таблиці
+      expect(find.text('моя примітка'), findsOneWidget);
+      expect(find.text('Цвяхи'), findsOneWidget);
+      // сума з рядків - не редагується
+      final sum = tester.widget<TextField>(find.byKey(const ValueKey('fin-sum')));
+      expect(sum.enabled, isFalse);
+      await tester.tap(find.text(b.name));
+      await tester.pump();
+      await tester.tap(find.text('Зберегти'));
+      await settle(tester);
+      await settle(tester);
+      final after = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      expect(after.categoryId, b.id);
+      expect(after.amount, 120);
+      expect(after.comment, 'моя примітка');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('без категорії не записується', (tester) async {
       await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
