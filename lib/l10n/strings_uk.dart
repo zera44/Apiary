@@ -746,6 +746,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get navMenu => 'Меню навігації';
   @override
+  String get navOtherFunctions => 'Інші функції';
+  @override
   String get scan => 'Сканувати';
   @override
   String get generate => 'Генерувати';

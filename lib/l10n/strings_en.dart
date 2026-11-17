@@ -745,6 +745,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get navMenu => 'Navigation menu';
   @override
+  String get navOtherFunctions => 'Other functions';
+  @override
   String get scan => 'Scan';
   @override
   String get generate => 'Generate';
