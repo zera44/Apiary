@@ -118,11 +118,11 @@ class _HiveNotesViewState extends State<HiveNotesView> {
         if (chips.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            _FilterChip(text: tr.all, on: filter == null, onTap: () => setState(() => _filter = null)),
+            ChoiceButton(text: tr.all, selected: filter == null, onTap: () => setState(() => _filter = null)),
             for (final l in chips)
-              _FilterChip(
+              ChoiceButton(
                   text: l.name,
-                  on: filter == l.id,
+                  selected: filter == l.id,
                   onTap: () => setState(() => _filter = filter == l.id ? null : l.id)),
           ]),
         ],
@@ -191,30 +191,6 @@ class _HiveNotesViewState extends State<HiveNotesView> {
       ),
     );
   }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String text;
-  final bool on;
-  final VoidCallback onTap;
-  const _FilterChip({required this.text, required this.on, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: on ? AppColors.create : AppColors.darkBtn,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Text(text,
-              style: TextStyle(
-                  color: on ? AppColors.bg : AppColors.text,
-                  fontSize: 12,
-                  fontWeight: on ? FontWeight.bold : FontWeight.w500)),
-        ),
-      );
 }
 
 class _LabelTag extends StatelessWidget {
@@ -352,23 +328,13 @@ class _NoteEditorState extends State<_NoteEditor> {
   }
 
   Widget _chip(String text, bool on, VoidCallback onTap, {VoidCallback? onLong, Key? key, bool add = false}) =>
-      GestureDetector(
-        key: key,
-        onTap: onTap,
-        onLongPress: onLong,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: on ? AppColors.create : AppColors.darkBtn,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(text,
-              style: TextStyle(
-                  color: on ? AppColors.bg : (add ? AppColors.create : AppColors.text),
-                  fontSize: 13,
-                  fontWeight: on ? FontWeight.bold : FontWeight.w500)),
-        ),
-      );
+      ChoiceButton(
+          key: key,
+          text: text,
+          selected: on,
+          onTap: onTap,
+          onLongPress: onLong,
+          fg: add ? AppColors.create : null);
 
   @override
   Widget build(BuildContext context) {

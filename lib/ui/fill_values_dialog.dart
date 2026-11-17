@@ -8,6 +8,7 @@ import 'common.dart';
 import 'date_picker.dart';
 import 'guide_bubble.dart';
 import 'icons.dart';
+import 'pick_sheet.dart';
 import 'theme.dart';
 import 'thousands_input.dart';
 import '../l10n/l10n.dart';
@@ -485,28 +486,14 @@ class _FillDialogState extends State<_FillDialog> {
         if (widget.stock.isNotEmpty)
           row(
             tr.feedFromStock,
-            DropdownButton<String?>(
+            PickField<String?>(
+              title: tr.feedFromStock,
               value: _feedItem,
-              isExpanded: true,
-              isDense: true,
-              underline: const SizedBox.shrink(),
-              dropdownColor: AppColors.popupBg,
-              hint: _fitLeft(
-                  Text(tr.dontWriteOff, style: TextStyle(color: AppColors.textMuted, fontSize: 14))),
-              items: [
-                DropdownMenuItem<String?>(
-                    value: null,
-                    child: _fitLeft(
-                        Text(tr.dontWriteOff, style: TextStyle(color: AppColors.text, fontSize: 14)))),
+              hint: tr.dontWriteOff,
+              options: [
+                (value: null, label: tr.dontWriteOff),
                 for (final s in widget.stock)
-                  DropdownMenuItem<String?>(
-                    value: s.id,
-                    child: _fitLeft(Text(
-                        tr.stockItemHas(s.name, '${formatAmount(s.quantity ?? 0)} ${s.unit}'),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: TextStyle(color: AppColors.text, fontSize: 14))),
-                  ),
+                  (value: s.id, label: tr.stockItemHas(s.name, '${formatAmount(s.quantity ?? 0)} ${s.unit}')),
               ],
               onChanged: (v) => setState(() {
                 _feedItem = v;
@@ -578,10 +565,6 @@ class _FillDialogState extends State<_FillDialog> {
     ]);
   }
 
-  /// Текст у клітинці списку: не переноситься й не обрізається «…» — зменшується.
-  static Widget _fitLeft(Widget text) =>
-      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: text);
-
   static const _cellInput = InputDecoration(
     isDense: true,
     filled: false,
@@ -628,7 +611,7 @@ class _FillDialogState extends State<_FillDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: PillButton(
                   text: v,
-                  bg: cur == v ? AppColors.accent : AppColors.typeBtn,
+                  bg: cur == v ? AppColors.accent : AppColors.darkBtn,
                   fg: cur == v ? Colors.white : AppColors.text,
                   height: 34,
                   radius: 10,
@@ -642,23 +625,13 @@ class _FillDialogState extends State<_FillDialog> {
         final cur = _picked[p.id] ?? '';
         // старе значення, якого вже немає серед варіантів, — теж показуємо
         final items = [...p.options, if (cur.isNotEmpty && !p.options.contains(cur)) cur];
-        return DropdownButton<String>(
+        return PickField<String>(
+          title: p.name,
           value: cur.isEmpty ? null : cur,
-          isExpanded: true,
-          isDense: true,
-          underline: const SizedBox.shrink(),
-          dropdownColor: AppColors.popupBg,
-          hint: Text(tr.choose, style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
-          items: [
-            DropdownMenuItem<String>(
-                value: '', child: Text('-', style: TextStyle(color: AppColors.textMuted))),
-            for (final o in items)
-              DropdownMenuItem<String>(
-                  value: o,
-                  child: Text(o,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: AppColors.text, fontSize: 15, height: 1.15))),
+          hint: tr.choose,
+          options: [
+            (value: '', label: '-'),
+            for (final o in items) (value: o, label: o),
           ],
           onChanged: (v) => setState(() => _picked[p.id] = v ?? ''),
         );
@@ -863,7 +836,7 @@ class _FillDialogState extends State<_FillDialog> {
               Expanded(
                   child: PillButton(
                       text: tr.noChanges,
-                      bg: AppColors.darkBtn,
+                      bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       height: 50,
                       onPressed: _saving || _lesson != null ? null : () => _quick(FillAction.noChange))),

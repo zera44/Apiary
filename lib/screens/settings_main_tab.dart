@@ -118,7 +118,7 @@ class _NotificationsSectionState extends State<_NotificationsSection> {
           PillButton(
             key: const ValueKey('notifications-open'),
             text: tr.notifSummary,
-            bg: AppColors.darkBtn,
+            bg: AppColors.neutralBtn,
             fg: AppColors.text,
             height: 44,
             onPressed: () async {
@@ -187,7 +187,7 @@ class _LanguageSection extends StatelessWidget {
                 child: PillButton(
                   key: const ValueKey('language-change'),
                   text: tr.languageChange,
-                  bg: AppColors.darkBtn,
+                  bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   height: 44,
                   onPressed: () => _choose(context),
@@ -277,7 +277,7 @@ class _StartScreenSectionState extends State<_StartScreenSection> {
             PillButton(
               key: const ValueKey('start-screen-change'),
               text: tr.startScreenChange,
-              bg: AppColors.darkBtn,
+              bg: AppColors.neutralBtn,
               fg: AppColors.text,
               width: double.infinity,
               height: 44,
@@ -604,7 +604,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
       const SizedBox(height: 8),
       PillButton(
         text: tr.serverRestore,
-        bg: AppColors.darkBtn,
+        bg: AppColors.neutralBtn,
         fg: AppColors.text,
         height: 40,
         width: double.infinity,
@@ -642,7 +642,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
                 const SizedBox(height: 12),
                 PillButton(
                   text: tr.accountSignOut,
-                  bg: AppColors.darkBtn,
+                  bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   height: 40,
                   width: double.infinity,
@@ -693,7 +693,7 @@ class _AccountSettingsTabState extends State<AccountSettingsTab> {
               const SizedBox(height: 10),
               PillButton(
                 text: tr.backupsSection,
-                bg: AppColors.darkBtn,
+                bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 40,
                 width: double.infinity,

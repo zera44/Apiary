@@ -241,7 +241,7 @@ class _BackupsScreenState extends State<BackupsScreen> {
             Expanded(
               child: PillButton(
                 text: tr.backupSaveToFile,
-                bg: AppColors.darkBtn,
+                bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 36,
                 onPressed: _busy ? null : () => _export(b),

@@ -784,14 +784,12 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       for (final n in it.offeredNav)
         Padding(
           padding: const EdgeInsets.only(left: 10, top: 4),
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.create,
-              side: BorderSide(color: AppColors.create),
-            ),
+          child: PillButton(
+            text: tr.assistantOpenTarget(n.label),
+            bg: AppColors.neutralBtn,
+            fg: AppColors.text,
+            height: 36,
             onPressed: () => _go(n),
-            icon: const Icon(TablerIcons.external_link, size: 18),
-            label: Text(tr.assistantOpenTarget(n.label)),
           ),
         ),
       if (it.data['escalated_from'] != null)
@@ -1101,10 +1099,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             runSpacing: 6,
             children: [
               for (final ch in f.choices)
-                ChoiceChip(
+                ChoiceButton(
                   key: ValueKey('card-${it.id}-${f.key}-$ch'),
-                  label: Text(ch),
-                  avatar: colors.containsKey(ch)
+                  text: ch,
+                  leading: colors.containsKey(ch)
                       ? CircleAvatar(
                           radius: 9,
                           backgroundColor: colors[ch] ?? Colors.transparent,
@@ -1112,7 +1110,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                         )
                       : null,
                   selected: v.text == ch,
-                  onSelected: (_) => c.text = ch,
+                  onTap: () => c.text = ch,
                 ),
             ],
           ),

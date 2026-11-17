@@ -306,7 +306,7 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
         padding: const EdgeInsets.only(bottom: 10),
         child: PillButton(
           text: text,
-          bg: primary ? AppColors.accent : AppColors.darkBtn,
+          bg: primary ? AppColors.accent : AppColors.neutralBtn,
           fg: primary ? Colors.white : AppColors.text,
           width: double.infinity,
           height: 48,

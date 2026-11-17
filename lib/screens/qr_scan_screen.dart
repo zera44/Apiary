@@ -190,7 +190,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
     Widget tab(String text, bool receipt) => Expanded(
           child: PillButton(
             text: text,
-            bg: _receipt == receipt ? AppColors.accent : AppColors.roundBtn,
+            bg: _receipt == receipt ? AppColors.accent : AppColors.darkBtn,
             fg: _receipt == receipt ? Colors.white : AppColors.text,
             height: 40,
             fontSize: 13,

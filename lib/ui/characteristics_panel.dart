@@ -255,7 +255,7 @@ class CharacteristicsPanel extends StatelessWidget {
                       Expanded(
                         child: PillButton(
                           text: tr.noChanges,
-                          bg: AppColors.darkBtn,
+                          bg: AppColors.neutralBtn,
                           fg: AppColors.text,
                           height: 38,
                           fontSize: 13,

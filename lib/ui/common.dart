@@ -63,6 +63,56 @@ class _IconPainter extends CustomPainter {
 }
 
 /// Заокруглена кнопка-пігулка з текстом.
+/// Вибір одного з кількох (режим, вкладка, категорія, мітка, фільтр): один
+/// вигляд у всьому додатку - обране медове, решта темні; висота 36, кут як у кнопок.
+class ChoiceButton extends StatelessWidget {
+  final String text;
+  final bool selected;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Кружечок кольору чи іконка перед написом (необов'язково).
+  final Widget? leading;
+
+  /// Колір напису невибраної кнопки (для «+ …» - медовий).
+  final Color? fg;
+  const ChoiceButton(
+      {super.key,
+      required this.text,
+      required this.selected,
+      this.onTap,
+      this.onLongPress,
+      this.leading,
+      this.fg});
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected ? AppColors.accent : AppColors.darkBtn,
+        borderRadius: BorderRadius.circular(PillButton.kRadius),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 36),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 6)],
+                Flexible(
+                  child: Text(text,
+                      style: TextStyle(
+                          color: selected ? Colors.white : (fg ?? AppColors.text),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
 /// Кнопка «+ …» (додати): одна на весь додаток - темна пігулка з медовим
 /// текстом, висота 48, на всю ширину; стоїть у кінці списку.
 class AddButton extends StatelessWidget {
@@ -109,14 +159,29 @@ class PillButton extends StatelessWidget {
     this.width,
   });
 
+  /// Єдиний стиль кнопок: лише три розміри - головна дія (48), у вікні чи
+  /// рядку (42), компактна (36); один кут для всіх.
+  static double snapHeight(double h) => h <= 39 ? 36 : (h <= 45 ? 42 : 48);
+  static const kRadius = 14.0;
+
+  /// Другорядні кнопки - одного кольору; вимкнений варіант перемикача - теж одного.
+  static Color snapColor(Color c) {
+    if (c == AppColors.roundBtn) return AppColors.neutralBtn;
+    if (c == AppColors.typeBtn) return AppColors.darkBtn;
+    return c;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final h = snapHeight(height);
+    final fontSize = h >= 48 ? 15.0 : (h >= 42 ? 14.0 : 13.0);
+    final bg = snapColor(this.bg);
     return SizedBox(
-      height: height,
+      height: h,
       width: width,
       child: Material(
         color: onPressed == null ? bg.withValues(alpha: 0.45) : bg,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(kRadius),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onPressed,

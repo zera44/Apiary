@@ -222,7 +222,7 @@ class _SecurityControlsState extends State<SecurityControls> {
         child: PillButton(
           key: key,
           text: text,
-          bg: primary ? AppColors.accent : AppColors.darkBtn,
+          bg: primary ? AppColors.accent : AppColors.neutralBtn,
           fg: primary ? Colors.white : AppColors.text,
           height: 40,
           width: double.infinity,

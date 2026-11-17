@@ -69,6 +69,23 @@ ThemeData buildAppTheme() {
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? Colors.white : AppColors.textMuted),
+      trackColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? AppColors.accent : AppColors.darkBtn),
+      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+          (st) => st.contains(WidgetState.selected) ? AppColors.accent : Colors.transparent),
+      checkColor: WidgetStateProperty.all(Colors.white),
+      side: BorderSide(color: AppColors.textMuted, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: AppColors.create),
+    ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: AppColors.accent),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

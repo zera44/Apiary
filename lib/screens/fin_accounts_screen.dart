@@ -591,8 +591,6 @@ class _FinAccountScreenState extends State<FinAccountScreen> {
                                     style: TextStyle(color: AppColors.text, fontSize: 15))),
                             Switch(
                                 key: const ValueKey('fin-adjust-in-stats'),
-                                activeThumbColor: AppColors.addObject,
-                                activeTrackColor: AppColors.addObject.withValues(alpha: 0.45),
                                 value: _adjustInStats,
                                 onChanged: (v) => setState(() => _adjustInStats = v)),
                           ]),

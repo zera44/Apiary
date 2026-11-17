@@ -124,7 +124,7 @@ class _InvitationsSheetState extends State<_InvitationsSheet> {
           Expanded(
             child: PillButton(
                 text: tr.decline,
-                bg: AppColors.darkBtn,
+                bg: AppColors.neutralBtn,
                 fg: AppColors.text,
                 height: 38,
                 onPressed: _busy ? null : () => _respond(i, false)),

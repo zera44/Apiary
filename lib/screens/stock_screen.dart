@@ -266,10 +266,10 @@ class _StockScreenState extends State<StockScreen> {
         },
       );
 
-  Widget _modeChip(String text, bool list) => ChoiceChip(
-        label: Text(text),
+  Widget _modeChip(String text, bool list) => ChoiceButton(
+        text: text,
         selected: _invList == list,
-        onSelected: (_) => setState(() => _invList = list),
+        onTap: () => setState(() => _invList = list),
       );
 
   Widget _tab(String text, StockOp op) => Expanded(
@@ -685,7 +685,7 @@ class _ItemDialogState extends State<_ItemDialog> {
     final selected = _unit == value;
     final fg = selected ? Colors.white : AppColors.text;
     return Material(
-      color: selected ? AppColors.accent : AppColors.typeBtn,
+      color: selected ? AppColors.accent : AppColors.darkBtn,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -818,7 +818,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                   if (StockPhotos.cameraSupported)
                     PillButton(
                       text: tr.takePhoto,
-                      bg: AppColors.darkBtn,
+                      bg: AppColors.neutralBtn,
                       fg: AppColors.text,
                       height: 34,
                       onPressed: _picking ? null : () => _pick(true),
@@ -826,7 +826,7 @@ class _ItemDialogState extends State<_ItemDialog> {
                   if (StockPhotos.cameraSupported) const SizedBox(height: 6),
                   PillButton(
                     text: StockPhotos.cameraSupported ? tr.fromGallery : tr.choosePhoto,
-                    bg: AppColors.darkBtn,
+                    bg: AppColors.neutralBtn,
                     fg: AppColors.text,
                     height: 34,
                     onPressed: _picking ? null : () => _pick(false),
@@ -985,7 +985,7 @@ class _MoveDialogState extends State<_MoveDialog> {
               Expanded(
                 child: PillButton(
                   text: formatDdMmYyyy(_date),
-                  bg: AppColors.darkBtn,
+                  bg: AppColors.neutralBtn,
                   fg: AppColors.text,
                   height: 36,
                   onPressed: _pickDate,

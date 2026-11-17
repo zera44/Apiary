@@ -205,10 +205,10 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final c in cats)
-                ChoiceChip(
-                  label: Text(c.name),
+                ChoiceButton(
+                  text: c.name,
                   selected: catId == c.id,
-                  onSelected: (_) => setD(() => catId = c.id),
+                  onTap: () => setD(() => catId = c.id),
                 ),
             ]),
             const SizedBox(height: 12),
