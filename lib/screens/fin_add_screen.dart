@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import '../logic/receipt_pick.dart';
 import '../logic/stock_format.dart';
 import '../services/receipt_ocr.dart';
+import 'qr_scan_screen.dart';
 import 'receipt_markup_screen.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
@@ -361,7 +362,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
   // ------------------------------------------------------------------- чек
 
   Future<void> _pickReceipt({required bool camera}) async {
-    final path = await pickReceiptPhoto(camera: camera);
+    final path = await shootReceipt(context, camera: camera);
     if (path == null || !mounted) return;
     await _recognize(path);
   }
