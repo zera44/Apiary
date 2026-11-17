@@ -23,6 +23,22 @@ class FinDrawer extends StatelessWidget {
 
   void _go(BuildContext context, FinSection target) => goSection(context, repo, current, target);
 
+  /// Відкрити розділ Фінансів з будь-якого іншого екрана: Головна фінансів
+  /// лежить під розділом (щоб «назад» ішло на Головну).
+  static void openFrom(BuildContext context, Repository repo, FinSection target) {
+    final nav = Navigator.of(context);
+    nav.pop(); // закрити меню
+    nav.popUntil((r) => r.isFirst);
+    nav.push(MaterialPageRoute<void>(builder: (_) => FinanceScreen(repo: repo)));
+    if (target == FinSection.home) return;
+    nav.push(MaterialPageRoute<void>(builder: (_) => switch (target) {
+          FinSection.accounts => FinAccountsScreen(repo: repo),
+          FinSection.stats => FinStatsScreen(repo: repo),
+          FinSection.categories => FinCategoriesScreen(repo: repo),
+          _ => FinHistoryScreen.thisMonth(repo: repo),
+        }));
+  }
+
   /// Перехід між розділами Фінансів (спільний для цього меню й розкривного
   /// списку в [NavDrawer]).
   static void goSection(

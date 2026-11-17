@@ -10,12 +10,12 @@ import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_chat_screen.dart';
 import '../screens/finance_screen.dart';
 import '../screens/history_hub_screen.dart';
-import '../screens/qr_section_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/stock_screen.dart';
 import '../screens/tutorial_screen.dart';
 import 'common.dart';
 import 'fin_drawer.dart';
+import 'qr_actions.dart';
 import 'settings_part.dart';
 import 'icons.dart';
 import 'theme.dart';
@@ -33,9 +33,6 @@ enum NavSection {
   feedback,
 }
 
-/// Дія-підпункт розкривного списку розділу (напр. «Сканувати» в QR-коді).
-typedef NavAction = ({IconData icon, String label, VoidCallback onTap});
-
 /// Спільне меню головних екранів (плашка «≡ назва ⌄» замість стрілки «назад»):
 /// той самий вигляд, що в Фінансів, поточний розділ підсвічено. Фінанси й QR-код
 /// мають ще й своє меню з розділами. «Назад» - системною кнопкою телефона.
@@ -51,8 +48,6 @@ class NavDrawer extends StatefulWidget {
   final SettingsPart? settingsPart;
   final ValueChanged<SettingsPart>? onSettingsPart;
 
-  /// Дії розділу «QR-код»: розкриваються списком під його назвою.
-  final List<NavAction>? qrActions;
   const NavDrawer({
     super.key,
     required this.repo,
@@ -60,7 +55,6 @@ class NavDrawer extends StatefulWidget {
     this.finSection,
     this.settingsPart,
     this.onSettingsPart,
-    this.qrActions,
   });
 
   @override
@@ -72,18 +66,18 @@ class _NavDrawerState extends State<NavDrawer> {
   NavSection get current => widget.current;
   late bool _finOpen = widget.finSection != null;
   late bool _setOpen = widget.settingsPart != null;
-  late bool _qrOpen = widget.qrActions != null;
+  late bool _qrOpen = widget.current == NavSection.qr;
 
   void _go(BuildContext context, NavSection target) {
-    if (target == NavSection.finances && widget.finSection != null) {
+    if (target == NavSection.finances) {
       setState(() => _finOpen = !_finOpen); // розкрити/згорнути підрозділи
       return;
     }
-    if (target == NavSection.qr && widget.qrActions != null) {
+    if (target == NavSection.qr) {
       setState(() => _qrOpen = !_qrOpen);
       return;
     }
-    if (target == NavSection.settings && widget.settingsPart != null) {
+    if (target == NavSection.settings) {
       setState(() => _setOpen = !_setOpen);
       return;
     }
@@ -123,9 +117,7 @@ class _NavDrawerState extends State<NavDrawer> {
           }),
         );
       case NavSection.qr:
-        nav.push(
-          MaterialPageRoute<void>(builder: (_) => QrSectionScreen(repo: repo)),
-        );
+        break; // розкривається в меню (див. _go)
       case NavSection.tutorial:
         nav.push(
           MaterialPageRoute<void>(
@@ -167,26 +159,30 @@ class _NavDrawerState extends State<NavDrawer> {
                 fontWeight: on ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
-            onTap: () =>
-                FinDrawer.goSection(context, repo, widget.finSection!, s),
+            onTap: () => widget.finSection != null
+                ? FinDrawer.goSection(context, repo, widget.finSection!, s)
+                : FinDrawer.openFrom(context, repo, s),
           ),
         ),
       );
     }
 
     Widget actionSub(NavAction a) => Padding(
-          padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
-          child: ListTile(
-            dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            leading: Icon(a.icon, color: AppColors.textMuted, size: 24),
-            title: Text(a.label, style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
-            onTap: () {
-              Navigator.of(context).pop(); // закрити меню
-              a.onTap();
-            },
-          ),
-        );
+      padding: const EdgeInsets.fromLTRB(40, 2, 12, 2),
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Icon(a.icon, color: AppColors.textMuted, size: 24),
+        title: Text(
+          a.label,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 16),
+        ),
+        onTap: () {
+          Navigator.of(context).pop(); // закрити меню
+          a.onTap();
+        },
+      ),
+    );
 
     Widget setSub(SettingsPart p) {
       final on = p == widget.settingsPart;
@@ -211,8 +207,16 @@ class _NavDrawerState extends State<NavDrawer> {
               ),
             ),
             onTap: () {
-              Navigator.of(context).pop(); // закрити меню
-              widget.onSettingsPart?.call(p);
+              final nav = Navigator.of(context);
+              nav.pop(); // закрити меню
+              if (widget.onSettingsPart != null) {
+                widget.onSettingsPart!(p);
+                return;
+              }
+              // з іншого екрана: відкрити Налаштування одразу на цьому розділі
+              nav.popUntil((r) => r.isFirst);
+              nav.push(MaterialPageRoute<void>(
+                  builder: (_) => SettingsScreen(repo: repo, part: p)));
             },
           ),
         ),
@@ -248,14 +252,14 @@ class _NavDrawerState extends State<NavDrawer> {
                 fontWeight: on ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
-            trailing: s == NavSection.finances && widget.finSection != null
+            trailing: s == NavSection.finances
                 ? Icon(
                     _finOpen
                         ? TablerIcons.chevron_up
                         : TablerIcons.chevron_down,
                     color: color,
                   )
-                : s == NavSection.settings && widget.settingsPart != null
+                : s == NavSection.settings
                 ? Icon(
                     _setOpen
                         ? TablerIcons.chevron_up
@@ -269,9 +273,9 @@ class _NavDrawerState extends State<NavDrawer> {
       );
     }
 
-    final finOpen = _finOpen && widget.finSection != null;
-    final setOpen = _setOpen && widget.settingsPart != null;
-    final qrOpen = _qrOpen && widget.qrActions != null;
+    final finOpen = _finOpen;
+    final setOpen = _setOpen;
+    final qrOpen = _qrOpen;
 
     return Drawer(
       backgroundColor: AppColors.card,
@@ -320,11 +324,11 @@ class _NavDrawerState extends State<NavDrawer> {
                     ),
                     sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
                   ] else if (qrOpen) ...[
-                // «QR-код» розкритий: решта розділів нижче ховається
-                item(NavSection.history, tr.history, icon: 'history'),
-                item(NavSection.qr, tr.qrCode, icon: 'qr'),
-                for (final a in widget.qrActions!) actionSub(a),
-              ] else if (!setOpen) ...[
+                    // «QR-код» розкритий: решта розділів нижче ховається
+                    item(NavSection.history, tr.history, icon: 'history'),
+                    item(NavSection.qr, tr.qrCode, icon: 'qr'),
+                    for (final a in qrActions(context, repo)) actionSub(a),
+                  ] else if (!setOpen) ...[
                     item(NavSection.history, tr.history, icon: 'history'),
                     item(NavSection.qr, tr.qrCode, icon: 'qr'),
                     item(
