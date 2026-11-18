@@ -329,7 +329,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!why || !up) break;
     deps.log(JSON.stringify({ fn: 'assistant', result: 'escalate', from: aliasOf(model), to: aliasOf(up), why }));
     escalatedFrom ??= aliasOf(model);
-    await deps.switched?.('escalate', aliasOf(model), aliasOf(up), deps.env, deps.fetch);
+    await deps.switched?.(access.subject, 'escalate', aliasOf(model), aliasOf(up), deps.env, deps.fetch);
     model = up;
     tried = await attempt(model);
   }
@@ -337,7 +337,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const out = tried.out;
   // «передав Ведмедику» не показуємо, якщо відповів знову обраний
   if (routedFrom && aliasOf(model) === routedFrom) routedFrom = undefined;
-  if (routedFrom) await deps.switched?.('route', routedFrom, aliasOf(model), deps.env, deps.fetch);
+  if (routedFrom) await deps.switched?.(access.subject, 'route', routedFrom, aliasOf(model), deps.env, deps.fetch);
   // запобіжники моделі відмовили - застосунку звичайна коротка відповідь
   if (out.stop_reason === 'refusal') {
     out.content = [{ type: 'text', text: REFUSAL_TEXT }];

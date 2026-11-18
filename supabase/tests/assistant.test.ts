@@ -557,7 +557,7 @@ test('відмова застосунку - у журналі з причино�
 test('перемикання рахуються для адміна: escalate (Ведмедик -> Пасічник) і route (Пасічник -> Ведмедик)', async () => {
   const seen: string[] = [];
   const s = deps(sequence(textReply('Не вдалося зрозуміти запит.'), textReply('Готово.')));
-  s.d.switched = async (kind, from, to) => {
+  s.d.switched = async (_u, kind, from, to) => {
     seen.push(`${kind}:${from}>${to}`);
   };
   await handle(post({ ...hello, model: 'haiku' }), s.d);
@@ -565,7 +565,7 @@ test('перемикання рахуються для адміна: escalate (�
 
   const r = deps(textReply('Готово.'));
   const seen2: string[] = [];
-  r.d.switched = async (kind, from, to) => {
+  r.d.switched = async (_u, kind, from, to) => {
     seen2.push(`${kind}:${from}>${to}`);
   };
   const out = await (await handle(post({ ...hello, model: 'haiku', active: 'sonnet' }), r.d)).json();
@@ -574,7 +574,7 @@ test('перемикання рахуються для адміна: escalate (�
 
   const plain = deps(textReply('У вас 2 пасіки.'));
   const seen3: string[] = [];
-  plain.d.switched = async (kind) => {
+  plain.d.switched = async (_u, kind) => {
     seen3.push(kind);
   };
   await handle(post({ ...hello, model: 'haiku' }), plain.d);

@@ -101,9 +101,9 @@ export const checkAccess: AccessCheck = jwtAccess;
 export const checkUsage: UsageCheck = rpcUsage;
 
 /** Рахує перемикання помічника (escalate / route) для адміна; помилка не заважає відповіді. */
-export type SwitchCount = (kind: 'escalate' | 'route', from: string, to: string, env: Env, fetchFn: typeof fetch) => Promise<void>;
+export type SwitchCount = (userId: string, kind: 'escalate' | 'route', from: string, to: string, env: Env, fetchFn: typeof fetch) => Promise<void>;
 
-export const rpcSwitch: SwitchCount = async (kind, from, to, env, fetchFn) => {
+export const rpcSwitch: SwitchCount = async (userId, kind, from, to, env, fetchFn) => {
   const url = baseUrl(env);
   const key = env('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
   if (!url || !key) return;
@@ -111,7 +111,7 @@ export const rpcSwitch: SwitchCount = async (kind, from, to, env, fetchFn) => {
     await fetchFn(`${url}/rest/v1/rpc/assistant_switch_hit`, {
       method: 'POST',
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_kind: kind, p_from: from, p_to: to }),
+      body: JSON.stringify({ p_user: userId, p_kind: kind, p_from: from, p_to: to }),
       signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
     });
   } catch {
