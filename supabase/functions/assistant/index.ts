@@ -42,7 +42,7 @@ import {
   usesFallback,
 } from './config.ts';
 import { searchBooks } from './kb.ts';
-import { type AccessCheck, checkAccess, checkUsage, rpcSwitch, type SwitchCount, type UsageCheck } from './access.ts';
+import { type AccessCheck, checkAccess, checkUsage, type ModelCount, rpcModel, rpcSwitch, type SwitchCount, type UsageCheck } from './access.ts';
 import { systemPromptFor } from './prompt.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 
@@ -62,6 +62,8 @@ export type Deps = {
   usage: UsageCheck;
   /** лічильник перемикань для адміна (необов'язково) */
   switched?: SwitchCount;
+  /** лічильник відповідей по моделях (необов'язково) */
+  modelUsed?: ModelCount;
   system?: string;
   tools?: ToolDef[];
 };
@@ -343,6 +345,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     out.content = [{ type: 'text', text: REFUSAL_TEXT }];
     out.stop_reason = 'end_turn';
   }
+  await deps.modelUsed?.(access.subject, aliasOf(model), deps.env, deps.fetch);
   const u = out.usage ?? {};
   deps.log(
     JSON.stringify({
@@ -380,6 +383,7 @@ if (typeof Deno !== 'undefined') {
       access: checkAccess,
       usage: checkUsage,
       switched: rpcSwitch,
+      modelUsed: rpcModel,
     }),
   );
 }

@@ -580,3 +580,13 @@ test('перемикання рахуються для адміна: escalate (�
   await handle(post({ ...hello, model: 'haiku' }), plain.d);
   assert.deepEqual(seen3, []);
 });
+
+test('відповіді рахуються по моделях: відповіла та, що відповіла після перемикання', async () => {
+  const seen: string[] = [];
+  const s = deps(sequence(textReply('Не вдалося зрозуміти запит.'), textReply('Готово.')));
+  s.d.modelUsed = async (u, model) => {
+    seen.push(`${u}:${model}`);
+  };
+  await handle(post({ ...hello, model: 'haiku' }), s.d);
+  assert.deepEqual(seen, [`${USER}:sonnet`]);
+});

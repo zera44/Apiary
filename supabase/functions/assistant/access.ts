@@ -118,3 +118,22 @@ export const rpcSwitch: SwitchCount = async (userId, kind, from, to, env, fetchF
     // лічильник не критичний
   }
 };
+
+/** Рахує відповідь моделі (haiku / sonnet / opus) людині; помилка не заважає відповіді. */
+export type ModelCount = (userId: string, model: string, env: Env, fetchFn: typeof fetch) => Promise<void>;
+
+export const rpcModel: ModelCount = async (userId, model, env, fetchFn) => {
+  const url = baseUrl(env);
+  const key = env('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (!url || !key) return;
+  try {
+    await fetchFn(`${url}/rest/v1/rpc/assistant_model_hit`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_user: userId, p_model: model }),
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+    });
+  } catch {
+    // лічильник не критичний
+  }
+};

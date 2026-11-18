@@ -78,3 +78,55 @@ $$;
 
 revoke all on function public.assistant_switch_stats(text) from public, anon, authenticated;
 grant execute on function public.assistant_switch_stats(text) to service_role;
+
+-- Окрема таблиця: скільки відповідей дала кожна модель кожній людині за добу
+-- (відповідає той, хто відповів, а не кого обрано: після перемикання - новий).
+--
+--   select * from assistant_model_stats('week');  -- або 'day', 'month'
+
+create table if not exists public.assistant_model_usage (
+  day date not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  model text not null check (model in ('haiku', 'sonnet', 'opus')),
+  count integer not null default 0 check (count >= 0),
+  primary key (day, user_id, model)
+);
+
+alter table public.assistant_model_usage enable row level security;
+revoke all on public.assistant_model_usage from public, anon, authenticated;
+
+create or replace function public.assistant_model_hit(p_user uuid, p_model text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.assistant_model_usage as m (day, user_id, model, count)
+  select (now() at time zone 'utc')::date, p_user, p_model, 1
+  where p_user is not null and p_model in ('haiku', 'sonnet', 'opus')
+  on conflict (day, user_id, model) do update set count = m.count + 1;
+$$;
+
+revoke all on function public.assistant_model_hit(uuid, text) from public, anon, authenticated;
+grant execute on function public.assistant_model_hit(uuid, text) to service_role;
+
+-- Для адміна: період, ID людини, відповідей від кожної моделі й разом.
+create or replace function public.assistant_model_stats(p_period text default 'week')
+returns table (period date, user_id uuid, haiku bigint, sonnet bigint, opus bigint, total bigint)
+language sql
+security definer
+set search_path = public
+as $$
+  select date_trunc(case when p_period in ('day', 'week', 'month') then p_period else 'week' end, m.day)::date,
+         m.user_id,
+         coalesce(sum(m.count) filter (where m.model = 'haiku'), 0)::bigint,
+         coalesce(sum(m.count) filter (where m.model = 'sonnet'), 0)::bigint,
+         coalesce(sum(m.count) filter (where m.model = 'opus'), 0)::bigint,
+         sum(m.count)::bigint
+  from public.assistant_model_usage m
+  group by 1, 2
+  order by 1 desc, 2;
+$$;
+
+revoke all on function public.assistant_model_stats(text) from public, anon, authenticated;
+grant execute on function public.assistant_model_stats(text) to service_role;
