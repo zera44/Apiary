@@ -2212,6 +2212,9 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text(SettingsPart.look.label), findsOneWidget); // назва розділу на плашці
     expect(find.text(tr.textSizeSection), findsOneWidget); // «Вигляд» - розмір шрифту
+    expect(SettingsPart.look.label, 'Загальне');
+    await tester.scrollUntilVisible(find.byKey(const ValueKey('notifications-open')), 200);
+    expect(find.byKey(const ValueKey('notifications-open')), findsOneWidget); // сповіщення - у «Загальному»
     // «Дані»: розділ синхронізації; без сервера - вона вимкнена
     await tester.tap(find.text(SettingsPart.look.label));
     await settle(tester);

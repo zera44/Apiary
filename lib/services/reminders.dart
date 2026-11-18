@@ -184,6 +184,16 @@ class ReminderService {
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
+    // точні будильники: інакше система може зсунути нагадування на години
+    try {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (android != null && await android.canScheduleExactNotifications() != true) {
+        await android.requestExactAlarmsPermission();
+      }
+    } catch (e) {
+      debugPrint('Нагадування (точні будильники): $e');
+    }
     await _plugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: false, sound: true);
@@ -232,6 +242,13 @@ class ReminderService {
     // через кілька хвилин) і з запасом: момент у минулому система відхиляє
     final from = DateTime.now().add(const Duration(minutes: 1));
     final plans = plan(from, await oneOff(from));
+    var exact = false;
+    try {
+      exact = await _plugin
+              .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+              ?.canScheduleExactNotifications() ??
+          false;
+    } catch (_) {}
     var id = 1;
     for (final p in plans) {
       final u = p.when.toUtc();
@@ -244,8 +261,10 @@ class ReminderService {
           scheduledDate: tz.TZDateTime.utc(u.year, u.month, u.day, u.hour, u.minute),
           notificationDetails: _details,
           payload: p.elementId, // натискання відкриває цей вулик
-          // неточний режим: не вимагає окремого дозволу на точні будильники
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          // точний, коли дозволено; інакше неточний (система може зсунути)
+          androidScheduleMode: exact
+              ? AndroidScheduleMode.exactAllowWhileIdle
+              : AndroidScheduleMode.inexactAllowWhileIdle,
         );
       } catch (e) {
         // одне невдале нагадування не повинне скасовувати решту

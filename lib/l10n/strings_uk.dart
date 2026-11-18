@@ -21,7 +21,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get settingsTabTemplates => 'Шаблони';
   @override
-  String get settingsSecLook => 'Вигляд';
+  String get settingsSecLook => 'Загальне';
   @override
   String get settingsSecAssistant => 'Помічник';
   @override
