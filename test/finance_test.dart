@@ -821,6 +821,41 @@ void main() {
   });
 
   group('статистика: стовпчики', () {
+    testWidgets('обрали місяць - дохід, витрати й баланс лише за нього', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
+      final y = DateTime.now().year;
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 100, date: DateTime(y, 1, 10));
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 200, date: DateTime(y, 2, 10));
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      await settle();
+      await tester.tap(find.text('По місяцях'));
+      await settle();
+      // увесь рік: 300 витрат
+      expect(find.textContaining('300'), findsWidgets);
+      await tester.ensureVisible(find.byKey(const ValueKey('stat-bar-1-1')));
+      await tester.tap(find.byKey(const ValueKey('stat-bar-1-1')));
+      await tester.pump();
+      // обрано лютий: підсумок 200, а не 300
+      expect(find.textContaining('300'), findsNothing);
+      expect(find.textContaining('200'), findsWidgets);
+      expect(tester.widget<Text>(find.byKey(const ValueKey('stat-caption'))).data, contains('Лютий'));
+      // повторний дотик знімає вибір - знову увесь рік
+      await tester.tap(find.byKey(const ValueKey('stat-bar-1-1')));
+      await tester.pump();
+      expect(find.textContaining('300'), findsWidgets);
+      expect(tester.widget<Text>(find.byKey(const ValueKey('stat-caption'))).data, contains('рік'));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('діаграма по місяцях широка й гортається вбік, відкривається на поточному місяці', (tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 915));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -842,6 +877,11 @@ void main() {
           find.descendant(of: find.byKey(const ValueKey('stat-scroll')), matching: find.byType(Scrollable)));
       // 12 місяців не вміщаються в екран - діаграма гортається
       expect(scroll.position.maxScrollExtent, greaterThan(0));
+      // на екрані рівно 4 блоки: колонка - 1/4 ширини діаграми
+      final col = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-0'))).width * 3;
+      expect(col, greaterThan(40));
+      expect(scroll.position.viewportDimension / (scroll.position.maxScrollExtent + scroll.position.viewportDimension),
+          closeTo(4 / 12, 0.02));
       // відкрито на поточному місяці: його стовпчик у межах екрана
       final bar = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
       expect(bar.left, greaterThanOrEqualTo(0));
