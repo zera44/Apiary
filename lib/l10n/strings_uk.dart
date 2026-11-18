@@ -1450,6 +1450,8 @@ class AppStringsUk extends AppStrings {
   String get finBalanceHint => 'Змінивши суму, ви створите коригування: мінус піде у витрати, плюс - у доходи.';
   @override
   String get finByYears => 'За роками';
+  String get finWholePeriod => 'За весь період';
+  String finYearLabel(int year) => '$year рік';
   @override
   String get finByMonths => 'По місяцях';
   @override
