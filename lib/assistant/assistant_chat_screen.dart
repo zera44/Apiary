@@ -1275,11 +1275,11 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     ),
                   ),
                   title: p.name,
-                  subtitle: p.locked ? tr.assistantRoboLocked : p.hint,
+                  subtitle: p.locked ? p.lockedHint : p.hint,
                   onTap: () {
                     if (p.locked) {
                       ScaffoldMessenger.of(context)
-                          .showSnackBar(SnackBar(content: SnackText(tr.assistantRoboLocked)));
+                          .showSnackBar(SnackBar(content: SnackText(p.lockedHint)));
                       return;
                     }
                     AssistantPrefs.setPersona(widget.repo, p);

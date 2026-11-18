@@ -482,6 +482,9 @@ class AppStringsUk extends AppStrings {
   String get assistantRoboLocked =>
       'Вмикається сам, коли Пасічник не впорався, і вимикається, коли задача проста';
   @override
+  String get assistantBeekeeperLocked =>
+      'Вмикається сам, коли Ведмедик не впорався, і вимикається, коли задача проста';
+  @override
   String get assistantRobo => 'Робопасічник';
   @override
   String get assistantRoboHint => 'Найрозумніший і найдорожчий - для найскладнішого';

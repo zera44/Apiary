@@ -175,3 +175,18 @@ Supabase не потрібні (і нічого не коштують). Запу
 
 Локально: `flutter test test/assistant_*_test.dart` і
 `node --test supabase/tests/assistant*.test.ts`.
+
+## Лічильник перемикань (для адміна)
+
+Коли система сама змінює, хто відповідає (Ведмедик → Пасічник → Робопасічник
+або Пасічник → Ведмедик), посередник додає +1 у `assistant_switches` (лише
+доба, вид, «з», «на»; без людей і розмов). Дивитися в SQL-редакторі Supabase:
+
+```sql
+select * from assistant_switch_stats('day');    -- за добами
+select * from assistant_switch_stats('week');   -- за тижнями
+select * from assistant_switch_stats('month');  -- за місяцями
+```
+
+Колонки: період, вид (`escalate` / `route`), з кого, на кого, кількість,
+усього запитів за період і частка перемикань, %.
