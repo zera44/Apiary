@@ -718,6 +718,8 @@ abstract class AppStrings {
   String get finNoTransfers;
   String get finBalanceHint;
   String get finByYears;
+  String get finWholePeriod;
+  String finYearLabel(int year);
   String get finByMonths;
   String get finNewOperation;
   String get finNoOperations;

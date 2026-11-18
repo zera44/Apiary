@@ -32,8 +32,9 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   int? _selM;
   int? _selS;
 
-  /// Ширина колонки одного місяця / року: стовпчики крупні, діаграма гортається вбік.
-  static const _colW = 120.0;
+  /// Ширина колонки одного місяця / року: на екрані видно рівно 4 блоки, решта гортається вбік.
+  static const _blocksOnScreen = 4;
+  double _colW = 80;
   static const _chartH = 280.0;
   final _scroll = ScrollController();
 
@@ -88,8 +89,14 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inc = _months.fold(0.0, (a, m) => a + m.income);
-    final exp = _months.fold(0.0, (a, m) => a + m.expense);
+    // обрано місяць (рік) - підсумки для нього, інакше за весь період
+    final shown = _selM != null && _selM! < _months.length ? [_months[_selM!]] : _months;
+    final inc = shown.fold(0.0, (a, m) => a + m.income);
+    final exp = shown.fold(0.0, (a, m) => a + m.expense);
+    final sel = _selM != null && _selM! < _months.length ? _months[_selM!] : null;
+    final caption = _byYears
+        ? (sel == null ? tr.finWholePeriod : tr.finYearLabel(sel.month))
+        : (sel == null ? tr.finYearLabel(_year) : '${tr.monthNames[sel.month]} $_year');
     final maxV = _months.fold(0.0, (a, m) => [a, m.income, m.expense].reduce((x, y) => x > y ? x : y));
     final green = finColor('olive'), yellow = finColor('honey');
     final profit = finColor('sky'), loss = finColor('terra');
@@ -145,6 +152,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                 icon: Icon(TablerIcons.chevron_right, color: AppColors.text)),
                           ]),
                           LayoutBuilder(builder: (context, box) {
+                            _colW = box.maxWidth / _blocksOnScreen;
                             final w = _months.length * _colW > box.maxWidth
                                 ? _months.length * _colW
                                 : box.maxWidth;
@@ -160,11 +168,14 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                                   height: _chartH,
                                   child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.end,
+                                      // мало років - блоки по центру, не розтягуються
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         for (var mi = 0; mi < _months.length; mi++)
-                                          Expanded(
+                                          SizedBox(
+                                            width: _colW,
                                             child: Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                                              padding: const EdgeInsets.symmetric(horizontal: 5),
                                               child: Column(
                                                   mainAxisAlignment: MainAxisAlignment.end,
                                                   children: [
@@ -213,6 +224,11 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                         ]),
                       ),
                       const SizedBox(height: 12),
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(caption,
+                              key: const ValueKey('stat-caption'),
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 13))),
                       _total(tr.income, uah(inc), AppColors.text),
                       _total(tr.expenses, uah(exp), AppColors.text),
                       _total(tr.finBalance(''), uah(inc - exp),

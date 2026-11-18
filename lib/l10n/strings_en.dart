@@ -1448,6 +1448,8 @@ class AppStringsEn extends AppStrings {
   String get finBalanceHint => 'Changing the amount creates an adjustment: a decrease counts as an expense, an increase as income.';
   @override
   String get finByYears => 'By years';
+  String get finWholePeriod => 'All time';
+  String finYearLabel(int year) => '$year';
   @override
   String get finByMonths => 'By months';
   @override
