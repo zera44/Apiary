@@ -26,7 +26,7 @@ void _patchAndroidPermissions(String path) {
   if (!f.existsSync()) return;
   final s = f.readAsStringSync();
   final missing = [
-    for (final perm in ['INTERNET', 'CAMERA', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE', 'RECORD_AUDIO'])
+    for (final perm in ['INTERNET', 'CAMERA', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE', 'RECORD_AUDIO', 'SCHEDULE_EXACT_ALARM'])
       if (!s.contains('android.permission.$perm"')) perm
   ];
   if (missing.isEmpty) return;

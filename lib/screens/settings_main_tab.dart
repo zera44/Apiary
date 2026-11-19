@@ -51,11 +51,11 @@ class MainSettingsTab extends StatelessWidget {
             _TextSizeSection(repo: repo),
             _OrientationSection(repo: repo),
             _StartScreenSection(repo: repo),
+            _NotificationsSection(repo: repo),
           ],
           if (part == null || part == SettingsPart.assistant) ...[
             _AssistantSection(repo: repo),
             if (ReceiptPhotoShare(repo).available) _ReceiptShareSection(repo: repo),
-            _NotificationsSection(repo: repo),
           ],
         ],
       );
