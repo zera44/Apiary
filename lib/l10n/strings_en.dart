@@ -24,7 +24,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get settingsTabTemplates => 'Templates';
   @override
-  String get settingsSecLook => 'Look';
+  String get settingsSecLook => 'General';
   @override
   String get settingsSecAssistant => 'Assistant';
   @override
