@@ -431,8 +431,6 @@ void main() {
       await tester.pump();
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -453,8 +451,6 @@ void main() {
       await tester.pump();
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -664,8 +660,6 @@ void main() {
       await open(tester, FinAddScreen(repo: repo, imagePath: '/x.jpg', ocr: _FakeOcr(_receipt)));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -681,8 +675,6 @@ void main() {
       await tester.pump();
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -706,10 +698,11 @@ void main() {
       await tester.tap(find.text('Дорога'));
       await tester.pump();
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '250');
+      // поле суми в фокусі: дати списку докрутити до курсора, інакше він повертає
+      // список угору вже після нашої прокрутки до «Додати» (під таблицею тепер коментар)
+      await tester.pump(const Duration(seconds: 1));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
@@ -720,10 +713,11 @@ void main() {
       await settle(tester);
       expect(sumFocused(), isTrue);
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '90');
+      // поле суми в фокусі: дати списку докрутити до курсора, інакше він повертає
+      // список угору вже після нашої прокрутки до «Додати» (під таблицею тепер коментар)
+      await tester.pump(const Duration(seconds: 1));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
-      // під таблицею тепер ще коментар: докрутити, щоб кнопку було видно повністю
-      await tester.ensureVisible(find.text('Додати'));
       await tester.pump();
       await tester.tap(find.text('Додати'));
       await settle(tester);
