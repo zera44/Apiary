@@ -557,6 +557,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
         amount: amount,
         date: when,
         accountId: _accountId,
+        comment: _note.text.trim().isEmpty ? null : _note.text.trim(),
         lines: [
           for (final l in used)
             FinLineInput(
@@ -1267,7 +1268,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
     );
   }
 
-  /// Коментар до запису (лише у зміні запису).
+  /// Коментар до всього запису (у новому записі - під таблицею товарів).
   Widget _noteField() => _card(
         child: TextField(
           controller: _note,
@@ -1288,7 +1289,10 @@ class _FinAddScreenState extends State<FinAddScreen> {
           _note.text != (e.comment ?? '') ||
           (!_locked && (parseAmount(_sum.text) ?? 0) != e.amount);
     }
-    return (parseAmount(_sum.text) ?? 0) != 0 || _hasReceipt || _lines.any((l) => !l.empty);
+    return (parseAmount(_sum.text) ?? 0) != 0 ||
+        _hasReceipt ||
+        _note.text.trim().isNotEmpty ||
+        _lines.any((l) => !l.empty);
   }
 
   /// Вихід без збереження: якщо щось введено — спершу перепитати.
@@ -1353,7 +1357,7 @@ class _FinAddScreenState extends State<FinAddScreen> {
                     FinDateRow(date: _date, onChanged: (d) => setState(() => _date = d), onPickCalendar: _pickDate),
                     if (_editing) _noteField() else _scanHero(),
                   ],
-                  if (!_editing) _table() else if (_locked) _lockedTable(),
+                  if (!_editing) ...[_table(), _noteField()] else if (_locked) _lockedTable(),
                   // «Додати» - одразу під таблицею, а не прибита до низу екрана
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
