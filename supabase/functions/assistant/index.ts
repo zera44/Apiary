@@ -42,7 +42,7 @@ import {
   usesFallback,
 } from './config.ts';
 import { searchBooks } from './kb.ts';
-import { type AccessCheck, checkAccess, checkUsage, type UsageCheck } from './access.ts';
+import { type AccessCheck, checkAccess, checkUsage, type ModelCount, rpcModel, rpcSwitch, type SwitchCount, type UsageCheck } from './access.ts';
 import { systemPromptFor } from './prompt.ts';
 import { TOOLS, type ToolDef } from './tools.ts';
 
@@ -60,6 +60,10 @@ export type Deps = {
   log: (line: string) => void;
   access: AccessCheck;
   usage: UsageCheck;
+  /** лічильник перемикань для адміна (необов'язково) */
+  switched?: SwitchCount;
+  /** лічильник відповідей по моделях (необов'язково) */
+  modelUsed?: ModelCount;
   system?: string;
   tools?: ToolDef[];
 };
@@ -327,6 +331,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!why || !up) break;
     deps.log(JSON.stringify({ fn: 'assistant', result: 'escalate', from: aliasOf(model), to: aliasOf(up), why }));
     escalatedFrom ??= aliasOf(model);
+    await deps.switched?.(access.subject, 'escalate', aliasOf(model), aliasOf(up), deps.env, deps.fetch);
     model = up;
     tried = await attempt(model);
   }
@@ -334,11 +339,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   const out = tried.out;
   // «передав Ведмедику» не показуємо, якщо відповів знову обраний
   if (routedFrom && aliasOf(model) === routedFrom) routedFrom = undefined;
+  if (routedFrom) await deps.switched?.(access.subject, 'route', routedFrom, aliasOf(model), deps.env, deps.fetch);
   // запобіжники моделі відмовили - застосунку звичайна коротка відповідь
   if (out.stop_reason === 'refusal') {
     out.content = [{ type: 'text', text: REFUSAL_TEXT }];
     out.stop_reason = 'end_turn';
   }
+  await deps.modelUsed?.(access.subject, aliasOf(model), deps.env, deps.fetch);
   const u = out.usage ?? {};
   deps.log(
     JSON.stringify({
@@ -375,6 +382,8 @@ if (typeof Deno !== 'undefined') {
       log: (l) => console.log(l),
       access: checkAccess,
       usage: checkUsage,
+      switched: rpcSwitch,
+      modelUsed: rpcModel,
     }),
   );
 }

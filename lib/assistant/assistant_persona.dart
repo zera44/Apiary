@@ -23,9 +23,12 @@ enum AssistantPersona {
   final String image;
   const AssistantPersona(this.model, this.modelLabel, this.image);
 
-  /// Робопасічника обрати не можна: до нього переходить сама система, коли
-  /// Пасічник не впорався, і повертається, щойно задача стає простою.
-  bool get locked => this == robo;
+  /// Пасічника й Робопасічника обрати не можна: на них переходить сама
+  /// система, коли Ведмедик не впорався, і повертається, щойно задача проста.
+  bool get locked => this != bear;
+
+  /// Чому не можна обрати (показуємо під замочком).
+  String get lockedHint => this == robo ? tr.assistantRoboLocked : tr.assistantBeekeeperLocked;
 
   /// Назва в знахідному відмінку («переходжу на …»).
   String get nameAcc => switch (this) {
@@ -88,9 +91,14 @@ class AssistantPrefs {
 
   static Future<void> load(Repository repo) async {
     final chosen = AssistantPersona.of(await repo.getMeta(modelKey));
-    // Робопасічника обирати не можна (у старих збереженнях міг бути обраний)
-    persona.value = chosen.locked ? AssistantPersona.beekeeper : chosen;
-    final a = AssistantPersona.of(await repo.getMeta(activeKey));
+    // Пасічника й Робопасічника обирати не можна (у старих збереженнях міг бути обраний)
+    persona.value = chosen.locked ? defaultPersona : chosen;
+    var a = AssistantPersona.of(await repo.getMeta(activeKey));
+    if (chosen.locked && a == chosen) {
+      // старий ручний вибір не лишається «активним»
+      a = defaultPersona;
+      await repo.setMeta(activeKey, a.model);
+    }
     active.value = a;
   }
 

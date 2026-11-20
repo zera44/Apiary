@@ -37,7 +37,8 @@ class EchoServer {
   http.Client get client => MockClient((r) async {
         final b = jsonDecode(r.body) as Map<String, dynamic>;
         bodies.add(b);
-        final asked = b['model'] as String?;
+        final act = b['active'] as String?;
+        final asked = act == 'sonnet' || act == 'opus' ? act : b['model'] as String?;
         final routed = routeSimple && asked == 'sonnet';
         final up = escalate && asked == 'haiku';
         final model = up
@@ -114,26 +115,27 @@ void main() {
     expect(find.text('Відповідає haiku'), findsOneWidget);
   });
 
-  testWidgets('плашка під полем: обрати Пасічника й «Високу» - зберігається, іде в запит',
+  testWidgets('Пасічник: у списку під замочком, обрати його не можна (лише сама система)',
       (tester) async {
     await open(tester);
     await tester.tap(find.byKey(const ValueKey('assistant-chooser')));
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantWhoHelps), findsOneWidget);
-    expect(find.text(tr.assistantBeekeeperHint), findsOneWidget);
+    expect(find.text(tr.assistantBeekeeperLocked), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('persona-sonnet')));
     await settle(tester);
+    expect(AssistantPrefs.persona.value, AssistantPersona.bear);
+    expect(AssistantPrefs.active.value, AssistantPersona.bear);
+    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), isNot('sonnet'));
     await tester.tapAt(const Offset(10, 10)); // закрити
     await tester.pumpAndSettle();
-
-    expect(await tester.runAsync(() => repo.getMeta(AssistantPrefs.modelKey)), 'sonnet');
-    expect(find.text(tr.assistantBeekeeper), findsWidgets);
     await send(tester, 'Привіт');
-    expect(server.bodies.last['model'], 'sonnet');
+    expect(server.bodies.last['model'], 'haiku');
     expect(server.bodies.last['effort'], 'medium'); // глибина завжди середня
-    // людині - без назв моделей; лише три рівні
-    expect(find.textContaining('Haiku'), findsNothing);
-    expect(find.textContaining('Sonnet'), findsNothing);
+    // старий вибір Пасічника не діє
+    await tester.runAsync(() => repo.setMeta(AssistantPrefs.modelKey, 'sonnet'));
+    await tester.runAsync(() => AssistantPrefs.load(repo));
+    expect(AssistantPrefs.persona.value, AssistantPersona.bear);
   });
 
   testWidgets('Робопасічник: у списку під замочком, обрати його не можна', (tester) async {
@@ -142,7 +144,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(tr.assistantRobo), findsOneWidget);
     expect(find.text(tr.assistantRoboLocked), findsOneWidget);
-    expect(find.byIcon(TablerIcons.lock), findsOneWidget);
+    expect(find.byIcon(TablerIcons.lock), findsNWidgets(2)); // Пасічник і Робопасічник
     await tester.tap(find.byKey(const ValueKey('persona-opus')));
     await settle(tester);
     expect(AssistantPrefs.persona.value, AssistantPersona.bear);
@@ -168,7 +170,7 @@ void main() {
   testWidgets('перемикання помітне: відповів Ведмедик, підпис «Пасічник передав просте…»',
       (tester) async {
     await open(tester, srv: EchoServer()..routeSimple = true);
-    await tester.runAsync(() => AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper));
+    await tester.runAsync(() => AssistantPrefs.setActive(repo, AssistantPersona.beekeeper));
     await send(tester, 'Відкрий склад');
     final items = (await tester.runAsync(q.store.items))!;
     final reply = items.firstWhere((i) => i.role == ChatRole.assistant);
@@ -196,7 +198,7 @@ void main() {
   testWidgets('кожна відповідь - з обличчям того, хто відповідав', (tester) async {
     await open(tester);
     await send(tester, 'Раз'); // Ведмедик
-    await tester.runAsync(() => AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper));
+    await tester.runAsync(() => AssistantPrefs.setActive(repo, AssistantPersona.beekeeper));
     await send(tester, 'Два'); // Пасічник
     final items = (await tester.runAsync(q.store.items))!;
     expect([for (final i in items) if (i.role == ChatRole.assistant) i.data['model']], ['haiku', 'sonnet']);
@@ -210,8 +212,8 @@ void main() {
         singleInstance: false));
     await repo.init();
     expect(await AssistantPrefs.requestOptions(repo), {'model': 'haiku', 'active': 'haiku', 'effort': 'medium'});
-    await AssistantPrefs.setPersona(repo, AssistantPersona.beekeeper);
-    expect(await AssistantPrefs.requestOptions(repo), {'model': 'sonnet', 'active': 'sonnet', 'effort': 'medium'});
+    await AssistantPrefs.setActive(repo, AssistantPersona.beekeeper);
+    expect(await AssistantPrefs.requestOptions(repo), {'model': 'haiku', 'active': 'sonnet', 'effort': 'medium'});
     expect(AssistantPersona.of(null), AssistantPersona.bear);
     // голоси різні
     expect(AssistantPersona.bear.pitch, greaterThan(AssistantPersona.beekeeper.pitch));

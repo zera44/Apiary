@@ -240,6 +240,7 @@ abstract class AppStrings {
   String get assistantBeekeeperAcc;
   String get assistantRoboAcc;
   String get assistantRoboLocked;
+  String get assistantBeekeeperLocked;
   String get assistantRobo;
   String get assistantRoboHint;
   String assistantRouted(String who);

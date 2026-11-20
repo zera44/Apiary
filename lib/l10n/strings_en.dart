@@ -480,6 +480,9 @@ class AppStringsEn extends AppStrings {
   String get assistantRoboLocked =>
       'Turns on by itself when the Beekeeper could not cope, and turns off when the task is simple';
   @override
+  String get assistantBeekeeperLocked =>
+      'Turns on by itself when the Little Bear could not cope, and turns off when the task is simple';
+  @override
   String get assistantRobo => 'Robo-Beekeeper';
   @override
   String get assistantRoboHint => 'The smartest and most expensive - for the hardest tasks';

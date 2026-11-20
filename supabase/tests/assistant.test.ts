@@ -553,3 +553,40 @@ test('відмова застосунку - у журналі з причино�
   assert.equal(line.result, 'rejected');
   assert.equal(line.error, 'order');
 });
+
+test('перемикання рахуються для адміна: escalate (Ведмедик -> Пасічник) і route (Пасічник -> Ведмедик)', async () => {
+  const seen: string[] = [];
+  const s = deps(sequence(textReply('Не вдалося зрозуміти запит.'), textReply('Готово.')));
+  s.d.switched = async (_u, kind, from, to) => {
+    seen.push(`${kind}:${from}>${to}`);
+  };
+  await handle(post({ ...hello, model: 'haiku' }), s.d);
+  assert.deepEqual(seen, ['escalate:haiku>sonnet']);
+
+  const r = deps(textReply('Готово.'));
+  const seen2: string[] = [];
+  r.d.switched = async (_u, kind, from, to) => {
+    seen2.push(`${kind}:${from}>${to}`);
+  };
+  const out = await (await handle(post({ ...hello, model: 'haiku', active: 'sonnet' }), r.d)).json();
+  assert.equal(out.routed_from, 'sonnet');
+  assert.deepEqual(seen2, ['route:sonnet>haiku']);
+
+  const plain = deps(textReply('У вас 2 пасіки.'));
+  const seen3: string[] = [];
+  plain.d.switched = async (_u, kind) => {
+    seen3.push(kind);
+  };
+  await handle(post({ ...hello, model: 'haiku' }), plain.d);
+  assert.deepEqual(seen3, []);
+});
+
+test('відповіді рахуються по моделях: відповіла та, що відповіла після перемикання', async () => {
+  const seen: string[] = [];
+  const s = deps(sequence(textReply('Не вдалося зрозуміти запит.'), textReply('Готово.')));
+  s.d.modelUsed = async (u, model) => {
+    seen.push(`${u}:${model}`);
+  };
+  await handle(post({ ...hello, model: 'haiku' }), s.d);
+  assert.deepEqual(seen, [`${USER}:sonnet`]);
+});
