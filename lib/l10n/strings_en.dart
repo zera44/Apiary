@@ -1460,6 +1460,46 @@ class AppStringsEn extends AppStrings {
   @override
   String get finNoOperations => 'No operations';
   @override
+  String get finExportTitle => 'Export to Excel';
+  @override
+  String get finExportAll => 'All operations';
+  @override
+  String get finExportSummarySheet => 'Totals';
+  @override
+  String get finExportWithSummary => 'Totals-by-category sheet';
+  @override
+  String get finExportWithComment => '«Comment» column';
+  @override
+  String get finExportAction => 'Save and share';
+  @override
+  String get finExportNothing => 'No operations to export for this period';
+  @override
+  String get finColKind => 'Type';
+  @override
+  String get finColDescription => 'Description';
+  @override
+  String get finColTotal => 'Total';
+  @override
+  String get finCustomTitle => 'Custom period';
+  @override
+  String get finShow => 'Show';
+  @override
+  String get finFromDate => 'From';
+  @override
+  String get finToDate => 'To';
+  @override
+  String get finPresetThisMonth => 'This month';
+  @override
+  String get finPresetLastMonth => 'Last month';
+  @override
+  String get finPresetQuarter => 'Quarter';
+  @override
+  String get finPresetYtd => 'Year to date';
+  @override
+  String get finOpsCount => 'Operations';
+  @override
+  String finExportRows(int n, String period) => 'Rows: $n · $period';
+  @override
   String get receiptOnPhoneOnly =>
       'Text recognition works on the phone. Fill in the table by hand here.';
   @override

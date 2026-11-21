@@ -7,7 +7,8 @@ import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
 import 'package:apiary/screens/fin_stats_screen.dart';
-import 'package:apiary/screens/finance_screen.dart' show FinanceScreen, openFinEntry;
+import 'package:apiary/screens/finance_screen.dart'
+    show FinHistoryScreen, FinanceScreen, openFinEntry;
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
@@ -698,6 +699,9 @@ void main() {
       await tester.tap(find.text('Дорога'));
       await tester.pump();
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '250');
+      // поле суми в фокусі: дати списку докрутити до курсора, інакше він повертає
+      // список угору вже після нашої прокрутки до «Додати» (під таблицею тепер коментар)
+      await tester.pump(const Duration(seconds: 1));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
       await tester.pump();
@@ -710,6 +714,9 @@ void main() {
       await settle(tester);
       expect(sumFocused(), isTrue);
       await tester.enterText(find.byKey(const ValueKey('fin-sum')), '90');
+      // поле суми в фокусі: дати списку докрутити до курсора, інакше він повертає
+      // список угору вже після нашої прокрутки до «Додати» (під таблицею тепер коментар)
+      await tester.pump(const Duration(seconds: 1));
       await tester.scrollUntilVisible(find.text('Додати'), 300,
           scrollable: find.byType(Scrollable).first);
       await tester.pump();
@@ -788,6 +795,65 @@ void main() {
           expect(forwardEnabled(tester), isFalse, reason: '$kind / $period: знову на сьогодні');
         }
       }
+    });
+  });
+
+  group('екран «Операції»: період і експорт', () {
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+    }
+
+    testWidgets('вкладки періоду, гортання, «Період» відкриває вибір, експорт - панель', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinExpense,
+          categoryId: null,
+          amount: 100,
+          date: DateTime.now(),
+          comment: 'тест'));
+      await tester.pumpWidget(
+          MaterialApp(theme: buildAppTheme(), home: FinHistoryScreen.thisMonth(repo: repo)));
+      await settle(tester);
+      final now = DateTime.now();
+      expect(find.text('Місяць'), findsOneWidget);
+      expect(find.textContaining('100'), findsOneWidget);
+
+      // рік: підпис і та сама операція; назад - операцій немає
+      await tester.tap(find.text('Рік'));
+      await settle(tester);
+      expect(find.text('${now.year}'), findsOneWidget);
+      expect(find.textContaining('100'), findsOneWidget);
+      await tester.tap(find.byTooltip('Раніше'));
+      await settle(tester);
+      expect(find.text('${now.year - 1}'), findsOneWidget);
+      expect(find.text('Операцій немає'), findsOneWidget);
+      await tester.tap(find.text('Місяць'));
+      await settle(tester);
+
+      // експорт: панель з вибором і кнопкою
+      await tester.tap(find.byTooltip('Експорт в Excel'));
+      await settle(tester);
+      expect(find.text('Усі операції'), findsOneWidget);
+      expect(find.textContaining('Рядків: 1'), findsOneWidget);
+      expect(find.text('Зберегти й поділитись'), findsOneWidget);
+      await tester.tapAt(const Offset(200, 40)); // повз панель - закрити
+      await settle(tester);
+      expect(find.text('Зберегти й поділитись'), findsNothing);
+
+      // «Період»: нижня панель з діапазонами й підсумком
+      await tester.tap(find.text('Період'));
+      await settle(tester);
+      expect(find.text('Свій період'), findsOneWidget);
+      expect(find.text('Цей місяць'), findsOneWidget);
+      expect(find.text('Показати'), findsOneWidget);
+      await tester.tap(find.text('Показати'));
+      await settle(tester);
+      expect(find.textContaining('100'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 

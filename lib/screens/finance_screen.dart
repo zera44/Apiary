@@ -5,10 +5,14 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/finance.dart';
 import '../data/repository.dart';
+import '../logic/fin_period.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
 import '../ui/nav_drawer.dart';
 import '../ui/date_picker.dart';
+import '../services/fin_export.dart';
+import '../ui/fin_export_sheet.dart';
+import '../ui/fin_period_card.dart';
 import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
@@ -165,9 +169,6 @@ Future<bool> _editFinEntry(BuildContext context, Repository repo, FinEntry e) as
 
 String _plain(double v) =>
     v == v.truncateToDouble() ? v.toInt().toString() : v.toStringAsFixed(2).replaceAll('.', ',');
-
-/// Період огляду.
-enum FinPeriod { day, week, month, year, custom }
 
 Map<FinPeriod, String> get _periodNames => {
   FinPeriod.day: tr.periodDay,
@@ -672,8 +673,14 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
   late int _filter = widget.filter;
   bool _loaded = false;
 
+  /// Вибраний період (лише для списку всіх операцій; зі скритих екранів
+  /// категорії період заданий ззовні).
+  late final FinPeriodSel _sel =
+      FinPeriodSel(period: FinPeriod.month, anchor: DateTime(widget.from.year, widget.from.month, 1));
+
   Repository get repo => widget.repo;
   bool get _scoped => widget.categoryId != null || widget.onlyStock;
+  (DateTime, DateTime) get _range => _scoped ? (widget.from, widget.to) : _sel.range;
 
   @override
   void initState() {
@@ -690,7 +697,8 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
-    final list = await repo.listFinEntries(from: widget.from, to: widget.to);
+    final (f, t) = _range;
+    final list = await repo.listFinEntries(from: f, to: t);
     if (!mounted) return;
     setState(() {
       _cats = cats;
@@ -698,6 +706,79 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
       _loaded = true;
     });
   }
+
+  void _select(FinPeriod p) {
+    if (p == FinPeriod.custom) {
+      _customPeriod();
+      return;
+    }
+    setState(() => _sel.select(p));
+    _reload();
+  }
+
+  void _shift(int d) {
+    if (!_sel.shift(d)) return;
+    setState(() {});
+    _reload();
+  }
+
+  Future<void> _customPeriod() async {
+    final (f, t) = _sel.range;
+    final r = await showFinCustomPeriod(context,
+        from: f,
+        to: DateTime(t.year, t.month, t.day - 1),
+        load: (a, b) => repo.listFinEntries(from: a, to: b));
+    if (r == null || !mounted) return;
+    setState(() => _sel.setCustom(r.$1, r.$2));
+    _reload();
+  }
+
+  Future<void> _export() async {
+    final (f, _) = _sel.range;
+    final choice = await showFinExportSheet(context,
+        entries: _entries,
+        periodTitle: _sel.title,
+        from: f,
+        lastDay: _sel.lastDay,
+        initial: switch (_filter) {
+          1 => FinExportKind.expenses,
+          2 => FinExportKind.income,
+          _ => FinExportKind.all,
+        });
+    if (choice == null || !mounted) return;
+    String? err;
+    try {
+      final bytes = buildFinWorkbook(
+          entries: _entries,
+          cats: _cats,
+          kind: choice.kind,
+          includeSummary: choice.summary,
+          includeComment: choice.comment);
+      err = await shareFinExport(
+          bytes: bytes, fileName: finExportFileName(f, _sel.lastDay, choice.kind));
+    } catch (e) {
+      err = tr.fileBuildFailed('$e');
+    }
+    if (err != null && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: SnackText(err, kind: SnackKind.error)));
+    }
+  }
+
+  Widget _exportButton() => Tooltip(
+        message: tr.finExportTitle,
+        child: Material(
+          color: AppColors.roundBtn,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: _loaded ? _export : null,
+            child: SizedBox.square(
+                dimension: 44,
+                child: Icon(TablerIcons.file_spreadsheet, size: 24, color: AppColors.text)),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -720,14 +801,25 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
               title: tr.finOps,
               onBack: () => Navigator.pop(context),
               onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
+              trailing: _scoped ? null : _exportButton(),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(widget.title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
-            ),
+            if (_scoped)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Text(widget.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: AppColors.textMuted, fontSize: 15, fontWeight: FontWeight.w700)),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: FinPeriodCard(
+                    sel: _sel,
+                    onSelect: _select,
+                    onShift: _shift,
+                    onCustomTap: _customPeriod),
+              ),
             if (!_scoped)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
