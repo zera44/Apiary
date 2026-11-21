@@ -1462,6 +1462,46 @@ class AppStringsUk extends AppStrings {
   @override
   String get finNoOperations => 'Операцій немає';
   @override
+  String get finExportTitle => 'Експорт в Excel';
+  @override
+  String get finExportAll => 'Усі операції';
+  @override
+  String get finExportSummarySheet => 'Підсумки';
+  @override
+  String get finExportWithSummary => 'Аркуш з підсумками по категоріях';
+  @override
+  String get finExportWithComment => 'Стовпець «Коментар»';
+  @override
+  String get finExportAction => 'Зберегти й поділитись';
+  @override
+  String get finExportNothing => 'За цей період немає операцій для експорту';
+  @override
+  String get finColKind => 'Вид';
+  @override
+  String get finColDescription => 'Опис';
+  @override
+  String get finColTotal => 'Усього';
+  @override
+  String get finCustomTitle => 'Свій період';
+  @override
+  String get finShow => 'Показати';
+  @override
+  String get finFromDate => 'Від';
+  @override
+  String get finToDate => 'До';
+  @override
+  String get finPresetThisMonth => 'Цей місяць';
+  @override
+  String get finPresetLastMonth => 'Минулий місяць';
+  @override
+  String get finPresetQuarter => 'Квартал';
+  @override
+  String get finPresetYtd => 'З початку року';
+  @override
+  String get finOpsCount => 'Операцій';
+  @override
+  String finExportRows(int n, String period) => 'Рядків: $n · $period';
+  @override
   String get receiptOnPhoneOnly =>
       'Розпізнавання тексту працює на телефоні. Тут заповніть таблицю вручну.';
   @override
