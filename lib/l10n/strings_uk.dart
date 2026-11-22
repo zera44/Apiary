@@ -1462,6 +1462,36 @@ class AppStringsUk extends AppStrings {
   @override
   String get finByMonths => 'По місяцях';
   @override
+  String get finTabSummary => 'Підсумки';
+  @override
+  String get finPerMonth => 'на місяць';
+  @override
+  String get finOtherCat => 'Інше';
+  @override
+  String get finMean => 'Середнє';
+  @override
+  String get finMedian => 'Медіана';
+  @override
+  String get finNormalLimits => 'Межі нормальності';
+  @override
+  String get finOutOfLimits => 'Поза межами нормальності';
+  @override
+  String get finMonthDot => 'Місяць';
+  @override
+  String get finTapTwoPoints => 'Торкніться двох точок, щоб порівняти місяці.';
+  @override
+  String get finAllInRange => 'Усі місяці в межах звичайного рівня.';
+  @override
+  String get finCategoryByYear => 'з початку року';
+  @override
+  String get finAccountSplitHint => 'Торкніться рахунку, щоб побачити, на що з нього пішло найбільше.';
+  @override
+  String get finTransfersBetween => 'Перекази між рахунками';
+  @override
+  String get finTransfersNote => 'Не рахуються ні витратою, ні доходом, тому гроші не рахуються двічі.';
+  @override
+  String get finSplitOf => 'Розподіл витрат';
+  @override
   String get finNewOperation => 'Нова операція';
   @override
   String get finNoOperations => 'Операцій немає';

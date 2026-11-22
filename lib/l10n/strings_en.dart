@@ -1460,6 +1460,36 @@ class AppStringsEn extends AppStrings {
   @override
   String get finByMonths => 'By months';
   @override
+  String get finTabSummary => 'Summary';
+  @override
+  String get finPerMonth => 'per month';
+  @override
+  String get finOtherCat => 'Other';
+  @override
+  String get finMean => 'Average';
+  @override
+  String get finMedian => 'Median';
+  @override
+  String get finNormalLimits => 'Normal range';
+  @override
+  String get finOutOfLimits => 'Outside the normal range';
+  @override
+  String get finMonthDot => 'Month';
+  @override
+  String get finTapTwoPoints => 'Tap two points to compare months.';
+  @override
+  String get finAllInRange => 'All months are within the normal range.';
+  @override
+  String get finCategoryByYear => 'year to date';
+  @override
+  String get finAccountSplitHint => 'Tap an account to see where most of it went.';
+  @override
+  String get finTransfersBetween => 'Transfers between accounts';
+  @override
+  String get finTransfersNote => 'Not counted as expense or income, so money is not counted twice.';
+  @override
+  String get finSplitOf => 'Expense breakdown';
+  @override
   String get finNewOperation => 'New operation';
   @override
   String get finNoOperations => 'No operations';

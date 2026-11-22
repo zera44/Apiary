@@ -12,6 +12,7 @@ import 'package:apiary/screens/finance_screen.dart'
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
+import 'package:apiary/ui/fin_summary_card.dart' show FinPeriodRow;
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -957,6 +958,34 @@ void main() {
       await tester.pump();
       expect(find.textContaining('300'), findsWidgets);
       expect(tester.widget<Text>(find.byKey(const ValueKey('stat-caption'))).data, contains('рік'));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('обрали прибуток місяця - друга картка місяця не повторюється', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
+      final y = DateTime.now().year;
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 100, date: DateTime(y, 1, 10));
+      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 200, date: DateTime(y, 2, 10));
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
+          await tester.pump(const Duration(milliseconds: 80));
+        }
+      }
+
+      await settle();
+      await tester.tap(find.text('По місяцях'));
+      await settle();
+      // без вибору: рядки місяців під карткою-підсумком
+      expect(find.byType(FinPeriodRow), findsWidgets);
+      await tester.ensureVisible(find.byKey(const ValueKey('stat-bar-1-2')));
+      await tester.tap(find.byKey(const ValueKey('stat-bar-1-2')));
+      await tester.pump();
+      // обрано прибуток (збиток) лютого: лише верхня картка, без рядка місяця
+      expect(find.byType(FinPeriodRow), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
