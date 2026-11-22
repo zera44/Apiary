@@ -5,6 +5,8 @@ import '../data/finance.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../ui/common.dart';
+import '../ui/fin_accounts_view.dart';
+import '../ui/fin_categories_view.dart';
 import '../ui/fin_drawer.dart';
 import '../ui/nav_drawer.dart';
 import '../ui/fin_style.dart';
@@ -24,6 +26,9 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _year = DateTime.now().year;
   bool _byYears = false;
+
+  /// Вкладка: 0 підсумки, 1 категорії, 2 рахунки.
+  int _tab = 0;
   List<FinMonthTotal> _months = const [];
   List<FinEntry> _entries = const [];
   Map<String, FinCategory> _cats = const {};
@@ -114,6 +119,18 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: FinSegment(
+                key: const ValueKey('stat-tabs'),
+                labels: [tr.finTabSummary, tr.finCategories, tr.finAccounts],
+                selected: _tab,
+                onChanged: (i) => setState(() => _tab = i),
+              ),
+            ),
+            if (_tab == 1) Expanded(child: FinCategoriesView(repo: widget.repo)),
+            if (_tab == 2) Expanded(child: FinAccountsView(repo: widget.repo)),
+            if (_tab == 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: FinSegment(
                 labels: [tr.finByYears, tr.finByMonths],
                 selected: _byYears ? 0 : 1,
                 onChanged: (i) {
@@ -126,6 +143,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                 },
               ),
             ),
+            if (_tab == 0)
             Expanded(
               child: !_loaded
                   ? const Center(child: CircularProgressIndicator())
