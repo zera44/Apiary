@@ -310,13 +310,15 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
   List<Widget> _selected() {
     final m = _months[_selM!];
     final series = _selS!;
+    // Прибуток чи збиток: уся інформація вже в картці-підсумку над діаграмою,
+    // тож другу картку місяця не повторюємо.
+    if (series == 2) return const [];
     final title = _byYears ? '${m.month}' : '${tr.monthNames[m.month]} $_year';
     final head = Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
       child: Text(title,
           style: TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700)),
     );
-    if (series == 2) return [head, _monthCard(m)];
     final inPeriod = _entries.where((e) => _byYears
         ? e.date.year == m.month
         : e.date.year == _year && e.date.month == m.month);
