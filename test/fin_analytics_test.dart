@@ -174,7 +174,7 @@ void main() {
     });
 
     testWidgets('вкладка «Рахунки»: результат кожного рахунку й окремий рядок переказів', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
+      await tester.binding.setSurfaceSize(const Size(412, 2200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final c1 = await repo.addFinCategory('Цукор', kFinExpense, icon: 'hair');
       final bank = await repo.addFinAccount('Банк');
