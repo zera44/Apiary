@@ -679,6 +679,9 @@ abstract class AppStrings {
   String get finStats;
   String get finProfit;
   String get finLoss;
+  /// Підпис збитку в картці-підсумку (одним словом, не «Збитки»).
+  String get finLossOne;
+  String finShareOfIncome(int percent);
   String get finHome;
   String get finCategories;
   String get finOps;

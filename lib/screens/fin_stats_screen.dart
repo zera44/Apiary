@@ -8,6 +8,7 @@ import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
 import '../ui/nav_drawer.dart';
 import '../ui/fin_style.dart';
+import '../ui/fin_summary_card.dart';
 import '../ui/theme.dart';
 
 /// Статистика фінансів: дохід і витрати за кожен місяць обраного року.
@@ -229,10 +230,7 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
                           child: Text(caption,
                               key: const ValueKey('stat-caption'),
                               style: TextStyle(color: AppColors.textMuted, fontSize: 13))),
-                      _total(tr.income, uah(inc), AppColors.text),
-                      _total(tr.expenses, uah(exp), AppColors.text),
-                      _total(tr.finBalance(''), uah(inc - exp),
-                          inc - exp < 0 ? AppColors.danger : AppColors.text),
+                      FinSummaryCard(income: inc, expense: exp),
                       const SizedBox(height: 8),
                       if (_selM != null) ..._selected() else
                       for (final m in _months.reversed.where((m) => m.income > 0 || m.expense > 0))
@@ -383,12 +381,4 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
         const SizedBox(width: 6),
         Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
       ]);
-
-  Widget _total(String label, String value, Color c) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(children: [
-          Expanded(child: Text(label.trim(), style: TextStyle(color: AppColors.textMuted))),
-          Text(value, style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w600)),
-        ]),
-      );
 }

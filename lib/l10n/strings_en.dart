@@ -1372,6 +1372,10 @@ class AppStringsEn extends AppStrings {
   @override
   String get finLoss => 'Loss';
   @override
+  String get finLossOne => 'Loss';
+  @override
+  String finShareOfIncome(int percent) => '$percent% of income';
+  @override
   String get finHome => 'Home';
   @override
   String get finCategories => 'Categories';
