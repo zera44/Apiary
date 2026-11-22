@@ -53,7 +53,8 @@ class FinControlStats {
   const FinControlStats(this.mean, this.median, this.sd, this.low, this.high, this.outside);
 }
 
-FinControlStats finControlStats(List<double> v) {
+/// [allowNegative] - ряд зі знаком (результат): нижня межа може бути нижчою за нуль.
+FinControlStats finControlStats(List<double> v, {bool allowNegative = false}) {
   if (v.isEmpty) return const FinControlStats(0, 0, 0, 0, 0, []);
   final n = v.length;
   final mean = v.fold(0.0, (a, b) => a + b) / n;
@@ -64,7 +65,7 @@ FinControlStats finControlStats(List<double> v) {
       ? math.sqrt(v.fold(0.0, (a, b) => a + (b - mean) * (b - mean)) / (n - 1))
       : 0.0;
   final high = mean + 2 * sd;
-  final low = math.max(0.0, mean - 2 * sd);
+  final low = allowNegative ? mean - 2 * sd : math.max(0.0, mean - 2 * sd);
   final out = <int>[
     for (var i = 0; i < n; i++)
       if (v[i] > high + 1e-9 || v[i] < low - 1e-9) i

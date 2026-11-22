@@ -728,6 +728,7 @@ abstract class AppStrings {
   String get finTabSummary;
   String get finPerMonth;
   String get finOtherCat;
+  String get finResult;
   String get finMean;
   String get finMedian;
   String get finNormalLimits;

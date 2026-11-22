@@ -26,12 +26,16 @@ class FinPeriodCard extends StatelessWidget {
 
   /// Дотик по підпису власного періоду (змінити межі).
   final VoidCallback onCustomTap;
+
+  /// Які вкладки показати (за замовчуванням усі).
+  final List<FinPeriod> periods;
   const FinPeriodCard(
       {super.key,
       required this.sel,
       required this.onSelect,
       required this.onShift,
-      required this.onCustomTap});
+      required this.onCustomTap,
+      this.periods = FinPeriod.values});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +50,7 @@ class FinPeriodCard extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(children: [
-              for (final p in FinPeriod.values)
+              for (final p in periods)
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onSelect(p),

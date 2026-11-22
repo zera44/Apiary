@@ -17,6 +17,10 @@ class FinControlChart extends StatelessWidget {
   final Set<int> selected;
   final ValueChanged<int> onTap;
   final double height;
+
+  /// Ряд зі знаком (результат): шкала сягає нижче нуля, нульова лінія червона,
+  /// частина лінії й точки нижче нуля теж червоні.
+  final bool signed;
   const FinControlChart({
     super.key,
     required this.values,
@@ -26,6 +30,7 @@ class FinControlChart extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.height = 260,
+    this.signed = false,
   });
 
   /// Круглий верх шкали: 1, 2, 5 × 10ⁿ.
@@ -56,7 +61,8 @@ class FinControlChart extends StatelessWidget {
           textColor: AppColors.text,
           muted: AppColors.textMuted,
           bg: AppColors.bg,
-          alert: finColor('terra'));
+          alert: finColor('terra'),
+          signed: signed);
       return GestureDetector(
         key: const ValueKey('fin-control-chart'),
         behavior: HitTestBehavior.opaque,
@@ -77,6 +83,7 @@ class _ChartPainter extends CustomPainter {
   final FinControlStats stats;
   final Color color, textColor, muted, bg, alert;
   final Set<int> selected;
+  final bool signed;
   _ChartPainter({
     required this.values,
     required this.labels,
@@ -87,6 +94,7 @@ class _ChartPainter extends CustomPainter {
     required this.muted,
     required this.bg,
     required this.alert,
+    this.signed = false,
   });
 
   static const _left = 40.0, _right = 8.0, _top = 44.0, _bottom = 26.0;
@@ -124,17 +132,37 @@ class _ChartPainter extends CustomPainter {
       ...values,
       stats.high,
     ].fold(0.0, (a, b) => a > b ? a : b);
-    final maxY = FinControlChart.niceMax(maxData * 1.05);
-    double y(double v) => _top + plotH * (1 - (v / maxY).clamp(0.0, 1.0));
+    final minData = signed
+        ? [...values, stats.low].fold(0.0, (a, b) => a < b ? a : b)
+        : 0.0;
+    double maxY, minY = 0;
+    List<double> ticks;
+    if (minData < 0) {
+      // шкала в обидва боки від нуля: крок - половина круглого розміру
+      final u = FinControlChart.niceMax(
+              [maxData * 1.05, -minData * 1.05].reduce((a, b) => a > b ? a : b)) /
+          2;
+      maxY = maxData > 0 ? (maxData * 1.05 / u).ceil() * u : 0.0;
+      minY = -((-minData * 1.05 / u).ceil() * u);
+      ticks = [for (var v = minY; v <= maxY + u / 2; v += u) v];
+    } else {
+      maxY = FinControlChart.niceMax(maxData * 1.05);
+      ticks = [for (var t = 0; t <= 4; t++) maxY * t / 4];
+    }
+    final span = maxY - minY;
+    double y(double v) => _top + plotH * (1 - ((v - minY) / span).clamp(0.0, 1.0));
     final axis = TextStyle(color: muted, fontSize: 11);
 
-    // шкала й осі
+    // шкала й осі; у ряді зі знаком нульова лінія - суцільна червона
     final grid = Paint()
       ..color = muted.withValues(alpha: 0.18)
       ..strokeWidth = 1;
-    for (var t = 0; t <= 4; t++) {
-      final v = maxY * t / 4;
-      canvas.drawLine(Offset(_left, y(v)), Offset(w - _right, y(v)), grid);
+    final zero = Paint()
+      ..color = alert
+      ..strokeWidth = 1.8;
+    for (final v in ticks) {
+      final isZero = signed && v.abs() < 1e-9;
+      canvas.drawLine(Offset(_left, y(v)), Offset(w - _right, y(v)), isZero ? zero : grid);
       _text(canvas, _short(v), Offset(_left - 6, y(v)), axis, centered: false, right: true);
     }
 
@@ -164,16 +192,43 @@ class _ChartPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.round;
-    final path = Path();
-    for (var i = 0; i < values.length; i++) {
-      final o = Offset(_x(i, w), y(values[i]));
-      i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+    if (!signed) {
+      final path = Path();
+      for (var i = 0; i < values.length; i++) {
+        final o = Offset(_x(i, w), y(values[i]));
+        i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+      }
+      canvas.drawPath(path, line);
+    } else {
+      // нижче нуля лінія червона: відрізок, що перетинає нуль, ділимо в точці перетину
+      void seg(Offset a, Offset b, Color c) => canvas.drawLine(
+          a,
+          b,
+          Paint()
+            ..color = c
+            ..strokeWidth = 2.5
+            ..strokeCap = StrokeCap.round);
+      for (var i = 0; i + 1 < values.length; i++) {
+        final v1 = values[i], v2 = values[i + 1];
+        final p1 = Offset(_x(i, w), y(v1)), p2 = Offset(_x(i + 1, w), y(v2));
+        if (v1 >= 0 && v2 >= 0) {
+          seg(p1, p2, color);
+        } else if (v1 <= 0 && v2 <= 0) {
+          seg(p1, p2, alert);
+        } else {
+          final xc = p1.dx + (p2.dx - p1.dx) * (v1 / (v1 - v2));
+          final pc = Offset(xc, y(0));
+          seg(p1, pc, v1 > 0 ? color : alert);
+          seg(pc, p2, v2 > 0 ? color : alert);
+        }
+      }
     }
-    canvas.drawPath(path, line);
 
     // підписи місяців
+    final step = labels.length > 12 ? (labels.length / 6).ceil() : 1;
     for (var i = 0; i < labels.length; i++) {
       final on = selected.contains(i);
+      if (step > 1 && i % step != 0 && !on) continue;
       _text(
           canvas,
           labels[i],
@@ -189,7 +244,7 @@ class _ChartPainter extends CustomPainter {
       final o = Offset(_x(i, w), y(values[i]));
       final out = stats.outside.contains(i);
       final on = selected.contains(i);
-      final c = out ? alert : color;
+      final c = out || (signed && values[i] < 0) ? alert : color;
       if (on) canvas.drawCircle(o, 11, Paint()..color = c.withValues(alpha: 0.3));
       canvas.drawCircle(o, on ? 7 : 5, Paint()..color = bg);
       canvas.drawCircle(o, on ? 5.5 : 3.8, Paint()..color = c);
@@ -218,6 +273,7 @@ class _ChartPainter extends CustomPainter {
 
   /// Підпис осі: 1500 -> «1,5т», 800 -> «800».
   static String _short(double v) {
+    if (v < 0) return '−${_short(-v)}';
     if (v >= 1000) {
       final k = v / 1000;
       final s = k == k.roundToDouble() ? k.toInt().toString() : k.toStringAsFixed(1).replaceAll('.', ',');
@@ -232,5 +288,6 @@ class _ChartPainter extends CustomPainter {
       o.selected != selected ||
       o.color != color ||
       o.stats != stats ||
+      o.signed != signed ||
       o.textColor != textColor;
 }

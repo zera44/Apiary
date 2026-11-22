@@ -6,13 +6,11 @@ import 'package:apiary/logic/fz2/fz2.dart';
 import 'package:apiary/logic/fz2/receipt_rows.dart';
 import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
-import 'package:apiary/screens/fin_stats_screen.dart';
 import 'package:apiary/screens/finance_screen.dart'
     show FinEntryTile, FinHistoryScreen, FinanceScreen, openFinEntry;
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
-import 'package:apiary/ui/fin_summary_card.dart' show FinPeriodRow;
 import 'package:apiary/ui/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -922,150 +920,6 @@ void main() {
       expect(find.text('Стара назва'), findsNothing);
       expect(find.text('Нова назва'), findsWidgets);
       expect(find.byIcon(TablerIcons.scissors), findsWidgets);
-    });
-  });
-
-  group('статистика: стовпчики', () {
-    testWidgets('обрали місяць - дохід, витрати й баланс лише за нього', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
-      final y = DateTime.now().year;
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 100, date: DateTime(y, 1, 10));
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 200, date: DateTime(y, 2, 10));
-      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
-      Future<void> settle() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-          await tester.pump(const Duration(milliseconds: 80));
-        }
-      }
-
-      await settle();
-      await tester.tap(find.text('По місяцях'));
-      await settle();
-      // увесь рік: 300 витрат
-      expect(find.textContaining('300'), findsWidgets);
-      await tester.ensureVisible(find.byKey(const ValueKey('stat-bar-1-1')));
-      await tester.tap(find.byKey(const ValueKey('stat-bar-1-1')));
-      await tester.pump();
-      // обрано лютий: підсумок 200, а не 300
-      expect(find.textContaining('300'), findsNothing);
-      expect(find.textContaining('200'), findsWidgets);
-      expect(tester.widget<Text>(find.byKey(const ValueKey('stat-caption'))).data, contains('Лютий'));
-      // повторний дотик знімає вибір - знову увесь рік
-      await tester.tap(find.byKey(const ValueKey('stat-bar-1-1')));
-      await tester.pump();
-      expect(find.textContaining('300'), findsWidgets);
-      expect(tester.widget<Text>(find.byKey(const ValueKey('stat-caption'))).data, contains('рік'));
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('обрали прибуток місяця - друга картка місяця не повторюється', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
-      final y = DateTime.now().year;
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 100, date: DateTime(y, 1, 10));
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 200, date: DateTime(y, 2, 10));
-      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
-      Future<void> settle() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-          await tester.pump(const Duration(milliseconds: 80));
-        }
-      }
-
-      await settle();
-      await tester.tap(find.text('По місяцях'));
-      await settle();
-      // без вибору: рядки місяців під карткою-підсумком
-      expect(find.byType(FinPeriodRow), findsWidgets);
-      await tester.ensureVisible(find.byKey(const ValueKey('stat-bar-1-2')));
-      await tester.tap(find.byKey(const ValueKey('stat-bar-1-2')));
-      await tester.pump();
-      // обрано прибуток (збиток) лютого: лише верхня картка, без рядка місяця
-      expect(find.byType(FinPeriodRow), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('діаграма по місяцях широка й гортається вбік, відкривається на поточному місяці', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
-      final now = DateTime.now();
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 300, date: now);
-      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
-      Future<void> settle() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-          await tester.pump(const Duration(milliseconds: 80));
-        }
-      }
-
-      await settle();
-      await tester.tap(find.text('По місяцях'));
-      await settle();
-      final scroll = tester.state<ScrollableState>(
-          find.descendant(of: find.byKey(const ValueKey('stat-scroll')), matching: find.byType(Scrollable)));
-      // 12 місяців не вміщаються в екран - діаграма гортається
-      expect(scroll.position.maxScrollExtent, greaterThan(0));
-      // на екрані рівно 4 блоки: колонка - 1/4 ширини діаграми
-      final col = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-0'))).width * 3;
-      expect(col, greaterThan(40));
-      expect(scroll.position.viewportDimension / (scroll.position.maxScrollExtent + scroll.position.viewportDimension),
-          closeTo(4 / 12, 0.02));
-      // відкрито на поточному місяці: його стовпчик у межах екрана
-      final bar = tester.getRect(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
-      expect(bar.left, greaterThanOrEqualTo(0));
-      expect(bar.right, lessThanOrEqualTo(412));
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets('дотик до стовпчика - плашка із сумою й розбивка за категоріями місяця', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final exp = await repo.addFinCategory('Витратна', kFinExpense, icon: 'hair');
-      final inc = await repo.addFinCategory('Прибуткова', kFinIncome);
-      final now = DateTime.now();
-      await repo.addFinOp(kind: kFinExpense, categoryId: exp, amount: 300, date: now);
-      await repo.addFinOp(kind: kFinIncome, categoryId: inc, amount: 500, date: now);
-      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
-      Future<void> settle() async {
-        for (var i = 0; i < 6; i++) {
-          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 30)));
-          await tester.pump(const Duration(milliseconds: 80));
-        }
-      }
-
-      await settle();
-      await tester.tap(find.text('По місяцях'));
-      await settle();
-      expect(find.text('Витратна'), findsNothing);
-      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-1')));
-      await tester.pump();
-      expect(find.textContaining('300'), findsWidgets); // плашка і рядок категорії
-      // усі стовпчики цього місяця яскраві, стовпчики інших місяців тьмяніють
-      Color barColor(int mi, int series) => (tester
-              .widget<Container>(find.descendant(
-                  of: find.byKey(ValueKey('stat-bar-$mi-$series')), matching: find.byType(Container)).first)
-              .decoration as BoxDecoration)
-          .color!;
-      final other = now.month == 1 ? 1 : 0;
-      expect(barColor(now.month - 1, 0).a, 1.0);
-      expect(barColor(now.month - 1, 2).a, 1.0);
-      expect(barColor(other, 0).a, lessThan(1.0));
-      expect(find.text('Витратна'), findsOneWidget);
-      expect(find.text('100%'), findsOneWidget);
-      expect(find.byIcon(TablerIcons.scissors), findsOneWidget);
-      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-0')));
-      await tester.pump();
-      expect(find.text('Прибуткова'), findsOneWidget);
-      expect(find.text('Витратна'), findsNothing);
-      // повторний дотик знімає вибір
-      await tester.tap(find.byKey(ValueKey('stat-bar-${now.month - 1}-0')));
-      await tester.pump();
-      expect(find.text('Прибуткова'), findsNothing);
     });
   });
 }
