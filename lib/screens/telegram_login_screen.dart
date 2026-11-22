@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../data/repository.dart';
@@ -41,10 +40,10 @@ Future<bool> signInWithTelegram(BuildContext context, Repository repo, AuthServi
   return true;
 }
 
-enum _Phase { starting, waiting, pinSetup, pinEnter, recoveryEnter, recoveryShow, failed }
+enum _Phase { starting, waiting, pinSetup, pinEnter, recoveryEnter, scheduled, failed }
 
 /// Вхід (або прив'язка) через Telegram-бота: число для бота, очікування
-/// підтвердження, PIN, код відновлення. Закривається з [TelegramLoginResult]
+/// підтвердження, PIN, відновлення доступу кодом із Telegram. Закривається з [TelegramLoginResult]
 /// (null - людина передумала).
 class TelegramLoginScreen extends StatefulWidget {
   final TelegramAuthApi api;
@@ -77,11 +76,14 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
   TelegramRequest? _req;
   late String _secret;
   DateTime _expires = DateTime.now();
-  Timer? _poll, _tick;
-  bool _polling = false, _busy = false, _copied = false;
+  Timer? _poll, _tick, _recTimer;
+  bool _polling = false, _busy = false;
+
+  /// Відновлення: код надіслано в Telegram / власник натиснув «Це я».
+  bool _codeSent = false, _recoveryOk = false;
   String? _error;
+  DateTime? _pendingAt;
   int _lockedFor = 0;
-  TelegramSignedIn? _result;
 
   final _pin = TextEditingController();
   final _pin2 = TextEditingController();
@@ -99,6 +101,7 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
   void dispose() {
     _poll?.cancel();
     _tick?.cancel();
+    _recTimer?.cancel();
     _pin.dispose();
     _pin2.dispose();
     _recovery.dispose();
@@ -108,7 +111,8 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
   void _stopTimers() {
     _poll?.cancel();
     _tick?.cancel();
-    _poll = _tick = null;
+    _recTimer?.cancel();
+    _poll = _tick = _recTimer = null;
   }
 
   void _fail(String message) {
@@ -136,6 +140,7 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
       _pin.clear();
       _pin2.clear();
       _recovery.clear();
+      _codeSent = _recoveryOk = false;
     });
     _secret = newLoginSecret();
     try {
@@ -210,7 +215,7 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
     }
   }
 
-  Future<void> _finish({String? pin, String? recovery, String? newPin}) async {
+  Future<void> _finish({String? pin, String? recovery, String? newPin, bool recoveryConfirmed = false}) async {
     final r = _req;
     if (r == null || _busy) return;
     setState(() {
@@ -218,17 +223,10 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
       _error = null;
     });
     try {
-      final done = await widget.api.finish(r.id, _secret, pin: pin, recovery: recovery, newPin: newPin);
+      final done = await widget.api
+          .finish(r.id, _secret, pin: pin, recovery: recovery, newPin: newPin, recoveryConfirmed: recoveryConfirmed);
       if (!mounted) return;
-      if (done.recoveryCode != null) {
-        setState(() {
-          _result = done;
-          _phase = _Phase.recoveryShow;
-          _busy = false;
-        });
-      } else {
-        Navigator.of(context).pop(TelegramLoginResult(signedIn: done));
-      }
+      Navigator.of(context).pop(TelegramLoginResult(signedIn: done));
     } on TelegramApiError catch (e) {
       if (!mounted) return;
       switch (e.code) {
@@ -249,6 +247,13 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
             _error = e.message ?? tr.tgFailed;
             _busy = false;
           });
+        case 'recovery_scheduled':
+          _stopTimers();
+          setState(() {
+            _pendingAt = DateTime.now().add(Duration(seconds: e.retryIn ?? 86400));
+            _busy = false;
+            _phase = _Phase.scheduled;
+          });
         case 'used' || 'not_approved' || 'pin_state_changed':
           _fail(tr.tgExpired);
         default:
@@ -268,8 +273,82 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
     _finish(pin: _pin.text);
   }
 
+  /// Код (чи «Це я») можна лише після того, як його надіслали в Telegram.
   void _submitRecovery() {
-    _finish(recovery: _recovery.text, newPin: _pin.text);
+    final typed = _recovery.text.trim();
+    if (!_recoveryOk && typed.isEmpty) {
+      setState(() => _error = tr.recoveryNeedCode);
+      return;
+    }
+    _finish(recovery: _recoveryOk ? null : typed, newPin: _pin.text, recoveryConfirmed: _recoveryOk);
+  }
+
+  /// Попросити бота надіслати код. Далі чекаємо, поки власник натисне «Це я».
+  Future<void> _sendCode() async {
+    final r = _req;
+    if (r == null || _busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.api.recoverySend(r.id, _secret);
+      if (!mounted) return;
+      setState(() {
+        _codeSent = true;
+        _busy = false;
+      });
+      _recTimer?.cancel();
+      _recTimer = Timer.periodic(widget.pollEvery, (_) => _pollRecovery());
+    } on TelegramApiError catch (e) {
+      if (!mounted) return;
+      switch (e.code) {
+        case 'too_soon':
+          setState(() {
+            _error = tr.recoveryTooSoon;
+            _busy = false;
+          });
+        case 'not_approved' || 'pin_state_changed':
+          _fail(tr.tgExpired);
+        default:
+          setState(() {
+            _error = _messageFor(e);
+            _busy = false;
+          });
+      }
+    }
+  }
+
+  Future<void> _pollRecovery() async {
+    final r = _req;
+    if (r == null || _polling || _phase != _Phase.recoveryEnter) return;
+    _polling = true;
+    try {
+      final p = await widget.api.poll(r.id, _secret);
+      if (!mounted || _phase != _Phase.recoveryEnter) return;
+      if (p.dead) return _fail(tr.tgExpired);
+      if (p.recoveryOk) {
+        _recTimer?.cancel();
+        _recTimer = null;
+        setState(() {
+          _recoveryOk = true;
+          _error = null;
+        });
+      }
+    } on TelegramApiError catch (e) {
+      if (!e.offline) _fail(_messageFor(e));
+    } finally {
+      _polling = false;
+    }
+  }
+
+  /// «завтра о 14:05» або «24.11 о 14:05» - коли почне діяти новий PIN.
+  String _when(DateTime at) {
+    final l = at.toLocal(), now = DateTime.now();
+    final two = (int v) => v.toString().padLeft(2, '0');
+    final tomorrow = DateTime(now.year, now.month, now.day + 1) == DateTime(l.year, l.month, l.day);
+    return tr.recoveryWhen('${two(l.hour)}:${two(l.minute)}',
+        tomorrow: tomorrow, date: '${two(l.day)}.${two(l.month)}');
   }
 
   String _mmss(Duration d) {
@@ -295,8 +374,8 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
         ),
       );
 
-  Widget _text(String t, {double size = 14, Color? color, TextAlign align = TextAlign.center, FontWeight? weight}) =>
-      Text(t, textAlign: align, style: TextStyle(color: color ?? AppColors.text, fontSize: size, height: 1.35, fontWeight: weight));
+  Widget _text(String t, {Key? key, double size = 14, Color? color, TextAlign align = TextAlign.center, FontWeight? weight}) =>
+      Text(t, key: key, textAlign: align, style: TextStyle(color: color ?? AppColors.text, fontSize: size, height: 1.35, fontWeight: weight));
 
   Widget _errorLine() => _error == null
       ? const SizedBox.shrink()
@@ -384,34 +463,30 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
           const SizedBox(height: 8),
           _text(tr.pinRecoveryText, color: AppColors.textMuted),
           const SizedBox(height: 18),
-          _field(_recovery, tr.pinRecoveryField, secret: false, autofocus: true),
-          _field(_pin, tr.pinNewField),
-          _errorLine(),
-          _button(tr.pinContinue, _submitRecovery),
+          if (!_codeSent) ...[
+            _errorLine(),
+            _button(tr.recoverySendCode, _sendCode),
+          ] else ...[
+            _text(_recoveryOk ? tr.recoveryConfirmed : tr.recoverySent,
+                key: const Key('tg-recovery-status'),
+                size: 13,
+                color: _recoveryOk ? AppColors.text : AppColors.textMuted),
+            const SizedBox(height: 14),
+            if (!_recoveryOk) _field(_recovery, tr.pinRecoveryField, secret: false),
+            _field(_pin, tr.pinNewField, autofocus: _recoveryOk),
+            _errorLine(),
+            _button(tr.pinContinue, _submitRecovery),
+            if (!_recoveryOk) _button(tr.recoverySendAgain, _sendCode, primary: false),
+          ],
         ];
-      case _Phase.recoveryShow:
-        final code = _result?.recoveryCode ?? '';
+      case _Phase.scheduled:
         return [
-          _text(tr.recoveryTitle, size: 20, weight: FontWeight.w700),
+          _text(tr.recoveryScheduledTitle, size: 20, weight: FontWeight.w700),
           const SizedBox(height: 8),
-          _text(tr.recoveryText, color: AppColors.textMuted),
-          const SizedBox(height: 18),
-          Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(16)),
-            child: SelectableText(code,
-                key: const Key('tg-recovery'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: AppColors.text, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 1.5, fontFamily: 'monospace')),
-          ),
-          const SizedBox(height: 12),
-          _button(_copied ? tr.recoveryCopied : tr.copyAction, () async {
-            await Clipboard.setData(ClipboardData(text: code));
-            if (mounted) setState(() => _copied = true);
-          }, primary: false),
-          _button(tr.recoveryWritten, () => Navigator.of(context).pop(TelegramLoginResult(signedIn: _result))),
+          _text(tr.recoveryScheduled(_when(_pendingAt ?? DateTime.now())),
+              key: const Key('tg-recovery-scheduled'), color: AppColors.textMuted),
+          const SizedBox(height: 20),
+          _button(tr.close, () => Navigator.of(context).pop()),
         ];
       case _Phase.failed:
         return [
@@ -425,25 +500,20 @@ class _TelegramLoginScreenState extends State<TelegramLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locked = _phase == _Phase.recoveryShow;
-    return PopScope(
-      // код відновлення показується один раз: не дати втекти, не записавши
-      canPop: !locked,
-      child: Scaffold(
-        body: SafeArea(
-          child: Stack(children: [
-            ScreenColumn(children: [
-              TopBar(title: tr.tgTitle, onBack: locked ? null : () => Navigator.of(context).pop()),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _body()),
-                ),
+    return Scaffold(
+      body: SafeArea(
+        child: Stack(children: [
+          ScreenColumn(children: [
+            TopBar(title: tr.tgTitle, onBack: () => Navigator.of(context).pop()),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _body()),
               ),
-            ]),
-            const Positioned.fill(child: ScreenFrame()),
+            ),
           ]),
-        ),
+          const Positioned.fill(child: ScreenFrame()),
+        ]),
       ),
     );
   }

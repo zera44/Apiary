@@ -50,19 +50,20 @@ class TelegramPoll {
   final TelegramNext? next;
   final int retryIn;
   final String device;
-  const TelegramPoll(this.state, {this.next, this.retryIn = 0, this.device = ''});
+
+  /// Власник натиснув «Це я» під повідомленням про відновлення доступу.
+  final bool recoveryOk;
+  const TelegramPoll(this.state, {this.next, this.retryIn = 0, this.device = '', this.recoveryOk = false});
 
   bool get approved => state == 'approved';
   bool get dead => state == 'cancelled' || state == 'expired' || state == 'unknown';
 }
 
-/// Вхід виконано: сесія Supabase, назва акаунта, код відновлення (лише
-/// коли його щойно видали).
+/// Вхід виконано: сесія Supabase й назва акаунта.
 class TelegramSignedIn {
   final SupabaseSession session;
   final String name;
-  final String? recoveryCode;
-  const TelegramSignedIn(this.session, this.name, this.recoveryCode);
+  const TelegramSignedIn(this.session, this.name);
 }
 
 /// Стан PIN акаунта (налаштування).
@@ -163,16 +164,28 @@ class TelegramAuthApi {
         _ => null,
       };
       return TelegramPoll('${j['state']}',
-          next: next, retryIn: (j['retry_in'] as num?)?.toInt() ?? 0, device: '${j['device'] ?? ''}');
+          next: next,
+          retryIn: (j['retry_in'] as num?)?.toInt() ?? 0,
+          device: '${j['device'] ?? ''}',
+          recoveryOk: j['recovery_ok'] == true);
     } on TelegramApiError catch (e) {
       if (e.status == 404) return const TelegramPoll('unknown');
       rethrow;
     }
   }
 
-  /// Завершити вхід. Новий акаунт - з [pin]; наявний із PIN - з [pin] або
-  /// [recovery] (тоді ще й [newPin]).
-  Future<TelegramSignedIn> finish(String id, String secret, {String? pin, String? recovery, String? newPin}) async {
+  /// Попросити код відновлення: бот надішле його власнику в Telegram разом із
+  /// кнопкою «Це я». Код діє 5 хвилин. Повертає, скільки секунд він діє.
+  Future<int> recoverySend(String id, String secret) async {
+    final j = await _post({'action': 'recovery_send', 'id': id, 'secret': secret});
+    return (j['expires_in'] as num?)?.toInt() ?? 300;
+  }
+
+  /// Завершити вхід. Новий акаунт - з [pin]; наявний із PIN - з [pin], з
+  /// [recovery] (код із Telegram) або після кнопки «Це я» ([recoveryConfirmed]);
+  /// у двох останніх випадках обов'язковий і [newPin].
+  Future<TelegramSignedIn> finish(String id, String secret,
+      {String? pin, String? recovery, String? newPin, bool recoveryConfirmed = false}) async {
     final j = await _post({
       'action': 'finish',
       'id': id,
@@ -180,6 +193,7 @@ class TelegramAuthApi {
       'pin': ?pin,
       'recovery': ?recovery,
       'new_pin': ?newPin,
+      if (recoveryConfirmed) 'recovery_confirmed': true,
     });
     final s = SupabaseSession.fromJson(j['session']);
     if (s == null) throw const TelegramApiError('server');
@@ -189,8 +203,7 @@ class TelegramAuthApi {
       final n = (user['user_metadata'] as Map)['full_name'];
       if (n is String) name = n.trim();
     }
-    final rc = j['recovery_code'];
-    return TelegramSignedIn(s, name, rc is String ? rc : null);
+    return TelegramSignedIn(s, name);
   }
 
   Future<PinStatus> pinStatus(String accessToken) async {
@@ -206,13 +219,9 @@ class TelegramAuthApi {
     );
   }
 
-  /// Встановити або змінити PIN. Повертає новий код відновлення.
-  Future<String> pinSet(String accessToken, {String? current, required String newPin}) async {
-    final j = await _post({'action': 'pin_set', 'pin': ?current, 'new_pin': newPin},
-        accessToken: accessToken);
-    final rc = j['recovery_code'];
-    if (rc is! String) throw const TelegramApiError('server');
-    return rc;
+  /// Встановити або змінити PIN.
+  Future<void> pinSet(String accessToken, {String? current, required String newPin}) async {
+    await _post({'action': 'pin_set', 'pin': ?current, 'new_pin': newPin}, accessToken: accessToken);
   }
 
   /// Перевірити PIN перед чутливою дією. Невірний - [TelegramApiError].
