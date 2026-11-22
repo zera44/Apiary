@@ -438,13 +438,11 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
-    final accounts = await repo.finAccountMap();
     final (f, t) = _range;
     final list = await repo.listFinEntries(from: f, to: t);
     if (!mounted) return;
     setState(() {
       _cats = cats;
-      _accounts = accounts;
       _entries = list;
       _loaded = true;
     });
@@ -850,11 +848,13 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
+    final accounts = await repo.finAccountMap();
     final (f, t) = _range;
     final list = await repo.listFinEntries(from: f, to: t);
     if (!mounted) return;
     setState(() {
       _cats = cats;
+      _accounts = accounts;
       _entries = list;
       _loaded = true;
     });
