@@ -112,7 +112,7 @@ void main() {
       }
     }
 
-    testWidgets('вкладка «Категорії»: розподіл і перехід до категорії', (tester) async {
+    testWidgets('вкладка «Категорії»: витрати, вибір рядка й перехід до категорії', (tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 915));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final a = await repo.addFinCategory('Цукор', kFinExpense, icon: 'hair');
@@ -122,11 +122,20 @@ void main() {
       await repo.addFinOp(kind: kFinExpense, categoryId: b, amount: 100, date: now);
       await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
       await settle(tester);
-      await tester.tap(find.descendant(
-          of: find.byKey(const ValueKey('stat-tabs')), matching: find.text('Категорії')));
+      // відкривається на «Категорії» й «Результат»: збиток, рядки «Дохід» і «Витрати»
+      expect(find.text('Збиток'), findsOneWidget);
+      expect(find.byKey(const ValueKey('stat-kind-expense')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('stat-kind-expense')));
       await settle(tester);
       expect(tester.widget<Text>(find.byKey(const ValueKey('cats-total'))).data, '−${uah(400)}');
       expect(find.text('75%'), findsOneWidget);
+      expect(find.byKey(const ValueKey('stat-picked')), findsNothing);
+      // перший дотик - лінія лише про категорію
+      await tester.tap(find.byKey(ValueKey('cats-row-$a')));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('stat-picked')), findsOneWidget);
+      expect(find.byType(FinCategoryTrendScreen), findsNothing);
+      // другий - її динаміка за рік
       await tester.tap(find.byKey(ValueKey('cats-row-$a')));
       await settle(tester);
       expect(find.byType(FinCategoryTrendScreen), findsOneWidget);
@@ -164,8 +173,8 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('вкладка «Рахунки»: розподіл витрат рахунку й окремий рядок переказів', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(412, 915));
+    testWidgets('вкладка «Рахунки»: результат кожного рахунку й окремий рядок переказів', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 2200));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final c1 = await repo.addFinCategory('Цукор', kFinExpense, icon: 'hair');
       final bank = await repo.addFinAccount('Банк');
@@ -179,14 +188,43 @@ void main() {
       await tester.tap(find.descendant(
           of: find.byKey(const ValueKey('stat-tabs')), matching: find.text('Рахунки')));
       await settle(tester);
+      // результат: у кожного рахунку - підсумок зі знаком
       expect(find.byKey(ValueKey('acc-$bank')), findsOneWidget);
-      expect(find.byKey(ValueKey('acc-split-$bank')), findsNothing);
-      await tester.ensureVisible(find.byKey(ValueKey('acc-$bank')));
+      expect(find.text('−${uah(200)}'), findsWidgets);
+      expect(find.text('−${uah(50)}'), findsWidgets);
+      // вибір рахунку - у лінії його назва; повторний дотик знімає вибір
       await tester.tap(find.byKey(ValueKey('acc-$bank')));
       await settle(tester);
-      expect(find.byKey(ValueKey('acc-split-$bank')), findsOneWidget);
+      expect(find.byKey(const ValueKey('stat-picked')), findsOneWidget);
+      await tester.tap(find.byKey(ValueKey('acc-$bank')));
+      await settle(tester);
+      expect(find.byKey(const ValueKey('stat-picked')), findsNothing);
       await tester.ensureVisible(find.byKey(const ValueKey('acc-transfers')));
       expect(find.textContaining(uah(1000)), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('прибуток і збиток: червоний знак, період без «День»', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final e = await repo.addFinCategory('Цукор', kFinExpense, icon: 'hair');
+      final i = await repo.addFinCategory('Мед', kFinIncome);
+      final now = DateTime.now();
+      await repo.addFinOp(kind: kFinIncome, categoryId: i, amount: 900, date: now);
+      await repo.addFinOp(kind: kFinExpense, categoryId: e, amount: 300, date: now);
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: FinStatsScreen(repo: repo)));
+      await settle(tester);
+      expect(find.text('Прибуток'), findsOneWidget);
+      expect(find.text('+${uah(600)}'), findsOneWidget);
+      expect(find.text('День'), findsNothing);
+      expect(find.text('Тиждень'), findsOneWidget);
+      expect(find.text('Підсумки'), findsNothing);
+      expect(find.byKey(const ValueKey('stat-mean')), findsOneWidget);
+      expect(find.byKey(const ValueKey('stat-limits')), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('stat-kind')), matching: find.text('Дохід')));
+      await settle(tester);
+      expect(tester.widget<Text>(find.byKey(const ValueKey('cats-total'))).data, '+${uah(900)}');
       expect(tester.takeException(), isNull);
     });
   });

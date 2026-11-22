@@ -10,7 +10,11 @@ import 'theme.dart';
 class FinSummaryCard extends StatelessWidget {
   final double income;
   final double expense;
-  const FinSummaryCard({super.key, required this.income, required this.expense});
+
+  /// Показати внизу дохід і витрати (у статистиці вони йдуть окремими рядками).
+  final bool showTotals;
+  const FinSummaryCard(
+      {super.key, required this.income, required this.expense, this.showTotals = true});
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +72,14 @@ class FinSummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
           FinSplitBar(income: inc, expense: exp, height: 10),
         ],
+        if (showTotals) ...[
         const SizedBox(height: 14),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: col(tr.income, uah(inc), green, CrossAxisAlignment.start)),
           const SizedBox(width: 10),
           Expanded(child: col(tr.expenses, uah(exp), yellow, CrossAxisAlignment.end)),
         ]),
+        ],
       ]),
     );
   }

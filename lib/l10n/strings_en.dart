@@ -1466,6 +1466,8 @@ class AppStringsEn extends AppStrings {
   @override
   String get finOtherCat => 'Other';
   @override
+  String get finResult => 'Result';
+  @override
   String get finMean => 'Average';
   @override
   String get finMedian => 'Median';

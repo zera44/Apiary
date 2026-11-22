@@ -1468,6 +1468,8 @@ class AppStringsUk extends AppStrings {
   @override
   String get finOtherCat => 'Інше';
   @override
+  String get finResult => 'Результат';
+  @override
   String get finMean => 'Середнє';
   @override
   String get finMedian => 'Медіана';
