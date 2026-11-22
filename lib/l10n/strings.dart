@@ -679,6 +679,9 @@ abstract class AppStrings {
   String get finStats;
   String get finProfit;
   String get finLoss;
+  /// Підпис збитку в картці-підсумку (одним словом, не «Збитки»).
+  String get finLossOne;
+  String finShareOfIncome(int percent);
   String get finHome;
   String get finCategories;
   String get finOps;
@@ -729,6 +732,9 @@ abstract class AppStrings {
   String get finExportSummarySheet;
   String get finExportWithSummary;
   String get finExportWithComment;
+  String get finExportWithAccount;
+  /// Рядок картки запису для рахунку в чужій валюті: «списано з рахунку: $36,50».
+  String finEntryWrittenOff(String v);
   String get finExportAction;
   String get finExportNothing;
   String get finColKind;

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../l10n/l10n.dart';
 import '../ui/fin_style.dart';
@@ -42,15 +43,25 @@ String finExportFileName(DateTime from, DateTime lastDay, FinExportKind kind) {
 String _categoryName(FinEntry e, Map<String, FinCategory> cats) =>
     e.fromStock ? kFinStockCategoryName : (cats[e.categoryId]?.name ?? tr.noCategory);
 
-/// Книга: аркуш «Операції» (дата, вид, категорія, опис, сума, коментар) і за
-/// бажанням аркуш «Підсумки» (витрати й доходи за категоріями). Витрата в
-/// сумі зі знаком «−», тож `=СУМ(…)` у Excel одразу дає баланс.
+String _accountName(FinEntry e, Map<String, FinAccount> accounts) {
+  if (e.fromStock) return '';
+  final a = accounts[e.accountId];
+  if (a == null) return '';
+  return a.foreign ? '${a.name} · ${a.currency}' : a.name;
+}
+
+/// Книга: аркуш «Операції» (дата, вид, категорія, [рахунок], опис, сума,
+/// [коментар]) і за бажанням аркуш «Підсумки» (витрати й доходи за категоріями,
+/// а з рахунком - ще й за рахунками). Витрата в сумі зі знаком «−», тож
+/// `=СУМ(…)` у Excel одразу дає баланс.
 Uint8List buildFinWorkbook({
   required List<FinEntry> entries,
   required Map<String, FinCategory> cats,
   required FinExportKind kind,
+  Map<String, FinAccount> accounts = const {},
   bool includeSummary = true,
   bool includeComment = true,
+  bool includeAccount = false,
 }) {
   final rows = finExportEntries(entries, kind);
   final excel = Excel.createExcel();
@@ -66,10 +77,13 @@ Uint8List buildFinWorkbook({
     tr.date,
     tr.finColKind,
     tr.category,
+    if (includeAccount) tr.finAccount,
     tr.finColDescription,
     tr.sum,
     if (includeComment) tr.comment,
   ];
+  // номер колонки «Сума»: дата, вид, категорія, [рахунок], опис, сума
+  final sumCol = includeAccount ? 5 : 4;
   ops.appendRow([for (final h in heads) TextCellValue(h)]);
   for (var c = 0; c < heads.length; c++) {
     ops.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).cellStyle = bold;
@@ -79,20 +93,22 @@ Uint8List buildFinWorkbook({
       DateCellValue(year: e.date.year, month: e.date.month, day: e.date.day),
       TextCellValue(e.isExpense ? tr.expense : tr.income),
       TextCellValue(_categoryName(e, cats)),
+      if (includeAccount) TextCellValue(_accountName(e, accounts)),
       TextCellValue(e.title),
       DoubleCellValue(e.isExpense ? -e.amount : e.amount),
       if (includeComment) TextCellValue(e.comment ?? ''),
     ]);
     final r = ops.maxRows - 1;
     ops.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: r)).cellStyle = dateStyle;
-    ops.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: r)).cellStyle = moneyStyle;
+    ops.cell(CellIndex.indexByColumnRow(columnIndex: sumCol, rowIndex: r)).cellStyle = moneyStyle;
   }
   ops.setColumnWidth(0, 12);
   ops.setColumnWidth(1, 10);
   ops.setColumnWidth(2, 24);
-  ops.setColumnWidth(3, 30);
-  ops.setColumnWidth(4, 14);
-  if (includeComment) ops.setColumnWidth(5, 30);
+  if (includeAccount) ops.setColumnWidth(3, 20);
+  ops.setColumnWidth(sumCol - 1, 30);
+  ops.setColumnWidth(sumCol, 14);
+  if (includeComment) ops.setColumnWidth(sumCol + 1, 30);
 
   if (includeSummary) {
     final s = FinSummary.of(rows);
@@ -136,6 +152,55 @@ Uint8List buildFinWorkbook({
     for (var c = 0; c < cols; c++) {
       final cell = sum.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: last));
       cell.cellStyle = c == 0 ? bold : CellStyle(bold: true, numberFormat: NumFormat.custom(formatCode: '#,##0.00'));
+    }
+    if (includeAccount) {
+      // другий блок: ті самі підсумки за рахунками
+      final byExp = <String, double>{}, byInc = <String, double>{};
+      for (final e in rows) {
+        if (e.noStats) continue; // як і в підсумку за категоріями
+        final n = e.fromStock ? kFinStockCategoryName : _accountName(e, accounts);
+        final m = e.isExpense ? byExp : byInc;
+        m[n] = (m[n] ?? 0) + e.amount;
+      }
+      final names = <String>{
+        if (kind != FinExportKind.income) ...byExp.keys,
+        if (kind != FinExportKind.expenses) ...byInc.keys,
+      }.toList()
+        ..sort((a, b) =>
+            ((byExp[b] ?? 0) + (byInc[b] ?? 0)).compareTo((byExp[a] ?? 0) + (byInc[a] ?? 0)));
+      sum.appendRow([TextCellValue('')]);
+      sum.appendRow([
+        TextCellValue(tr.finAccount),
+        if (kind != FinExportKind.income) TextCellValue(tr.expenses),
+        if (kind != FinExportKind.expenses) TextCellValue(tr.incomes),
+      ]);
+      final hr = sum.maxRows - 1;
+      for (var c = 0; c < cols; c++) {
+        sum.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: hr)).cellStyle = bold;
+      }
+      for (final n in names) {
+        sum.appendRow([
+          TextCellValue(n.isEmpty ? '—' : n),
+          if (kind != FinExportKind.income) DoubleCellValue(byExp[n] ?? 0),
+          if (kind != FinExportKind.expenses) DoubleCellValue(byInc[n] ?? 0),
+        ]);
+        final r = sum.maxRows - 1;
+        for (var c = 1; c < cols; c++) {
+          sum.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r)).cellStyle = moneyStyle;
+        }
+      }
+      sum.appendRow([
+        TextCellValue(tr.finColTotal),
+        if (kind != FinExportKind.income) DoubleCellValue(s.expense),
+        if (kind != FinExportKind.expenses) DoubleCellValue(s.income),
+      ]);
+      final lr = sum.maxRows - 1;
+      for (var c = 0; c < cols; c++) {
+        final cell = sum.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: lr));
+        cell.cellStyle = c == 0
+            ? bold
+            : CellStyle(bold: true, numberFormat: NumFormat.custom(formatCode: '#,##0.00'));
+      }
     }
     sum.setColumnWidth(0, 28);
     sum.setColumnWidth(1, 16);

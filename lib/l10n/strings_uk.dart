@@ -1374,6 +1374,10 @@ class AppStringsUk extends AppStrings {
   @override
   String get finLoss => 'Збитки';
   @override
+  String get finLossOne => 'Збиток';
+  @override
+  String finShareOfIncome(int percent) => '$percent% від доходу';
+  @override
   String get finHome => 'Головна';
   @override
   String get finCategories => 'Категорії';
@@ -1471,6 +1475,10 @@ class AppStringsUk extends AppStrings {
   String get finExportWithSummary => 'Аркуш з підсумками по категоріях';
   @override
   String get finExportWithComment => 'Стовпець «Коментар»';
+  @override
+  String get finExportWithAccount => 'Стовпець «Рахунок»';
+  @override
+  String finEntryWrittenOff(String v) => 'списано з рахунку: $v';
   @override
   String get finExportAction => 'Зберегти й поділитись';
   @override

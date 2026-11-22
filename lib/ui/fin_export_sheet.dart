@@ -9,10 +9,10 @@ import 'fin_style.dart';
 import 'theme.dart';
 
 /// Вибір для експорту.
-typedef FinExportChoice = ({FinExportKind kind, bool summary, bool comment});
+typedef FinExportChoice = ({FinExportKind kind, bool summary, bool comment, bool account});
 
 /// Нижня панель «Експорт в Excel»: Витрати, Доходи чи Усі операції, назва
-/// файлу й кількість рядків, два прапорці й кнопка. null - закрили.
+/// файлу й кількість рядків, три прапорці й кнопка. null - закрили.
 Future<FinExportChoice?> showFinExportSheet(
   BuildContext context, {
   required List<FinEntry> entries,
@@ -52,6 +52,7 @@ class _ExportSheetState extends State<_ExportSheet> {
   late FinExportKind _kind = widget.initial;
   bool _summary = true;
   bool _comment = true;
+  bool _account = true;
 
   static const _kinds = [FinExportKind.expenses, FinExportKind.income, FinExportKind.all];
 
@@ -121,6 +122,7 @@ class _ExportSheetState extends State<_ExportSheet> {
             const SizedBox(height: 10),
             check(tr.finExportWithSummary, _summary, (v) => setState(() => _summary = v)),
             check(tr.finExportWithComment, _comment, (v) => setState(() => _comment = v)),
+            check(tr.finExportWithAccount, _account, (v) => setState(() => _account = v)),
             const SizedBox(height: 10),
             if (rows == 0)
               Padding(
@@ -135,7 +137,7 @@ class _ExportSheetState extends State<_ExportSheet> {
               width: double.infinity,
               onPressed: rows == 0
                   ? null
-                  : () => Navigator.pop(context, (kind: _kind, summary: _summary, comment: _comment)),
+                  : () => Navigator.pop(context, (kind: _kind, summary: _summary, comment: _comment, account: _account)),
             ),
           ]),
         ),
