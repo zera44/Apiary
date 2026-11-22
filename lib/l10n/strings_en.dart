@@ -2234,21 +2234,33 @@ class AppStringsEn extends AppStrings {
   @override
   String get pinRecoveryTitle => 'Recover access';
   @override
-  String get pinRecoveryText => 'Enter the recovery code you wrote down and choose a new PIN.';
+  String get pinRecoveryText => 'We will send a code to your Telegram. Tap the button under the message and the app continues on its own. Or enter the code and choose a new PIN.';
   @override
   String get pinRecoveryField => 'Recovery code';
+  @override
+  String get recoverySendCode => 'Send the code to Telegram';
+  @override
+  String get recoverySent => 'The code was sent to Telegram and is valid for 2 minutes. Tap the button in the message or enter the code.';
+  @override
+  String get recoveryConfirmed => 'Confirmed in Telegram. Choose a new PIN.';
+  @override
+  String get recoveryTooSoon => 'A code was just sent. Wait half a minute.';
+  @override
+  String get recoveryNeedCode => 'Tap the button in Telegram or enter the code.';
+  @override
+  String get recoverySendAgain => 'Send the code again';
+  @override
+  String get recoveryScheduledTitle => 'New PIN saved';
+  @override
+  String recoveryScheduled(String when) =>
+      'Your account is open on another device, so the new PIN takes effect $when. Then all devices sign out and you sign in with the new PIN. If this was not you, tap "Not me" in Telegram.';
+  @override
+  String recoveryWhen(String time, {required bool tomorrow, required String date}) =>
+      tomorrow ? 'tomorrow at $time' : 'on $date at $time';
   @override
   String get pinNewField => 'New PIN';
   @override
   String get pinContinue => 'Continue';
-  @override
-  String get recoveryTitle => 'Save your recovery code';
-  @override
-  String get recoveryText => 'If you forget the PIN, this code is the only way back in. Write it down on paper. It is shown only once.';
-  @override
-  String get recoveryWritten => 'I wrote it down';
-  @override
-  String get recoveryCopied => 'Copied';
 
   // ---- Вхід ----
   @override

@@ -81,7 +81,7 @@ select tests.ok(public.tg_login_poll('DDDDDDDDDDDDDDDDDDDDD2', repeat('2', 64)) 
 -- ── PIN ────────────────────────────────────────────────────────────────
 select tests.ok(public.pin_state('00000000-0000-0000-0000-0000000000d1') ->> 'state' = 'none', 'PIN ще немає');
 select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') is null, 'без PIN спроби немає');
-select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin', 'hash-rec');
+select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin');
 select tests.ok(public.pin_state('00000000-0000-0000-0000-0000000000d1') ->> 'state' = 'on', 'PIN увімкнено');
 -- 4 помилки - ще не блок; правильний - лічильник з нуля
 select public.pin_attempt('00000000-0000-0000-0000-0000000000d1'), public.pin_result('00000000-0000-0000-0000-0000000000d1', false)
@@ -105,8 +105,69 @@ select public.pin_attempt('00000000-0000-0000-0000-0000000000d1'), public.pin_re
 select public.pin_attempt('00000000-0000-0000-0000-0000000000d1');
 select tests.ok(public.pin_result('00000000-0000-0000-0000-0000000000d1', false) = 1800, 'другий блок - 30 хв');
 
+-- ── код відновлення з Telegram: 5 хв, один раз, лише своя заявка, 30 с і 5 за годину ──
+select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin3');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') -> 'recovery_hash' = 'null'::jsonb, 'коду ще не видавали');
+select tests.ok(public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code', 300, 30, 5) = 0, 'код видано');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') ->> 'recovery_hash' = 'hash-code', 'поки діє - хеш віддається');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') ->> 'recovery_request' = 'REQREQREQREQREQREQREQ1', 'код прив''язаний до заявки');
+select tests.ok(public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code2', 300, 30, 5) > 0, 'раніше ніж через 30 с - ні');
+select tests.ok(public.pin_recovery_issue('00000000-0000-0000-0000-0000000000ff', 'X', 'x', 300, 30, 5) = -1, 'без PIN коду не видають');
+select tests.ok(not public.tg_recovery_confirm('NOPENOPENOPENOPENOPE00', 501), 'немає такої заявки - не підтверджено');
+reset role;
+update public.account_pins set recovery_expires = now() - interval '1 second' where user_id = '00000000-0000-0000-0000-0000000000d1';
+set role service_role;
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') -> 'recovery_hash' = 'null'::jsonb, 'код спливає');
+-- 5 за годину
+select public.pin_result('00000000-0000-0000-0000-0000000000d1', true);
+reset role;
+update public.account_pins set recovery_sent_at = null, recovery_count = 5, recovery_window = now() - interval '10 minutes' where user_id = '00000000-0000-0000-0000-0000000000d1';
+set role service_role;
+select tests.ok(public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code3', 300, 0, 5) > 2900, 'шостий за годину - ні');
+reset role;
+update public.account_pins set recovery_window = now() - interval '61 minutes' where user_id = '00000000-0000-0000-0000-0000000000d1';
+set role service_role;
+select tests.ok(public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code3', 300, 0, 5) = 0, 'за годину - знову можна');
+select public.pin_recovery_msg('00000000-0000-0000-0000-0000000000d1', 777);
+select tests.ok(public.pin_result('00000000-0000-0000-0000-0000000000d1', true) = 0, 'вдала перевірка');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') -> 'recovery_hash' = 'null'::jsonb, 'вдала перевірка стирає код (одноразовий)');
+select public.pin_result('00000000-0000-0000-0000-0000000000d1', true);
+select public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code4', 300, 0, 5);
+select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin4');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') -> 'recovery_hash' = 'null'::jsonb, 'новий PIN стирає код');
+select public.pin_result('00000000-0000-0000-0000-0000000000d1', true);
+
+-- новий PIN після відновлення: є сесії - через добу; «Це не я» скасовує
+select public.pin_recovery_issue('00000000-0000-0000-0000-0000000000d1', 'REQREQREQREQREQREQREQ1', 'hash-code5', 300, 0, 5);
+select public.pin_recovery_msg('00000000-0000-0000-0000-0000000000d1', 778);
+select tests.ok((public.pin_recover('00000000-0000-0000-0000-0000000000d1', 'hash-new', 86400) ->> 'msg')::bigint = 778, 'номер повідомлення з кодом');
+select tests.ok(public.pin_state('00000000-0000-0000-0000-0000000000d1') ->> 'pending_at' is not null, 'зміна запланована');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000d1') ->> 'pin_hash' = 'hash-pin4', 'до настання діє старий PIN');
+select public.pin_result('00000000-0000-0000-0000-0000000000d1', true);
+select tests.ok(public.pin_keep('00000000-0000-0000-0000-0000000000d1'), '«Це не я» скасовує зміну');
+select tests.ok(public.pin_state('00000000-0000-0000-0000-0000000000d1') -> 'pending_at' = 'null'::jsonb, 'зміни більше немає');
+
+-- окремий акаунт: настання зміни застосовує PIN і виводить усі пристрої; без сесій - одразу
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000e1', 'tg-777@tg.vulyk.invalid');
+insert into auth.sessions (user_id) values ('00000000-0000-0000-0000-0000000000e1');
+set role service_role;
+select public.pin_set('00000000-0000-0000-0000-0000000000e1', 'e-old');
+select public.pin_recover('00000000-0000-0000-0000-0000000000e1', 'e-new', 86400);
+reset role;
+update public.account_pins set pending_pin_at = now() - interval '1 second' where user_id = '00000000-0000-0000-0000-0000000000e1';
+set role service_role;
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000e1') ->> 'pin_hash' = 'e-new', 'час настав - новий PIN діє');
+select public.pin_result('00000000-0000-0000-0000-0000000000e1', true);
+reset role;
+select tests.ok((select count(*) from auth.sessions where user_id = '00000000-0000-0000-0000-0000000000e1') = 0, 'усі пристрої вийшли');
+set role service_role;
+select tests.ok(public.pin_recover('00000000-0000-0000-0000-0000000000e1', 'e-newer', 86400) -> 'pending_at' = 'null'::jsonb, 'без інших пристроїв - одразу');
+select tests.ok(public.pin_attempt('00000000-0000-0000-0000-0000000000e1') ->> 'pin_hash' = 'e-newer', 'новий PIN уже діє');
+select public.pin_result('00000000-0000-0000-0000-0000000000e1', true);
+
 -- вимкнення через добу, скасування, настання
-select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin2', 'hash-rec2');
+select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'hash-pin2');
 select public.pin_disable('00000000-0000-0000-0000-0000000000d1', now() + interval '1 day');
 select tests.ok(public.pin_state('00000000-0000-0000-0000-0000000000d1') ->> 'state' = 'on', 'до настання PIN діє');
 select tests.ok(public.pin_keep('00000000-0000-0000-0000-0000000000d1'), '«Це не я» - скасовано');
@@ -125,7 +186,7 @@ set role authenticated;
 select tests.fails($q$select count(*) from public.tg_login_requests$q$);
 select tests.fails($q$select count(*) from public.tg_identities$q$);
 select tests.fails($q$select count(*) from public.account_pins$q$);
-select tests.fails($q$select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'x', 'y')$q$);
+select tests.fails($q$select public.pin_set('00000000-0000-0000-0000-0000000000d1', 'x')$q$);
 select tests.fails($q$select public.tg_login_poll('AAAAAAAAAAAAAAAAAAAAA1', repeat('a', 64))$q$);
 select tests.fails($q$select public.sign_out_everywhere('00000000-0000-0000-0000-00000000000a')$q$);
 reset role;

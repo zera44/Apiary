@@ -4,7 +4,7 @@
 //   * POST …/telegram-auth/webhook - оновлення від Telegram (бот). Приймаються
 //     лише із секретним заголовком, який Telegram додає до кожного запиту.
 //   * POST …/telegram-auth - дії застосунку (поле action): start, poll, finish
-//     (вхід), pin_status, pin_set, pin_check, pin_disable, sign_out_everywhere.
+//     (вхід), recovery_send (код відновлення в Telegram), pin_status, pin_set, pin_check, pin_disable, sign_out_everywhere.
 //
 // Вхід (див. міграцію 20261115000100_telegram_login.sql):
 //   1. start: телефон надсилає відбиток секрету S, сервер створює заявку R
@@ -120,10 +120,17 @@ function randomInt(max: number): number {
 const RECOVERY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 знаки, без схожих
 
 function newRecovery(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(20));
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
   const chars = [...bytes].map((b) => RECOVERY_ALPHABET[b % 32]);
-  return [0, 5, 10, 15].map((i) => chars.slice(i, i + 5).join('')).join('-');
+  return `${chars.slice(0, 4).join('')}-${chars.slice(4).join('')}`;
 }
+
+/** Скільки живе код відновлення, і як часто його можна просити. */
+const RECOVERY_TTL_SECS = 120;
+const RECOVERY_GAP_SECS = 30;
+const RECOVERY_PER_HOUR = 5;
+/** Новий PIN після відновлення, коли в акаунті є інші пристрої, діє через добу. */
+const RECOVERY_DELAY_SECS = 24 * 3600;
 
 function normalizeRecovery(s: string): string {
   return s.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -248,6 +255,27 @@ class Bot {
     }
   }
 
+  /** Надіслати й повернути номер повідомлення (null - Telegram недоступний). */
+  async send(chat: number, text: string, rows: Button[][]): Promise<number | null> {
+    try {
+      const r = await this.f(`https://api.telegram.org/bot${this.env.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text, reply_markup: { inline_keyboard: rows } }),
+      });
+      const j = (await r.json()) as Json;
+      const id = j?.result?.message_id;
+      return typeof id === 'number' ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Замінити текст повідомлення (і прибрати кнопки під ним). */
+  edit(chat: number, messageId: number, text: string): Promise<void> {
+    return this.call('editMessageText', { chat_id: chat, message_id: messageId, text });
+  }
+
   say(chat: number, text: string, markup?: Json): Promise<void> {
     return this.call('sendMessage', { chat_id: chat, text, ...(markup ? { reply_markup: markup } : {}) });
   }
@@ -277,8 +305,11 @@ const NOT_ME: Button[][] = [[{ text: 'Це не я: вийти всюди', call
 
 type PinCheck = { ok: true; byRecovery: boolean } | { ok: false; retryIn: number; missing?: boolean };
 
-/** Перевірити PIN (або код відновлення). Спроба зараховується до перевірки. */
-async function checkPin(srv: Server, bot: Bot, userId: string, pin: unknown, recovery: unknown): Promise<PinCheck> {
+/** Перевірити PIN (або код відновлення). Спроба зараховується до перевірки.
+ *  Код відновлення діє лише в заявці [requestId], для якої його попросили. */
+async function checkPin(
+  srv: Server, bot: Bot, userId: string, pin: unknown, recovery: unknown, requestId?: string,
+): Promise<PinCheck> {
   const a = (await srv.rpc('pin_attempt', { p_user: userId })) as Json | null;
   if (!a) {
     const st = (await srv.rpc('pin_state', { p_user: userId })) as Json;
@@ -287,6 +318,7 @@ async function checkPin(srv: Server, bot: Bot, userId: string, pin: unknown, rec
   const byPin = typeof pin === 'string' && pin.length > 0 && pin.length <= 64 && (await verifySecret(srv.env, pin, a.pin_hash));
   const byRec =
     !byPin && typeof recovery === 'string' && recovery.length <= 64 &&
+    requestId !== undefined && a.recovery_request === requestId &&
     (await verifySecret(srv.env, normalizeRecovery(recovery), a.recovery_hash));
   if (byPin || byRec) {
     await srv.rpc('pin_result', { p_user: userId, p_ok: true });
@@ -377,7 +409,38 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
     if (l instanceof Response) return l;
     const { r } = l;
     if (r.state !== 'approved') return json({ state: r.state, link: r.link === true });
-    return json({ state: 'approved', device: r.device, ...nextStep(r) });
+    return json({ state: 'approved', device: r.device, recovery_ok: r.recovery_ok === true, ...nextStep(r) });
+  }
+
+  // Код відновлення: надіслати в Telegram власника (2 хв, один раз) із кнопкою «Це я».
+  if (action === 'recovery_send') {
+    const l = await loadRequest(srv, body);
+    if (l instanceof Response) return l;
+    const { id, r } = l;
+    if (r.state !== 'approved' || !r.user_id) return json({ error: 'not_approved', state: r.state }, 409);
+    const st = (r.pin ?? {}) as Json;
+    if (st.state === 'locked') return json({ error: 'locked', retry_in: Number(st.retry_in ?? 0) }, 429);
+    if (st.state !== 'on') return json({ error: 'pin_state_changed' }, 409);
+    const code = newRecovery();
+    const wait = Number(await srv.rpc('pin_recovery_issue', {
+      p_user: r.user_id,
+      p_request: id,
+      p_hash: await hashSecret(srv.env, normalizeRecovery(code)),
+      p_ttl_secs: RECOVERY_TTL_SECS,
+      p_gap_secs: RECOVERY_GAP_SECS,
+      p_per_hour: RECOVERY_PER_HOUR,
+    }));
+    if (wait < 0) return json({ error: 'pin_state_changed' }, 409);
+    if (wait > 0) return json({ error: 'too_soon', retry_in: wait }, 429);
+    const msg = await bot.send(
+      Number(r.chat_id),
+      `Відновлення доступу до Vulyk${r.device ? ` з пристрою ${r.device}` : ''}.\n\n` +
+        `Код: ${code}\nДіє ${RECOVERY_TTL_SECS / 60} хв, використати можна один раз.\n\n` +
+        'Натисніть «Це я»: застосунок сам перейде до нового PIN. Якщо ви нічого не просили, натисніть «Це не я» і нікому не повідомляйте код.',
+      [[{ text: 'Це я: відновити доступ', callback_data: `r:${id}` }], ...NOT_ME],
+    );
+    if (msg !== null) await srv.rpc('pin_recovery_msg', { p_user: r.user_id, p_msg: msg });
+    return json({ ok: true, expires_in: RECOVERY_TTL_SECS });
   }
 
   if (action === 'finish') {
@@ -387,7 +450,6 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
     if (r.state !== 'approved') return json({ error: 'not_approved', state: r.state }, 409);
     const tid = Number(r.telegram_id), chat = Number(r.chat_id);
     let userId: string | null = r.user_id ?? null;
-    let recoveryOut: string | undefined;
     let created = false;
 
     if (!userId) {
@@ -399,28 +461,54 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
         await srv.deleteUser(userId);
         return json({ error: 'conflict' }, 409);
       }
-      recoveryOut = newRecovery();
-      await srv.rpc('pin_set', {
-        p_user: userId,
-        p_pin_hash: await hashSecret(srv.env, body.pin),
-        p_recovery_hash: await hashSecret(srv.env, normalizeRecovery(recoveryOut)),
-      });
+      await srv.rpc('pin_set', { p_user: userId, p_pin_hash: await hashSecret(srv.env, body.pin) });
       created = true;
     } else {
       const st = (r.pin ?? {}) as Json;
       if (st.state === 'locked') return json({ error: 'locked', retry_in: Number(st.retry_in ?? 0) }, 429);
       if (st.state === 'on') {
-        const c = await checkPin(srv, bot, userId, body.pin, body.recovery);
-        if (!c.ok) return pinFailure(c);
-        if (c.byRecovery) {
+        // «Це я» в Telegram дозволяє обійтися без PIN і без коду, але лише з новим PIN
+        const confirmed = body.recovery_confirmed === true && r.recovery_ok === true;
+        let byRecovery = confirmed;
+        // код відновлення одноразовий: без хорошого нового PIN його не витрачаємо
+        const tryingCode = !confirmed && typeof body.recovery === 'string' && body.recovery !== '' &&
+          !(typeof body.pin === 'string' && body.pin !== '');
+        if (tryingCode) {
           const problem = pinProblem(body.new_pin);
           if (problem) return json({ error: 'new_pin_required', message: problem }, 400);
-          recoveryOut = newRecovery();
-          await srv.rpc('pin_set', {
+        }
+        if (!confirmed) {
+          const c = await checkPin(srv, bot, userId, body.pin, body.recovery, id);
+          if (!c.ok) return pinFailure(c);
+          byRecovery = c.byRecovery;
+        }
+        if (byRecovery) {
+          const problem = pinProblem(body.new_pin);
+          if (problem) return json({ error: 'new_pin_required', message: problem }, 400);
+          const rec = (await srv.rpc('pin_recover', {
             p_user: userId,
             p_pin_hash: await hashSecret(srv.env, body.new_pin),
-            p_recovery_hash: await hashSecret(srv.env, normalizeRecovery(recoveryOut)),
-          });
+            p_delay_secs: RECOVERY_DELAY_SECS,
+          })) as Json;
+          if (typeof rec?.msg === 'number') await bot.edit(chat, rec.msg, 'Код відновлення використано.');
+          if (rec?.pending_at) {
+            // в акаунті є інші пристрої: новий PIN - через добу, щоб власник устиг заперечити
+            if (!(await srv.rpc('tg_login_finish', { p_id: id, p_secret_hash: hash }))) return json({ error: 'used' }, 409);
+            await bot.sayButtons(
+              chat,
+              `Запит на новий PIN у Vulyk${r.device ? ` з пристрою ${r.device}` : ''}. ` +
+                `Новий PIN почне діяти завтра о ${kyivTime(String(rec.pending_at))}, тоді всі пристрої вийдуть з акаунта. ` +
+                'Якщо це були не ви, натисніть кнопку: зміна скасується, а всі пристрої вийдуть одразу.',
+              [[{ text: 'Це не я: скасувати', callback_data: 'keep' }]],
+            );
+            const secs = Math.max(0, Math.round((Date.parse(String(rec.pending_at)) - Date.now()) / 1000));
+            return json({ error: 'recovery_scheduled', pending_at: rec.pending_at, retry_in: secs }, 409);
+          }
+          await bot.sayButtons(
+            chat,
+            'PIN змінено через відновлення доступу. Якщо це були не ви, натисніть кнопку.',
+            NOT_ME,
+          );
         }
       }
     }
@@ -435,7 +523,7 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
       `Новий вхід у Vulyk${r.device ? ` з пристрою ${r.device}` : ''}. Якщо це були не ви, натисніть кнопку.`,
       NOT_ME,
     );
-    return json({ session, ...(recoveryOut ? { recovery_code: recoveryOut } : {}) });
+    return json({ session });
   }
 
   // далі - лише для користувача, що вже увійшов
@@ -464,14 +552,9 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
       const c = await checkPin(srv, bot, who.id, body.pin, body.recovery);
       if (!c.ok) return pinFailure(c);
     }
-    const recovery = newRecovery();
-    await srv.rpc('pin_set', {
-      p_user: who.id,
-      p_pin_hash: await hashSecret(srv.env, body.new_pin),
-      p_recovery_hash: await hashSecret(srv.env, normalizeRecovery(recovery)),
-    });
+    await srv.rpc('pin_set', { p_user: who.id, p_pin_hash: await hashSecret(srv.env, body.new_pin) });
     await notify(srv, bot, who.id, st.state === 'on' ? 'PIN змінено.' : 'PIN увімкнено.', NOT_ME);
-    return json({ ok: true, recovery_code: recovery });
+    return json({ ok: true });
   }
 
   if (action === 'pin_disable') {
@@ -528,7 +611,20 @@ async function webhook(req: Request, srv: Server, bot: Bot): Promise<Response> {
     const data = cb.data as string;
     const m = /^m:([A-Za-z0-9_-]{22}):(\d{2})$/.exec(data);
     const n = /^n:([A-Za-z0-9_-]{22})$/.exec(data);
-    if (m) {
+    const rc = /^r:([A-Za-z0-9_-]{22})$/.exec(data);
+    if (rc) {
+      const ok = await srv.rpc('tg_recovery_confirm', { p_id: rc[1], p_telegram_id: from });
+      if (ok && typeof cb.message?.message_id === 'number') {
+        await bot.edit(from, cb.message.message_id, 'Підтверджено. Поверніться в застосунок і придумайте новий PIN.');
+      } else {
+        await bot.say(
+          from,
+          ok
+            ? 'Підтверджено. Поверніться в застосунок і придумайте новий PIN.'
+            : 'Запит застарів або вже використаний. Почніть відновлення в застосунку заново.',
+        );
+      }
+    } else if (m) {
       const res = await srv.rpc('tg_login_match', { p_id: m[1], p_telegram_id: from, p_code: Number(m[2]) });
       if (res === 'ok') {
         await bot.say(from, 'Тепер поділіться своїм номером кнопкою внизу.', {
@@ -549,7 +645,12 @@ async function webhook(req: Request, srv: Server, bot: Bot): Promise<Response> {
       if (uid) {
         if (data === 'keep') await srv.rpc('pin_keep', { p_user: uid });
         await srv.rpc('sign_out_everywhere', { p_user: uid });
-        await bot.say(from, 'Готово: усі пристрої вийшли з акаунта. Увійдіть заново в застосунку.');
+        await bot.say(
+          from,
+          data === 'keep'
+            ? 'Готово: заплановану зміну PIN скасовано, усі пристрої вийшли з акаунта. Увійдіть заново в застосунку.'
+            : 'Готово: усі пристрої вийшли з акаунта. Увійдіть заново в застосунку.',
+        );
       }
     }
     return json({ ok: true });

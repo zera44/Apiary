@@ -31,7 +31,7 @@ class _Fn {
             return j({'state': pin, 'telegram_only': false, 'disable_at': disableAt, 'telegram': phone == null ? null : {'phone': phone}});
           case 'pin_set':
             pin = 'on';
-            return j({'ok': true, 'recovery_code': 'ABCDE-FGHJK-LMNPQ-RSTUV'});
+            return j({'ok': true});
           case 'pin_disable':
             pin = 'off';
             return j({'ok': true, 'state': 'off'});
@@ -57,7 +57,7 @@ Future<void> _show(WidgetTester t, _Fn fn) async {
 }
 
 void main() {
-  testWidgets('PIN вимкнено: пропонує увімкнути, показує код відновлення', (t) async {
+  testWidgets('PIN вимкнено: пропонує увімкнути; код для запису не показується', (t) async {
     final fn = _Fn();
     await _show(t, fn);
     expect(find.text(tr.secPinOff), findsOneWidget);
@@ -81,10 +81,8 @@ void main() {
     await t.enterText(find.byType(TextField).at(1), 'k7-Quartz-91');
     await t.tap(find.text(tr.secSave));
     await t.pumpAndSettle();
-    expect(find.byKey(const Key('sec-recovery')), findsOneWidget);
+    expect(find.byKey(const Key('sec-recovery')), findsNothing);
     expect(fn.calls.lastWhere((c) => c['action'] == 'pin_set')['new_pin'], 'k7-Quartz-91');
-    await t.tap(find.text(tr.recoveryWritten));
-    await t.pumpAndSettle();
     expect(find.text(tr.secPinOn), findsOneWidget, reason: 'стан оновився');
     expect(find.byKey(const Key('sec-disable')), findsOneWidget);
   });

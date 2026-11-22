@@ -1100,12 +1100,17 @@ abstract class AppStrings {
   String get pinRecoveryTitle;
   String get pinRecoveryText;
   String get pinRecoveryField;
+  String get recoverySendCode;
+  String get recoverySent;
+  String get recoveryConfirmed;
+  String get recoveryTooSoon;
+  String get recoveryNeedCode;
+  String get recoverySendAgain;
+  String get recoveryScheduledTitle;
+  String recoveryScheduled(String when);
+  String recoveryWhen(String time, {required bool tomorrow, required String date});
   String get pinNewField;
   String get pinContinue;
-  String get recoveryTitle;
-  String get recoveryText;
-  String get recoveryWritten;
-  String get recoveryCopied;
 
   // ---- Вхід ----
   String get signingIn;

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../l10n/l10n.dart';
 import '../screens/telegram_login_screen.dart';
@@ -114,32 +113,6 @@ class _SecurityControlsState extends State<SecurityControls> {
     );
   }
 
-  Future<void> _showRecovery(String code) => showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          title: Text(tr.recoveryTitle),
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(tr.recoveryText, style: TextStyle(color: AppColors.textMuted, fontSize: 13.5)),
-            const SizedBox(height: 14),
-            Center(
-              child: SelectableText(code,
-                  key: const Key('sec-recovery'),
-                  style: TextStyle(
-                      color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.2, fontFamily: 'monospace')),
-            ),
-          ]),
-          actions: [
-            PillButton(
-                text: tr.copyAction,
-                bg: AppColors.neutralBtn,
-                fg: AppColors.text,
-                onPressed: () => Clipboard.setData(ClipboardData(text: code))),
-            PillButton(text: tr.recoveryWritten, bg: AppColors.accent, onPressed: () => Navigator.pop(ctx)),
-          ],
-        ),
-      );
-
   Future<void> _run(Future<void> Function() job) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -158,9 +131,7 @@ class _SecurityControlsState extends State<SecurityControls> {
     if (v == null || !mounted) return;
     if (v[0] != v[1]) return _say(tr.pinMismatch);
     await _run(() async {
-      final code = await _api!.pinSet(await _token(), newPin: v[0]);
-      if (!mounted) return;
-      await _showRecovery(code);
+      await _api!.pinSet(await _token(), newPin: v[0]);
       if (mounted) _say(tr.secPinEnabled);
     });
   }
@@ -170,9 +141,7 @@ class _SecurityControlsState extends State<SecurityControls> {
     if (v == null || !mounted) return;
     if (v[1] != v[2]) return _say(tr.pinMismatch);
     await _run(() async {
-      final code = await _api!.pinSet(await _token(), current: v[0], newPin: v[1]);
-      if (!mounted) return;
-      await _showRecovery(code);
+      await _api!.pinSet(await _token(), current: v[0], newPin: v[1]);
       if (mounted) _say(tr.secPinChanged);
     });
   }

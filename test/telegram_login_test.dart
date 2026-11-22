@@ -16,7 +16,8 @@ class _Fn {
   String next = 'pin_setup';
   int retryIn = 0;
   String finishError = '';
-  String? recovery = 'ABCDE-FGHJK-LMNPQ-RSTUV';
+  bool recoveryOk = false;
+  String sendError = '';
   final calls = <Map<String, Object?>>[];
   final headers = <Map<String, String>>[];
 
@@ -32,9 +33,20 @@ class _Fn {
             return json(ok({'id': 'ID' * 11, 'match': 42, 'url': 'https://t.me/vulyk_bot?start=${'ID' * 11}', 'expires_in': 300}));
           case 'poll':
             if (state == 'unknown') return json({'state': 'unknown'}, 404);
-            return json({'state': state, if (state == 'approved') 'next': next, if (retryIn > 0) 'retry_in': retryIn});
+            return json({
+              'state': state,
+              if (state == 'approved') 'next': next,
+              if (state == 'approved') 'recovery_ok': recoveryOk,
+              if (retryIn > 0) 'retry_in': retryIn,
+            });
+          case 'recovery_send':
+            if (sendError == 'too_soon') return json({'error': 'too_soon', 'retry_in': 20}, 429);
+            return json({'ok': true, 'expires_in': 300});
           case 'finish':
             if (finishError == 'wrong_pin') return json({'error': 'wrong_pin'}, 401);
+            if (finishError == 'recovery_scheduled') {
+              return json({'error': 'recovery_scheduled', 'pending_at': '2030-01-01T00:00:00Z', 'retry_in': 86400}, 409);
+            }
             if (finishError == 'locked') return json({'error': 'locked', 'retry_in': 900}, 429);
             if (finishError == 'bad_pin') return json({'error': 'bad_pin', 'message': 'Надто простий PIN'}, 400);
             return json({
@@ -48,7 +60,6 @@ class _Fn {
                   'user_metadata': {'full_name': 'Марія'},
                 },
               },
-              if (recovery != null) 'recovery_code': recovery,
             });
         }
         return json({'error': 'unknown_action'}, 400);
@@ -98,15 +109,31 @@ void main() {
       expect((await _api(fn).poll('ID' * 11, 'x' * 43)).dead, true);
     });
 
-    test('вхід: сесія, ім\'я й код відновлення', () async {
+    test('вхід: сесія й ім\'я', () async {
       final fn = _Fn();
       final r = await _api(fn).finish('ID' * 11, 'x' * 43, pin: 'k7-Quartz-91');
       expect(r.session.accessToken, 'at');
       expect(r.session.email, 'tg-501@tg.vulyk.invalid');
       expect(r.name, 'Марія');
-      expect(r.recoveryCode, 'ABCDE-FGHJK-LMNPQ-RSTUV');
       expect(fn.calls.single['pin'], 'k7-Quartz-91');
       expect(fn.calls.single.containsKey('recovery'), false);
+      expect(fn.calls.single.containsKey('recovery_confirmed'), false);
+    });
+
+    test('відновлення: код просять у Telegram, підтвердження видно в опитуванні, вхід із «Це я»', () async {
+      final fn = _Fn()
+        ..state = 'approved'
+        ..next = 'pin';
+      final api = _api(fn);
+      expect(await api.recoverySend('ID' * 11, 'x' * 43), 300);
+      expect((await api.poll('ID' * 11, 'x' * 43)).recoveryOk, false);
+      fn.recoveryOk = true;
+      expect((await api.poll('ID' * 11, 'x' * 43)).recoveryOk, true);
+      await api.finish('ID' * 11, 'x' * 43, newPin: 'zz-New-Pin-55', recoveryConfirmed: true);
+      final fin = fn.calls.last;
+      expect(fin['recovery_confirmed'], true);
+      expect(fin['new_pin'], 'zz-New-Pin-55');
+      expect(fin.containsKey('pin'), false);
     });
 
     test('помилки сервера - зрозумілі коди', () async {
@@ -164,7 +191,7 @@ void main() {
 
     tearDown(() => L10n.debugOverride(null));
 
-    testWidgets('новий акаунт: число, Telegram, PIN двічі, код відновлення, готово', (t) async {
+    testWidgets('новий акаунт: число, Telegram, PIN двічі, готово', (t) async {
       final fn = _Fn();
       final opened = <Uri>[];
       await open(t, fn, opened: opened);
@@ -201,20 +228,14 @@ void main() {
       await t.tap(find.text(tr.pinSave));
       await t.pump();
       await t.pump();
-      expect(find.byKey(const Key('tg-recovery')), findsOneWidget);
-      expect(find.text('ABCDE-FGHJK-LMNPQ-RSTUV'), findsOneWidget);
-      // назад не можна, доки код не записано
-      expect(find.byType(CircleAvatar), findsNothing);
-      await t.tap(find.text(tr.recoveryWritten));
       await t.pumpAndSettle();
-      expect(find.text('go'), findsOneWidget);
+      expect(find.text('go'), findsOneWidget, reason: 'вхід завершено, екран закрито');
     });
 
-    testWidgets('наявний акаунт: невірний PIN, потім правильний - без коду відновлення', (t) async {
+    testWidgets('наявний акаунт: невірний PIN, потім правильний', (t) async {
       final fn = _Fn()
         ..state = 'approved'
-        ..next = 'pin'
-        ..recovery = null;
+        ..next = 'pin';
       await open(t, fn);
       await t.pump(const Duration(milliseconds: 150));
       await t.pump();
@@ -259,27 +280,111 @@ void main() {
       expect(find.byKey(const Key('tg-match')), findsOneWidget);
     });
 
-    testWidgets('відновлення: код і новий PIN', (t) async {
-      final fn = _Fn()
-        ..state = 'approved'
-        ..next = 'pin';
+    Future<void> toRecovery(WidgetTester t, _Fn fn) async {
       await open(t, fn);
       await t.pump(const Duration(milliseconds: 150));
       await t.pump();
       await t.tap(find.text(tr.pinForgot));
       await t.pump();
       expect(find.text(tr.pinRecoveryTitle), findsOneWidget);
-      await t.enterText(find.byType(TextField).at(0), 'abcde fghjk lmnpq rstuv');
+      // доки код не надіслано, вводити нічого
+      expect(find.byType(TextField), findsNothing);
+    }
+
+    testWidgets('відновлення: код надсилається в Telegram, вводимо його й новий PIN', (t) async {
+      final fn = _Fn()
+        ..state = 'approved'
+        ..next = 'pin';
+      await toRecovery(t, fn);
+      await t.tap(find.text(tr.recoverySendCode));
+      await t.pump();
+      await t.pump();
+      expect(fn.calls.where((c) => c['action'] == 'recovery_send'), hasLength(1));
+      expect(find.text(tr.recoverySent), findsOneWidget);
+      // без коду й без «Це я» далі не пускає
+      await t.tap(find.text(tr.pinContinue));
+      await t.pump();
+      expect(find.text(tr.recoveryNeedCode), findsOneWidget);
+      expect(fn.calls.where((c) => c['action'] == 'finish'), isEmpty);
+
+      await t.enterText(find.byType(TextField).at(0), 'abcd-efgh');
       await t.enterText(find.byType(TextField).at(1), 'zz-New-Pin-55');
       await t.tap(find.text(tr.pinContinue));
       await t.pump();
       await t.pump();
       final fin = fn.calls.lastWhere((c) => c['action'] == 'finish');
-      expect(fin['recovery'], 'abcde fghjk lmnpq rstuv');
+      expect(fin['recovery'], 'abcd-efgh');
       expect(fin['new_pin'], 'zz-New-Pin-55');
       expect(fin.containsKey('pin'), false);
-      // новий код відновлення показано
-      expect(find.byKey(const Key('tg-recovery')), findsOneWidget);
+      expect(fin.containsKey('recovery_confirmed'), false);
+      await t.pumpAndSettle();
+      expect(find.text('go'), findsOneWidget, reason: 'вхід завершено без показу коду');
+    });
+
+    testWidgets('відновлення: «Це я» в Telegram - застосунок сам переходить до нового PIN', (t) async {
+      final fn = _Fn()
+        ..state = 'approved'
+        ..next = 'pin';
+      await toRecovery(t, fn);
+      await t.tap(find.text(tr.recoverySendCode));
+      await t.pump();
+      await t.pump();
+      expect(find.byType(TextField), findsNWidgets(2), reason: 'поле коду й новий PIN');
+
+      fn.recoveryOk = true;
+      await t.pump(const Duration(milliseconds: 150));
+      await t.pump();
+      expect(find.text(tr.recoveryConfirmed), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget, reason: 'код уже не потрібен, лишився новий PIN');
+
+      await t.enterText(find.byType(TextField).first, 'zz-New-Pin-55');
+      await t.tap(find.text(tr.pinContinue));
+      await t.pump();
+      await t.pump();
+      final fin = fn.calls.lastWhere((c) => c['action'] == 'finish');
+      expect(fin['recovery_confirmed'], true);
+      expect(fin['new_pin'], 'zz-New-Pin-55');
+      expect(fin.containsKey('recovery'), false);
+      await t.pumpAndSettle();
+      expect(find.text('go'), findsOneWidget);
+    });
+
+    testWidgets('відновлення: кнопку натиснули надто швидко - зрозуміле повідомлення', (t) async {
+      final fn = _Fn()
+        ..state = 'approved'
+        ..next = 'pin'
+        ..sendError = 'too_soon';
+      await toRecovery(t, fn);
+      await t.tap(find.text(tr.recoverySendCode));
+      await t.pump();
+      await t.pump();
+      expect(find.text(tr.recoveryTooSoon), findsOneWidget);
+      expect(find.text(tr.recoverySendCode), findsOneWidget, reason: 'можна спробувати ще раз');
+    });
+
+    testWidgets('відновлення при інших пристроях: новий PIN - через добу, без входу', (t) async {
+      final fn = _Fn()
+        ..state = 'approved'
+        ..next = 'pin'
+        ..finishError = 'recovery_scheduled';
+      await toRecovery(t, fn);
+      await t.tap(find.text(tr.recoverySendCode));
+      await t.pump();
+      await t.pump();
+      fn.recoveryOk = true;
+      await t.pump(const Duration(milliseconds: 150));
+      await t.pump();
+      await t.enterText(find.byType(TextField).first, 'zz-New-Pin-55');
+      await t.tap(find.text(tr.pinContinue));
+      await t.pump();
+      await t.pump();
+      expect(find.text(tr.recoveryScheduledTitle), findsOneWidget);
+      final text = t.widget<Text>(find.byKey(const Key('tg-recovery-scheduled'))).data!;
+      expect(text, contains(tr.recoveryWhen('', tomorrow: true, date: '').trim().split(' ').first));
+      await t.tap(find.text(tr.close));
+      await t.pumpAndSettle();
+      expect(find.text(tr.recoveryScheduledTitle), findsNothing);
+      expect(find.text('go'), findsOneWidget, reason: 'екран закрито без входу');
     });
   });
 }
