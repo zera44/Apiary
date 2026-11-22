@@ -1,6 +1,6 @@
 -- Відновлення доступу кодом із Telegram замість довгого коду на папері.
 --
---   * код (лише хеш) діє 5 хвилин, один раз і лише в тій заявці на вхід, для якої
+--   * код (лише хеш) діє 2 хвилини, один раз і лише в тій заявці на вхід, для якої
 --     його попросили (recovery_request): секрет заявки знає тільки телефон, що просив;
 --   * просити код можна не частіше ніж раз на 30 с і не більше 5 разів за годину;
 --   * кнопка «Це я» в повідомленні бота (tg_recovery_confirm) дозволяє застосунку,
@@ -237,7 +237,7 @@ create or replace function public.tg_recovery_confirm(p_id text, p_telegram_id b
 language plpgsql security definer set search_path = public as $$
 begin
   update public.tg_login_requests r
-    set recovery_ok_until = now() + interval '5 minutes'
+    set recovery_ok_until = now() + interval '2 minutes'
     from public.tg_identities i, public.account_pins p
     where r.id = p_id and r.state = 'approved' and r.expires_at > now()
       and r.telegram_id = p_telegram_id

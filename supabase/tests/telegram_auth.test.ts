@@ -163,7 +163,7 @@ function fake() {
       const uid = idents.get(r.tg!)?.user;
       const p = uid ? pins.get(uid) : undefined;
       if (!p || p.pin === null || !p.rec || p.recExp <= now || p.recReq !== a.p_id) return false;
-      r.recOkUntil = now + 300;
+      r.recOkUntil = now + 120;
       return true;
     },
     pin_disable: (a) => {
@@ -423,11 +423,11 @@ test('повторний вхід: PIN, помилки, блокування, к
   // просимо код: приходить у Telegram власника з кнопками
   const asked = await app(f, { action: 'recovery_send', id: req2.id, secret: secret2 });
   assert.equal(asked.status, 200);
-  assert.equal((await asked.json()).expires_in, 300);
+  assert.equal((await asked.json()).expires_in, 120);
   const msg = f.sent.at(-1)!;
   assert.equal(msg.chat, 501);
   const code = /Код: ([A-Z2-9]{4}-[A-Z2-9]{4})/.exec(msg.text)![1];
-  assert.match(msg.text, /Діє 5 хв/);
+  assert.match(msg.text, /Діє 2 хв/);
   const btns = msg.markup.inline_keyboard.flat().map((b: any) => b.callback_data);
   assert.ok(btns.includes(`r:${req2.id}`) && btns.includes('out'));
   // раніше ніж через 30 с - ні
@@ -456,7 +456,7 @@ test('повторний вхід: PIN, помилки, блокування, к
   // новий PIN діє одразу (інших пристроїв не було)
   assert.equal((await app(f, { action: 'finish', id: req3.id, secret: 'V'.repeat(43), pin: 'zz-New-Pin-55' })).status, 200);
 
-  // код спливає за 5 хвилин
+  // код спливає за 2 хвилини
   await hook(f, press(501, 'out'));
   const secret4 = 'W'.repeat(43);
   const req4 = await start(f, secret4);
@@ -464,7 +464,7 @@ test('повторний вхід: PIN, помилки, блокування, к
   f.tick(40);
   assert.equal((await app(f, { action: 'recovery_send', id: req4.id, secret: secret4 })).status, 200);
   const code4 = /Код: ([A-Z2-9]{4}-[A-Z2-9]{4})/.exec(f.sent.at(-1)!.text)![1];
-  f.tick(301);
+  f.tick(121);
   assert.equal((await app(f, { action: 'finish', id: req4.id, secret: secret4, recovery: code4, new_pin: 'ww-Late-Pin-8' })).status, 401);
 
   // кнопка «Це я»: застосунок сам бачить підтвердження й переходить до нового PIN

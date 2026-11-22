@@ -2239,7 +2239,7 @@ class AppStringsUk extends AppStrings {
   @override
   String get recoverySendCode => 'Надіслати код у Telegram';
   @override
-  String get recoverySent => 'Код надіслано в Telegram, він діє 5 хвилин. Натисніть «Це я» під повідомленням або введіть код.';
+  String get recoverySent => 'Код надіслано в Telegram, він діє 2 хвилини. Натисніть «Це я» під повідомленням або введіть код.';
   @override
   String get recoveryConfirmed => 'Підтверджено в Telegram. Придумайте новий PIN.';
   @override

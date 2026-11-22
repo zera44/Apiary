@@ -2240,7 +2240,7 @@ class AppStringsEn extends AppStrings {
   @override
   String get recoverySendCode => 'Send the code to Telegram';
   @override
-  String get recoverySent => 'The code was sent to Telegram and is valid for 5 minutes. Tap the button in the message or enter the code.';
+  String get recoverySent => 'The code was sent to Telegram and is valid for 2 minutes. Tap the button in the message or enter the code.';
   @override
   String get recoveryConfirmed => 'Confirmed in Telegram. Choose a new PIN.';
   @override

@@ -126,7 +126,7 @@ function newRecovery(): string {
 }
 
 /** Скільки живе код відновлення, і як часто його можна просити. */
-const RECOVERY_TTL_SECS = 300;
+const RECOVERY_TTL_SECS = 120;
 const RECOVERY_GAP_SECS = 30;
 const RECOVERY_PER_HOUR = 5;
 /** Новий PIN після відновлення, коли в акаунті є інші пристрої, діє через добу. */
@@ -412,7 +412,7 @@ async function app(req: Request, srv: Server, bot: Bot): Promise<Response> {
     return json({ state: 'approved', device: r.device, recovery_ok: r.recovery_ok === true, ...nextStep(r) });
   }
 
-  // Код відновлення: надіслати в Telegram власника (5 хв, один раз) із кнопкою «Це я».
+  // Код відновлення: надіслати в Telegram власника (2 хв, один раз) із кнопкою «Це я».
   if (action === 'recovery_send') {
     const l = await loadRequest(srv, body);
     if (l instanceof Response) return l;
