@@ -732,6 +732,9 @@ abstract class AppStrings {
   String get finExportSummarySheet;
   String get finExportWithSummary;
   String get finExportWithComment;
+  String get finExportWithAccount;
+  /// Рядок картки запису для рахунку в чужій валюті: «списано з рахунку: $36,50».
+  String finEntryWrittenOff(String v);
   String get finExportAction;
   String get finExportNothing;
   String get finColKind;

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../logic/fin_period.dart';
@@ -23,8 +24,16 @@ import '../l10n/l10n.dart';
 class FinEntryTile extends StatelessWidget {
   final FinEntry entry;
   final Map<String, FinCategory> cats;
+
+  /// Рахунки (для значка й назви рахунку в підрядку); без них рядок як раніше.
+  final Map<String, FinAccount> accounts;
   final VoidCallback onTap;
-  const FinEntryTile({super.key, required this.entry, required this.cats, required this.onTap});
+  const FinEntryTile(
+      {super.key,
+      required this.entry,
+      required this.cats,
+      required this.onTap,
+      this.accounts = const {}});
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +41,9 @@ class FinEntryTile extends StatelessWidget {
     final name = entry.fromStock ? kFinStockCategoryName : (c?.name ?? tr.noCategory);
     final muted = entry.cancelled;
     final sign = entry.isExpense ? '−' : '+';
+    final acc = entry.fromStock ? null : accounts[entry.accountId];
+    final sub = TextStyle(color: AppColors.textMuted, fontSize: 12.5);
+    final sep = TextSpan(text: ' · ', style: sub);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -53,24 +65,35 @@ class FinEntryTile extends StatelessWidget {
                       fontSize: 15,
                       decoration: muted ? TextDecoration.lineThrough : null)),
               const SizedBox(height: 2),
-              Text(
-                  [
-                    finDay(entry.date),
-                    if (entry.title.isNotEmpty) entry.title,
-                    if (muted) tr.cancelledMark,
-                  ].join(' · '),
+              Text.rich(
+                  TextSpan(style: sub, children: [
+                    TextSpan(text: finDay(entry.date)),
+                    if (acc != null) ...[
+                      sep,
+                      WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: FinBadge(icon: acc.icon, color: acc.color, size: 16)),
+                      TextSpan(text: ' ${acc.name}', style: sub.copyWith(color: AppColors.text)),
+                    ],
+                    if (entry.title.isNotEmpty) ...[sep, TextSpan(text: entry.title)],
+                    if (muted) ...[sep, TextSpan(text: tr.cancelledMark)],
+                  ]),
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                  overflow: TextOverflow.ellipsis),
             ]),
           ),
           const SizedBox(width: 8),
-          Text('$sign${uah(entry.amount)}',
-              style: TextStyle(
-                  color: finAmountColor(entry),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  decoration: muted ? TextDecoration.lineThrough : null)),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('$sign${uah(entry.amount)}',
+                style: TextStyle(
+                    color: finAmountColor(entry),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    decoration: muted ? TextDecoration.lineThrough : null)),
+            if (acc != null && acc.foreign && entry.accountAmount != null)
+              Text(money(entry.accountAmount!, acc.currency),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          ]),
         ]),
       ),
     );
@@ -83,7 +106,8 @@ enum _EntryAction { close, edit, cancel }
 /// Відкрити запис журналу: деталі, «Змінити» (власні операції) і
 /// «Скасувати запис» (на складі теж). Повертає true, якщо щось змінилось.
 Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
-    Map<String, FinCategory> cats) async {
+    Map<String, FinCategory> cats,
+    {Map<String, FinAccount> accounts = const {}}) async {
   final c = e.categoryId == null ? null : cats[e.categoryId];
   final name = e.fromStock ? kFinStockCategoryName : (c?.name ?? tr.noCategory);
   final what = e.title.isEmpty ? '' : '\n${e.title}';
@@ -98,45 +122,11 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
     await showInfo(context, '$text${tr.finCancelledNote}', title: tr.record);
     return false;
   }
-  final action = await showDialog<_EntryAction>(
+  final action = await showModalBottomSheet<_EntryAction>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(tr.record),
-      content: Text(text, style: TextStyle(color: AppColors.text)),
-      actions: [
-        Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Expanded(
-              child: PillButton(
-                  text: tr.close,
-                  bg: AppColors.neutralBtn,
-                  fg: AppColors.text,
-                  onPressed: () => Navigator.pop(ctx, _EntryAction.close)),
-            ),
-            if (!e.fromStock) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: PillButton(
-                    text: tr.edit,
-                    bg: AppColors.accent,
-                    onPressed: () => Navigator.pop(ctx, _EntryAction.edit)),
-              ),
-            ],
-          ]),
-          // небезпечна дія - окремо, щоб не влучити замість «Закрити»
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              key: const ValueKey('fin-entry-cancel'),
-              onPressed: () => Navigator.pop(ctx, _EntryAction.cancel),
-              child: Text(tr.recordCancel,
-                  style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ]),
-      ],
-    ),
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => _FinEntrySheet(entry: e, cats: cats, accounts: accounts),
   );
   if (!context.mounted || action == null || action == _EntryAction.close) return false;
   if (action == _EntryAction.edit) return _editFinEntry(context, repo, e);
@@ -156,6 +146,166 @@ Future<bool> openFinEntry(BuildContext context, Repository repo, FinEntry e,
   } catch (err) {
     if (context.mounted) await showInfo(context, '$err', title: tr.notCancelled);
     return false;
+  }
+}
+
+/// Картка запису: що, скільки, з якого рахунку, далі що куплено й коментар;
+/// знизу «Закрити» / «Змінити» і окремо «Скасувати запис» (щоб не влучити).
+class _FinEntrySheet extends StatelessWidget {
+  final FinEntry entry;
+  final Map<String, FinCategory> cats;
+  final Map<String, FinAccount> accounts;
+  const _FinEntrySheet({required this.entry, required this.cats, required this.accounts});
+
+  @override
+  Widget build(BuildContext context) {
+    final e = entry;
+    final c = e.categoryId == null ? null : cats[e.categoryId];
+    final name = e.fromStock ? kFinStockCategoryName : (c?.name ?? tr.noCategory);
+    final acc = e.fromStock ? null : accounts[e.accountId];
+    final sign = e.isExpense ? '−' : '+';
+    final sub = [
+      finDay(e.date),
+      if (e.title.isNotEmpty) e.title,
+    ].join(' · ');
+    final muted = TextStyle(color: AppColors.textMuted, fontSize: 13);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(
+            child: Container(
+                width: 44,
+                height: 5,
+                decoration:
+                    BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(3))),
+          ),
+          const SizedBox(height: 14),
+          Row(children: [
+            e.fromStock
+                ? const FinBadge(icon: 'home', color: 'olive', size: 52)
+                : FinBadge(icon: c?.icon ?? 'other', color: c?.color ?? 'nut', size: 52),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AppColors.text, fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: muted),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('$sign${uah(e.amount)}',
+                    key: const ValueKey('fin-entry-amount'),
+                    style: TextStyle(
+                        color: finAmountColor(e), fontSize: 32, fontWeight: FontWeight.w700)),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              decoration:
+                  BoxDecoration(color: AppColors.darkBtn, borderRadius: BorderRadius.circular(10)),
+              child: Text(e.isExpense ? tr.expense : tr.income,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            ),
+          ]),
+          if (acc != null && acc.foreign && e.accountAmount != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(tr.finEntryWrittenOff(money(e.accountAmount!, acc.currency)), style: muted),
+            ),
+          if (acc != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              key: const ValueKey('fin-entry-account'),
+              padding: const EdgeInsets.all(12),
+              decoration:
+                  BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+              child: Row(children: [
+                FinBadge(icon: acc.icon, color: acc.color, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(tr.finAccount, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Text(acc.foreign ? '${acc.name} · ${acc.currency}' : acc.name,
+                        style: TextStyle(
+                            color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w500)),
+                  ]),
+                ),
+              ]),
+            ),
+          ],
+          if (e.lines.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(tr.finBoughtTitle.replaceAll(':', '').toUpperCase(),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5, letterSpacing: 0.6)),
+            const SizedBox(height: 6),
+            for (final l in e.lines)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(
+                      child: Text(l.name, style: TextStyle(color: AppColors.text, fontSize: 14))),
+                  const SizedBox(width: 10),
+                  Text('${_plain(l.qty)} ${l.unit} × ${_plain(l.price)} = ${uah(l.total)}',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                ]),
+              ),
+          ],
+          if ((e.comment ?? '').isNotEmpty && !e.fromStock) ...[
+            const SizedBox(height: 10),
+            Text('«${e.comment}»',
+                style: TextStyle(
+                    color: AppColors.textMuted, fontSize: 14, fontStyle: FontStyle.italic)),
+          ],
+          if (e.fromStock) ...[
+            const SizedBox(height: 10),
+            Text(tr.finFromStockNote.trim(), style: muted),
+          ],
+          if (!e.fromStock && e.lineCount > 0) ...[
+            const SizedBox(height: 6),
+            Text(tr.finLinesNote.trim(), style: muted),
+          ],
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(
+              child: PillButton(
+                  text: tr.close,
+                  bg: AppColors.neutralBtn,
+                  fg: AppColors.text,
+                  height: 46,
+                  onPressed: () => Navigator.pop(context, _EntryAction.close)),
+            ),
+            if (!e.fromStock) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: PillButton(
+                    text: tr.edit,
+                    bg: AppColors.accent,
+                    height: 46,
+                    onPressed: () => Navigator.pop(context, _EntryAction.edit)),
+              ),
+            ],
+          ]),
+          // небезпечна дія - окремо, щоб не влучити замість «Закрити»
+          const SizedBox(height: 12),
+          TextButton(
+            key: const ValueKey('fin-entry-cancel'),
+            onPressed: () => Navigator.pop(context, _EntryAction.cancel),
+            child: Text(tr.recordCancel,
+                style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      ),
+    );
   }
 }
 
@@ -288,11 +438,13 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Future<void> _reload() async {
     final cats = await repo.finCategoryMap();
+    final accounts = await repo.finAccountMap();
     final (f, t) = _range;
     final list = await repo.listFinEntries(from: f, to: t);
     if (!mounted) return;
     setState(() {
       _cats = cats;
+      _accounts = accounts;
       _entries = list;
       _loaded = true;
     });
@@ -670,6 +822,7 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   List<FinEntry> _entries = [];
   Map<String, FinCategory> _cats = {};
+  Map<String, FinAccount> _accounts = {};
   late int _filter = widget.filter;
   bool _loaded = false;
 
@@ -752,8 +905,10 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
           entries: _entries,
           cats: _cats,
           kind: choice.kind,
+          accounts: _accounts,
           includeSummary: choice.summary,
-          includeComment: choice.comment);
+          includeComment: choice.comment,
+          includeAccount: choice.account);
       err = await shareFinExport(
           bytes: bytes, fileName: finExportFileName(f, _sel.lastDay, choice.kind));
     } catch (e) {
@@ -840,8 +995,9 @@ class _FinHistoryScreenState extends State<FinHistoryScreen> {
                             FinEntryTile(
                               entry: e,
                               cats: _cats,
+                              accounts: _accounts,
                               onTap: () async {
-                                if (await openFinEntry(context, repo, e, _cats)) _reload();
+                                if (await openFinEntry(context, repo, e, _cats, accounts: _accounts)) _reload();
                               },
                             ),
                         ]),

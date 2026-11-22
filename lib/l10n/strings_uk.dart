@@ -1476,6 +1476,10 @@ class AppStringsUk extends AppStrings {
   @override
   String get finExportWithComment => 'Стовпець «Коментар»';
   @override
+  String get finExportWithAccount => 'Стовпець «Рахунок»';
+  @override
+  String finEntryWrittenOff(String v) => 'списано з рахунку: $v';
+  @override
   String get finExportAction => 'Зберегти й поділитись';
   @override
   String get finExportNothing => 'За цей період немає операцій для експорту';

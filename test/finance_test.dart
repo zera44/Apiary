@@ -8,7 +8,7 @@ import 'package:apiary/logic/receipt_parser.dart';
 import 'package:apiary/screens/fin_add_screen.dart';
 import 'package:apiary/screens/fin_stats_screen.dart';
 import 'package:apiary/screens/finance_screen.dart'
-    show FinHistoryScreen, FinanceScreen, openFinEntry;
+    show FinEntryTile, FinHistoryScreen, FinanceScreen, openFinEntry;
 import 'package:apiary/screens/receipt_markup_screen.dart';
 import 'package:apiary/services/receipt_ocr.dart';
 import 'package:apiary/ui/common.dart' show PillButton;
@@ -620,6 +620,44 @@ void main() {
       final after =
           (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
       expect(after.amount, 750);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('запис журналу: у картці й у рядку видно рахунок', (tester) async {
+      final inc = (await tester.runAsync(() => repo.listFinCategories(kind: kFinIncome)))!.first;
+      await tester.runAsync(() => repo.addFinOp(
+          kind: kFinIncome, categoryId: inc.id, amount: 500, date: DateTime(2026, 10, 3)));
+      final e = (await tester.runAsync(() => repo.listFinEntries(from: from(), to: to())))!.single;
+      final cats = {
+        for (final c in (await tester.runAsync(() => repo.listFinCategories()))!) c.id: c
+      };
+      final accounts = (await tester.runAsync(() => repo.finAccountMap()))!;
+      expect(e.accountId, isNotNull);
+      final accName = accounts[e.accountId]!.name;
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        theme: buildAppTheme(),
+        home: Builder(
+          builder: (ctx) => Scaffold(
+            body: Column(children: [
+              FinEntryTile(entry: e, cats: cats, accounts: accounts, onTap: () {}),
+              TextButton(
+                onPressed: () => openFinEntry(ctx, repo, e, cats, accounts: accounts),
+                child: const Text('open'),
+              ),
+            ]),
+          ),
+        ),
+      ));
+      // у рядку журналу: назва рахунку в підрядку
+      expect(find.textContaining(accName), findsOneWidget);
+      await tester.tap(find.text('open'));
+      await settle(tester);
+      // у картці: окремий блок рахунку
+      expect(find.byKey(const ValueKey('fin-entry-account')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const ValueKey('fin-entry-account')), matching: find.text(accName)),
+          findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

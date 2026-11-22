@@ -98,7 +98,15 @@ class FinEntry {
     required this.fromStock,
     this.comment,
     this.noStats = false,
+    this.accountId,
+    this.accountAmount,
   });
+
+  /// Рахунок власної операції (для записів зі складу - null).
+  final String? accountId;
+
+  /// Сума в валюті рахунку, якщо вона не гривня (інакше null).
+  final double? accountAmount;
 
   /// Не йде в підсумки й статистику (коригування рахунку з вимкненим «Врахувати в статистиці»).
   final bool noStats;
@@ -622,6 +630,8 @@ extension RepositoryFinance on Repository {
         cancelled: (o['cancelled'] as int? ?? 0) == 1,
         fromStock: false,
         noStats: (o['no_stats'] as int? ?? 0) == 1,
+        accountId: o['account_id'] as String?,
+        accountAmount: (o['account_amount'] as num?)?.toDouble(),
       ));
     }
 

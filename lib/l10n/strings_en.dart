@@ -1474,6 +1474,10 @@ class AppStringsEn extends AppStrings {
   @override
   String get finExportWithComment => '«Comment» column';
   @override
+  String get finExportWithAccount => '«Account» column';
+  @override
+  String finEntryWrittenOff(String v) => 'charged to account: $v';
+  @override
   String get finExportAction => 'Save and share';
   @override
   String get finExportNothing => 'No operations to export for this period';
