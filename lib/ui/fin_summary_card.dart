@@ -20,11 +20,6 @@ class FinSummaryCard extends StatelessWidget {
     final bal = inc - exp;
     final c = bal >= 0 ? profit : loss;
     final share = inc > 0 ? (bal / inc * 100).round() : null;
-    // смужка: при прибутку витрати + залишок = дохід, при збитку дохід + перевитрата = витрати
-    final first = bal >= 0 ? exp : inc;
-    final second = bal.abs();
-    Widget part(double v, Color color) =>
-        Expanded(flex: (v * 100).round().clamp(1, 1 << 30), child: Container(color: color));
     Widget col(String label, String value, Color dot, CrossAxisAlignment a) => Column(
           crossAxisAlignment: a,
           children: [
@@ -71,17 +66,7 @@ class FinSummaryCard extends StatelessWidget {
         ]),
         if (inc > 0 || exp > 0) ...[
           const SizedBox(height: 14),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: SizedBox(
-              height: 10,
-              child: Row(children: [
-                if (first > 0) part(first, bal >= 0 ? yellow : green),
-                if (first > 0 && second > 0) const SizedBox(width: 3),
-                if (second > 0) part(second, c),
-              ]),
-            ),
-          ),
+          FinSplitBar(income: inc, expense: exp, height: 10),
         ],
         const SizedBox(height: 14),
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -89,6 +74,74 @@ class FinSummaryCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: col(tr.expenses, uah(exp), yellow, CrossAxisAlignment.end)),
         ]),
+      ]),
+    );
+  }
+}
+
+/// Смужка «витрати / залишок»: при прибутку витрати + залишок = дохід, при
+/// збитку дохід + перевитрата = витрати.
+class FinSplitBar extends StatelessWidget {
+  final double income;
+  final double expense;
+  final double height;
+  const FinSplitBar({super.key, required this.income, required this.expense, this.height = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    final bal = income - expense;
+    final c = bal >= 0 ? finColor('sky') : finColor('terra');
+    final first = bal >= 0 ? expense : income;
+    final firstColor = bal >= 0 ? finColor('honey') : finColor('olive');
+    final second = bal.abs();
+    Widget part(double v, Color color) =>
+        Expanded(flex: (v * 100).round().clamp(1, 1 << 30), child: Container(color: color));
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height / 2),
+      child: SizedBox(
+        height: height,
+        child: Row(children: [
+          if (first > 0) part(first, firstColor),
+          if (first > 0 && second > 0) const SizedBox(width: 3),
+          if (second > 0) part(second, c),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Рядок року чи місяця в статистиці: підпис, великий прибуток (збиток) праворуч,
+/// під ним дохід і витрати дрібніше, знизу та сама смужка, що в картці-підсумку.
+class FinPeriodRow extends StatelessWidget {
+  final String label;
+  final double income;
+  final double expense;
+  const FinPeriodRow({super.key, required this.label, required this.income, required this.expense});
+
+  @override
+  Widget build(BuildContext context) {
+    final bal = income - expense;
+    final c = bal >= 0 ? finColor('sky') : finColor('terra');
+    final small = TextStyle(color: AppColors.textMuted, fontSize: 12.5);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(20)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+          Expanded(child: Text(label, style: TextStyle(color: AppColors.text, fontSize: 17))),
+          Text('${bal > 0 ? '+' : ''}${uah(bal)}',
+              style: TextStyle(color: c, fontSize: 18, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 2),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(uah(income), style: small),
+          Text('−${uah(expense)}', style: small),
+        ]),
+        if (income > 0 || expense > 0) ...[
+          const SizedBox(height: 8),
+          FinSplitBar(income: income, expense: expense),
+        ],
       ]),
     );
   }

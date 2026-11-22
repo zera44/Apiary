@@ -302,21 +302,8 @@ class _FinStatsScreenState extends State<FinStatsScreen> {
     );
   }
 
-  Widget _monthCard(FinMonthTotal m) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration:
-            BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [
-          Expanded(
-              child: Text(_byYears ? '${m.month}' : tr.monthNames[m.month],
-                  style: TextStyle(color: AppColors.text, fontSize: 16))),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('+${uah(m.income)}', style: TextStyle(color: AppColors.text, fontSize: 14)),
-            Text('−${uah(m.expense)}', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          ]),
-        ]),
-      );
+  Widget _monthCard(FinMonthTotal m) => FinPeriodRow(
+      label: _byYears ? '${m.month}' : tr.monthNames[m.month], income: m.income, expense: m.expense);
 
   /// Розбивка за категоріями для обраного стовпчика (дохід або витрати цього
   /// місяця чи року); для «прибутку» - підсумок місяця.
