@@ -226,11 +226,11 @@ class _FinStatsViewState extends State<FinStatsView> {
   Widget _chartCard(FinWindow w, List<double> values, FinControlStats stats) {
     Widget item(Key k, String label, String v, CrossAxisAlignment a) => Expanded(
           child: Column(crossAxisAlignment: a, children: [
-            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
             const SizedBox(height: 2),
             Text(v,
                 key: k,
-                style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
           ]),
         );
     return Container(
@@ -397,7 +397,8 @@ class _FinStatsViewState extends State<FinStatsView> {
     final color = expense ? finColor('honey') : finColor('olive');
     return Container(
       key: ValueKey('stat-kind-${k.name}'),
-      margin: const EdgeInsets.only(bottom: 8),
+      constraints: const BoxConstraints(minHeight: 56),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
       child: Material(
         color: Colors.transparent,
@@ -405,7 +406,7 @@ class _FinStatsViewState extends State<FinStatsView> {
           borderRadius: BorderRadius.circular(16),
           onTap: () => _setKind(k),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
             child: Row(children: [
               Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
               const SizedBox(width: 12),
@@ -414,7 +415,9 @@ class _FinStatsViewState extends State<FinStatsView> {
                       style: TextStyle(color: AppColors.text, fontSize: 16))),
               Text(amount > 0 ? '${expense ? '−' : '+'}${uah(amount)}' : uah(0),
                   style: TextStyle(
-                      color: expense ? AppColors.text : finColor('olive'), fontSize: 16)),
+                      color: expense ? AppColors.text : finColor('olive'),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
             ]),
           ),
         ),
@@ -451,7 +454,8 @@ class _FinStatsViewState extends State<FinStatsView> {
       opacity: dim ? 0.45 : 1,
       child: Container(
         key: ValueKey('acc-${a.id}'),
-        margin: const EdgeInsets.only(bottom: 8),
+        constraints: const BoxConstraints(minHeight: 56),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
         child: Material(
           color: Colors.transparent,
@@ -521,7 +525,7 @@ class _FinStatsViewState extends State<FinStatsView> {
                   ),
                   const SizedBox(width: 10),
                   Text('${net > 0 ? '+' : ''}${uah(net)}',
-                      style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w700)),
+                      style: TextStyle(color: c, fontSize: 15, fontWeight: FontWeight.w600)),
                 ]));
           }(),
     ];
