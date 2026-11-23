@@ -35,6 +35,41 @@ void main() {
     expect(y.buckets.map((b) => b.label), ['2022', '2023', '2024', '2025', '2026']);
   });
 
+  test('роки: вікно стоїть, поки вибір не дійде до краю, і лише тоді зсувається', () {
+    final first = DateTime(2017, 3, 1);
+    FinWindow at(int year, int? start) => finWindow(
+        FinPeriodSel(period: FinPeriod.year, anchor: DateTime(year, 1, 1)),
+        now: now, earliest: first, start: start);
+    // найновіше вікно 2022-2026; обрали 2025 - 2026 нікуди не зникає
+    var w = at(2025, null);
+    expect(w.buckets.map((b) => b.label), ['2022', '2023', '2024', '2025', '2026']);
+    expect(w.selected, 3);
+    w = at(2023, w.start);
+    expect(w.buckets.first.label, '2022');
+    // вибір дійшов до лівого краю - з'являється рік раніше
+    w = at(2022, w.start);
+    expect(w.buckets.map((b) => b.label), ['2021', '2022', '2023', '2024', '2025']);
+    expect(w.selected, 1);
+    // на межі даних вікно далі не їде
+    w = at(2017, w.start);
+    expect(w.buckets.first.label, '2017');
+    expect(w.selected, 0);
+    // назад до правого краю: вікно зсувається так, щоб праворуч був ще один рік
+    w = at(2021, w.start);
+    w = at(2022, w.start);
+    w = at(2025, w.start);
+    expect(w.buckets.last.label, '2026');
+    expect(w.selected, 3);
+  });
+
+  test('finWindowStart: найновіше за замовчуванням, межі даних', () {
+    expect(finWindowStart(null, 9, 5, 10), 5);
+    expect(finWindowStart(5, 6, 5, 10), 5);
+    expect(finWindowStart(5, 5, 5, 10), 4);
+    expect(finWindowStart(0, 0, 5, 10), 0);
+    expect(finWindowStart(null, 2, 5, 3), 0);
+  });
+
   test('власний період: тижні, а вибраної точки немає', () {
     final s = FinPeriodSel(period: FinPeriod.month, anchor: DateTime(2026, 11, 1))
       ..setCustom(DateTime(2026, 11, 1), DateTime(2026, 11, 30));
