@@ -29,13 +29,17 @@ class FinPeriodCard extends StatelessWidget {
 
   /// Які вкладки показати (за замовчуванням усі).
   final List<FinPeriod> periods;
+
+  /// Чи є куди гортати назад (стрілка ‹ згасає, коли раніше даних немає).
+  final bool canGoBack;
   const FinPeriodCard(
       {super.key,
       required this.sel,
       required this.onSelect,
       required this.onShift,
       required this.onCustomTap,
-      this.periods = FinPeriod.values});
+      this.periods = FinPeriod.values,
+      this.canGoBack = true});
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +79,12 @@ class FinPeriodCard extends StatelessWidget {
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           if (!custom)
             IconButton(
-                onPressed: () => onShift(-1),
+                onPressed: canGoBack ? () => onShift(-1) : null,
                 tooltip: tr.earlier,
-                icon: Icon(TablerIcons.chevron_left, color: AppColors.text)),
+                icon: Icon(TablerIcons.chevron_left,
+                    color: canGoBack
+                        ? AppColors.text
+                        : AppColors.textMuted.withValues(alpha: 0.35))),
           Flexible(
             child: GestureDetector(
               onTap: custom ? onCustomTap : null,

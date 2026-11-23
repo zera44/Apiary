@@ -54,7 +54,20 @@ class _FinStatsViewState extends State<FinStatsView> {
   bool _loaded = false;
   int _seq = 0;
 
+  /// Де стоїть вікно точок (тижні, роки); null - біля найновішого.
+  int? _start;
+
+  /// Найраніша дата з даними (межа гортання назад).
+  DateTime? _earliest;
+
   FinPeriodSel get _sel => widget.sel;
+
+  /// Вікно точок; його місце запам'ятовуємо, щоб воно зсувалося лише біля краю.
+  FinWindow _window() {
+    final w = finWindow(_sel, earliest: _earliest, start: _start);
+    _start = w.start;
+    return w;
+  }
 
   @override
   void initState() {
@@ -64,10 +77,11 @@ class _FinStatsViewState extends State<FinStatsView> {
 
   Future<void> _reload() async {
     final id = ++_seq;
-    final w = finWindow(_sel);
     final (f, t) = _sel.range;
     final repo = widget.repo;
-    final list = await repo.listFinEntries(from: w.from.isBefore(f) ? w.from : f, to: w.to.isAfter(t) ? w.to : t);
+    // усі записи: з них видно, наскільки далеко назад є дані
+    final list = await repo.listFinEntries(
+        from: DateTime(1970), to: DateTime(DateTime.now().year + 2));
     final accounts = await repo.listFinAccounts();
     final transfers = await repo.listFinTransfers(from: f, to: t);
     final cats = await repo.finCategoryMap();
@@ -75,6 +89,12 @@ class _FinStatsViewState extends State<FinStatsView> {
     if (!mounted || id != _seq) return;
     setState(() {
       _entries = list;
+      DateTime? first;
+      for (final e in list) {
+        if (e.cancelled || e.noStats) continue;
+        if (first == null || e.date.isBefore(first)) first = e.date;
+      }
+      _earliest = first;
       _accounts = accounts;
       _transfers = transfers;
       _cats = cats;
@@ -94,6 +114,7 @@ class _FinStatsViewState extends State<FinStatsView> {
       return;
     }
     _sel.select(p);
+    _start = null;
     _changed();
   }
 
@@ -109,6 +130,7 @@ class _FinStatsViewState extends State<FinStatsView> {
         load: (a, b) => widget.repo.listFinEntries(from: a, to: b));
     if (r == null || !mounted) return;
     _sel.setCustom(r.$1, r.$2);
+    _start = null;
     _changed();
   }
 
@@ -162,7 +184,7 @@ class _FinStatsViewState extends State<FinStatsView> {
     final (f, t) = _sel.range;
     final inPeriod = _entries.where((e) => !e.date.isBefore(f) && e.date.isBefore(t)).toList();
     final sum = FinSummary.of(inPeriod);
-    final w = finWindow(_sel);
+    final w = _window();
     final values = finSeries(
         _entries, w.buckets, _kind,
         where: _picked == null ? null : (e) => _key(e) == _picked!.id);
@@ -174,6 +196,7 @@ class _FinStatsViewState extends State<FinStatsView> {
           periods: const [FinPeriod.week, FinPeriod.month, FinPeriod.year, FinPeriod.custom],
           onSelect: _select,
           onShift: _shift,
+          canGoBack: _earliest == null || _sel.range.$1.isAfter(_earliest!),
           onCustomTap: _custom),
       const SizedBox(height: 12),
       FinSegment(
@@ -203,11 +226,11 @@ class _FinStatsViewState extends State<FinStatsView> {
   Widget _chartCard(FinWindow w, List<double> values, FinControlStats stats) {
     Widget item(Key k, String label, String v, CrossAxisAlignment a) => Expanded(
           child: Column(crossAxisAlignment: a, children: [
-            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
             const SizedBox(height: 2),
             Text(v,
                 key: k,
-                style: TextStyle(color: AppColors.text, fontSize: 16, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w600)),
           ]),
         );
     return Container(
@@ -374,7 +397,8 @@ class _FinStatsViewState extends State<FinStatsView> {
     final color = expense ? finColor('honey') : finColor('olive');
     return Container(
       key: ValueKey('stat-kind-${k.name}'),
-      margin: const EdgeInsets.only(bottom: 8),
+      constraints: const BoxConstraints(minHeight: 56),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
       child: Material(
         color: Colors.transparent,
@@ -382,7 +406,7 @@ class _FinStatsViewState extends State<FinStatsView> {
           borderRadius: BorderRadius.circular(16),
           onTap: () => _setKind(k),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
             child: Row(children: [
               Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
               const SizedBox(width: 12),
@@ -391,7 +415,9 @@ class _FinStatsViewState extends State<FinStatsView> {
                       style: TextStyle(color: AppColors.text, fontSize: 16))),
               Text(amount > 0 ? '${expense ? '−' : '+'}${uah(amount)}' : uah(0),
                   style: TextStyle(
-                      color: expense ? AppColors.text : finColor('olive'), fontSize: 16)),
+                      color: expense ? AppColors.text : finColor('olive'),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
             ]),
           ),
         ),
@@ -428,7 +454,8 @@ class _FinStatsViewState extends State<FinStatsView> {
       opacity: dim ? 0.45 : 1,
       child: Container(
         key: ValueKey('acc-${a.id}'),
-        margin: const EdgeInsets.only(bottom: 8),
+        constraints: const BoxConstraints(minHeight: 56),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
         child: Material(
           color: Colors.transparent,
@@ -498,7 +525,7 @@ class _FinStatsViewState extends State<FinStatsView> {
                   ),
                   const SizedBox(width: 10),
                   Text('${net > 0 ? '+' : ''}${uah(net)}',
-                      style: TextStyle(color: c, fontSize: 16, fontWeight: FontWeight.w700)),
+                      style: TextStyle(color: c, fontSize: 15, fontWeight: FontWeight.w600)),
                 ]));
           }(),
     ];
