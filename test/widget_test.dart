@@ -1027,7 +1027,7 @@ void main() {
     // у меню - «Продовжити» і під нею менша «Завершити»
     expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
         findsOneWidget);
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < 8; i++) {
       await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
@@ -1075,8 +1075,8 @@ void main() {
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
     for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
-        'час на вітер',
-        'спеціалізоване навчання', 'розмір шрифту, шаблони', 'поділитись ідеєю']) {
+        'час на вітер', 'Ведмедик і Пасічник',
+        'спеціалізоване навчання', 'початковий екран, шаблони', 'поділитись ідеєю']) {
       await tester.tap(find.text('Продовжити'));
       await settle(tester);
       expect(find.textContaining(t), findsOneWidget);

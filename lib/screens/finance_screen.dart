@@ -7,6 +7,7 @@ import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../logic/fin_period.dart';
+import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
 import '../ui/nav_drawer.dart';
@@ -535,7 +536,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   // усі п'ять вкладок завжди видно: на великому шрифті ряд трохи
   // зменшується, а не ховає «Період» за край
-  Widget _periodTabs() => Padding(
+  Widget _periodTabs() => TourTarget('fin-period', child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -560,7 +561,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             ),
         ]),
         ),
-      );
+      ));
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +610,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 icon: Icon(TablerIcons.chevron_right,
                     color: _canGoForward ? AppColors.text : AppColors.textMuted.withValues(alpha: 0.35))),
         ]),
-        SizedBox(
+        TourTarget('fin-donut', child: SizedBox(
           width: donut,
           height: donut,
           child: Stack(alignment: Alignment.center, children: [
@@ -640,7 +641,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               ]),
             ),
           ]),
-        ),
+        )),
       ]),
     );
     final rows = <Widget>[
@@ -714,18 +715,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(
+            TourTarget('fin-menu', child: TopBar(
               title: tr.finances,
               onBack: () => Navigator.pop(context),
               onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
+            )),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: FinSegment(
+              child: TourTarget('fin-segment', child: FinSegment(
                 labels: [tr.expenses, tr.income],
                 selected: _expense ? 0 : 1,
                 onChanged: (i) => setState(() => _kind = i == 0 ? kFinExpense : kFinIncome),
-              ),
+              )),
             ),
             Expanded(
               child: !_loaded
@@ -755,7 +756,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             // на планшеті - біля вмісту (він по центру), а не в кутку екрана
             right: 20 + math.max(0, (MediaQuery.sizeOf(context).width - kContentMaxWidth) / 2),
             bottom: 24,
-            child: Material(
+            child: TourTarget('fin-add', child: Material(
               color: const Color(0xFFFBC02D),
               shape: const CircleBorder(),
               elevation: 4,
@@ -769,7 +770,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       message: tr.finNewOperation, child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                 ),
               ),
-            ),
+            )),
           ),
           const Positioned.fill(child: ScreenFrame()),
         ]),

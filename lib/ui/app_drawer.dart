@@ -139,6 +139,10 @@ List<List<InlineSpan>> get kDrawerTour => [
     TextSpan(text: tr.tourQr),
   ],
   [
+    GuideBubble.highlight(tr.aiAssistant),
+    TextSpan(text: tr.tourAssistant),
+  ],
+  [
     GuideBubble.highlight(tr.tutorial),
     TextSpan(text: tr.tourTutorial),
   ],
@@ -150,6 +154,19 @@ List<List<InlineSpan>> get kDrawerTour => [
     GuideBubble.highlight(tr.feedbackTitle),
     TextSpan(text: tr.tourFeedback),
   ],
+];
+
+/// Малюнок пасічника для кожного пункту огляду меню (порядок - як у [kDrawerTour]).
+const kTourPics = [
+  kLessonBeekeeper,
+  kLessonBeekeeperLaptop,
+  'assets/guide/beekeeper_scheming.webp',
+  kLessonBeekeeperNewspaper,
+  'assets/guide/beekeeper_blueprint.webp',
+  kLessonBear,
+  kLessonBeekeeperProfessor,
+  kLessonBeekeeperTemplates,
+  kLessonBeekeeperMailbox,
 ];
 
 class _AppDrawerState extends State<AppDrawer> {
@@ -189,7 +206,7 @@ class _AppDrawerState extends State<AppDrawer> {
       ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
       // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
       : widget.hint != null
-          ? HoneyRing(on: i == 5, radius: 12, child: child)
+          ? HoneyRing(on: i == 6, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -220,7 +237,8 @@ class _AppDrawerState extends State<AppDrawer> {
         // пасічник із газетою говорить хмаркою (як у навчанні) і стоїть
         // руками на кнопці «Продовжити»
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Image.asset(kLessonBeekeeperNewspaper, height: 84, filterQuality: FilterQuality.medium),
+          Image.asset(hint == null ? kTourPics[_step % kTourPics.length] : kLessonBeekeeperProfessor,
+              height: 84, filterQuality: FilterQuality.medium),
           const SizedBox(width: 6),
           Expanded(
             child: Container(
@@ -300,19 +318,18 @@ class _AppDrawerState extends State<AppDrawer> {
           _t(4, _item(context, 'qr', tr.qrCode,
               widget.tour ? () {} : () => _toggle('qr'),
               trailing: _chev('qr'))),
-          // ШІ-помічник: відкрити розмову (поза екскурсією)
-          if (!widget.tour && widget.hint == null)
-            _item(context, '', tr.aiAssistant, () {
-              nav.pop(); // закрити меню
-              unawaited(AssistantChatScreen.open(nav, repo));
-            }, iconData: TablerIcons.robot),
-          _t(5, _item(context, '', tr.tutorial,
+          // ШІ-помічник: відкрити розмову (в огляді меню - лише показати)
+          _t(5, _item(context, '', tr.aiAssistant, widget.tour ? () {} : () {
+            nav.pop(); // закрити меню
+            unawaited(AssistantChatScreen.open(nav, repo));
+          }, iconData: TablerIcons.robot)),
+          _t(6, _item(context, '', tr.tutorial,
               widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
               iconData: TablerIcons.school)),
-          _t(6, _item(context, '', tr.settingsTitle,
+          _t(7, _item(context, '', tr.settingsTitle,
               widget.tour ? () {} : () => _toggle('set'),
               iconData: TablerIcons.settings, trailing: _chev('set'))),
-          _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
+          _t(8, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
             nav.pop(); // закрити меню
             openFeedback(nav, repo);
           })),

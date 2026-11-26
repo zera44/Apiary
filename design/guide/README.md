@@ -49,3 +49,13 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 - beekeeper_scheming.webp — «задумує» назву параметра;
 - beekeeper_surprised.webp — здивований (нова група, фінал уроку);
 - beekeeper_thinking.webp — замислений (назва групи «Обходи»);
+
+Огляд меню навігації (lib/ui/app_drawer.dart, `kTourPics`): кожен пункт - свій малюнок
+у репліці внизу меню: Мої пасіки - beekeeper_on_toggle, Склад - beekeeper_laptop, Фінанси -
+beekeeper_scheming, Історія - beekeeper_newspaper, QR-код - beekeeper_blueprint, ШІ-помічник -
+bear_on_toggle, Навчання - beekeeper_professor, Налаштування - beekeeper_templates, Зворотний
+зв'язок - beekeeper_mailbox_bee.
+
+Уроки-екскурсії (lib/tutorial/guided_lessons.dart) беруть малюнки з `LessonPic`
+(lib/tutorial/lesson.dart): laptop, newspaper, professor, templates, stung, honeyFrame,
+mailbox, bear, robot - у тому ж масштабі, що й пасічник на перемикачі.

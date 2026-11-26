@@ -4,6 +4,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../services/excel_export.dart';
+import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
 import '../ui/theme.dart';
@@ -90,13 +91,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
         child: Row(children: [
           Expanded(
-            child: PillButton(
+            child: TourTarget('history-filter', child: PillButton(
               text: scoped ? tr.objectOf(scopeName ?? '') : tr.allObjects,
               bg: scoped ? AppColors.accent : AppColors.darkBtn,
               fg: scoped ? Colors.white : AppColors.text,
               height: 38,
               onPressed: _pickFilter,
-            ),
+            )),
           ),
           if (scoped) ...[
             const SizedBox(width: 8),
@@ -160,14 +161,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             Padding(
               padding: const EdgeInsets.all(12),
-              child: PillButton(
+              child: TourTarget('history-export', child: PillButton(
                 text: tr.exportExcel,
                 bg: AppColors.accent,
                 height: 48,
                 radius: 16,
                 width: double.infinity,
                 onPressed: _export,
-              ),
+              )),
             ),
           ]),
           const Positioned.fill(child: ScreenFrame()),

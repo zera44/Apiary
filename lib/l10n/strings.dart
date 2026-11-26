@@ -372,6 +372,11 @@ abstract class AppStrings {
   String get tourTutorial;
   String get tourSettings;
   String get tourFeedback;
+  String get tourAssistant;
+  List<String> get guideStock;
+  List<String> get guideHistory;
+  List<String> get guideQr;
+  List<String> get guideFinance;
   String get gotIt;
   String get continueAction;
   String get navMenu;

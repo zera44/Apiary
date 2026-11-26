@@ -369,7 +369,5 @@ List<LessonDef> get kLessons => [
     setup: _templatesSetup,
     checkpoint: _templatesCheckpoint,
   ),
-  LessonDef(id: 'qr', title: tr.qrCode, image: 'assets/guide/beekeeper_professor.webp', soon: true),
-  LessonDef(id: 'stock', title: tr.stock, image: 'assets/guide/beekeeper_laptop.webp', soon: true),
-  LessonDef(id: 'history', title: tr.history, image: 'assets/guide/beekeeper_newspaper.webp', soon: true),
+  // QR-код, Склад, Історія, Фінанси - уроки-екскурсії (guided_lessons.dart)
 ];

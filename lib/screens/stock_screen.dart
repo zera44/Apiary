@@ -11,6 +11,7 @@ import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../logic/stock_format.dart';
 import '../services/stock_photos.dart';
+import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/nav_drawer.dart';
 import '../ui/first_hints.dart';
@@ -266,14 +267,17 @@ class _StockScreenState extends State<StockScreen> {
         },
       );
 
-  Widget _modeChip(String text, bool list) => ChoiceButton(
-        text: text,
-        selected: _invList == list,
-        onTap: () => setState(() => _invList = list),
+  Widget _modeChip(String text, bool list) => TourTarget(
+        list ? 'stock-mode-list' : 'stock-mode-one',
+        child: ChoiceButton(
+          text: text,
+          selected: _invList == list,
+          onTap: () => setState(() => _invList = list),
+        ),
       );
 
   Widget _tab(String text, StockOp op) => Expanded(
-        child: PillButton(
+        child: TourTarget('stock-tab-${op.name}', child: PillButton(
           text: text,
           bg: _op == op ? AppColors.accent : AppColors.darkBtn,
           fg: _op == op ? Colors.white : AppColors.text,
@@ -281,7 +285,7 @@ class _StockScreenState extends State<StockScreen> {
           height: math.max(40, MediaQuery.textScalerOf(context).scale(13) * 1.1 * 2 + 10),
           fontSize: 13,
           onPressed: () => setState(() => _op = op),
-        ),
+        )),
       );
 
   @override
@@ -347,29 +351,29 @@ class _StockScreenState extends State<StockScreen> {
                                   childAspectRatio: 0.62,
                                 ),
                           itemCount: list.length,
-                          itemBuilder: (_, i) => _tile(list[i]),
+                          itemBuilder: (_, i) => TourTarget('stock-tile-$i', child: _tile(list[i], i)),
                         ),
               ),
             ),
             if (_op == StockOp.inventory && _invList && (list?.isNotEmpty ?? false))
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: PillButton(
+                child: TourTarget('stock-take-save', child: PillButton(
                   text: tr.stockTakeSave,
                   bg: AppColors.accent,
                   height: 48,
                   radius: 16,
                   width: double.infinity,
                   onPressed: _saveInventoryList,
-                ),
+                )),
               ),
             if (_op == StockOp.receive)
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: AddButton(
+                child: TourTarget('stock-add', child: AddButton(
                   text: tr.stockItemAdd,
                   onPressed: _add,
-                ),
+                )),
               ),
           ]),
           const Positioned.fill(child: ScreenFrame()),
@@ -379,7 +383,7 @@ class _StockScreenState extends State<StockScreen> {
   }
 
   /// Плитка: назва, фото (тап — змінити), залишок і кнопка дії вкладки.
-  Widget _tile(StockItem it) {
+  Widget _tile(StockItem it, [int i = -1]) {
     final qty = it.quantity == null ? '-' : '${formatAmount(it.quantity!)} ${it.unit}';
     final (text, color) = switch (_op) {
       StockOp.receive => (tr.stockIn, AppColors.addObject),
@@ -468,18 +472,18 @@ class _StockScreenState extends State<StockScreen> {
         // «Прихід» і «Списати» поруч — не треба шукати вкладку
         Row(children: [
           Expanded(
-            child: PillButton(
+            child: TourTarget('stock-in-$i', child: PillButton(
               text: text,
               bg: color,
               height: 36,
               radius: 12,
               fontSize: 13,
               onPressed: () => _move(it, _op),
-            ),
+            )),
           ),
           const SizedBox(width: 6),
           Expanded(
-            child: PillButton(
+            child: TourTarget('stock-out-$i', child: PillButton(
               text: tr.writeOff,
               bg: AppColors.danger,
               height: 36,
@@ -487,7 +491,7 @@ class _StockScreenState extends State<StockScreen> {
               fontSize: 13,
               // списати можна лише те, що є на складі
               onPressed: (it.quantity ?? 0) > 0 ? () => _move(it, StockOp.writeOff) : null,
-            ),
+            )),
           ),
         ])
       else
