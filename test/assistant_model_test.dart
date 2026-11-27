@@ -101,6 +101,34 @@ void main() {
       expect(const AssistantException(AssistantFailure.timeout).retryable, isTrue);
     });
 
+    test('збій сервера: у деталях код і ключ помилки, інших слів немає', () async {
+      Future<AssistantException> serverFail(http.Response r) async {
+        final m = RemoteAssistantModel(Uri.parse('https://x.test/f'), ({bool force = false}) async => 't',
+            client: MockClient((_) async => r));
+        try {
+          await m.send([
+            {'role': 'user', 'content': 'x'}
+          ]);
+        } on AssistantException catch (e) {
+          return e;
+        }
+        throw StateError('очікувалась помилка');
+      }
+
+      final up = await serverFail(http.Response('{"error":"upstream"}', 502));
+      expect(up.detail, '502 upstream');
+      expect(up.stored, 'server:502 upstream');
+      final nokey = await serverFail(http.Response('{"error":"not_configured"}', 500));
+      expect(nokey.detail, '500 not_configured');
+      // тіло не за правилами (довільний текст, не JSON) - лише код
+      expect((await serverFail(http.Response('Internal <html>', 500))).detail, '500');
+      expect((await serverFail(http.Response('{"error":"Secret sk-ant-123"}', 502))).detail, '502');
+      // не «server» - без деталей, збережено лише назву
+      final lim = await serverFail(http.Response('{"error":"daily_limit"}', 429));
+      expect(lim.detail, isNull);
+      expect(lim.stored, 'limit');
+    });
+
     test('повторювати можна лише зв\'язок і перевантаження', () {
       expect(const AssistantException(AssistantFailure.offline).retryable, isTrue);
       expect(const AssistantException(AssistantFailure.busy).retryable, isTrue);

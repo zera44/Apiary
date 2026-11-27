@@ -834,10 +834,14 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
     final failed = it.status == ChatStatus.failed;
     final waiting = it.status == ChatStatus.queued;
-    final error = switch (it.error) {
+    final code = it.error;
+    final error = switch (code) {
       'unauthorized' => tr.assistantUnauthorized,
       'limit' => tr.assistantLimit,
       'server' => tr.assistantServerError,
+      // «server:502 upstream» - з кодом, який відповів сервер
+      _ when code != null && code.startsWith('server:') =>
+        '${tr.assistantServerError} (${code.substring(7)})',
       'timeout' => tr.assistantTimedOut,
       _ => null,
     };
