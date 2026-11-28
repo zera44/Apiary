@@ -63,6 +63,12 @@ class ChatItem {
               lessonId: n['lesson'] as String?),
       ];
 
+  /// Файли історії параметрів, запропоновані кнопками «Зберегти» й «Поділитися»:
+  /// id параметрів у порядку аркушів.
+  List<String> get offeredExportIds => [
+        for (final e in (data['exports'] as List? ?? const [])) e['id'] as String,
+      ];
+
   /// Картка: що записати.
   PendingWrite? get card => !isCard
       ? null

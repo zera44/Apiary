@@ -367,14 +367,12 @@ abstract class AppStrings {
   String get tourApiaries;
   String get tourStock;
   String get tourFinances;
-  String get tourHistory;
   String get tourQr;
   String get tourTutorial;
   String get tourSettings;
   String get tourFeedback;
   String get tourAssistant;
   List<String> get guideStock;
-  List<String> get guideHistory;
   List<String> get guideQr;
   List<String> get guideFinance;
   String get gotIt;
@@ -498,6 +496,11 @@ abstract class AppStrings {
   String get nothingToExport;
   String paramHistoryEmpty(bool scoped);
   String get exportExcel;
+  String get assistantExportSave;
+  String get assistantExportShare;
+  String assistantExportFile(int sheets);
+  String get assistantExportEmpty;
+  String get receiptCaptured;
 
   // ---- QR-коди ----
   String get qrRegenTitle;

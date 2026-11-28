@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Directory, File;
+import 'dart:typed_data' show Uint8List;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -108,6 +109,9 @@ final String? title;
   /// Скільки тримати камеру над QR-кодом.
   static const qrHold = Duration(milliseconds: 1500);
 
+  /// Скільки показувати зроблений знімок чека (фіксація), перш ніж іти далі.
+  static const receiptHold = Duration(milliseconds: 1500);
+
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
 }
@@ -150,6 +154,9 @@ class _QrScanScreenState extends State<QrScanScreen> {
   int _quadMisses = 0;
   bool _analysing = false;
   bool _capturing = false;
+
+  /// Зроблений знімок чека: показується на екрані [QrScanScreen.receiptHold].
+  Uint8List? _frozen;
 
   // відлік 3-2-1 після «Зняти»: кнопки сховані, чек треба тримати нерухомо
   int? _countdown;
@@ -326,6 +333,10 @@ class _QrScanScreenState extends State<QrScanScreen> {
       if (!mounted || _done) return;
       _done = true;
       HapticFeedback.mediumImpact();
+      // фіксація: знімок лишається на екрані, щоб було видно, що вийшло
+      setState(() => _frozen = png.buffer.asUint8List());
+      await Future<void>.delayed(QrScanScreen.receiptHold);
+      if (!mounted) return;
       if (repo == null) {
         Navigator.of(context).pop(file.path);
         return;
@@ -683,6 +694,37 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ),
               ),
             ),
+            if (_frozen != null)
+              Positioned.fill(
+                key: const ValueKey('receipt-frozen'),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  builder: (_, v, child) => Opacity(opacity: v, child: child),
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: Stack(fit: StackFit.expand, children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 72, 20, 96),
+                        child: Image.memory(_frozen!, fit: BoxFit.contain, gaplessPlayback: true),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 40,
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(TablerIcons.circle_check, color: AppColors.accent, size: 26),
+                          const SizedBox(width: 8),
+                          Text(tr.receiptCaptured,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
             if (_countdown != null && _countdown! > 0)
               Positioned.fill(
                 child: GestureDetector(

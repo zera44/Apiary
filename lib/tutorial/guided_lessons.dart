@@ -4,7 +4,6 @@ import '../data/finance.dart';
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
 import '../screens/finance_screen.dart';
-import '../screens/history_hub_screen.dart';
 import '../screens/qr_generate_screen.dart';
 import '../screens/stock_screen.dart';
 import 'guided.dart';
@@ -43,40 +42,6 @@ Future<void> _seedStock(Repository repo) async {
   await repo.receiveStock(frames, 40, total: 1600);
   final sugar = await repo.addStockItem('Цукор', 'кг');
   await repo.receiveStock(sugar, 12, total: 480);
-}
-
-// ---------------------------------------------------------------------------
-// Історія
-// ---------------------------------------------------------------------------
-
-List<GuideStep> _historySteps() {
-  final t = tr.guideHistory;
-  return [
-    GuideStep.free(_t(t, 0), waitFor: 'history-filter', target: 'history-param-0', pic: LessonPic.newspaper),
-    GuideStep.look(_t(t, 1), target: 'history-filter', pic: LessonPic.newspaper),
-    GuideStep.look(_t(t, 2), target: 'history-export', pic: LessonPic.newspaper),
-    GuideStep.free(_t(t, 3), waitFor: 'history-report'),
-    GuideStep.look(_t(t, 4), target: 'history-report', pic: LessonPic.scheming),
-    GuideStep.tap('history-tab-stock', _t(t, 5), pic: LessonPic.newspaper),
-    GuideStep.tap('history-item-0', _t(t, 6), pic: LessonPic.newspaper),
-    GuideStep.done(_t(t, 7), target: 'history-cancel', pic: LessonPic.stung),
-  ];
-}
-
-/// Записи огляду (кількість вуличок) у кожного вулика.
-Future<void> _seedHistory(Repository repo) async {
-  final apiary = await seedGuideApiary(repo);
-  await _seedStock(repo);
-  String? frames;
-  for (final p in await repo.listParameters()) {
-    if (p.name == Repository.kBeeFramesName) frames = p.id;
-  }
-  if (frames == null) return;
-  var n = 7;
-  for (final e in await repo.listElements(apiary.id)) {
-    if (!e.isHive) continue;
-    await repo.addParameterRecord(frames, '${n++}', e.entity);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,16 +112,6 @@ List<GuidedLesson> get kGuidedLessons => [
         start: (repo) async {
           await _seedStock(repo);
           return StockScreen(repo: repo);
-        },
-      ),
-      GuidedLesson(
-        id: 'history',
-        title: () => tr.history,
-        image: 'assets/guide/beekeeper_newspaper.webp',
-        steps: _historySteps,
-        start: (repo) async {
-          await _seedHistory(repo);
-          return HistoryHubScreen(repo: repo, apiary: (await repo.listApiaries()).first);
         },
       ),
       GuidedLesson(

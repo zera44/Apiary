@@ -119,9 +119,10 @@ void main() {
     expect(find.text('Шаблони'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Фінанси'), 200,
         scrollable: find.byType(Scrollable).first);
-    for (final t in ['QR-код', 'Склад', 'Історія', 'Фінанси']) {
+    for (final t in ['QR-код', 'Склад', 'Фінанси']) {
       expect(find.text(t), findsOneWidget);
     }
+    expect(find.text('Історія'), findsNothing); // розділ «Історія» сховано
     expect(find.text('скоро'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -189,34 +190,6 @@ void main() {
     expect(find.text('Базові поняття'), findsOneWidget);
     // справжній склад не змінився
     expect((await tester.runAsync(() => repo.listStockItems()))!, isEmpty);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('урок «Історія»: параметр, звіт, склад і скасування', (tester) async {
-    await phone(tester);
-    await openTutorial(tester);
-    await startGuided(tester, 'Історія');
-    expect(find.textContaining('Тут уся історія пасіки'), findsOneWidget, reason: said(tester));
-    await tester.tap(find.text('Кількість вуличок з бджолами'));
-    await settle(tester, 8);
-    expect(find.textContaining('Кожен запис - з датою'), findsOneWidget, reason: said(tester));
-    await next(tester);
-    await next(tester);
-    expect(find.textContaining('Повертайся'), findsOneWidget, reason: said(tester));
-    await tester.tap(backArrow());
-    await settle(tester, 8);
-    expect(find.textContaining('уся пасіка однією таблицею'), findsOneWidget, reason: said(tester));
-    await next(tester);
-    await tester.tap(find.text('Склад'));
-    await settle(tester);
-    expect(step(tester), 6, reason: said(tester));
-    await tester.tap(find.text('Апістан'));
-    await settle(tester, 8);
-    expect(step(tester), 7, reason: said(tester));
-    expect(find.textContaining('Хрестик біля запису'), findsOneWidget, reason: said(tester));
-    await tester.tap(find.text('Завершити'));
-    await settle(tester, 8);
-    expect(find.byType(GuideHost), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

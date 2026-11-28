@@ -1027,7 +1027,7 @@ void main() {
     // у меню - «Продовжити» і під нею менша «Завершити»
     expect(find.descendant(of: find.byType(AppDrawer), matching: find.text('Завершити')),
         findsOneWidget);
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 7; i++) {
       await tester.tap(find.descendant(of: find.byType(AppDrawer), matching: find.text('Продовжити')));
       await settle(tester);
     }
@@ -1070,15 +1070,15 @@ void main() {
   testWidgets('меню: розділи вище розкритого лишаються, нижчі - в «Інших функціях»', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(wrap(NavDrawer(repo: repo, current: NavSection.history)));
+    await tester.pumpWidget(wrap(NavDrawer(repo: repo, current: NavSection.stock)));
     await settle(tester);
     await tester.tap(find.text('QR-код'));
     await settle(tester);
-    for (final t in ['Мої пасіки', 'Склад', 'Фінанси', 'Історія', 'QR-код', 'Сканувати', 'Інші функції']) {
+    for (final t in ['Мої пасіки', 'Склад', 'Фінанси', 'QR-код', 'Сканувати', 'Інші функції']) {
       expect(find.text(t), findsOneWidget, reason: t);
     }
-    for (final t in ['ШІ-помічник', 'Навчання', 'Налаштування', 'Зворотний зв\'язок']) {
-      expect(find.text(t), findsNothing, reason: t);
+    for (final t in ['Історія', 'ШІ-помічник', 'Навчання', 'Налаштування', 'Зворотний зв\'язок']) {
+      expect(find.text(t), findsNothing, reason: t); // «Історія» сховано зовсім
     }
     // під «Іншими функціями» - що там сховано
     expect(find.text('ШІ-помічник · Навчання · Налаштування · Зворотний зв\'язок'), findsOneWidget);
@@ -1089,7 +1089,7 @@ void main() {
     // «Налаштування» - останній, крім «Зворотного зв'язку»: решта вся на місці
     await tester.tap(find.text('Налаштування'));
     await settle(tester);
-    for (final t in ['Фінанси', 'Історія', 'QR-код', 'ШІ-помічник', 'Навчання', 'Загальне']) {
+    for (final t in ['Фінанси', 'QR-код', 'ШІ-помічник', 'Навчання', 'Загальне']) {
       expect(find.text(t), findsOneWidget, reason: t);
     }
     expect(find.text('Зворотний зв\'язок'), findsOneWidget); // сірим під «Інші функції»
@@ -1105,7 +1105,7 @@ void main() {
     await tester.tap(find.text('QR-код'));
     await settle(tester);
     expect(find.text('Фінанси'), findsOneWidget);
-    expect(find.text('Історія'), findsOneWidget);
+    expect(find.text('Історія'), findsNothing);
     expect(find.text('Генерувати'), findsOneWidget);
     expect(find.text('Навчання'), findsNothing);
     expect(find.text('Інші функції'), findsOneWidget);
@@ -1119,7 +1119,7 @@ void main() {
     await tester.pumpWidget(wrap(AppDrawer(repo: repo, currentApiary: a, tour: true)));
     await settle(tester);
     expect(find.textContaining('усі твої пасіки в одному місці'), findsOneWidget);
-    for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки', 'зміни показників',
+    for (final t in ['рамки, корми, ліки', 'витрати й доходи пасіки',
         'час на вітер', 'Ведмедик і Пасічник',
         'спеціалізоване навчання', 'початковий екран, шаблони', 'поділитись ідеєю']) {
       await tester.tap(find.text('Продовжити'));
@@ -1953,15 +1953,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('P14: «Звіт по пасіці» у меню карти й у налаштуваннях пасіки', (tester) async {
+  testWidgets('P14: «Звіт по пасіці» - у налаштуваннях пасіки (розділ «Історія» сховано)', (tester) async {
     final a = (await tester.runAsync(() => repo.listApiaries()))!.first;
     await pumpApp(tester, wrap(MapScreen(repo: repo, apiary: a)));
     await settle(tester);
-    await tester.tap(find.byTooltip('Меню'));
+    await tester.tap(find.byTooltip('Налаштування пасіки'));
     await settle(tester);
-    await tester.tap(find.text('Історія')); // звіт — усередині «Історії»
-    await settle(tester);
-    await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.text('Звіт по пасіці (Excel)'));
     await settle(tester);
     expect(find.text('Поділитися'), findsOneWidget);
@@ -2269,8 +2266,8 @@ void main() {
     expect(find.text('Синхронізація'), findsOneWidget);
     expect(find.text(tr.syncDisabled), findsOneWidget);
     expect(find.textContaining('з\'являться тут згодом'), findsNothing);
-    // «Історія» вище «Налаштувань» - лишається в меню (правило «Інших функцій»)
-    expect(find.descendant(of: find.byType(NavDrawer), matching: find.text('Історія')), findsOneWidget);
+    // «Фінанси» вище «Налаштувань» - лишаються в меню (правило «Інших функцій»)
+    expect(find.descendant(of: find.byType(NavDrawer), matching: find.text('Фінанси')), findsOneWidget);
     await tester.pump(const Duration(seconds: 1)); // меню закрилося
     await tester.tap(find.descendant(of: find.byType(NavTopBar), matching: find.text(SettingsPart.data.label)));
     await settle(tester);

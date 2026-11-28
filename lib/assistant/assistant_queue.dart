@@ -216,7 +216,11 @@ class AssistantQueue {
           unread: !chatVisible,
           replyTo: item.id,
           model: reply.model,
-          extra: {'routed_from': ?reply.routedFrom, 'escalated_from': ?reply.escalatedFrom},
+          extra: {
+            'routed_from': ?reply.routedFrom,
+            'escalated_from': ?reply.escalatedFrom,
+            if (tools.offeredExports.isNotEmpty) 'exports': tools.offeredExports,
+          },
           inConv: item.conv);
       // аватар і заголовок - того, хто щойно відповів (система могла перемкнути)
       if (reply.model != null) {

@@ -32,7 +32,6 @@ const kAssistantScreens = [
   'stock',
   'finance',
   'finance_add',
-  'history',
   'scanner',
   'receipt',
   'settings',
@@ -143,6 +142,11 @@ class AssistantTools {
   /// Запропоновані (не відкриті) екрани - для кнопок «Відкрити …».
   final List<NavTarget> offeredNav = [];
 
+  /// Запропоновані файли історії параметрів - кнопки «Зберегти» й
+  /// «Поділитися» (файл збирається, коли людина торкнулась кнопки).
+  /// Кожен елемент: `{'id': ..., 'name': ...}` параметра.
+  final List<Map<String, String>> offeredExports = [];
+
   String? _tool;
   Map<String, dynamic>? _input;
 
@@ -172,6 +176,8 @@ class AssistantTools {
     'apiaries_list',
     'find_hives',
     'hive_history',
+    'list_parameters',
+    'export_parameter_history',
     'stock_list',
     'finance_summary',
     'search_books',
@@ -195,6 +201,8 @@ class AssistantTools {
         'apiaries_list' => await _apiariesList(),
         'find_hives' => await _findHives(input),
         'hive_history' => await _hiveHistory(input),
+        'list_parameters' => await _listParameters(),
+        'export_parameter_history' => await _exportParameterHistory(input),
         'stock_list' => await _stockList(input),
         'finance_summary' => await _financeSummary(input),
         'search_books' => await _searchBooks(input),
@@ -546,6 +554,82 @@ class AssistantTools {
       'notes': [
         for (final n in notes.take(20)) {'date': _date(at(n.date)), 'text': n.text},
       ],
+    };
+  }
+
+  /// Параметри, що відстежуються, і скільки за ними записів: таблиця для
+  /// людини й id для [_exportParameterHistory].
+  Future<List<({Parameter parameter, int records, double? last})>> _trackedParameters() async {
+    final stats = await repo.db.rawQuery(
+      'SELECT parameter_id, COUNT(*) AS n, MAX(created_at) AS last '
+      'FROM parameter_records GROUP BY parameter_id',
+    );
+    final byId = {
+      for (final r in stats)
+        r['parameter_id'] as String: (n: (r['n'] as num).toInt(), last: (r['last'] as num?)?.toDouble()),
+    };
+    return [
+      for (final p in await repo.listParameters())
+        // службовий «visit_left» людині не показується (як у hive_history)
+        if (p.baseKey != 'visit_left')
+          (parameter: p, records: byId[p.id]?.n ?? 0, last: byId[p.id]?.last),
+    ];
+  }
+
+  Future<Map<String, dynamic>> _listParameters() async {
+    final all = await _trackedParameters();
+    DateTime at(double s) => DateTime.fromMicrosecondsSinceEpoch((s * 1e6).round());
+    return {
+      'parameters': [
+        for (final t in all)
+          {
+            'id': t.parameter.id,
+            'name': t.parameter.name,
+            if (t.parameter.unit != null && t.parameter.unit!.isNotEmpty) 'unit': t.parameter.unit,
+            'records': t.records,
+            if (t.last != null) 'last': _date(at(t.last!)),
+          },
+      ],
+      'note': 'Покажи людині таблицею. Вивантажити історію - export_parameter_history',
+    };
+  }
+
+  /// Файл з історією: усіх параметрів ([all]) або названих. Сам файл не
+  /// збирається тут - людина торкається «Зберегти» чи «Поділитися».
+  Future<Map<String, dynamic>> _exportParameterHistory(Map<String, dynamic> input) async {
+    final tracked = (await _trackedParameters()).where((t) => t.records > 0).toList();
+    if (tracked.isEmpty) throw const _Bad('Записів у параметрах ще немає - вивантажувати нічого');
+    final picked = <({Parameter parameter, int records, double? last})>[];
+    if (input['all'] == true) {
+      picked.addAll(tracked);
+    } else {
+      final wanted = [for (final w in (input['parameters'] as List? ?? const [])) _s({'v': w}, 'v')]
+        ..removeWhere((w) => w.isEmpty);
+      if (wanted.isEmpty) {
+        throw const _Bad('Вкажи parameters (id або назви з list_parameters) або all: true');
+      }
+      for (final w in wanted) {
+        final n = _norm(w);
+        var m = tracked.where((t) => t.parameter.id == w || _norm(t.parameter.name) == n).toList();
+        if (m.isEmpty) m = tracked.where((t) => _norm(t.parameter.name).contains(n)).toList();
+        if (m.isEmpty) {
+          throw _Bad('Параметр «$w» не знайдено або в ньому немає записів. Є: '
+              '${tracked.map((t) => t.parameter.name).join(', ')}');
+        }
+        if (m.length > 1) {
+          throw _Bad('«$w» - кілька параметрів: ${m.map((t) => '${t.parameter.name} (${t.parameter.id})').join(', ')}. Уточни');
+        }
+        if (!picked.any((t) => t.parameter.id == m.first.parameter.id)) picked.add(m.first);
+      }
+    }
+    for (final t in picked) {
+      offeredExports.add({'id': t.parameter.id, 'name': t.parameter.name});
+    }
+    return {
+      'status': 'запропоновано',
+      'parameters': [for (final t in picked) t.parameter.name],
+      'records': picked.fold<int>(0, (a, t) => a + t.records),
+      'note': 'Людина побачить кнопки «Зберегти» і «Поділитися» під твоєю відповіддю',
     };
   }
 

@@ -730,9 +730,6 @@ class AppStringsEn extends AppStrings {
   String get tourFinances =>
       ' - apiary expenses and income: enter them by hand or photograph a receipt.';
   @override
-  String get tourHistory =>
-      ' - curious how the readings or the stock changed? This is the place.';
-  @override
   String get tourQr =>
       ' - a round without records is time wasted. Scan the code on a hive, and link a new one to a hive.';
   @override
@@ -754,17 +751,6 @@ class AppStringsEn extends AppStrings {
         '[“As a list”] - all items at once, no extra windows.',
         'Enter what you actually have and [“Save stocktaking”]. I\'ll fix the differences, and the record stays in history.',
         'One more thing: an expense in “Finances” with a stock category records the purchase by itself. Cancel it in one place - it\'s cancelled in the other too.',
-      ];
-  @override
-  List<String> get guideHistory => const [
-        'This is the whole apiary history. “Characteristics” - how hive readings changed. {Tap a parameter}, for example the bee frame count.',
-        'Every record has a date and a hive. Interested in one hive? [“All objects”] - and pick it.',
-        'Need a spreadsheet? [“Export to Excel”].',
-        'Go {back} to the history.',
-        '[“Apiary report (Excel)”] - the whole apiary in one table, ready to send.',
-        'The [“Stock”] tab - purchases, write-offs and stocktakes for every item.',
-        'Tap an [item].',
-        'Made a mistake? The cross next to a record [cancels it]: the balance returns, and the record stays marked “cancelled”.',
       ];
   @override
   List<String> get guideQr => const [
@@ -832,7 +818,7 @@ class AppStringsEn extends AppStrings {
       'Hold "Finances" - and a new expense opens right away.',
       'Stick QR labels on - and a hive opens from the camera in a second.',
       'Set a minimum stock level - I will remind you when it is time to buy more.',
-      'The apiary report in Excel is in the ☰ menu → "History".',
+      'The apiary report in Excel is in the apiary settings: tap the apiary name on the map.',
       'The round interval is set once for the whole apiary - tap the apiary name on the map.',
       'If a hive needs a different round interval, tap "Days until the round" on its panel.',
       ];
@@ -1036,6 +1022,19 @@ class AppStringsEn extends AppStrings {
       'No records for this parameter${scoped ? ' for this object' : ''} yet.\nRecords appear after the "Inspect" button on the map.';
   @override
   String get exportExcel => 'Export to Excel';
+  @override
+  String get assistantExportSave => 'Save';
+  @override
+  String get assistantExportShare => 'Share';
+  @override
+  String assistantExportFile(int sheets) {
+    final n = sheets;
+    return 'Excel file: ${n == 1 ? "1 sheet" : "$n sheets"}';
+  }
+  @override
+  String get assistantExportEmpty => 'Nothing to export';
+  @override
+  String get receiptCaptured => 'Receipt captured';
 
   // ---- QR-коди ----
   @override

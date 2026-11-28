@@ -23,7 +23,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 
 const HIVE_ID = str('id вулика з find_hives (e:… або g:…) або його назва, напр. «5»');
 
-export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'stock_list', 'finance_summary', 'search_books', 'convert_units'];
+export const READ_TOOLS = ['open_screen', 'apiaries_list', 'find_hives', 'hive_history', 'list_parameters', 'export_parameter_history', 'stock_list', 'finance_summary', 'search_books', 'convert_units'];
 export const WRITE_TOOLS = ['record_inspection', 'stock_receive', 'stock_issue', 'add_finance_entry', 'create_reminder'];
 
 export const TOOLS: ToolDef[] = [
@@ -60,6 +60,25 @@ export const TOOLS: ToolDef[] = [
     name: 'hive_history',
     description: 'Історія вулика за останні days днів (типово 30): значення параметрів і нотатки.',
     input_schema: obj({ hive_id: HIVE_ID, days: { type: 'integer', minimum: 1, maximum: 365 } }, ['hive_id']),
+  },
+  {
+    name: 'list_parameters',
+    description:
+      'Які параметри відстежує людина: id, назва, одиниця, кількість записів, дата останнього запису. ' +
+      'Покажи відповідь таблицею. Якщо людина хоче вивантажити історію - спершу покажи цю таблицю й запитай, ' +
+      'що саме: усі чи конкретні параметри.',
+    input_schema: obj({}),
+  },
+  {
+    name: 'export_parameter_history',
+    description:
+      'Запропонувати файл Excel з історією параметрів (аркуш на параметр): усіх (all: true) або названих ' +
+      '(parameters - id чи назви з list_parameters). Файл не створюється одразу: людина побачить під твоєю ' +
+      'відповіддю кнопки «Зберегти» і «Поділитися». Скажи їй про це коротко, без пересказу самих записів.',
+    input_schema: obj({
+      parameters: { type: 'array', items: { type: 'string' }, description: 'id або назви параметрів' },
+      all: { type: 'boolean', description: 'true - усі параметри, що мають записи' },
+    }),
   },
   {
     name: 'stock_list',

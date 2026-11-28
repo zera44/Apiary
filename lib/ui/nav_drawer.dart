@@ -320,7 +320,6 @@ class _NavDrawerState extends State<NavDrawer> {
                       (key: 'apiaries', label: tr.myApiaries, widget: item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries')),
                       (key: 'stock', label: tr.stock, widget: item(NavSection.stock, tr.stock, icon: 'box')),
                       (key: 'fin', label: tr.finances, widget: item(NavSection.finances, tr.finances, data: TablerIcons.wallet)),
-                      (key: 'history', label: tr.history, widget: item(NavSection.history, tr.history, icon: 'history')),
                       (key: 'qr', label: tr.qrCode, widget: item(NavSection.qr, tr.qrCode, icon: 'qr')),
                       (key: 'ai', label: tr.aiAssistant, widget: item(NavSection.assistant, tr.aiAssistant, data: TablerIcons.robot)),
                       (key: 'tutorial', label: tr.tutorial, widget: item(NavSection.tutorial, tr.tutorial, data: TablerIcons.school)),

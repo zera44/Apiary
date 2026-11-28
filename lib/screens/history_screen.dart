@@ -3,7 +3,6 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../data/models.dart';
 import '../data/repository.dart';
-import '../services/excel_export.dart';
 import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/date_picker.dart';
@@ -113,21 +112,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ]),
       );
 
-  Future<void> _export() async {
-    final list = rows ?? const <ParameterRecord>[];
-    if (list.isEmpty) {
-      await showInfo(context, tr.nothingToExport);
-      return;
-    }
-    final result = await exportHistoryToExcel(
-      parameter: widget.parameter,
-      rows: list,
-      scopeName: scopeName,
-    );
-    if (!mounted) return;
-    await showInfo(context, result);
-  }
-
   @override
   Widget build(BuildContext context) {
     final title = tr.historyOf(widget.parameter.nameWithUnit);
@@ -158,17 +142,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (_, i) => _row(list[i]),
                         ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: TourTarget('history-export', child: PillButton(
-                text: tr.exportExcel,
-                bg: AppColors.accent,
-                height: 48,
-                radius: 16,
-                width: double.infinity,
-                onPressed: _export,
-              )),
             ),
           ]),
           const Positioned.fill(child: ScreenFrame()),

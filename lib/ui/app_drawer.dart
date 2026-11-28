@@ -8,7 +8,6 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../screens/apiary_list_screen.dart';
 import '../screens/feedback_chat_screen.dart';
-import '../screens/history_hub_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/qr_scan_screen.dart';
 import '../screens/settings_screen.dart';
@@ -132,10 +131,6 @@ List<List<InlineSpan>> get kDrawerTour => [
     TextSpan(text: tr.tourFinances),
   ],
   [
-    GuideBubble.highlight(tr.history),
-    TextSpan(text: tr.tourHistory),
-  ],
-  [
     GuideBubble.highlight(tr.qrCode),
     TextSpan(text: tr.tourQr),
   ],
@@ -162,7 +157,6 @@ const kTourPics = [
   kLessonBeekeeper,
   kLessonBeekeeperLaptop,
   'assets/guide/beekeeper_scheming.webp',
-  kLessonBeekeeperNewspaper,
   'assets/guide/beekeeper_blueprint.webp',
   kLessonBear,
   kLessonBeekeeperProfessor,
@@ -207,7 +201,7 @@ class _AppDrawerState extends State<AppDrawer> {
       ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
       // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
       : widget.hint != null
-          ? HoneyRing(on: i == 6, radius: 12, child: child)
+          ? HoneyRing(on: i == 5, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -315,25 +309,22 @@ class _AppDrawerState extends State<AppDrawer> {
               (key: 'fin', label: tr.finances, widget: _t(2, _item(context, '', tr.finances,
                   widget.tour ? () {} : () => _toggle('fin'),
                   iconData: TablerIcons.wallet, trailing: _chev('fin')))),
-              // «Звіт по пасіці (Excel)» — усередині «Історії»
-              (key: 'history', label: tr.history, widget: _t(3, _item(context, 'history', tr.history,
-                  widget.tour ? () {} : () => _open(nav, HistoryHubScreen(repo: repo, apiary: currentApiary))))),
               // QR-код: тап розкриває Сканувати, Генерувати, Прив'язати
-              (key: 'qr', label: tr.qrCode, widget: _t(4, _item(context, 'qr', tr.qrCode,
+              (key: 'qr', label: tr.qrCode, widget: _t(3, _item(context, 'qr', tr.qrCode,
                   widget.tour ? () {} : () => _toggle('qr'),
                   trailing: _chev('qr')))),
               // ШІ-помічник: відкрити розмову (в огляді меню - лише показати)
-              (key: 'ai', label: tr.aiAssistant, widget: _t(5, _item(context, '', tr.aiAssistant, widget.tour ? () {} : () {
+              (key: 'ai', label: tr.aiAssistant, widget: _t(4, _item(context, '', tr.aiAssistant, widget.tour ? () {} : () {
                 nav.pop(); // закрити меню
                 unawaited(AssistantChatScreen.open(nav, repo));
               }, iconData: TablerIcons.robot))),
-              (key: 'tutorial', label: tr.tutorial, widget: _t(6, _item(context, '', tr.tutorial,
+              (key: 'tutorial', label: tr.tutorial, widget: _t(5, _item(context, '', tr.tutorial,
                   widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
                   iconData: TablerIcons.school))),
-              (key: 'set', label: tr.settingsTitle, widget: _t(7, _item(context, '', tr.settingsTitle,
+              (key: 'set', label: tr.settingsTitle, widget: _t(6, _item(context, '', tr.settingsTitle,
                   widget.tour ? () {} : () => _toggle('set'),
                   iconData: TablerIcons.settings, trailing: _chev('set')))),
-              (key: 'feedback', label: tr.feedbackTitle, widget: _t(8, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
+              (key: 'feedback', label: tr.feedbackTitle, widget: _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
                 nav.pop(); // закрити меню
                 openFeedback(nav, repo);
               }))),

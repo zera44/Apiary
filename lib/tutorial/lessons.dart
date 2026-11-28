@@ -369,5 +369,5 @@ List<LessonDef> get kLessons => [
     setup: _templatesSetup,
     checkpoint: _templatesCheckpoint,
   ),
-  // QR-код, Склад, Історія, Фінанси - уроки-екскурсії (guided_lessons.dart)
+  // QR-код, Склад, Фінанси - уроки-екскурсії (guided_lessons.dart)
 ];

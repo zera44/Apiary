@@ -32,7 +32,7 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
   ноутбуком, крок «Склад» в огляді меню навігації.
 
 - beekeeper_bust_8_newspaper.pdf (→ assets/guide/beekeeper_newspaper.webp) — урок: пасічник із
-  газетою, крок «Історія» в огляді меню навігації.
+  газетою (раніше - крок «Історія» в огляді меню; розділ «Історія» сховано).
 
 - beekeeper_bust_9_templates.pdf (→ assets/guide/beekeeper_templates.webp) — урок: пасічник із
   шаблонами, крок «Налаштування» в огляді меню навігації.
@@ -52,7 +52,7 @@ hive_mailbox_empty.pdf (→ hive_mailbox_empty.webp) — коли пошти н�
 
 Огляд меню навігації (lib/ui/app_drawer.dart, `kTourPics`): кожен пункт - свій малюнок
 у репліці внизу меню: Мої пасіки - beekeeper_on_toggle, Склад - beekeeper_laptop, Фінанси -
-beekeeper_scheming, Історія - beekeeper_newspaper, QR-код - beekeeper_blueprint, ШІ-помічник -
+beekeeper_scheming, QR-код - beekeeper_blueprint, ШІ-помічник -
 bear_on_toggle, Навчання - beekeeper_professor, Налаштування - beekeeper_templates, Зворотний
 зв'язок - beekeeper_mailbox_bee.
 

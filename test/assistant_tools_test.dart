@@ -10,6 +10,8 @@ import 'package:apiary/data/models.dart';
 import 'package:apiary/data/notes.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/data/user_reminders.dart';
+import 'package:apiary/services/excel_export.dart';
+import 'package:excel/excel.dart' show Excel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -126,6 +128,63 @@ void main() {
     test('find_hives - невідома пасіка чи неправильний due - помилка для моделі', () async {
       expect(await bad(tools(), 'find_hives', {'apiary': 'Степова'}), contains('Біля хати'));
       await bad(tools(), 'find_hives', {'due': 'soon'});
+    });
+
+    test('list_parameters - що відстежується і скільки записів', () async {
+      await repo.addParameterRecord(force, '9', EntityRef.element(hive5));
+      await repo.addParameterRecord(force, '12', EntityRef.element(hive7));
+      await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
+      final list = (await ok(tools(), 'list_parameters'))['parameters'] as List;
+      final byName = {for (final p in list) p['name']: p};
+      expect(byName['Сила']['records'], 2);
+      expect(byName['Сила']['unit'], 'вуличок');
+      expect(byName['Сила']['id'], force);
+      expect(byName['Вага']['records'], 0);
+      expect(byName['Вага'].containsKey('last'), isFalse);
+    });
+
+    test('export_parameter_history - пропонує файл: усі чи названі, порожні пропускає', () async {
+      await repo.addParameterRecord(force, '9', EntityRef.element(hive5));
+      final weight = await repo.addParameter('Вага', unit: 'кг', dataType: DataTypes.float_);
+      final t1 = tools();
+      final all = await ok(t1, 'export_parameter_history', {'all': true});
+      expect(all['status'], 'запропоновано');
+      final ids = [for (final e in t1.offeredExports) e['id']];
+      expect(ids, contains(force));
+      expect(ids, isNot(contains(weight))); // без записів - нема що вивантажувати
+
+      final t2 = tools();
+      final one = await ok(t2, 'export_parameter_history', {'parameters': ['сила']});
+      expect(one['parameters'], ['Сила']);
+      expect(t2.offeredExports, [
+        {'id': force, 'name': 'Сила'}
+      ]);
+      // той самий параметр двічі - один аркуш
+      final t3 = tools();
+      await ok(t3, 'export_parameter_history', {'parameters': [force, 'Сила']});
+      expect(t3.offeredExports.length, 1);
+    });
+
+    test('export_parameter_history - помилки для моделі', () async {
+      await repo.addParameterRecord(force, '9', EntityRef.element(hive5));
+      expect(await bad(tools(), 'export_parameter_history', {'parameters': ['Температура']}),
+          contains('не знайдено'));
+      expect(await bad(tools(), 'export_parameter_history', {}), contains('all'));
+    });
+
+    test('книга з кількома параметрами - аркуш на параметр, назви не повторюються', () async {
+      await repo.addParameterRecord(force, '9', EntityRef.element(hive5));
+      final twin = await repo.addParameter('Сила', unit: 'кг', dataType: DataTypes.float_);
+      await repo.addParameterRecord(twin, '1,5', EntityRef.element(hive5));
+      final items = <({Parameter parameter, List<ParameterRecord> rows})>[];
+      for (final id in [force, twin]) {
+        items.add((parameter: (await repo.getParameter(id))!, rows: await repo.parameterHistory(id)));
+      }
+      final book = Excel.decodeBytes(buildHistoryWorkbookMulti(items));
+      expect(book.tables.keys.toList(), ['Сила', 'Сила 2']);
+      for (final sheet in book.tables.values) {
+        expect(sheet.maxRows, 2); // шапка + один запис
+      }
     });
 
     test('hive_history - значення й нотатки за період, вулик за назвою', () async {
