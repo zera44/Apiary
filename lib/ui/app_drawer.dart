@@ -119,6 +119,10 @@ class AppDrawer extends StatefulWidget {
 
 List<List<InlineSpan>> get kDrawerTour => [
   [
+    GuideBubble.highlight(tr.settingsTitle),
+    TextSpan(text: tr.tourSettings),
+  ],
+  [
     GuideBubble.highlight(tr.myApiaries),
     TextSpan(text: tr.tourApiaries),
   ],
@@ -143,10 +147,6 @@ List<List<InlineSpan>> get kDrawerTour => [
     TextSpan(text: tr.tourTutorial),
   ],
   [
-    GuideBubble.highlight(tr.settingsTitle),
-    TextSpan(text: tr.tourSettings),
-  ],
-  [
     GuideBubble.highlight(tr.feedbackTitle),
     TextSpan(text: tr.tourFeedback),
   ],
@@ -154,13 +154,13 @@ List<List<InlineSpan>> get kDrawerTour => [
 
 /// Малюнок пасічника для кожного пункту огляду меню (порядок - як у [kDrawerTour]).
 const kTourPics = [
+  kLessonBeekeeperTemplates,
   kLessonBeekeeper,
   kLessonBeekeeperLaptop,
   'assets/guide/beekeeper_scheming.webp',
   'assets/guide/beekeeper_blueprint.webp',
   kLessonBear,
   kLessonBeekeeperProfessor,
-  kLessonBeekeeperTemplates,
   kLessonBeekeeperMailbox,
 ];
 
@@ -201,7 +201,7 @@ class _AppDrawerState extends State<AppDrawer> {
       ? IgnorePointer(child: HoneyRing(on: _step == i, radius: 12, child: child))
       // одна репліка («пройди навчання») - підсвічено «Навчання», натискати можна
       : widget.hint != null
-          ? HoneyRing(on: i == 5, radius: 12, child: child)
+          ? HoneyRing(on: i == 6, radius: 12, child: child)
           : child;
 
   Widget _tourFooter() {
@@ -299,31 +299,31 @@ class _AppDrawerState extends State<AppDrawer> {
           ...navWithOther(
             open: widget.tour ? null : _openRow,
             items: [
-              (key: 'apiaries', label: tr.myApiaries, widget: _t(0, _item(context, 'apiaries', tr.myApiaries, widget.tour ? () {} : () {
+              (key: 'set', label: tr.settingsTitle, widget: _t(0, _item(context, '', tr.settingsTitle,
+                  widget.tour ? () {} : () => _toggle('set'),
+                  iconData: TablerIcons.settings, trailing: _chev('set')))),
+              (key: 'apiaries', label: tr.myApiaries, widget: _t(1, _item(context, 'apiaries', tr.myApiaries, widget.tour ? () {} : () {
                 nav.pop(); // закрити меню
                 nav.popUntil((r) => r.isFirst);
                 nav.push(MaterialPageRoute(builder: (_) => ApiaryListScreen(repo: repo)));
               }))),
-              (key: 'stock', label: tr.stock, widget: _t(1, _item(context, 'box', tr.stock,
+              (key: 'stock', label: tr.stock, widget: _t(2, _item(context, 'box', tr.stock,
                   widget.tour ? () {} : () => _open(nav, StockScreen(repo: repo))))),
-              (key: 'fin', label: tr.finances, widget: _t(2, _item(context, '', tr.finances,
+              (key: 'fin', label: tr.finances, widget: _t(3, _item(context, '', tr.finances,
                   widget.tour ? () {} : () => _toggle('fin'),
                   iconData: TablerIcons.wallet, trailing: _chev('fin')))),
               // QR-код: тап розкриває Сканувати, Генерувати, Прив'язати
-              (key: 'qr', label: tr.qrCode, widget: _t(3, _item(context, 'qr', tr.qrCode,
+              (key: 'qr', label: tr.qrCode, widget: _t(4, _item(context, 'qr', tr.qrCode,
                   widget.tour ? () {} : () => _toggle('qr'),
                   trailing: _chev('qr')))),
               // ШІ-помічник: відкрити розмову (в огляді меню - лише показати)
-              (key: 'ai', label: tr.aiAssistant, widget: _t(4, _item(context, '', tr.aiAssistant, widget.tour ? () {} : () {
+              (key: 'ai', label: tr.aiAssistant, widget: _t(5, _item(context, '', tr.aiAssistant, widget.tour ? () {} : () {
                 nav.pop(); // закрити меню
                 unawaited(AssistantChatScreen.open(nav, repo));
               }, iconData: TablerIcons.robot))),
-              (key: 'tutorial', label: tr.tutorial, widget: _t(5, _item(context, '', tr.tutorial,
+              (key: 'tutorial', label: tr.tutorial, widget: _t(6, _item(context, '', tr.tutorial,
                   widget.tour ? () {} : () => _open(nav, TutorialScreen(realRepo: repo)),
                   iconData: TablerIcons.school))),
-              (key: 'set', label: tr.settingsTitle, widget: _t(6, _item(context, '', tr.settingsTitle,
-                  widget.tour ? () {} : () => _toggle('set'),
-                  iconData: TablerIcons.settings, trailing: _chev('set')))),
               (key: 'feedback', label: tr.feedbackTitle, widget: _t(7, _item(context, 'feedback', tr.feedbackTitle, widget.tour ? () {} : () {
                 nav.pop(); // закрити меню
                 openFeedback(nav, repo);
