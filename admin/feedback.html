@@ -148,7 +148,7 @@
         <div><label class="f" for="b-source">Звідки й на яких правах (для всіх файлів)</label><input id="b-source" placeholder="власний примірник, дозвіл автора…"></div>
       </div>
       <div class="row one">
-        <div><label class="f" for="b-file">Файли: PDF (з текстом), TXT або MD. Можна вибрати кілька</label><input id="b-file" type="file" multiple accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown"></div>
+        <div><label class="f" for="b-file">Файли: PDF або DjVu (з текстом), TXT або MD. Можна вибрати кілька</label><input id="b-file" type="file" multiple accept=".pdf,.djvu,.djv,.txt,.md,application/pdf,image/vnd.djvu,image/x-djvu,text/plain,text/markdown"></div>
       </div>
       <div id="b-queue" hidden></div>
       <button id="b-go">Завантажити в базу</button>
@@ -331,6 +331,47 @@ async function loadPdfJs() {
   window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
 }
 
+const isDjvu = (f) => /\.djvu?$/i.test(f.name);
+
+// djvu.js (читання DjVu у браузері) - з jsDelivr, версія зафіксована; бере лише
+// текстовий шар файла (розпізнавання скану тут немає)
+const DJVUJS = 'https://cdn.jsdelivr.net/npm/djvujs-dist@0.5.4/library/src/index.js/+esm';
+async function loadDjVu() {
+  if (window.DjVuLib) return window.DjVuLib;
+  try { window.DjVuLib = (await import(DJVUJS)).default; }
+  catch (e) { throw new Error('Не вдалося завантажити читання DjVu (потрібен інтернет)'); }
+  return window.DjVuLib;
+}
+
+/** Сторінки DjVu: [{page, text}]; text - як у файлі (з переносами рядків), порожній, якщо тексту немає. */
+async function readDjVuPages(file, onPage) {
+  const DjVu = await loadDjVu();
+  let doc;
+  try { doc = new DjVu.Document(await file.arrayBuffer()); }
+  catch (e) { throw new Error('Не вдалося відкрити файл DjVu (можливо, він пошкоджений або це «розкладений» DjVu з кількох файлів)'); }
+  const total = doc.getPagesQuantity(), pages = [];
+  for (let i = 1; i <= total; i++) {
+    let text = '';
+    try { text = String((await doc.getPage(i)).getText() || ''); } catch (e) { /* сторінка без тексту */ }
+    pages.push({ page: i, text });
+    onPage(i, total);
+    if (i % 5 === 0) await new Promise((r) => setTimeout(r)); // щоб сторінка не «зависала»
+  }
+  return pages;
+}
+
+/** Як readPdf: текст сторінки склеєно в абзац. */
+async function readDjVu(file, onPage) {
+  return (await readDjVuPages(file, onPage)).map((p) => ({ page: p.page, text: p.text.replace(/-\s*\n\s*(?=\p{Ll})/gu, '').replace(/\s+/g, ' ').trim() }));
+}
+
+/** Рядки всіх сторінок DjVu для визначення назви й автора (розмірів шрифту немає). */
+async function readDjVuHead(file, onPage) {
+  const pages = (await readDjVuPages(file, onPage)).map((p) =>
+    p.text.split('\n').map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean).map((t) => ({ text: t, size: 1 })));
+  return { pages, meta: {} };
+}
+
 /** Сторінки PDF: [{page, text}]; text - рядки склеєно в абзац. */
 async function readPdf(file, onPage) {
   await loadPdfJs();
@@ -384,7 +425,7 @@ const CAP = '[А-ЯІЇЄҐA-Z]', LOW = "[а-яіїєґ'’a-z\\-]";
 // «Прізвище Ім'я (По батькові)», «І. І. Прізвище», «Прізвище І. І.»
 const NAME_RE = new RegExp('^(?:' + CAP + LOW + '+(?:\\s+' + CAP + LOW + '+){1,2}|' + CAP + '\\.\\s?(?:' + CAP + '\\.\\s?)?' + CAP + LOW + '+|' + CAP + LOW + '+\\s+' + CAP + '\\.\\s?(?:' + CAP + '\\.)?)$');
 const LABEL_RE = /^(назва|title|автор(?:и)?|author(?:s)?|упорядник(?:и)?|укладач(?:і)?|by|рік|year)\s*[:\-–—]\s*(.+)$/i;
-const BAD_TITLE = /^(untitled|microsoft word|без назви|document\d*|new document)|\.(docx?|pdf|indd|tex|txt|md)$|_|^[^\p{L}]*$/iu;
+const BAD_TITLE = /^(untitled|microsoft word|без назви|document\d*|new document)|\.(docx?|pdf|djvu?|indd|tex|txt|md)$|_|^[^\p{L}]*$/iu;
 
 /** Рік видання: найкращий збіг із позначкою «©», «видання», «Київ, 1985» тощо. */
 function findYear(lines) {
@@ -475,8 +516,8 @@ async function readTextHead(file, full = false) {
   return { pages: [full ? lines : lines.slice(0, 60)], meta: {} };
 }
 
-/** Увесь файл: рядки всіх сторінок PDF (або всі рядки TXT/MD) + метадані. */
-const readBookFull = (file, onPage) => (/\.pdf$/i.test(file.name) ? readPdfHead(file, Infinity, onPage) : readTextHead(file, true));
+/** Увесь файл: рядки всіх сторінок PDF чи DjVu (або всі рядки TXT/MD) + метадані. */
+const readBookFull = (file, onPage) => (/\.pdf$/i.test(file.name) ? readPdfHead(file, Infinity, onPage) : isDjvu(file) ? readDjVuHead(file, onPage) : readTextHead(file, true));
 
 // -- стислий витяг з усієї книги для ШІ: початок, колонтитули, зміст, вихідні дані, кінець
 const IMPRINT_RE = /©|\(c\)|copyright|isbn|удк|ббк|видавництв|видав|автор|укладач|упорядник|редактор|переклад|рецензент|author|published|publisher|translated/iu;
@@ -611,6 +652,10 @@ async function uploadBook(file, { title, author, year, source, url }, say, prog)
     pages = await readPdf(file, (i, n) => { say('Читаю сторінку ' + i + ' з ' + n + '…'); prog(i / n * 0.4); });
     const chars = pages.reduce((s, p) => s + p.text.length, 0);
     if (chars < pages.length * 40) throw new Error('У PDF майже немає тексту - схоже, це скан. Потрібен PDF з текстовим шаром (або спершу розпізнайте його).');
+  } else if (isDjvu(file)) {
+    pages = await readDjVu(file, (i, n) => { say('Читаю сторінку ' + i + ' з ' + n + '…'); prog(i / n * 0.4); });
+    const chars = pages.reduce((s, p) => s + p.text.length, 0);
+    if (chars < pages.length * 40) throw new Error('У DjVu майже немає тексту - схоже, це скан без текстового шару. Спершу розпізнайте його (OCR) і збережіть DjVu чи PDF із текстом.');
   } else {
     pages = [{ page: null, text: (await readText(file)).replace(/\r\n?/g, '\n') }];
   }
