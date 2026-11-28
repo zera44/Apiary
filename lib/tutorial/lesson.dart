@@ -14,7 +14,17 @@ enum LessonPic {
   blueprint('assets/guide/beekeeper_blueprint.webp', 506, 802, 247, 538.7, true),
   scheming('assets/guide/beekeeper_scheming.webp', 480, 802, 240, 538.7, true),
   surprised('assets/guide/beekeeper_surprised.webp', 606, 737, 273, 452.8, true),
-  thinking('assets/guide/beekeeper_thinking.webp', 669, 802, 240, 538.7, true);
+  thinking('assets/guide/beekeeper_thinking.webp', 669, 802, 240, 538.7, true),
+  // ще пасічники для уроків-екскурсій (у тому ж масштабі, голова - на тому самому місці)
+  laptop('assets/guide/beekeeper_laptop.webp', 500, 588, 250, 400, true),
+  newspaper('assets/guide/beekeeper_newspaper.webp', 500, 802, 250, 538.7, true),
+  professor('assets/guide/beekeeper_professor.webp', 500, 794, 250, 538.7, true),
+  templates('assets/guide/beekeeper_templates.webp', 500, 792, 250, 538.7, true),
+  stung('assets/guide/beekeeper_stung.webp', 500, 709, 250, 446.7, false),
+  honeyFrame('assets/guide/beekeeper_honey_frame.webp', 626, 976, 313, 640, true),
+  mailbox('assets/guide/beekeeper_mailbox_bee.webp', 500, 426, 200, 300, true),
+  bear('assets/guide/bear_on_toggle.webp', 500, 676, 250, 446.7, false),
+  robot('assets/guide/robot.webp', 476, 694, 238, 470, true);
 
   final String asset;
   final double w, h, headX, headUp;

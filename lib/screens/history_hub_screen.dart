@@ -4,6 +4,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../logic/stock_format.dart';
+import '../tutorial/guided.dart';
 import '../ui/apiary_report.dart';
 import '../ui/common.dart';
 import '../ui/nav_drawer.dart';
@@ -59,13 +60,13 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
   }
 
   Widget _tab(String text, bool stock) => Expanded(
-        child: PillButton(
+        child: TourTarget(stock ? 'history-tab-stock' : 'history-tab-char', child: PillButton(
           text: text,
           bg: _stock == stock ? AppColors.accent : AppColors.darkBtn,
           fg: _stock == stock ? Colors.white : AppColors.text,
           height: 40,
           onPressed: () => setState(() => _stock = stock),
-        ),
+        )),
       );
 
   @override
@@ -87,14 +88,14 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
             if (!_stock && widget.apiary != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                child: PillButton(
+                child: TourTarget('history-report', child: PillButton(
                   text: tr.apiaryReportExcel,
                   bg: AppColors.roundBtn,
                   fg: AppColors.text,
                   width: double.infinity,
                   height: 40,
                   onPressed: () => showApiaryReport(context, repo, widget.apiary!),
-                ),
+                )),
               ),
             Expanded(
               child: TabSwipe(
@@ -128,12 +129,12 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final p = list[i];
-        return _card(
+        return TourTarget('history-param-$i', child: _card(
           title: p.nameWithUnit,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (_) => HistoryScreen(repo: repo, parameter: p),
           )),
-        );
+        ));
       },
     );
   }
@@ -148,7 +149,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (_, i) {
         final it = list[i];
-        return _card(
+        return TourTarget('history-item-$i', child: _card(
           title: it.name,
           subtitle: it.quantity == null ? tr.noArrivalYet : tr.balance('${formatAmount(it.quantity!)} ${it.unit}'),
           leading: ClipRRect(
@@ -161,7 +162,7 @@ class _HistoryHubScreenState extends State<HistoryHubScreen> {
             ));
             await _load(); // залишок міг змінитись (скасування запису)
           },
-        );
+        ));
       },
     );
   }
@@ -314,14 +315,14 @@ class _StockHistoryScreenState extends State<StockHistoryScreen> {
         ),
         if (canCancel) ...[
           const SizedBox(width: 8),
-          CircleIconButton(
+          TourTarget('history-cancel', child: CircleIconButton(
             icon: 'close',
             bg: AppColors.neutralBtn,
             iconColor: AppColors.text,
             size: 30,
             tooltip: tr.recordCancel,
             onPressed: () => _cancel(r, title),
-          ),
+          )),
         ],
       ]),
     );

@@ -38,6 +38,36 @@ class AppColors {
   static final modeActive = _c(0.945, 0.482, 0.373);
 }
 
+/// Єдиний плавний перехід між екранами для всіх платформ: новий екран
+/// м'яко з'являється й трохи під'їжджає справа, попередній - ледь зсувається
+/// й тьмяніє. Криві без різких стартів і зупинок.
+class SmoothPageTransitionsBuilder extends PageTransitionsBuilder {
+  const SmoothPageTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 380);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 320);
+
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context,
+      Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+    final enter = animation.drive(CurveTween(curve: Curves.easeOutCubic));
+    final leave = secondaryAnimation.drive(CurveTween(curve: Curves.easeInOutCubic));
+    return SlideTransition(
+      position: leave.drive(Tween(begin: Offset.zero, end: const Offset(-0.04, 0))),
+      child: FadeTransition(
+        opacity: leave.drive(Tween(begin: 1.0, end: 0.9)),
+        child: SlideTransition(
+          position: enter.drive(Tween(begin: const Offset(0.07, 0), end: Offset.zero)),
+          child: FadeTransition(opacity: enter, child: child),
+        ),
+      ),
+    );
+  }
+}
+
 ThemeData buildAppTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.accent,
@@ -52,6 +82,9 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.bg,
+    pageTransitionsTheme: PageTransitionsTheme(builders: {
+      for (final p in TargetPlatform.values) p: const SmoothPageTransitionsBuilder(),
+    }),
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.popupBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),

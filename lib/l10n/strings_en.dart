@@ -730,17 +730,46 @@ class AppStringsEn extends AppStrings {
   String get tourFinances =>
       ' - apiary expenses and income: enter them by hand or photograph a receipt.';
   @override
-  String get tourHistory =>
-      ' - curious how the readings or the stock changed? This is the place.';
-  @override
   String get tourQr =>
       ' - a round without records is time wasted. Scan the code on a hive, and link a new one to a hive.';
   @override
   String get tourTutorial => ' - something unclear? Take a dedicated lesson.';
   @override
-  String get tourSettings => ' - language, text size, templates, account and backups.';
+  String get tourSettings => ' - language and text size, inspection reminders, start screen, templates, account and backups.';
   @override
   String get tourFeedback => ' - want to share an idea or give feedback? This is the place.';
+  @override
+  String get tourAssistant => ' - type or say what to do: “log an inspection of hive 5”, “how much went on sugar”. Bear and Beekeeper are here to help.';
+  @override
+  List<String> get guideStock => const [
+        'All your gear lives here: frames, feed, medicine. Each tile is an item with a photo and balance. The red [“Time to buy”] strip means stock hit its minimum.',
+        'Bought something new? [“+ Item”].',
+        'Enter a {name and unit}. Set a {minimum balance} and I\'ll remind you to restock. You can record a purchase right away. Then [“Save”].',
+        'The new item is in stock! Used medicine for treatment? [“Write off”].',
+        'Enter the amount and date - done. Next to it, [“Arrival”] - when you buy more.',
+        'Once a season, check the balances: the [“Stocktaking”] tab.',
+        '[“As a list”] - all items at once, no extra windows.',
+        'Enter what you actually have and [“Save stocktaking”]. I\'ll fix the differences, and the record stays in history.',
+        'One more thing: an expense in “Finances” with a stock category records the purchase by itself. Cancel it in one place - it\'s cancelled in the other too.',
+      ];
+  @override
+  List<String> get guideQr => const [
+        'An inspection without records is time wasted. A QR label on a hive opens its inspection in a second. [Red ring] - hive selected, no code yet; green - it already has one.',
+        'Tap a hive to remove or add it. Then [“Generate”].',
+        'Labels are ready! [“Print”] - straight to the printer, or “Save PDF” and print later.',
+        'Stick the labels on the hives. Then menu ☰ → “QR code” → [“Link”]: scan a label and tap the hive on the map. A green ring means done.',
+        'During inspection - [“Scan”] in the “QR code” menu. Point the camera at a label - the inspection opens, and after “Save” the camera waits for the next hive.',
+      ];
+  @override
+  List<String> get guideFinance => const [
+        'These are the apiary finances. Switch between [“Expenses” and “Income”].',
+        'Period - [day, week, month, year] or your own. Arrows below it move back and forward.',
+        'The ring shows where the money went. Below it are categories: tap any to see its operations.',
+        'New expense or income - the yellow [“+”].',
+        'Enter the {amount}, pick a {category} and [“Record”]. Got a receipt? Switch to “From receipt” - take a photo and the items are recognised.',
+        'Accounts, transfers, monthly statistics and categories are in the [“≡ Finances”] menu.',
+        'Tip: long-press the “Finances” tile on the home screen to open a new expense with the keyboard already in the amount field.',
+      ];
   @override
   String get gotIt => 'Got it';
   @override
@@ -789,7 +818,7 @@ class AppStringsEn extends AppStrings {
       'Hold "Finances" - and a new expense opens right away.',
       'Stick QR labels on - and a hive opens from the camera in a second.',
       'Set a minimum stock level - I will remind you when it is time to buy more.',
-      'The apiary report in Excel is in the ☰ menu → "History".',
+      'The apiary report in Excel is in the apiary settings: tap the apiary name on the map.',
       'The round interval is set once for the whole apiary - tap the apiary name on the map.',
       'If a hive needs a different round interval, tap "Days until the round" on its panel.',
       ];
@@ -993,6 +1022,19 @@ class AppStringsEn extends AppStrings {
       'No records for this parameter${scoped ? ' for this object' : ''} yet.\nRecords appear after the "Inspect" button on the map.';
   @override
   String get exportExcel => 'Export to Excel';
+  @override
+  String get assistantExportSave => 'Save';
+  @override
+  String get assistantExportShare => 'Share';
+  @override
+  String assistantExportFile(int sheets) {
+    final n = sheets;
+    return 'Excel file: ${n == 1 ? "1 sheet" : "$n sheets"}';
+  }
+  @override
+  String get assistantExportEmpty => 'Nothing to export';
+  @override
+  String get receiptCaptured => 'Receipt captured';
 
   // ---- QR-коди ----
   @override

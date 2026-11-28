@@ -25,14 +25,17 @@ Future<String> exportHistoryToExcel({
   } catch (e) {
     return tr.fileBuildFailed('$e');
   }
+  return saveHistoryFile(bytes, historyFileName(parameter.name, scopeName, DateTime.now()));
+}
 
-  final fileName = historyFileName(parameter.name, scopeName, DateTime.now());
-
+/// Зберегти готовий файл історії: системний діалог «Зберегти як…», а коли
+/// він недоступний - власна тека застосунку. Повертає текст для людини.
+Future<String> saveHistoryFile(Uint8List bytes, String fileName) async {
   try {
     final uri = await FilePicker.saveFile(
       fileName: fileName,
       bytes: bytes,
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimeType: _xlsxMime,
       dialogTitle: tr.saveHistory,
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
@@ -58,6 +61,21 @@ Future<String> exportHistoryToExcel({
     } catch (e) {
       return tr.fileSaveFailed('$e');
     }
+  }
+}
+
+/// Поділитися файлом історії (месенджер, пошта, диск…). Повертає текст
+/// помилки або null.
+Future<String?> shareHistoryFile(Uint8List bytes, String fileName) async {
+  try {
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile.fromData(bytes, mimeType: _xlsxMime, name: fileName)],
+      fileNameOverrides: [fileName],
+      subject: tr.history,
+    ));
+    return null;
+  } catch (e) {
+    return tr.shareFailed('$e');
   }
 }
 
@@ -210,13 +228,41 @@ Uint8List buildApiaryWorkbook(ApiaryReport report) {
 Uint8List buildHistoryWorkbook({
   required Parameter parameter,
   required List<ParameterRecord> rows,
-}) {
-  final excel = Excel.createExcel();
-  final sheetName = safeSheetTitle(parameter.name);
-  final defaultName = excel.getDefaultSheet() ?? 'Sheet1';
-  excel.rename(defaultName, sheetName);
-  final sheet = excel[sheetName];
+}) =>
+    buildHistoryWorkbookMulti([(parameter: parameter, rows: rows)]);
 
+/// Одна книга з історією кількох параметрів: кожен - на своєму аркуші.
+Uint8List buildHistoryWorkbookMulti(
+    List<({Parameter parameter, List<ParameterRecord> rows})> items) {
+  final excel = Excel.createExcel();
+  final defaultName = excel.getDefaultSheet() ?? 'Sheet1';
+  final used = <String>{};
+  for (var i = 0; i < items.length; i++) {
+    final item = items[i];
+    final name = _uniqueSheetTitle(item.parameter.name, used);
+    if (i == 0) excel.rename(defaultName, name);
+    _fillHistorySheet(excel[name], item.parameter, item.rows);
+  }
+  final data = excel.encode();
+  if (data == null) throw StateError('encode() повернув null');
+  return Uint8List.fromList(data);
+}
+
+/// Назва аркуша, якої ще немає в книзі (Excel не приймає однакових, без
+/// огляду на регістр): «Вага», «Вага 2»…
+String _uniqueSheetTitle(String name, Set<String> used) {
+  final base = safeSheetTitle(name);
+  var title = base;
+  for (var n = 2; used.contains(title.toLowerCase()); n++) {
+    final suffix = ' $n';
+    final cut = base.length + suffix.length > 31 ? 31 - suffix.length : base.length;
+    title = '${base.substring(0, cut)}$suffix';
+  }
+  used.add(title.toLowerCase());
+  return title;
+}
+
+void _fillHistorySheet(Sheet sheet, Parameter parameter, List<ParameterRecord> rows) {
   sheet.appendRow([
     TextCellValue(tr.objectOrGroup),
     TextCellValue(parameter.nameWithUnit),
@@ -249,10 +295,12 @@ Uint8List buildHistoryWorkbook({
   sheet.setColumnWidth(0, 28);
   sheet.setColumnWidth(1, 22);
   sheet.setColumnWidth(2, 18);
+}
 
-  final data = excel.encode();
-  if (data == null) throw StateError('encode() повернув null');
-  return Uint8List.fromList(data);
+/// Назва файлу з історією кількох параметрів одразу.
+String historyMultiFileName(DateTime now) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  return 'istoriya_parametriv_${now.year}${two(now.month)}${two(now.day)}_${two(now.hour)}${two(now.minute)}${two(now.second)}.xlsx';
 }
 
 /// Клітинка значення за типом параметра: ціле/дробове число, дата або текст

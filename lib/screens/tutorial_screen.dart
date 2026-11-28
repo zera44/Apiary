@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import '../tutorial/lesson.dart';
+import '../tutorial/guided.dart';
+import '../tutorial/guided_lessons.dart';
 import '../tutorial/lessons.dart';
 import '../ui/common.dart';
 import '../ui/nav_drawer.dart';
@@ -214,6 +216,42 @@ class _TutorialScreenState extends State<TutorialScreen> {
     }
   }
 
+  /// Урок-екскурсія: пісочниця з прикладом даних, справжні екрани, пасічник
+  /// веде поверх них ([GuideHost]). Нічого з уроку в справжню базу не потрапляє.
+  Future<void> _startGuided(GuidedLesson def) async {
+    if (_opening) return;
+    setState(() => _opening = true);
+    Repository? sandbox;
+    try {
+      sandbox = await widget.openSandbox();
+      final first = await def.start(sandbox);
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+      final steps = def.steps();
+      var closed = false;
+      void close() {
+        if (closed) return;
+        closed = true;
+        nav.pop();
+      }
+
+      await nav.push(MaterialPageRoute<void>(
+        builder: (_) => GuideHost(
+          steps: steps,
+          first: first,
+          onExit: close,
+          onDone: () {
+            widget.realRepo?.setMeta('lesson_${def.id}_done', '1');
+            close();
+          },
+        ),
+      ));
+    } finally {
+      await sandbox?.db.close();
+      if (mounted) setState(() => _opening = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // після червоної пігулки: поки відкривається урок — той самий порожній
@@ -259,6 +297,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
                       image: def.image,
                       soon: def.soon,
                       onTap: _opening ? null : () => _startLesson(def),
+                    ),
+                  for (final g in kGuidedLessons)
+                    _LessonTile(
+                      title: g.title(),
+                      image: g.image,
+                      onTap: _opening ? null : () => _startGuided(g),
                     ),
                 ],
               ),

@@ -8,6 +8,7 @@ import '../data/repository.dart';
 import '../logic/hive_objects.dart';
 import '../logic/merge_layout.dart';
 import '../services/qr_labels.dart';
+import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/grid_view.dart';
 import '../ui/theme.dart';
@@ -225,11 +226,11 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
                 right: 0,
                 child: IgnorePointer(
                   child: Center(
-                    child: CapsuleLabel(
+                    child: TourTarget('qr-legend', child: CapsuleLabel(
                       elements.isEmpty
                           ? tr.qrNoHives
                           : tr.qrLegend(withCode, hives),
-                    ),
+                    )),
                   ),
                 ),
               ),
@@ -259,13 +260,13 @@ class _QrGenerateScreenState extends State<QrGenerateScreen> {
               const SizedBox(width: 10),
               Expanded(
                 flex: 2,
-                child: PillButton(
+                child: TourTarget('qr-generate', child: PillButton(
                   text: _busy ? tr.qrCreating : tr.qrGenerateN(selected.length),
                   bg: AppColors.accent,
                   height: 46,
                   fontSize: 14,
                   onPressed: _busy || selected.isEmpty ? null : _generate,
-                ),
+                )),
               ),
             ]),
           ),
@@ -378,13 +379,13 @@ class _QrLabelsScreenState extends State<QrLabelsScreen> {
               padding: const EdgeInsets.all(12),
               child: Row(children: [
                 Expanded(
-                  child: PillButton(
+                  child: TourTarget('qr-print', child: PillButton(
                     text: tr.print,
                     bg: AppColors.accent,
                     height: 48,
                     radius: 16,
                     onPressed: pngs == null || _saving ? null : _print,
-                  ),
+                  )),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

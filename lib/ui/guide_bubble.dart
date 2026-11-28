@@ -22,7 +22,7 @@ const kLessonBeekeeper = 'assets/guide/beekeeper_on_toggle.webp';
 const kLessonBeekeeperLeaning = 'assets/guide/beekeeper_on_toggle.webp';
 const kLessonLeaningHeight = 170.0;
 
-/// Помічник-ведмедик (покусаний, з рамкою) — урок, форма огляду.
+/// Пасічник із бджолами-пігулками - вибір «синя / червона пігулка».
 const kLessonBeekeeperPills = 'assets/guide/beekeeper_pills.webp';
 /// Покусаний пасічник по пояс - спирається на кнопку «Далі» в меню-огляді.
 const kLessonBeekeeperStung = 'assets/guide/beekeeper_stung.webp';

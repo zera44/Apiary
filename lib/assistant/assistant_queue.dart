@@ -216,7 +216,11 @@ class AssistantQueue {
           unread: !chatVisible,
           replyTo: item.id,
           model: reply.model,
-          extra: {'routed_from': ?reply.routedFrom, 'escalated_from': ?reply.escalatedFrom},
+          extra: {
+            'routed_from': ?reply.routedFrom,
+            'escalated_from': ?reply.escalatedFrom,
+            if (tools.offeredExports.isNotEmpty) 'exports': tools.offeredExports,
+          },
           inConv: item.conv);
       // аватар і заголовок - того, хто щойно відповів (система могла перемкнути)
       if (reply.model != null) {
@@ -250,12 +254,12 @@ class AssistantQueue {
           'queued': 1,
           'attempts': attempts,
           'next_try': _secs(now().add(backoff[(attempts - 1).clamp(0, backoff.length - 1)])),
-          'error': e.kind.name,
+          'error': e.stored,
         });
         await _scheduleBackground();
       } else {
         await store.update(item.id,
-            {'status': ChatStatus.failed, 'queued': 1, 'attempts': attempts, 'error': e.kind.name});
+            {'status': ChatStatus.failed, 'queued': 1, 'attempts': attempts, 'error': e.stored});
       }
       return true;
     }

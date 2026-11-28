@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:typed_data' show Uint8List;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:flutter/services.dart';
 
+import '../data/models.dart' show Parameter, ParameterRecord;
 import '../data/repository.dart';
 import '../l10n/l10n.dart';
+import '../services/excel_export.dart';
 import '../services/voice_input.dart';
 import '../ui/common.dart';
 import '../ui/guide_bubble.dart';
@@ -240,6 +243,38 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     }
     if (widget.queue.chatVisible) unawaited(widget.queue.markAllRead());
     if (grew) _toBottom();
+  }
+
+  /// Файл з історією параметрів [ids] (аркуш на параметр): зберегти чи
+  /// поділитися. Збирається тут, коли людина торкнулась кнопки, - з найсвіжіших даних.
+  Future<void> _exportHistory(List<String> ids, {required bool share}) async {
+    final items = <({Parameter parameter, List<ParameterRecord> rows})>[];
+    for (final id in ids) {
+      final p = await widget.repo.getParameter(id);
+      if (p == null || p.deleted) continue;
+      final rows = await widget.repo.parameterHistory(id);
+      if (rows.isNotEmpty) items.add((parameter: p, rows: rows));
+    }
+    if (!mounted) return;
+    void say(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(m)));
+    if (items.isEmpty) return say(tr.assistantExportEmpty);
+    final Uint8List bytes;
+    try {
+      bytes = buildHistoryWorkbookMulti(items);
+    } catch (e) {
+      return say(tr.fileBuildFailed('$e'));
+    }
+    final now = DateTime.now();
+    final name = items.length == 1
+        ? historyFileName(items.first.parameter.name, null, now)
+        : historyMultiFileName(now);
+    if (share) {
+      final err = await shareHistoryFile(bytes, name);
+      if (err != null && mounted) say(err);
+    } else {
+      final msg = await saveHistoryFile(bytes, name);
+      if (mounted) say(msg);
+    }
   }
 
   /// Торкнулися посилання у відповіді - відкрити екран (вулик, пасіку…).
@@ -792,6 +827,29 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             onPressed: () => _go(n),
           ),
         ),
+      if (it.offeredExportIds.isNotEmpty)
+        Padding(
+          key: ValueKey('assistant-export-${it.id}'),
+          padding: const EdgeInsets.only(left: 10, top: 4),
+          child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text(tr.assistantExportFile(it.offeredExportIds.length),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+            PillButton(
+              text: tr.assistantExportSave,
+              bg: AppColors.neutralBtn,
+              fg: AppColors.text,
+              height: 36,
+              onPressed: () => _exportHistory(it.offeredExportIds, share: false),
+            ),
+            PillButton(
+              text: tr.assistantExportShare,
+              bg: AppColors.neutralBtn,
+              fg: AppColors.text,
+              height: 36,
+              onPressed: () => _exportHistory(it.offeredExportIds, share: true),
+            ),
+          ]),
+        ),
       if (it.data['escalated_from'] != null)
         Padding(
           key: ValueKey('assistant-escalated-${it.id}'),
@@ -834,10 +892,14 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final muted = TextStyle(color: AppColors.textMuted, fontSize: 12);
     final failed = it.status == ChatStatus.failed;
     final waiting = it.status == ChatStatus.queued;
-    final error = switch (it.error) {
+    final code = it.error;
+    final error = switch (code) {
       'unauthorized' => tr.assistantUnauthorized,
       'limit' => tr.assistantLimit,
       'server' => tr.assistantServerError,
+      // «server:502 upstream» - з кодом, який відповів сервер
+      _ when code != null && code.startsWith('server:') =>
+        '${tr.assistantServerError} (${code.substring(7)})',
       'timeout' => tr.assistantTimedOut,
       _ => null,
     };

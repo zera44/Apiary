@@ -30,6 +30,7 @@ class FakeModel implements AssistantModel {
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
     sent.add(jsonDecode(jsonEncode(messages)).cast<Map<String, dynamic>>());
     final next = script.removeAt(0);
+    if (next is AssistantException) throw next;
     if (next is AssistantFailure) throw AssistantException(next);
     return next as ModelTurn;
   }
@@ -135,6 +136,16 @@ void main() {
     expect(m.sent.length, AssistantQueue.maxAttempts);
     await q.retry(it.id);
     expect(await statuses(), ['user:sent:Питання', 'assistant::Нарешті']);
+  });
+
+  test('збій сервера з кодом - код зберігається в повідомленні, без повторів', () async {
+    final m = FakeModel([const AssistantException(AssistantFailure.server, detail: '502 upstream')]);
+    final q = queue(m);
+    await q.submit('Питання');
+    final it = (await store.items()).single;
+    expect(it.status, ChatStatus.failed);
+    expect(it.error, 'server:502 upstream');
+    expect(m.sent.length, 1);
   });
 
   test('сервер не встиг - спроби лічаться, «не надіслано» замість вічного очікування', () async {

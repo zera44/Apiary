@@ -71,7 +71,15 @@ enum AssistantFailure {
 
 class AssistantException implements Exception {
   final AssistantFailure kind;
-  const AssistantException(this.kind);
+
+  /// Що відповів сервер («502 upstream»): показується поруч із повідомленням
+  /// про збій, щоб причину було видно без журналу сервера.
+  final String? detail;
+  const AssistantException(this.kind, {this.detail});
+
+  /// Що зберігається в повідомленні чату: назва збою, а для «server» ще й
+  /// код сервера (`server:502 upstream`).
+  String get stored => kind == AssistantFailure.server && detail != null ? 'server:$detail' : kind.name;
 
   /// Чи варто повторити пізніше (черга).
   bool get retryable => kind == AssistantFailure.offline ||
@@ -200,7 +208,20 @@ class RemoteAssistantModel implements AssistantModel, BookSearch {
     if (r.statusCode == 200) {
       return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     }
-    throw AssistantException(_failureFor(r.statusCode));
+    throw _exceptionFor(r);
+  }
+
+  /// Помилка за відповіддю сервера: збій і (для «server») код з ключем
+  /// помилки з тіла, напр. «502 upstream» (лише латиниця й «_», без тексту розмови).
+  static AssistantException _exceptionFor(http.Response r) {
+    final kind = _failureFor(r.statusCode);
+    if (kind != AssistantFailure.server) return AssistantException(kind);
+    var key = '';
+    try {
+      final e = (jsonDecode(utf8.decode(r.bodyBytes)) as Map)['error'];
+      if (e is String && RegExp(r'^[a-z_]{1,30}$').hasMatch(e)) key = ' $e';
+    } catch (_) {}
+    return AssistantException(kind, detail: '${r.statusCode}$key');
   }
 
   /// Що означає відповідь сервера з помилкою.
@@ -218,7 +239,7 @@ class RemoteAssistantModel implements AssistantModel, BookSearch {
   Future<ModelTurn> send(List<Map<String, dynamic>> messages) async {
     final extra = await options?.call() ?? const <String, String>{};
     final r = await _post({'messages': messages, ...extra}, timeout);
-    if (r.statusCode != 200) throw AssistantException(_failureFor(r.statusCode));
+    if (r.statusCode != 200) throw _exceptionFor(r);
     final j = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return ModelTurn(
       [

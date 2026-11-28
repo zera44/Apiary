@@ -284,25 +284,6 @@ class _NavDrawerState extends State<NavDrawer> {
 
     final open = _open;
 
-    // «⋯ Інші функції» (іконка «Інше»): ховає підрозділи й показує всі розділи
-    Widget _otherFunctions() => Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AppColors.textMuted.withValues(alpha: 0.25)),
-        ),
-      ),
-      child: ListTile(
-        leading: Icon(TablerIcons.dots, color: AppColors.textMuted, size: 28),
-        title: Text(
-          tr.navOtherFunctions,
-          style: TextStyle(color: AppColors.textMuted, fontSize: 17),
-        ),
-        trailing: Icon(TablerIcons.chevron_down, color: AppColors.textMuted),
-        onTap: () => setState(() => _open = null),
-      ),
-    );
-
     return Drawer(
       backgroundColor: AppColors.card,
       child: SafeArea(
@@ -328,70 +309,37 @@ class _NavDrawerState extends State<NavDrawer> {
               child: ListView(
                 padding: const EdgeInsets.only(top: 8),
                 children: [
-                  item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries'),
-                  item(NavSection.stock, tr.stock, icon: 'box'),
-                  if (open == null) ...[
-                    item(
-                      NavSection.finances,
-                      tr.finances,
-                      data: TablerIcons.wallet,
-                    ),
-                    item(NavSection.history, tr.history, icon: 'history'),
-                    item(NavSection.qr, tr.qrCode, icon: 'qr'),
-                    item(
-                      NavSection.assistant,
-                      tr.aiAssistant,
-                      data: TablerIcons.robot,
-                    ),
-                    item(
-                      NavSection.tutorial,
-                      tr.tutorial,
-                      data: TablerIcons.school,
-                    ),
-                    item(
-                      NavSection.settings,
-                      tr.settingsTitle,
-                      data: TablerIcons.settings,
-                    ),
-                    item(
-                      NavSection.feedback,
-                      tr.feedbackTitle,
-                      icon: 'feedback',
-                    ),
-                  ] else ...[
-                    // розкритий розділ: його підрозділи, решта розділів - за «Інші функції»
-                    if (open == NavSection.finances) ...[
-                      item(
-                        NavSection.finances,
-                        tr.finances,
-                        data: TablerIcons.wallet,
-                      ),
-                      sub(FinSection.home, TablerIcons.chart_donut, tr.finHome),
-                      sub(
-                        FinSection.accounts,
-                        TablerIcons.building_bank,
-                        tr.finAccounts,
-                      ),
-                      sub(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
-                      sub(
-                        FinSection.categories,
-                        TablerIcons.list,
-                        tr.finCategories,
-                      ),
-                      sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
-                    ] else if (open == NavSection.qr) ...[
-                      item(NavSection.qr, tr.qrCode, icon: 'qr'),
-                      for (final a in qrActions(context, repo)) actionSub(a),
-                    ] else ...[
-                      item(
-                        NavSection.settings,
-                        tr.settingsTitle,
-                        data: TablerIcons.settings,
-                      ),
-                      for (final p in SettingsPart.values) setSub(p),
+                  ...navWithOther(
+                    open: switch (open) {
+                      NavSection.finances => 'fin',
+                      NavSection.qr => 'qr',
+                      NavSection.settings => 'set',
+                      _ => null,
+                    },
+                    items: [
+                      (key: 'apiaries', label: tr.myApiaries, widget: item(NavSection.apiaries, tr.myApiaries, icon: 'apiaries')),
+                      (key: 'stock', label: tr.stock, widget: item(NavSection.stock, tr.stock, icon: 'box')),
+                      (key: 'fin', label: tr.finances, widget: item(NavSection.finances, tr.finances, data: TablerIcons.wallet)),
+                      (key: 'qr', label: tr.qrCode, widget: item(NavSection.qr, tr.qrCode, icon: 'qr')),
+                      (key: 'ai', label: tr.aiAssistant, widget: item(NavSection.assistant, tr.aiAssistant, data: TablerIcons.robot)),
+                      (key: 'tutorial', label: tr.tutorial, widget: item(NavSection.tutorial, tr.tutorial, data: TablerIcons.school)),
+                      (key: 'set', label: tr.settingsTitle, widget: item(NavSection.settings, tr.settingsTitle, data: TablerIcons.settings)),
+                      (key: 'feedback', label: tr.feedbackTitle, widget: item(NavSection.feedback, tr.feedbackTitle, icon: 'feedback')),
                     ],
-                    _otherFunctions(),
-                  ],
+                    subs: switch (open) {
+                      NavSection.finances => [
+                          sub(FinSection.home, TablerIcons.chart_donut, tr.finHome),
+                          sub(FinSection.accounts, TablerIcons.building_bank, tr.finAccounts),
+                          sub(FinSection.stats, TablerIcons.chart_bar, tr.finStats),
+                          sub(FinSection.categories, TablerIcons.list, tr.finCategories),
+                          sub(FinSection.ops, TablerIcons.receipt, tr.finOps),
+                        ],
+                      NavSection.qr => [for (final a in qrActions(context, repo)) actionSub(a)],
+                      NavSection.settings => [for (final p in SettingsPart.values) setSub(p)],
+                      _ => const <Widget>[],
+                    },
+                    onOther: () => setState(() => _open = null),
+                  ),
                 ],
               ),
             ),
@@ -400,6 +348,55 @@ class _NavDrawerState extends State<NavDrawer> {
       ),
     );
   }
+}
+
+/// Пункт меню навігації для [navWithOther]: ключ, назва (для списку
+/// схованих) і сам рядок.
+typedef NavRow = ({String key, String label, Widget widget});
+
+/// Правило меню навігації: коли розділ розкрито ([open]), розділи ВИЩЕ нього
+/// лишаються на своїх місцях, під ним - його підрозділи [subs], а розділи
+/// НИЖЧЕ ховаються в «Інші функції» (під рядком - сірим, що саме там).
+/// Тап по «Інших функціях» ([onOther]) згортає розділ - знову видно все меню.
+List<Widget> navWithOther({
+  required String? open,
+  required List<NavRow> items,
+  required List<Widget> subs,
+  required VoidCallback onOther,
+}) {
+  final at = open == null ? -1 : items.indexWhere((r) => r.key == open);
+  if (at < 0) return [for (final r in items) r.widget];
+  final hidden = items.sublist(at + 1);
+  return [
+    for (final r in items.take(at + 1)) r.widget,
+    ...subs,
+    if (hidden.isNotEmpty) ...[
+      Container(
+        margin: const EdgeInsets.only(top: 6),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: AppColors.textMuted.withValues(alpha: 0.25)),
+          ),
+        ),
+        child: ListTile(
+          leading: Icon(TablerIcons.dots, color: AppColors.textMuted, size: 28),
+          title: Text(
+            tr.navOtherFunctions,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 17),
+          ),
+          trailing: Icon(TablerIcons.chevron_down, color: AppColors.textMuted),
+          onTap: onOther,
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(72, 0, 20, 12),
+        child: Text(
+          [for (final r in hidden) r.label].join(' · '),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12.5, height: 1.35),
+        ),
+      ),
+    ],
+  ];
 }
 
 /// Шапка головного екрана: плашка «≡ назва ⌄» відкриває [NavDrawer] найближчого

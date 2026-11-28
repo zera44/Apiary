@@ -7,6 +7,7 @@ import '../data/fin_accounts.dart';
 import '../data/finance.dart';
 import '../data/repository.dart';
 import '../logic/fin_period.dart';
+import '../tutorial/guided.dart';
 import '../ui/common.dart';
 import '../ui/fin_drawer.dart';
 import '../ui/nav_drawer.dart';
@@ -18,6 +19,7 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
+import 'qr_scan_screen.dart' show shootReceipt;
 import '../l10n/l10n.dart';
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
@@ -512,6 +514,19 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
+  /// Фото чека з шапки: камера, а далі - «Нова операція» з уже розпізнаним чеком.
+  Future<void> _scanReceipt() async {
+    final path = await shootReceipt(context, camera: true);
+    if (path == null || !mounted) return;
+    final msg = await Navigator.of(context).push<String>(MaterialPageRoute(
+        builder: (_) => FinAddScreen(repo: repo, kind: kFinExpense, imagePath: path)));
+    if (!mounted) return;
+    await _reload();
+    if (msg != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(msg)));
+    }
+  }
+
   Future<void> _history({String? categoryId, bool onlyStock = false, String? title}) async {
     final (f, t) = _range;
     await Navigator.of(context).push(MaterialPageRoute<void>(
@@ -535,7 +550,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   // усі п'ять вкладок завжди видно: на великому шрифті ряд трохи
   // зменшується, а не ховає «Період» за край
-  Widget _periodTabs() => Padding(
+  Widget _periodTabs() => TourTarget('fin-period', child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: FittedBox(
         fit: BoxFit.scaleDown,
@@ -560,7 +575,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             ),
         ]),
         ),
-      );
+      ));
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +624,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 icon: Icon(TablerIcons.chevron_right,
                     color: _canGoForward ? AppColors.text : AppColors.textMuted.withValues(alpha: 0.35))),
         ]),
-        SizedBox(
+        TourTarget('fin-donut', child: SizedBox(
           width: donut,
           height: donut,
           child: Stack(alignment: Alignment.center, children: [
@@ -640,7 +655,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               ]),
             ),
           ]),
-        ),
+        )),
       ]),
     );
     final rows = <Widget>[
@@ -714,18 +729,34 @@ class _FinanceScreenState extends State<FinanceScreen> {
       body: SafeArea(
         child: Stack(children: [
           ScreenColumn(children: [
-            TopBar(
+            TourTarget('fin-menu', child: TopBar(
               title: tr.finances,
               onBack: () => Navigator.pop(context),
               onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
-            ),
+              trailing: Tooltip(
+                message: tr.scanReceipt,
+                child: Material(
+                  color: AppColors.roundBtn,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _scanReceipt,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(TablerIcons.camera, size: 24, color: AppColors.create),
+                    ),
+                  ),
+                ),
+              ),
+            )),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: FinSegment(
+              child: TourTarget('fin-segment', child: FinSegment(
                 labels: [tr.expenses, tr.income],
                 selected: _expense ? 0 : 1,
                 onChanged: (i) => setState(() => _kind = i == 0 ? kFinExpense : kFinIncome),
-              ),
+              )),
             ),
             Expanded(
               child: !_loaded
@@ -755,7 +786,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             // на планшеті - біля вмісту (він по центру), а не в кутку екрана
             right: 20 + math.max(0, (MediaQuery.sizeOf(context).width - kContentMaxWidth) / 2),
             bottom: 24,
-            child: Material(
+            child: TourTarget('fin-add', child: Material(
               color: const Color(0xFFFBC02D),
               shape: const CircleBorder(),
               elevation: 4,
@@ -769,7 +800,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       message: tr.finNewOperation, child: const Icon(TablerIcons.plus, size: 36, color: Color(0xFF1D1611))),
                 ),
               ),
-            ),
+            )),
           ),
           const Positioned.fill(child: ScreenFrame()),
         ]),

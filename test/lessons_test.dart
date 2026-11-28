@@ -2,7 +2,10 @@ import 'package:apiary/data/database.dart';
 import 'package:apiary/data/models.dart';
 import 'package:apiary/data/repository.dart';
 import 'package:apiary/icons/app_icons.dart';
+import 'package:apiary/screens/finance_screen.dart';
 import 'package:apiary/screens/map_screen.dart';
+import 'package:apiary/screens/stock_screen.dart';
+import 'package:apiary/tutorial/guided.dart';
 import 'package:apiary/screens/parameters_screen.dart';
 import 'package:apiary/screens/settings_screen.dart';
 import 'package:apiary/screens/template_editor_screen.dart';
@@ -108,19 +111,132 @@ void main() {
   Finder backArrow() =>
       find.byWidgetPredicate((w) => w is CircleIconButton && w.icon == 'back_arrow');
 
-  testWidgets('навчання: плитки уроків, «скоро» - лише повідомлення', (tester) async {
+  testWidgets('навчання: плитки уроків - без «скоро», усі відкриваються', (tester) async {
     await phone(tester);
     await openTutorial(tester);
     expect(find.text('Базові поняття'), findsOneWidget);
     expect(find.text('Групи і параметри обходу'), findsOneWidget);
     expect(find.text('Шаблони'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Історія'), 200,
+    await tester.scrollUntilVisible(find.text('Фінанси'), 200,
         scrollable: find.byType(Scrollable).first);
-    expect(find.text('скоро'), findsNWidgets(3));
-    await tester.tap(find.text('QR-код'));
+    for (final t in ['QR-код', 'Склад', 'Фінанси']) {
+      expect(find.text(t), findsOneWidget);
+    }
+    expect(find.text('Історія'), findsNothing); // розділ «Історія» сховано
+    expect(find.text('скоро'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  /// Урок-екскурсія: плитка [title] з «Навчання».
+  Future<void> startGuided(WidgetTester tester, String title) async {
+    await tester.scrollUntilVisible(find.text(title), 200,
+        scrollable: find.byType(Scrollable).first);
+    await settle(tester, 2);
+    await tester.tap(find.text(title));
+    await settle(tester, 12);
+    expect(find.byType(GuideHost), findsOneWidget, reason: said(tester));
+  }
+
+  Future<void> next(WidgetTester tester) async {
+    await tester.tap(find.descendant(of: find.byType(GuideHost), matching: find.text('Продовжити')).last);
+    await settle(tester, 8);
+  }
+
+  int step(WidgetTester tester) => tester.state<GuideHostState>(find.byType(GuideHost)).step;
+
+  testWidgets('урок «Склад»: нова позиція, списання, переоблік', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startGuided(tester, 'Склад');
+    expect(find.byType(StockScreen), findsOneWidget);
+    expect(find.textContaining('Тут усе твоє добро'), findsOneWidget, reason: said(tester));
+    expect(find.text('Апістан'), findsOneWidget); // приклад у пісочниці
+    expect(find.text('Час докупити'), findsOneWidget);
+    // поза підсвіченим - нічого (завіса): «Переоблік» не відкривається
+    await tester.tap(find.text('Переоблік'), warnIfMissed: false);
     await settle(tester);
-    expect(find.textContaining('скоро з\'явиться'), findsOneWidget, reason: said(tester));
-    expect(find.byType(MapScreen), findsNothing, reason: said(tester));
+    expect(find.text('Списком'), findsNothing);
+    await next(tester);
+    expect(find.textContaining('Купив щось нове'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.text('+ Номенклатура'));
+    await settle(tester, 8);
+    expect(find.textContaining('мінімальний залишок'), findsOneWidget, reason: said(tester));
+    await tester.enterText(find.byType(TextField).first, 'Вощина');
+    await tester.tap(find.text('кг').last);
+    await settle(tester);
+    await tester.tap(find.text('Зберегти'));
+    await settle(tester, 8);
+    expect(find.text('Вощина'), findsOneWidget);
+    expect(find.textContaining('Нова позиція вже на складі'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.widgetWithText(PillButton, 'Списати').first);
+    await settle(tester, 8);
+    expect(step(tester), 4, reason: said(tester));
+    await tester.enterText(find.byType(TextField).first, '2');
+    await tester.tap(find.widgetWithText(PillButton, 'Списати').last);
+    await settle(tester, 8);
+    expect(find.textContaining('Вкажи кількість'), findsOneWidget, reason: said(tester));
+    await next(tester);
+    await tester.tap(find.text('Переоблік'));
+    await settle(tester);
+    await tester.tap(find.text('Списком'));
+    await settle(tester);
+    expect(find.text('Зберегти переоблік'), findsOneWidget);
+    expect(find.textContaining('Розбіжності я виправлю'), findsOneWidget, reason: said(tester));
+    await next(tester);
+    expect(find.textContaining('сама робить прихід'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.text('Завершити'));
+    await settle(tester, 8);
+    expect(find.byType(GuideHost), findsNothing);
+    expect(find.text('Базові поняття'), findsOneWidget);
+    // справжній склад не змінився
+    expect((await tester.runAsync(() => repo.listStockItems()))!, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('урок «QR-код»: згенерувати наліпки й дійти до кінця', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startGuided(tester, 'QR-код');
+    expect(find.textContaining('QR-наліпка на вулику'), findsOneWidget, reason: said(tester));
+    await next(tester);
+    await tester.tap(find.text('Згенерувати (3)'));
+    await settle(tester, 12);
+    expect(find.textContaining('Наліпки готові'), findsOneWidget, reason: said(tester));
+    await next(tester);
+    await next(tester);
+    expect(find.textContaining('камера одразу чекає'), findsOneWidget, reason: said(tester));
+    await tester.tap(find.text('Завершити'));
+    await settle(tester, 8);
+    expect(find.byType(GuideHost), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('урок «Фінанси»: нова витрата - і назад до кільця', (tester) async {
+    await phone(tester);
+    await openTutorial(tester);
+    await startGuided(tester, 'Фінанси');
+    expect(find.byType(FinanceScreen), findsOneWidget);
+    await next(tester);
+    await next(tester);
+    await next(tester);
+    expect(step(tester), 3, reason: said(tester));
+    await tester.tap(find.byTooltip('Нова операція'));
+    await settle(tester, 8);
+    expect(find.textContaining('обери {категорію}'.replaceAll(RegExp('[{}]'), '')), findsOneWidget,
+        reason: said(tester));
+    // повернулись без запису - урок іде далі, щойно знову видно кільце
+    await tester.tap(backArrow());
+    await settle(tester, 8);
+    final leave = find.text('Вийти');
+    if (leave.evaluate().isNotEmpty) {
+      await tester.tap(leave);
+      await settle(tester, 8);
+    }
+    expect(step(tester), 5, reason: said(tester));
+    await next(tester);
+    await tester.tap(find.text('Завершити'));
+    await settle(tester, 8);
+    expect(find.byType(GuideHost), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
