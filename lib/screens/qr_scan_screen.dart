@@ -112,6 +112,9 @@ final String? title;
   /// Скільки показувати зроблений знімок чека (фіксація), перш ніж іти далі.
   static const receiptHold = Duration(milliseconds: 1500);
 
+  /// «Зняти»: відлік 2-1 по півтори секунди сумарно (було 3-2-1 - довго).
+  static const shootCountdown = Duration(milliseconds: 750);
+
   @override
   State<QrScanScreen> createState() => _QrScanScreenState();
 }
@@ -276,12 +279,12 @@ class _QrScanScreenState extends State<QrScanScreen> {
     }
   }
 
-  /// «Зняти»: відлік 3-2-1 (інтерфейс сховано), потім знімок. Дотик до екрана скасовує відлік.
+  /// «Зняти»: відлік 2-1 (разом 1,5 с, інтерфейс сховано), потім знімок. Дотик до екрана скасовує відлік.
   void _startShoot() {
     if (_countdown != null || _capturing || _done) return;
-    setState(() => _countdown = 3);
+    setState(() => _countdown = 2);
     _cdTimer?.cancel();
-    _cdTimer = Timer.periodic(const Duration(seconds: 1), (t) async {
+    _cdTimer = Timer.periodic(QrScanScreen.shootCountdown, (t) async {
       if (!mounted || _done || _countdown == null) {
         t.cancel();
         return;
