@@ -19,6 +19,7 @@ import '../ui/fin_style.dart';
 import '../ui/theme.dart';
 import 'fin_add_screen.dart';
 import 'fin_category_screen.dart';
+import 'qr_scan_screen.dart' show shootReceipt;
 import '../l10n/l10n.dart';
 
 /// Рядок журналу: значок категорії, що й на скільки, дата, сума.
@@ -513,6 +514,19 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
+  /// Фото чека з шапки: камера, а далі - «Нова операція» з уже розпізнаним чеком.
+  Future<void> _scanReceipt() async {
+    final path = await shootReceipt(context, camera: true);
+    if (path == null || !mounted) return;
+    final msg = await Navigator.of(context).push<String>(MaterialPageRoute(
+        builder: (_) => FinAddScreen(repo: repo, kind: kFinExpense, imagePath: path)));
+    if (!mounted) return;
+    await _reload();
+    if (msg != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: SnackText(msg)));
+    }
+  }
+
   Future<void> _history({String? categoryId, bool onlyStock = false, String? title}) async {
     final (f, t) = _range;
     await Navigator.of(context).push(MaterialPageRoute<void>(
@@ -719,6 +733,22 @@ class _FinanceScreenState extends State<FinanceScreen> {
               title: tr.finances,
               onBack: () => Navigator.pop(context),
               onTitleTap: () => _scaffoldKey.currentState?.openDrawer(),
+              trailing: Tooltip(
+                message: tr.scanReceipt,
+                child: Material(
+                  color: AppColors.roundBtn,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _scanReceipt,
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(TablerIcons.camera, size: 24, color: AppColors.create),
+                    ),
+                  ),
+                ),
+              ),
             )),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
